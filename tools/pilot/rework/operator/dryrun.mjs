@@ -99,7 +99,8 @@ try {
   const dry = py('inject_regression.py', '--run', RUN, '--dry-run');
   if (dry.status) throw new Error('intervention dry run refused: ' + dry.stdout.slice(-600));
   log(`inject --dry-run exit ${dry.status}`);
-  const inj = py('inject_regression.py', '--run', RUN);
+  // The scripted run is quiescent by construction: the coordinator waits, no round runs.
+  const inj = py('inject_regression.py', '--run', RUN, '--repo-quiescent');
   log(`inject exit ${inj.status}: ${inj.stdout.trim().split('\n').pop()} ${inj.stderr.trim()}`);
   if (inj.status) throw new Error('intervention refused');
 

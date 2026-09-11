@@ -93,7 +93,9 @@ Ocena operatora (kolektor jej nie wykonuje):
 - Argumenty wywołań MCP są odczytywane tylko z literałów obiektów; inne są oznaczane jako
   nierozpoznane. Lista pytań pochodzi z bazy bridge'a. Kod z logów nie jest wykonywany.
 - Kolejność review wobec wiadomości użytkownika pochodzi z czasu (git ma rozdzielczość sekundy).
-- Injector nie ma blokady atomowej wobec niekooperującego procesu zapisującego plik roboczy.
-  Taki zapis wykryje (kod 2), ale mu nie zapobiegnie.
+- Injector działa tylko w zatrzymanym repo testu (potwierdzenie `--repo-quiescent` oraz kontrole
+  automatyczne). Plik roboczy jest podmieniany bez nadpisywania, z zachowaną kopią zastąpionej
+  treści. Wyjątek bez gwarancji wykrycia: zapis przez deskryptor otwarty przed podmianą, zakończony
+  po końcowym porównaniu. Zostaje w kopii, ale nie jest wykryty.
 - Agenci nie są izolowani systemowo. Odczyt materiałów operatora jest wykrywany (RC-14), nie
   blokowany.

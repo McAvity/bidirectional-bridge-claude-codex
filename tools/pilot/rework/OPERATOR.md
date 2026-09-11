@@ -66,8 +66,12 @@ Nie przerywaj Astry (Esc/Ctrl+C). Ingerencja wymaga tury zakończonej normalnie 
 ```bash
 python3 $RW/operator/collect_rework.py snapshot phase1-done --run $RUN
 python3 $RW/operator/inject_regression.py --run $RUN --dry-run     # sprawdzenie warunków; nic nie commituje
-python3 $RW/operator/inject_regression.py --run $RUN        # commit pilot-teammate + INJECTION.md
+python3 $RW/operator/inject_regression.py --run $RUN --repo-quiescent        # commit pilot-teammate + INJECTION.md
 ```
+
+`--repo-quiescent` to Twoje potwierdzenie, że repo testu jest zatrzymane: tura Astry się
+skończyła, żadna runda nie trwa, a Ty ani żadne narzędzie (edytor, IDE, skrypt) nie zapisuje w
+repo testu. Bez tej flagi prawdziwa ingerencja jest odrzucana (dry run jej nie wymaga).
 
 Co robi skrypt:
 - zakłada blokadę `$RUN/operator-results/injection.lock`; drugie uruchomienie jest odrzucane;
@@ -80,7 +84,12 @@ Co robi skrypt:
 - zapisuje `injection-started.json`, sprawdza stan ponownie i przy jakiejkolwiek zmianie
   odmawia, niczego nie zmieniając;
 - robi commit przez obiekty git i przesuwa gałąź tylko wtedy, gdy HEAD jest nadal tym
-  zaobserwowanym (compare-and-swap).
+  zaobserwowanym (compare-and-swap);
+- podmienia plik bez nadpisywania:
+  - obecny plik jest atomowo przenoszony do `<git-dir>/pilot-intervention/` i tam zostaje;
+  - nowe bajty trafiają na miejsce przez `link`, który nie nadpisze pliku utworzonego w
+    międzyczasie;
+  - obcy zapis wykryty w trakcie daje kod 2, a jego treść zostaje zachowana.
 
 | Kod wyjścia | Znaczenie | Co zrobić |
 |---|---|---|
@@ -129,11 +138,11 @@ Sesję Codexa możesz potem zamknąć (`/quit`).
 ## 6. Odchylenia
 
 - **Astra zapytała o akceptację po fazie 1** (mimo zlecenia). Nie odpowiadaj od razu.
-  - W Terminalu A: `inject_regression.py --run $RUN --allow-waiting` (zapisze odchylenie).
+  - W Terminalu A: `inject_regression.py --run $RUN --repo-quiescent --allow-waiting` (zapisze odchylenie).
   - W TUI wpisz `Nie akceptuję jeszcze. ` i dalej dokładnie tekst z kroku 4.
 - **Tura Astry została przerwana (`aborted`)**, np. przez Esc. Injector odmówi. Nie wznawiaj
   pracy ręcznie. Jeśli po sprawdzeniu, że Astra nie pracuje i stan jest `awaiting_review` z
-  review PASS, chcesz kontynuować, uruchom `inject_regression.py --run $RUN --accept-aborted-turn`.
+  review PASS, chcesz kontynuować, uruchom `inject_regression.py --run $RUN --repo-quiescent --accept-aborted-turn`.
   Odchylenie zostanie zapisane w `injection.json` → `deviation` i trzeba je opisać w wyniku.
 - **Astra zakończyła turę bez raportu i bez pytania.** Odczekaj 5 minut i wpisz
   `collect_rework.py snapshot stall --run $RUN`. Dopiero potem w TUI napisz `Kontynuuj.` — to interwencja
@@ -180,6 +189,18 @@ Sesję Codexa możesz potem zamknąć (`/quit`).
 - **Kolejność review wobec rund** pochodzi z grafu git. Kolejność wobec wiadomości użytkownika —
   z czasu (git ma rozdzielczość sekundy, więc review w tej samej sekundzie co prośba liczy się
   jako „po”).
-- **Injector** chroni referencje i indeks blokadami git oraz compare-and-swap. Niekooperujący
-  proces mógłby jednak zapisać plik roboczy między ostatnią kontrolą a podmianą. Zostanie to
-  wykryte (kod 2), ale nie zablokowane.
+- **Injector — granica i gwarancje.** Ingerencja działa tylko w zatrzymanym repo testu. Wymaga
+  `--repo-quiescent` i automatycznych kontroli:
+  - tura Astry `complete`;
+  - brak `claude -p` w repo;
+  - żaden inny proces nie trzyma otwartego `units.py` (wg `/proc`).
+
+  Referencje i indeks chronią blokady git i compare-and-swap. Plik roboczy jest podmieniany bez
+  nadpisywania:
+  - zapis zakończony przed przeniesieniem pliku jest wykrywany (kod 2) i wraca na miejsce;
+  - plik utworzony w międzyczasie nie zostaje nadpisany (kod 2);
+  - zastąpiona treść zostaje w `<git-dir>/pilot-intervention/`.
+
+  Nie ma gwarancji wobec dowolnego procesu: zapis przez deskryptor otwarty przed podmianą,
+  zakończony po końcowym porównaniu, trafia do zachowanej kopii. Nie ginie, ale nie jest wykryty.
+  Dlatego repo musi być zatrzymane.

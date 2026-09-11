@@ -50,6 +50,9 @@ class Repo(unittest.TestCase):
         return inj.commit_intervention(self.repo, expected or self.head, 'refs/heads/main', TARGET, OLD, NEW,
                                        regressions.TEAMMATE, regressions.COMMIT_MESSAGE, [])
 
+    def backups(self):
+        return sorted((self.repo / '.git/pilot-intervention').glob('*'))
+
 
 class CompareAndSwapCommit(Repo):
     def test_commit_lands_as_the_teammate_on_top_of_the_observed_head(self):
@@ -62,6 +65,7 @@ class CompareAndSwapCommit(Repo):
         self.assertEqual((self.repo / TARGET).read_bytes(), NEW)
         self.assertEqual(git(self.repo, 'status', '--porcelain'), '')
         self.assertEqual(stages, ['objects', 'ref', 'worktree', 'index'])
+        self.assertEqual([b.read_bytes() for b in self.backups()], [OLD])  # replaced file kept, recoverable
 
     def test_foreign_commit_after_the_observation_is_never_overwritten(self):
         (self.repo / TARGET).write_bytes(OLD + b'# teammate edit\n')
@@ -112,10 +116,70 @@ class CompareAndSwapCommit(Repo):
         self.assertEqual(git(self.repo, 'log', '-1', '--format=%an'), 'pilot-teammate')  # commit kept, no reset
 
 
+class SwapWindow(Repo):
+    """W8-R2: writes by another process exactly inside the worktree swap are never silently lost."""
+    def swap_with(self, **hooks):
+        real = {name: getattr(os, name) for name in ('rename', 'link')}
+        calls = {'rename': 0, 'link': 0}
+
+        def wrap(name):
+            def hooked(src, dst, *a, **kw):
+                calls[name] += 1
+                before = hooks.get(f'before_{name}_{calls[name]}')
+                if before:
+                    before(Path(src), Path(dst))
+                result = real[name](src, dst, *a, **kw)
+                after = hooks.get(f'after_{name}_{calls[name]}')
+                if after:
+                    after(Path(src), Path(dst))
+                return result
+            return hooked
+        with patch.object(inj.os, 'rename', wrap('rename')), patch.object(inj.os, 'link', wrap('link')):
+            with self.assertRaises(inj.PartialFailure) as ctx:
+                self.commit_intervention()
+        return ctx.exception
+
+    def test_write_completed_just_before_the_swap_is_kept(self):
+        # The review's reproduction: another process writes the target right before the replacement.
+        exc = self.swap_with(before_rename_1=lambda src, dst: src.write_bytes(b'concurrent user edit\n'))
+        self.assertEqual(exc.stage, 'worktree')
+        self.assertEqual((self.repo / TARGET).read_bytes(), b'concurrent user edit\n')
+        self.assertEqual([b.read_bytes() for b in self.backups()], [b'concurrent user edit\n'])
+        self.assertEqual(git(self.repo, 'log', '-1', '--format=%an'), 'pilot-teammate')  # commit stays, no reset
+
+    def test_target_recreated_between_move_and_placement_is_left_alone(self):
+        exc = self.swap_with(after_rename_1=lambda src, dst: src.write_bytes(b'recreated by someone\n'))
+        self.assertEqual(exc.stage, 'worktree')
+        self.assertEqual((self.repo / TARGET).read_bytes(), b'recreated by someone\n')
+        self.assertEqual([b.read_bytes() for b in self.backups()], [OLD])
+        self.assertEqual((self.repo / 'src/textkit/.units.py.intervention-tmp').read_bytes(), NEW)
+
+    def test_late_write_through_an_old_descriptor_is_detected(self):
+        def late_write(src, dst):
+            with open(self.backups()[0], 'ab') as fh:  # a descriptor opened before the move writes into the moved inode
+                fh.write(b'# late\n')
+        exc = self.swap_with(after_link_1=late_write)
+        self.assertEqual(exc.stage, 'worktree')
+        self.assertEqual(self.backups()[0].read_bytes(), OLD + b'# late\n')
+
+    def test_backup_on_another_filesystem_is_refused_before_any_change(self):
+        real_stat = os.stat
+
+        def other_device(path, *a, **kw):
+            st = real_stat(path, *a, **kw)
+            if str(path).endswith('pilot-intervention'):
+                return os.stat_result((st.st_mode, st.st_ino, st.st_dev + 1) + tuple(st)[3:])
+            return st
+        with patch.object(inj.os, 'stat', other_device):
+            with self.assertRaises(inj.Refused):
+                self.commit_intervention()
+        self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), self.head)
+
+
 class Drift(unittest.TestCase):
     BASE = {'branch_ref': 'refs/heads/main', 'head': 'a', 'status': '', 'target_sha256': 's', 'feature_state': 'awaiting_review',
             'latest_task_id': 't1', 'task_ids': ['t1'], 'open_attempts': 0, 'attempts': 1, 'claude_pids': [],
-            'manager_turns': 2, 'manager_last_turn': 'complete'}
+            'manager_turns': 2, 'manager_last_turn': 'complete', 'target_open_by': []}
 
     def test_identical_observations_have_no_drift(self):
         self.assertEqual(inj.drift(self.BASE, dict(self.BASE)), [])
@@ -123,7 +187,7 @@ class Drift(unittest.TestCase):
     def test_every_relevant_change_is_drift(self):
         for key, value in (('head', 'b'), ('status', ' M x'), ('target_sha256', 't'), ('feature_state', 'running'),
                            ('latest_task_id', 't2'), ('task_ids', ['t1', 't2']), ('open_attempts', 1), ('attempts', 2),
-                           ('claude_pids', ['9']), ('manager_turns', 3), ('manager_last_turn', 'started')):
+                           ('claude_pids', ['9']), ('manager_turns', 3), ('manager_last_turn', 'started'), ('target_open_by', ['77'])):
             self.assertEqual(inj.drift(self.BASE, dict(self.BASE, **{key: value})), [key], key)
 
 
@@ -147,7 +211,7 @@ class Preconditions(unittest.TestCase):
 
     def checks(self, **kw):
         args = dict(state=self.STATE, rounds=self.ROUNDS, coverage=self.COVERAGE, reviewed=True, hidden=self.HIDDEN,
-                    applicable=True, earlier=[], allow_waiting=False, accept_aborted=False)
+                    applicable=True, earlier=[], allow_waiting=False, accept_aborted=False, repo_quiescent=True)
         args.update(kw)
         return inj.preconditions(**args)
 
@@ -166,6 +230,13 @@ class Preconditions(unittest.TestCase):
     def test_no_completed_round_blocks(self):
         self.assertFalse(self.checks(rounds=[], coverage=('N/A', {'rounds': {}}))['every completed round has its own verified package'])
 
+    def test_real_intervention_needs_the_operator_confirmation(self):
+        self.assertFalse(self.checks(repo_quiescent=False)['operator confirmed the test repo is quiescent (--repo-quiescent)'])
+
+    def test_target_open_by_another_process_blocks(self):
+        state = dict(self.STATE, target_open_by=['4242'])
+        self.assertFalse(self.checks(state=state)['no other process has the target file open'])
+
     def test_earlier_trail_blocks(self):
         self.assertFalse(self.checks(earlier=['injection-failed-20260911T180000Z.json'])['no earlier intervention or trail'])
 
@@ -179,6 +250,7 @@ class Orchestration(Repo):
         ctx.bridge_view = lambda: {'feature_state': 'awaiting_review', 'latest_task_id': 't1', 'task_ids': ['t1'], 'open_attempts': 0, 'attempts': 1}
         ctx.manager_view = lambda: {'manager_turns': 2, 'manager_last_turn': 'complete'}
         ctx.claude_pids = lambda: []
+        ctx.target_open_by = lambda: []
         ctx.rounds = lambda: [{'task_id': 't1', 'state': 'DONE'}]
         ctx.coverage = lambda rounds: ('PASS', {'rounds': {'t1': {'problems': [], 'package': 'r01.zip'}}})
         ctx.package_hashes = lambda: {'r01.zip': 'aaa'}
@@ -193,7 +265,7 @@ class Orchestration(Repo):
         return sorted(p.name for p in (self.root / 'results').glob('injection*'))
 
     def test_success_records_started_and_final_trail(self):
-        code = inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False)
+        code = inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True)
         self.assertEqual(code, 0)
         record = json.loads((self.root / 'results/injection.json').read_text())
         self.assertEqual(record['commit'], git(self.repo, 'rev-parse', 'HEAD'))
@@ -207,7 +279,7 @@ class Orchestration(Repo):
             (self.repo / 'README').write_text('changed during the checks\n')
             git(self.repo, 'commit', '-qam', 'concurrent', author='other-person')
             return {'ok': True}, {'passed': 47, 'failed': 0}, {'ok': True}, {'passed': 40, 'failed': 7}
-        code = inj.run(self.context(evaluate=evaluate_while_someone_commits), dry_run=False, allow_waiting=False, accept_aborted=False)
+        code = inj.run(self.context(evaluate=evaluate_while_someone_commits), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True)
         self.assertEqual(code, 1)
         self.assertEqual(git(self.repo, 'log', '-1', '--format=%s'), 'concurrent')
         self.assertNotIn('pilot-teammate', git(self.repo, 'log', '--format=%an'))
@@ -217,7 +289,7 @@ class Orchestration(Repo):
 
     def test_manager_turn_starting_during_the_checks_is_refused(self):
         turns = iter([{'manager_turns': 2, 'manager_last_turn': 'complete'}, {'manager_turns': 3, 'manager_last_turn': 'started'}])
-        code = inj.run(self.context(manager_view=lambda: next(turns)), dry_run=False, allow_waiting=False, accept_aborted=False)
+        code = inj.run(self.context(manager_view=lambda: next(turns)), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True)
         self.assertEqual(code, 1)
         self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), self.head)
 
@@ -229,17 +301,17 @@ class Orchestration(Repo):
                 raise inj.GitError('simulated index lock')
             return real(repo, *args, **kw)
         with patch.object(inj, 'git_out', broken_index):
-            code = inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False)
+            code = inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True)
         self.assertEqual(code, 2)
         failed = [n for n in self.trails() if n.startswith('injection-failed')]
         self.assertEqual(len(failed), 1)
         self.assertEqual(json.loads((self.root / 'results' / failed[0]).read_text())['stage'], 'index')
         self.assertFalse((self.root / 'results/injection.json').exists())
         # A second run refuses because the trail exists; nothing is reset.
-        self.assertEqual(inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False), 1)
+        self.assertEqual(inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True), 1)
 
     def test_dry_run_commits_nothing(self):
-        self.assertEqual(inj.run(self.context(), dry_run=True, allow_waiting=False, accept_aborted=False), 0)
+        self.assertEqual(inj.run(self.context(), dry_run=True, allow_waiting=False, accept_aborted=False, repo_quiescent=False), 0)
         self.assertEqual(git(self.repo, 'rev-parse', 'HEAD'), self.head)
         self.assertTrue(any(n.startswith('injection-dryrun') for n in self.trails()))
 

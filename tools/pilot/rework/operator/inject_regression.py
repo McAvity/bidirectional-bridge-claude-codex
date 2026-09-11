@@ -1,7 +1,8 @@
 """TEST INTERVENTION for the rework test (operator-only; never shown to agents).
 
-  python3 inject_regression.py --run DIR [--results DIR/operator-results] [--dry-run]
+  python3 inject_regression.py --run DIR --repo-quiescent [--results DIR/operator-results]
                                [--allow-waiting] [--accept-aborted-turn]
+  python3 inject_regression.py --run DIR --dry-run
 
 Commits the regression from regressions.py to src/textkit/units.py under the separate identity
 `pilot-teammate`, as a normal commit on the checked-out branch. It never edits an executor commit,
@@ -14,13 +15,26 @@ Flow (fail closed):
      round has its own verified package, the latest round has a PASS review;
   4. write `injection-started-<ts>.json`, observe again: any drift → refused, nothing written;
   5. commit through git objects and `update-ref <branch> <new> <observed HEAD>` (compare-and-swap):
-     if HEAD moved, the ref update fails and nothing changes; the worktree file is replaced only if
-     it still holds the observed bytes;
-  6. failure after the ref update → `injection-failed-<ts>.json` with the stage; no rollback.
+     if HEAD moved, the ref update fails and nothing changes;
+  6. swap the worktree file without clobbering (see below);
+  7. failure after the ref update → `injection-failed-<ts>.json` with the stage; no rollback.
 Astra's last turn must be `complete`; `aborted` only with --accept-aborted-turn (recorded).
-Limit: git refs and the index are protected by git's own locks, but an uncooperative process could
-still write the worktree file between the last check and the replace; it is detected afterwards
-(status check → partial failure), not prevented.
+
+Boundary. A real intervention runs only in a stopped test repository: the operator confirms it with
+--repo-quiescent (Astra's turn has ended, no round runs, no editor or tool writes to the test repo),
+and the script refuses when Astra's turn is not complete, a `claude -p` runs in the repo, or any
+other process holds the target file open (/proc; not checked where /proc is unavailable).
+Guarantees of the worktree swap (plain filesystem, no mandatory locks):
+  - the current target is moved atomically (rename) to <git-dir>/pilot-intervention/ and kept there;
+    nothing that was at the path is deleted;
+  - a write completed before that move is detected (the moved bytes differ from the observed ones)
+    and put back at the path if the path is still free: partial failure, code 2;
+  - the intervention bytes are placed with link(), which fails instead of overwriting a file created
+    at the path meanwhile: partial failure, code 2, that file is left alone;
+  - a write through a descriptor opened before the move lands in the kept copy; it is detected if it
+    completes before the final comparison, otherwise it is preserved there but not detected;
+  - a write to the placed file afterwards is an ordinary later change (visible in `git status`).
+The git refs and the index are protected by git's own locks and the compare-and-swap.
 """
 import argparse
 import difflib
@@ -120,6 +134,10 @@ class Context:
     def claude_pids(self):
         return collect.processes(self.repo)['claude_p_pids_in_repo']
 
+    def target_open_by(self):
+        """Other processes holding the target file open (Linux /proc); ['unknown'] without /proc."""
+        return open_by(self.repo / regressions.TARGET)
+
     def rounds(self):
         db = collect.open_db(self.repo)
         feature = (collect.bridge_state(db).get('features') or [None])[0]
@@ -166,19 +184,37 @@ class Context:
         return git_out(self.repo, 'log', '--format=%H', f"--author={self.setup['git_identities']['executor']}").split()
 
 
+def open_by(path):
+    proc = Path('/proc')
+    if not proc.is_dir():
+        return ['unknown']
+    target, found = str(Path(path).resolve()), []
+    for fd_dir in proc.glob('[0-9]*/fd'):
+        pid = fd_dir.parent.name
+        if pid == str(os.getpid()):
+            continue
+        try:
+            if any(os.readlink(fd) == target for fd in fd_dir.iterdir()):
+                found.append(pid)
+        except OSError:
+            continue  # process ended or not ours to inspect
+    return found
+
+
 def observe(ctx):
-    return {**ctx.git_view(), **ctx.bridge_view(), **ctx.manager_view(), 'claude_pids': ctx.claude_pids()}
+    return {**ctx.git_view(), **ctx.bridge_view(), **ctx.manager_view(), 'claude_pids': ctx.claude_pids(),
+            'target_open_by': ctx.target_open_by()}
 
 
 DRIFT_KEYS = ('branch_ref', 'head', 'status', 'target_sha256', 'feature_state', 'latest_task_id', 'task_ids', 'open_attempts',
-              'attempts', 'claude_pids', 'manager_turns', 'manager_last_turn')
+              'attempts', 'claude_pids', 'manager_turns', 'manager_last_turn', 'target_open_by')
 
 
 def drift(before, after):
     return [k for k in DRIFT_KEYS if before.get(k) != after.get(k)]
 
 
-def preconditions(state, rounds, coverage, reviewed, hidden, applicable, earlier, allow_waiting, accept_aborted):
+def preconditions(state, rounds, coverage, reviewed, hidden, applicable, earlier, allow_waiting, accept_aborted, repo_quiescent):
     allowed = ('awaiting_review', 'waiting_user') if allow_waiting else ('awaiting_review',)
     turns_ok = ('complete', 'aborted') if accept_aborted else ('complete',)
     done = [r['task_id'] for r in rounds if r.get('state') == 'DONE']
@@ -189,6 +225,8 @@ def preconditions(state, rounds, coverage, reviewed, hidden, applicable, earlier
         f'feature state in {allowed}': state.get('feature_state') in allowed,
         'no open attempt': state.get('open_attempts') == 0,
         'no claude -p process in the repo': not state.get('claude_pids'),
+        'no other process has the target file open': not state.get('target_open_by'),
+        'operator confirmed the test repo is quiescent (--repo-quiescent)': bool(repo_quiescent),
         f"manager's last turn is {'/'.join(turns_ok)}": state.get('manager_last_turn') in turns_ok,
         'latest round reviewed PASS': bool(reviewed),
         'every completed round has its own verified package': bool(done) and coverage[0] == 'PASS'
@@ -202,10 +240,12 @@ def preconditions(state, rounds, coverage, reviewed, hidden, applicable, earlier
 # ── the commit ────────────────────────────────────────────────────────────────
 def commit_intervention(repo, expected_head, branch_ref, target, old_bytes, new_bytes, ident, message, stages):
     """Create the teammate commit on `branch_ref` only if HEAD is still `expected_head` and the
-    worktree/index still hold `old_bytes`. Refused → nothing changed; PartialFailure → the commit is on
-    the branch and a later step failed (recorded by the caller, never rolled back)."""
+    worktree/index still hold `old_bytes`, then swap the worktree file without clobbering (module
+    docstring). Refused → nothing changed; PartialFailure → the commit is on the branch and a later
+    step failed (recorded by the caller, never rolled back)."""
     repo = Path(repo)
     path = repo / target
+    backup_dir = Path(git_out(repo, 'rev-parse', '--absolute-git-dir')) / 'pilot-intervention'
     if git_out(repo, 'symbolic-ref', '-q', 'HEAD') != branch_ref:
         raise Refused('the checked-out branch changed')
     if git_out(repo, 'rev-parse', 'HEAD') != expected_head:
@@ -218,6 +258,9 @@ def commit_intervention(repo, expected_head, branch_ref, target, old_bytes, new_
     old_blob = git_out(repo, 'hash-object', '--stdin', input=old_bytes)
     if len(entry) < 2 or entry[1] != old_blob or git_out(repo, 'rev-parse', f'{expected_head}:{target}') != old_blob:
         raise Refused('index or HEAD does not hold the observed target bytes')
+    backup_dir.mkdir(exist_ok=True)
+    if os.stat(backup_dir).st_dev != os.stat(path.parent).st_dev:
+        raise Refused(f'{backup_dir} is on another filesystem than the worktree; the swap needs an atomic rename')
     mode = entry[0]
     env = {**os.environ, 'GIT_AUTHOR_NAME': ident[0], 'GIT_AUTHOR_EMAIL': ident[1],
            'GIT_COMMITTER_NAME': ident[0], 'GIT_COMMITTER_EMAIL': ident[1]}
@@ -234,15 +277,8 @@ def commit_intervention(repo, expected_head, branch_ref, target, old_bytes, new_
     except GitError as exc:
         raise Refused(f'compare-and-swap of {branch_ref} failed (HEAD moved); nothing changed: {exc}') from None
     stages.append('ref')
-    # From here the commit is on the branch.
-    if path.read_bytes() != old_bytes:
-        raise PartialFailure('worktree', 'target changed after the ref update; left untouched')
-    tmp_file = path.with_name(f'.{path.name}.intervention-tmp')
-    try:
-        tmp_file.write_bytes(new_bytes)
-        os.replace(tmp_file, path)
-    except OSError as exc:
-        raise PartialFailure('worktree', str(exc)) from None
+    # From here the commit is on the branch; nothing below overwrites or deletes a foreign write.
+    swap_worktree(path, backup_dir / f'{path.name}.replaced-{stamp()}', old_bytes, new_bytes)
     stages.append('worktree')
     try:
         git_out(repo, 'update-index', '--cacheinfo', f'{mode},{new_blob},{target}')
@@ -254,6 +290,36 @@ def commit_intervention(repo, expected_head, branch_ref, target, old_bytes, new_
     if status:
         raise PartialFailure('verify', f'worktree not clean after the intervention: {status[:200]}')
     return commit
+
+
+def swap_worktree(path, backup, old_bytes, new_bytes):
+    """Replace `path` by `new_bytes` without clobbering: move the current file aside atomically, check
+    what was moved, then place the new bytes with link(), which fails if the path was re-created.
+    The moved file is kept at `backup`."""
+    tmp_file = path.with_name(f'.{path.name}.intervention-tmp')
+    try:
+        tmp_file.write_bytes(new_bytes)
+        os.rename(path, backup)
+    except OSError as exc:
+        raise PartialFailure('worktree', f'could not move the target aside: {exc}; target untouched') from None
+    if backup.read_bytes() != old_bytes:
+        try:
+            os.link(backup, path)  # put the foreign write back unless the path was re-created meanwhile
+            where = f'restored at {path} and kept at {backup}'
+        except FileExistsError:
+            where = f'a new file exists at {path}; the moved content is kept at {backup}'
+        raise PartialFailure('worktree', f'the target changed just before the swap; intervention bytes not applied ({where}; '
+                                         f'intervention bytes at {tmp_file})')
+    try:
+        os.link(tmp_file, path)
+    except FileExistsError:
+        raise PartialFailure('worktree', f'the target was re-created during the swap and left untouched; replaced original kept '
+                                         f'at {backup}; intervention bytes at {tmp_file}') from None
+    except OSError as exc:
+        raise PartialFailure('worktree', f'could not place the intervention bytes: {exc}; original kept at {backup}') from None
+    tmp_file.unlink()
+    if backup.read_bytes() != old_bytes:
+        raise PartialFailure('worktree', f'a late write reached the replaced file through an old descriptor; kept at {backup}')
 
 
 # ── orchestration ─────────────────────────────────────────────────────────────
@@ -268,7 +334,7 @@ def write(results, name, record):
     return path
 
 
-def run(ctx, dry_run, allow_waiting, accept_aborted):
+def run(ctx, dry_run, allow_waiting, accept_aborted, repo_quiescent=False):
     """Returns 0 (committed or dry run OK), 1 (refused, nothing changed) or 2 (partial failure)."""
     results, lock = ctx.results, ctx.results / 'injection.lock'
     try:
@@ -278,12 +344,12 @@ def run(ctx, dry_run, allow_waiting, accept_aborted):
         print('REFUSED:', exc)
         return 1
     try:
-        return _run_locked(ctx, dry_run, allow_waiting, accept_aborted)
+        return _run_locked(ctx, dry_run, allow_waiting, accept_aborted, repo_quiescent)
     finally:
         release_lock(lock)
 
 
-def _run_locked(ctx, dry_run, allow_waiting, accept_aborted):
+def _run_locked(ctx, dry_run, allow_waiting, accept_aborted, repo_quiescent):
     results, repo, target = ctx.results, ctx.repo, regressions.TARGET
     earlier = sorted(p.name for p in results.iterdir() if p.name.startswith(TRAILS))
     try:
@@ -303,7 +369,7 @@ def _run_locked(ctx, dry_run, allow_waiting, accept_aborted):
         print('REFUSED: observation failed:', exc)
         return 1
     checks = preconditions(state0, rounds, coverage, reviewed, (hidden_before, hidden_after), applicable, earlier,
-                           allow_waiting, accept_aborted)
+                           allow_waiting, accept_aborted, repo_quiescent or dry_run)
     done = [r['task_id'] for r in rounds if r.get('state') == 'DONE']
     packages = coverage[1].get('rounds', {})
     record = {
@@ -398,6 +464,8 @@ def main():
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--allow-waiting', action='store_true')
     parser.add_argument('--accept-aborted-turn', action='store_true')
+    parser.add_argument('--repo-quiescent', action='store_true',
+                        help='operator confirms: Astra idle, no round running, nothing else writes to the test repo')
     args = parser.parse_args()
     run_dir = Path(args.run).resolve()
     results = Path(args.results or run_dir / 'operator-results').resolve()
@@ -407,7 +475,7 @@ def main():
         ctx = Context(setup['repo'], results, run_dir=run_dir, setup=setup)
     except GitError as exc:
         sys.exit(f'REFUSED: {exc}')
-    code = run(ctx, args.dry_run, args.allow_waiting, args.accept_aborted_turn)
+    code = run(ctx, args.dry_run, args.allow_waiting, args.accept_aborted_turn, args.repo_quiescent)
     if code == 0 and not args.dry_run:
         record = json.loads((results / 'injection.json').read_text())
         report(ctx, record)
