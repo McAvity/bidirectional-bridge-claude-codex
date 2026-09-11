@@ -3,7 +3,7 @@
 Start with docs/HANDOFF.md and docs/plans/wave7.md. The integration branch is
 feature-workflow; main tracks the upstream baseline. Keep upstream history and MIT notices.
 
-Sources: src/ (bridge), scripts/native-bridge-mcp.mjs (MCP entry),
+Sources: shared/*/src/ (bridge packages), scripts/native-bridge-mcp.mjs (MCP entry),
 .agents/skills/ (feature workflow), .codex/skills/using-bridge and
 .claude/skills/using-bridge (role-specific instructions), tools/pilot/ (operator test tools).
 Read the relevant skill before running its workflow. Operator-only fixtures must not be

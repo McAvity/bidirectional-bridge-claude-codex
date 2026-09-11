@@ -1,6 +1,6 @@
 # Wave8 — repository migration
 
-Status: source integration prepared; directory cutover and resumed-session checks pending.
+Status: COMPLETE. Source integration, directory cutover and resumed-session checks completed.
 
 1. Review pilot tools: complete at 66b6f99 (110 tests, scripted dry run).
 2. Integrate source and shared agent instructions; publish after checking files/history.
@@ -29,3 +29,22 @@ Acceptance: published clone builds/tests and prepares its pilot without historic
 vendors or absolute old paths; a new agent can continue from repository instructions;
 archive is preserved and is no longer a development source. Missing real-agent tests
 remain NOT_TESTED. Migration does not implement diagnostics/setup or change that verdict.
+
+## Completion evidence
+
+The published checkout at ea3a25e was moved to the final bridge path; the old workspace
+is preserved as bridge-archive. Its linked pilot-tools worktree resolves correctly and
+is clean after git worktree repair. Origin is the personal public fork, upstream is
+preserved, and the original manager conversation resumed in the new checkout.
+
+Before cutover: clean-clone build and 342 bridge / 19 exchange / 110 pilot tests passed.
+GitHub CI: https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/34642279145
+After cutover: a fresh temporary fixture passed all 14 preflight checks, including
+32-tool MCP handshake, launcher configuration, Codex skill discovery, exchange tests
+and the scripted correction dry run. Runtime paths point to the final checkout.
+No real model task was launched. Temporary evidence remains local.
+
+This validates the pilot launcher configuration, not automatic MCP setup for every
+plain codex session. Normal startup/setup, pinned supervisor distribution and concurrent
+Herdr worktree isolation remain wave7 work. REWORK with real models and review-quality
+assessment remain pending. No private runtime state was imported or published.

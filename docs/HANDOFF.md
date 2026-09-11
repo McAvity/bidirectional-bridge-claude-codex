@@ -28,7 +28,7 @@ Upstream certification manifests do not certify fork changes. CI uses no model c
 
 ## Next work
 
-Complete local directory cutover and resumed-session checks in plans/wave8.md. Then continue
+Wave8 directory cutover and resumed-session checks are complete (see plans/wave8.md). Continue
 plans/wave7.md: manager/workspace identity and two-worktree isolation, diagnostic export,
 versioned setup for normal codex startup, dependency maintenance and acceptance tests.
 The current role owner `codex` is not a unique manager session identity. Use one active
@@ -39,7 +39,7 @@ is claimed. docs/tasks/review-integration-drift.md is a proposal, not active wor
 
 | Historical source | Canonical source / disposition |
 |---|---|
-| vendor/bidirectional-bridge patches | src/, scripts/, tests/ and Git history |
+| vendor/bidirectional-bridge patches | shared/, scripts/, tests/ and Git history |
 | wave5 workflow ZIP and patches | .agents/skills/, role-specific using-bridge skills, docs/features/ |
 | wave6 operator helpers | tools/pilot/common/ |
 | wave6 correction fixture/operator tools | tools/pilot/rework/ and tools/pilot/tests/ |
