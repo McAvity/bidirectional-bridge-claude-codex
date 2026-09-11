@@ -95,7 +95,7 @@ Co robi skrypt:
 |---|---|---|
 | 0 | Ingerencja wykonana: `injection.json`, `INJECTION.md` | Krok 4 |
 | 1 | Odmowa, repo bez zmian: `injection-refused-<czas>.json` (powód, ewentualnie `drift`) | Przeczytaj powód. Dryf przy aktywnej Astrze albo Claude'zie: poczekaj na koniec tury, zrób migawkę i uruchom ponownie. Warunek niespełniony: sekcja 6. Nie obchodź warunków |
-| 2 | Częściowa awaria po przesunięciu gałęzi: `injection-failed-<czas>.json` (etap, stan git) | Zatrzymaj test. Nic nie resetuj ani nie czyść. Zanotuj, zrób `collect_rework.py snapshot partial --run $RUN`, a kolejne podejście wykonaj w nowym katalogu (`setup_rework.py --dest`) |
+| 2 | Awaria po przesunięciu gałęzi, na dowolnym etapie: podmiana pliku, indeks, zapis `injection.json`, raport `INJECTION.md`. Ślad `injection-failed-<czas>.json` (etap, SHA, stan git); jeśli nie da się go zapisać, SHA i etap trafiają na stderr | Zatrzymaj test. Nic nie resetuj ani nie czyść. Zanotuj, zrób `collect_rework.py snapshot partial --run $RUN`, a kolejne podejście wykonaj w nowym katalogu (`setup_rework.py --dest`) |
 
 Istniejąca blokada przy braku działającego procesu (`pgrep -af inject_regression` nic nie
 zwraca) oznacza przerwany poprzedni przebieg. Przejrzyj pliki `injection*` i dopiero wtedy usuń

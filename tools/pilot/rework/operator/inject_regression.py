@@ -180,6 +180,31 @@ class Context:
                         {'passed': data['passed'], 'failed': data['failed'], 'failing_inputs': [f['case'].get('input') for f in data['failures']]}]
         return tuple(out)
 
+    def report(self, record):
+        """INJECTION.md plus the hidden check and package verification after the commit (operator-only)."""
+        cases = self.run_dir / 'acceptance-owner/cases.json'
+        hidden = collect.hidden_check(self.repo, record['commit'], cases)
+        hidden.pop('failures', None)
+        after = self.coverage(self.rounds())
+        record.update({'hidden_at_commit': hidden, 'package_coverage_after': after, 'packages_after': self.package_hashes()})
+        write(self.results, 'injection.json', record)
+        rows = [f"| {t} | {v.get('package')} | {'; '.join(v['problems']) or 'OK'} | {'; '.join(after[1]['rounds'].get(t, {}).get('problems', [])) or 'OK'} |"
+                for t, v in record['package_coverage_before'][1].get('rounds', {}).items()]
+        (self.results / 'INJECTION.md').write_text('\n'.join([
+            '# INGERENCJA TESTOWA (materiał operatora — nie pokazywać agentom)', '',
+            f"Commit `{record['commit']}` autora `{record['author']}`, po review ostatniej rundy i przed prośbą o ponowne",
+            'sprawdzenie. To regresja wprowadzona przez operatora, nie praca wykonawcy ani managera.', '',
+            f"- Plik `{record['target']}`: SHA-256 przed `{record['before']['sha256']}` ({record['before']['size']} B),"
+            f" po `{record['after']['sha256']}` ({record['after']['size']} B).",
+            f"- Zmienione zakresy bajtów (przed → po): {json.dumps(record['changed_byte_ranges'])}",
+            f"- HEAD przed: `{record['head_before']}`; etapy: {record['stages']}; odchylenia: {record['deviation'] or 'brak'}.",
+            f"- Przypadki właściciela: przed {record['hidden_before']['passed']}/{record['hidden_before']['passed'] + record['hidden_before']['failed']},"
+            f" po commicie {hidden['passed']}/{hidden['passed'] + hidden['failed']}.",
+            f"- Testy repozytorium po ingerencji: {'przechodzą' if record['suite_after']['ok'] else 'NIE przechodzą'} {record['suite_after']['tail']}.", '',
+            'Paczki rund (powiązanie deliverable → archiwum → verify własnego zakresu), przed i po:', '',
+            '| Runda | Paczka | Przed | Po |', '|---|---|---|---|', *rows, '',
+            '```diff', record['diff'].rstrip(), '```', '']))
+
     def executor_commits(self):
         return git_out(self.repo, 'log', '--format=%H', f"--author={self.setup['git_identities']['executor']}").split()
 
@@ -416,45 +441,41 @@ def _run_locked(ctx, dry_run, allow_waiting, accept_aborted, repo_quiescent):
         return 1
     except (PartialFailure, GitError, OSError) as exc:
         stage = getattr(exc, 'stage', stages[-1] if stages else 'objects')
-        try:
-            now = ctx.git_view()
-        except (GitError, OSError) as view_error:
-            now = {'error': str(view_error)}
-        write(results, f'injection-failed-{stamp()}.json', {**record, 'stage': stage, 'stages': stages, 'error': str(exc),
-                                                             'git_now': now, 'note': 'not rolled back; inspect before any further step'})
-        print(f'PARTIAL FAILURE at {stage}: {exc}')
-        return 2
-    record.update({'commit': commit, 'stages': stages, 'observed_again': state1,
-                   'committed_at_ms': int(git_out(repo, 'log', '-1', '--format=%ct', commit)) * 1000,
-                   'files': git_out(repo, 'diff-tree', '--no-commit-id', '--name-only', '-r', commit).split()})
-    write(results, 'injection.json', record)
+        return partial_failure(ctx, record, stage, stages, exc)
+    # Everything after the ref update is part of the intervention: any failure here is partial (2).
+    stage = 'record'
+    try:
+        record.update({'commit': commit, 'stages': stages, 'observed_again': state1,
+                       'committed_at_ms': int(git_out(repo, 'log', '-1', '--format=%ct', commit)) * 1000,
+                       'files': git_out(repo, 'diff-tree', '--no-commit-id', '--name-only', '-r', commit).split()})
+        write(results, 'injection.json', record)
+        stage = 'report'
+        ctx.report(record)
+    except Exception as exc:  # noqa: BLE001 — the commit exists; classify every failure as partial
+        return partial_failure(ctx, record, stage, stages, exc, commit)
+    print(f'INTERVENTION COMMITTED {commit} -> {results / "injection.json"}')
     return 0
 
 
-def report(ctx, record):
-    """INJECTION.md plus the hidden check and package verification after the commit (operator-only)."""
-    cases = ctx.run_dir / 'acceptance-owner/cases.json'
-    hidden = collect.hidden_check(ctx.repo, record['commit'], cases)
-    hidden.pop('failures', None)
-    after = ctx.coverage(ctx.rounds())
-    record.update({'hidden_at_commit': hidden, 'package_coverage_after': after, 'packages_after': ctx.package_hashes()})
-    write(ctx.results, 'injection.json', record)
-    rows = [f"| {t} | {v.get('package')} | {'; '.join(v['problems']) or 'OK'} | {'; '.join(after[1]['rounds'].get(t, {}).get('problems', [])) or 'OK'} |"
-            for t, v in record['package_coverage_before'][1].get('rounds', {}).items()]
-    (ctx.results / 'INJECTION.md').write_text('\n'.join([
-        '# INGERENCJA TESTOWA (materiał operatora — nie pokazywać agentom)', '',
-        f"Commit `{record['commit']}` autora `{record['author']}`, po review ostatniej rundy i przed prośbą o ponowne",
-        'sprawdzenie. To regresja wprowadzona przez operatora, nie praca wykonawcy ani managera.', '',
-        f"- Plik `{record['target']}`: SHA-256 przed `{record['before']['sha256']}` ({record['before']['size']} B),"
-        f" po `{record['after']['sha256']}` ({record['after']['size']} B).",
-        f"- Zmienione zakresy bajtów (przed → po): {json.dumps(record['changed_byte_ranges'])}",
-        f"- HEAD przed: `{record['head_before']}`; etapy: {record['stages']}; odchylenia: {record['deviation'] or 'brak'}.",
-        f"- Przypadki właściciela: przed {record['hidden_before']['passed']}/{record['hidden_before']['passed'] + record['hidden_before']['failed']},"
-        f" po commicie {hidden['passed']}/{hidden['passed'] + hidden['failed']}.",
-        f"- Testy repozytorium po ingerencji: {'przechodzą' if record['suite_after']['ok'] else 'NIE przechodzą'} {record['suite_after']['tail']}.", '',
-        'Paczki rund (powiązanie deliverable → archiwum → verify własnego zakresu), przed i po:', '',
-        '| Runda | Paczka | Przed | Po |', '|---|---|---|---|', *rows, '',
-        '```diff', record['diff'].rstrip(), '```', '']))
+def partial_failure(ctx, record, stage, stages, exc, commit=None):
+    """Record a failure after the branch moved: trail file if possible, always stderr; code 2."""
+    try:
+        commit = commit or git_out(ctx.repo, 'rev-parse', 'HEAD')
+    except (GitError, OSError):
+        commit = commit or 'unknown'
+    try:
+        now = ctx.git_view()
+    except (GitError, OSError) as view_error:
+        now = {'error': str(view_error)}
+    message = f'PARTIAL FAILURE after the branch moved (HEAD {commit}) at stage {stage}: {exc}'
+    try:
+        path = write(ctx.results, f'injection-failed-{stamp()}.json',
+                     {**record, 'commit': commit, 'stage': stage, 'stages': stages, 'error': str(exc), 'git_now': now,
+                      'note': 'not rolled back; inspect before any further step'})
+        print(f'{message} -> {path}', file=sys.stderr)
+    except Exception as trail_error:  # noqa: BLE001 — never lose the SHA and stage
+        print(f'{message}; failure trail not written: {trail_error}', file=sys.stderr)
+    return 2
 
 
 def main():
@@ -475,12 +496,7 @@ def main():
         ctx = Context(setup['repo'], results, run_dir=run_dir, setup=setup)
     except GitError as exc:
         sys.exit(f'REFUSED: {exc}')
-    code = run(ctx, args.dry_run, args.allow_waiting, args.accept_aborted_turn, args.repo_quiescent)
-    if code == 0 and not args.dry_run:
-        record = json.loads((results / 'injection.json').read_text())
-        report(ctx, record)
-        print(f"INTERVENTION COMMITTED {record['commit']} -> {results / 'injection.json'}")
-    sys.exit(code)
+    sys.exit(run(ctx, args.dry_run, args.allow_waiting, args.accept_aborted_turn, args.repo_quiescent))
 
 
 if __name__ == '__main__':

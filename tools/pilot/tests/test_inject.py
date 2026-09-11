@@ -2,6 +2,7 @@
 temporary directory; no real run directory is ever touched.
 Run: python3 -m unittest discover -s tools/pilot/tests -v
 """
+import io
 import json
 import os
 import subprocess
@@ -9,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
@@ -257,6 +259,7 @@ class Orchestration(Repo):
         ctx.reviewed = lambda: True
         ctx.evaluate = lambda head: ({'ok': True}, {'passed': 47, 'failed': 0}, {'ok': True}, {'passed': 40, 'failed': 7})
         ctx.executor_commits = lambda: []
+        ctx.report = lambda record: (self.root / 'results/INJECTION.md').write_text('report')
         for key, value in kw.items():
             setattr(ctx, key, value)
         return ctx
@@ -309,6 +312,86 @@ class Orchestration(Repo):
         self.assertFalse((self.root / 'results/injection.json').exists())
         # A second run refuses because the trail exists; nothing is reset.
         self.assertEqual(inj.run(self.context(), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True), 1)
+
+    def run_after_commit_failure(self, **ctx_overrides):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = inj.run(self.context(**ctx_overrides), dry_run=False, allow_waiting=False, accept_aborted=False, repo_quiescent=True)
+        return code, err.getvalue()
+
+    def failed_trail(self):
+        failed = [n for n in self.trails() if n.startswith('injection-failed')]
+        self.assertEqual(len(failed), 1, self.trails())
+        return json.loads((self.root / 'results' / failed[0]).read_text())
+
+    def test_report_failure_after_the_commit_is_partial(self):
+        def broken_report(record):
+            raise RuntimeError('owner cases could not run')
+        code, err = self.run_after_commit_failure(report=broken_report)
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        self.assertEqual(code, 2)
+        self.assertEqual(git(self.repo, 'log', '-1', '--format=%an'), 'pilot-teammate')  # commit kept
+        trail = self.failed_trail()
+        self.assertEqual((trail['stage'], trail['commit']), ('report', head))
+        self.assertIn(head, err)
+
+    def test_result_write_failure_after_the_commit_is_partial(self):
+        real = inj.write
+
+        def no_result_file(results, name, record):
+            if name == 'injection.json':
+                raise OSError('disk full')
+            return real(results, name, record)
+        with patch.object(inj, 'write', no_result_file):
+            code, err = self.run_after_commit_failure()
+        self.assertEqual(code, 2)
+        self.assertEqual(self.failed_trail()['stage'], 'record')
+        self.assertFalse((self.root / 'results/injection.json').exists())
+
+    def test_without_any_writable_trail_the_sha_goes_to_stderr(self):
+        real = inj.write
+
+        def only_started(results, name, record):
+            if name != 'injection-started.json':
+                raise OSError('read-only results')
+            return real(results, name, record)
+        with patch.object(inj, 'write', only_started):
+            code, err = self.run_after_commit_failure()
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        self.assertEqual(code, 2)
+        self.assertIn(head, err)
+        self.assertIn('record', err)
+        self.assertIn('trail not written', err)
+
+    def test_partial_failure_trail_write_failure_still_reports_on_stderr(self):
+        real_git, real_write = inj.git_out, inj.write
+
+        def broken_index(repo, *args, **kw):
+            if args[:2] == ('update-index', '--cacheinfo') and 'env' not in kw:
+                raise inj.GitError('simulated index lock')
+            return real_git(repo, *args, **kw)
+
+        def no_failure_trail(results, name, record):
+            if name.startswith('injection-failed'):
+                raise OSError('read-only results')
+            return real_write(results, name, record)
+        with patch.object(inj, 'git_out', broken_index), patch.object(inj, 'write', no_failure_trail):
+            code, err = self.run_after_commit_failure()
+        self.assertEqual(code, 2)
+        self.assertIn(git(self.repo, 'rev-parse', 'HEAD'), err)
+        self.assertIn('index', err)
+
+    def test_cli_exit_code_follows_the_run(self):
+        run_dir = self.root / 'run'
+        run_dir.mkdir()
+        (run_dir / 'SETUP.json').write_text(json.dumps({'repo': str(self.repo), 'feature_id': 'F-001-duration'}))
+        argv = ['inject_regression.py', '--run', str(run_dir), '--repo-quiescent']
+        out = io.StringIO()
+        with patch.object(sys, 'argv', argv), patch.object(inj, 'run', lambda *a, **kw: 2), redirect_stdout(out):
+            with self.assertRaises(SystemExit) as ctx:
+                inj.main()
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertNotIn('COMMITTED', out.getvalue())
 
     def test_dry_run_commits_nothing(self):
         self.assertEqual(inj.run(self.context(), dry_run=True, allow_waiting=False, accept_aborted=False, repo_quiescent=False), 0)
