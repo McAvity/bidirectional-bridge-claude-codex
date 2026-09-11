@@ -31,7 +31,7 @@ Local verification of the imported extension baseline covers 342 bridge tests an
 Claude session, user waiting and restart, and final acceptance. It did not exercise a
 REWORK correction round: the worker fixed the seeded issue in its first delivery.
 Private pilot transcripts and machine-specific fixtures are intentionally not included.
-The correction pilot is being handled separately and must be reviewed before importing.
+The reviewed correction-pilot tools are in `tools/pilot/`; the real-model correction run remains pending. See `docs/HANDOFF.md` for current status.
 
 No orphan-process supervisor, automatic wake-up of a closed manager or `/goal` is added.
 Simple setup, diagnostics exports and verified parallel feature isolation are planned
