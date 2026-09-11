@@ -150,16 +150,31 @@ bounded objective failed.
 
 ### `TIMEOUT`
 
-The adapter exceeded its deadline. Partial work may exist, so inspect the specific durable task
-before acting, and use only the declared retry budget or strict recovery. Do not blindly
-restart.
+The adapter exceeded its deadline: the bridge terminated the runtime, the attempt ended
+`TIMEOUT`, and the task is `FAILED` with its session handle kept. Partial work may exist, so
+inspect the specific durable task before acting. Read the attempt's termination evidence
+(below) to see why the round ran out of time, then either accept the result or reopen it once
+with `bridge_resume_delegated_task({recover_timeout: true, deadline_ms, max_turns})` when the
+extra runtime is authorized. Do not blindly restart, and do not reuse the deadline that just
+expired.
+
+### Where the stopped runtime's stderr went
+
+An attempt that ends without a normal result writes
+`<database dir>/evidence/<task_id>/attempt-<n>.json` (mode 0600, one file per attempt, never
+overwritten): a redacted 16 KiB stderr tail, exit code/signal, kill flags, deadline and stream
+counters. `bridge_get_task` lists only its metadata under `termination_evidence`; read the
+file locally (`jq . <path>`). Nothing is written to the MCP stdout stream. A bridge process
+that is killed mid-attempt writes no evidence, because the file is produced when the runtime
+process closes.
 
 ### A custom `bridge_delegate` caller disconnects after about 60 seconds
 
 The MCP TypeScript SDK defaults a request to 60,000 ms when a custom client calls
 `Client.callTool` without a `RequestOptions.timeout`. That client-side envelope is independent
 of the delegated task's `deadline_ms`. It also bypasses Codex's project MCP setting
-`tool_timeout_sec = 1800`, which applies only when Codex itself owns the native MCP call.
+`tool_timeout_sec` (5400 in this repository), which applies only when Codex itself owns the
+native MCP call.
 
 Use the native project MCP client, or set an explicit request timeout in a custom wrapper that
 is at least as long as the bounded task deadline. A wrapper timeout does not prove that the
@@ -177,8 +192,9 @@ keeps the actual model `null` rather than inventing one — that is expected, no
 ### A Claude worker stops before finishing the objective
 
 It probably hit its turn ceiling. The default is a conservative 12 turns; `TaskSpec.max_turns`
-accepts 1–64, and 32 is the recommended starting value for a bounded repository audit. Prefer
-decomposing broad work into bounded subtasks over raising the ceiling toward the maximum.
+accepts 1–256, and 32 is the recommended starting value for a bounded repository audit. Size
+it to the round — roughly 200 for a 75-minute one — but prefer decomposing broad work into
+bounded subtasks over raising the ceiling toward the maximum.
 
 ### `QUOTA_EXHAUSTED` or an unavailable runtime
 
@@ -194,7 +210,9 @@ eligible task.
 2. `bridge_get_task` — inspect the specific task. Never print its raw execution handle.
 3. Choose one operation, called **once** with the durable `task_id`:
    - existing owner: `bridge_resume_task`;
-   - owner of the direct parent that delegated the child: `bridge_resume_delegated_task`.
+   - owner of the direct parent that delegated the child: `bridge_resume_delegated_task`, plus
+     `recover_timeout: true` and an explicit `deadline_ms` when that child is `FAILED` because
+     the bridge deadline stopped it.
 
 Expect the same task and runtime session, a new adjacent attempt with `resumed_from_attempt`,
 a fresh lease held under the child owner, separate worker telemetry, unchanged ownership, and
@@ -206,6 +224,8 @@ client; the bridge selects the child owner's adapter from durable state.
 A stale handle, a different returned handle, a failed resume, a timeout, or a runtime crash
 does **not** authorize a fresh thread. Leave the same task blocked and report the exact reason.
 Creating a replacement task or a new runtime thread is a contract violation, not a workaround.
+Reopening a timed-out round is the one explicit exception, and it still resumes the exact
+persisted session: a refused strict resume there also ends `BLOCKED`, never in a new session.
 
 See [recovery.md](recovery.md) for the full model.
 

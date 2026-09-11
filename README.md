@@ -211,8 +211,12 @@ command = "node"
 args = ["scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
 cwd = "."
 startup_timeout_sec = 30
-tool_timeout_sec = 1800
+tool_timeout_sec = 5400
 ```
+
+`tool_timeout_sec` is how long Codex waits for one MCP call; it does not bound the worker.
+Keep it above the longest round `deadline_ms` plus a margin — 5400 s carries a 75-minute
+round — and read the result with `bridge_feature_get` if the client stops waiting first.
 
 Caller identity is bound when the server process starts. A tool call that contradicts the
 bound caller is rejected; an omitted caller field resolves to it. Starting the launcher with

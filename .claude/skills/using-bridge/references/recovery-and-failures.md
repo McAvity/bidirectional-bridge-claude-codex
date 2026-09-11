@@ -6,12 +6,15 @@ Load this reference only for a blocked, failed, interrupted, or stranded bridge 
 
 1. Call `bridge_recover` to expire dead leases and identify stranded tasks.
 2. Call `bridge_get_task` for the exact task. Do not expose the raw handle.
-3. Confirm the task is non-terminal, persisted strict-resume state exists, and no live attempt
-   or conflicting lease exists.
+3. Confirm persisted strict-resume state exists and no live attempt or conflicting lease
+   exists. The task must be non-terminal, or `FAILED` with its last attempt ended `TIMEOUT`.
 4. Choose one path, preferably with an idempotency key:
    - current caller owns the task: call `bridge_resume_task` once;
    - current caller owns the direct parent and created its delegated child: call
-     `bridge_resume_delegated_task` once.
+     `bridge_resume_delegated_task` once;
+   - that child is `FAILED` after the bridge deadline stopped it: the same call with
+     `recover_timeout: true`, an explicit `deadline_ms`, a sized `max_turns` and a key, once
+     the extra runtime is authorized. It is one deliberate operation, never an automatic retry.
 5. For manager recovery, let the bridge derive the child owner and runtime from SQLite. Do not
    open the other native client, spoof ownership, or invoke the worker CLI directly.
 6. Expect the same durable task, owner, lineage, and runtime session/thread, a new adjacent
@@ -32,7 +35,16 @@ Load this reference only for a blocked, failed, interrupted, or stranded bridge 
 | `NOT_OWNER` | Stop the mutation; read state if needed. | Do not steal ownership, finish the task, or release another holder’s lease. |
 | `SCOPE_CONFLICT` | Wait and recheck, narrow to disjoint scope, or return a blocker. | Do not steal or overlap the lease. |
 | Validation failure | Correct the payload/result once using existing real evidence. | Do not rerun completed work or invent paths/checks. |
+| Round `FAILED` with attempt outcome `TIMEOUT` | Read `bridge_get_task` and its `termination_evidence` file, confirm the worker stopped, then resume once with `recover_timeout`, a justified `deadline_ms` and `max_turns`. | Do not reopen any other `FAILED`, reuse the expired deadline implicitly, or repeat after a second timeout without a decision. |
 | Failed recovery | Report the same task, new attempt, lineage, and exact reason. | Do not create a sibling task or fresh runtime thread. |
+
+## Termination evidence
+
+An attempt that ended without a result leaves `<database dir>/evidence/<task_id>/attempt-<n>.json`
+(mode 0600, written once): redacted stderr tail, exit code/signal, kill flags, deadline and
+stream counters. `bridge_get_task` returns its metadata only. Read the file locally for
+diagnosis; never paste it into a round contract, a user report or an artifact without checking
+it for private content first.
 
 ## Parent/child boundary
 

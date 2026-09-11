@@ -57,7 +57,9 @@ round contract in the bridge prompt is your authority: its objective, write scop
 verification criteria, plus the governing decision it cites. Read the files it names. A new
 round after a completed one is a new contract in the same conversation; keep earlier work
 unless the contract changes it. A resumed task with a manager clarification continues the
-same task.
+same task. So does a task resumed after the bridge stopped the previous attempt at its
+deadline: check what your earlier attempt already changed and committed, keep it, and continue
+from there within the same contract instead of restarting the work.
 
 1. Do the bounded work and run the contract's checks on the final code.
 2. Write a ledger in the directory the contract gives (`execution/<TASK-ID>/`), using the

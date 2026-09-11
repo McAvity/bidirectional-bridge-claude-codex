@@ -168,7 +168,11 @@ Recovery continues the same durable task and runtime session; never redelegate a
 3. Choose one recovery path and call it once:
    - if the bound caller owns the task, use `bridge_resume_task`;
    - if the bound caller owns the direct parent and created the delegated child, use
-     `bridge_resume_delegated_task` from the manager client.
+     `bridge_resume_delegated_task` from the manager client;
+   - if that child is `FAILED` because the bridge stopped it at its deadline (attempt outcome
+     `TIMEOUT`, session kept), add `recover_timeout: true` with an explicit `deadline_ms`, a
+     sized `max_turns` and an idempotency key, once the extra runtime is authorized. Every
+     other `FAILED` stays terminal, and this is never an automatic retry.
 4. Do not open the other native client merely for recovery. The bridge derives the child
    owner/runtime from durable state and uses that worker identity internally; do not spoof an
    owner or use a direct CLI fallback.

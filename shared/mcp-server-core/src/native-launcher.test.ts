@@ -295,7 +295,7 @@ describe("native project MCP launcher", () => {
     expect(externalCodex).toContain('[mcp_servers.bridge]');
     expect(externalCodex).toMatch(/command\s*=\s*"claude-codex-bridge"/u);
     expect(externalCodex).toContain('cwd = "."');
-    expect(externalCodex).toContain('tool_timeout_sec = 1800');
+    expect(externalCodex).toContain('tool_timeout_sec = 5400');
     expect(externalCodex).toContain('"--workspace", "."');
     expect(externalClaudeConfig.mcpServers?.["bridge"]?.command).toBe("claude-codex-bridge");
     expect(externalClaudeConfig.mcpServers?.["bridge"]?.args).toEqual(

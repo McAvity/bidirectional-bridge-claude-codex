@@ -3,4 +3,7 @@ command = "node"
 args = ["scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
 cwd = "."
 startup_timeout_sec = 30
-tool_timeout_sec = 1800
+# Client-side wait for one MCP call. It does not bound the worker: the bridge keeps running
+# a round after this expires. Keep it above the longest round deadline plus a margin —
+# 5400 s (90 min) carries a 4 500 000 ms (75 min) round deadline.
+tool_timeout_sec = 5400

@@ -1,6 +1,6 @@
 # Timeout recovery, długie rundy i dowody zakończenia — plan
 
-Branch `timeout-recovery`, worktree `<local-workspace>/bridge-timeout-recovery`,
+Branch `timeout-recovery`, osobny worktree tego brancha (`<local-workspace>/bridge-timeout-recovery`),
 baza `aeb92c2` (feature-workflow). Aktywny runtime (główny checkout i worktree wave7)
 nie jest edytowany, budowany ani restartowany. Kryteria odbioru: [ACCEPTANCE.md](ACCEPTANCE.md).
 Postęp: [PROGRESS.md](PROGRESS.md). Procedura wdrożenia: [DEPLOY-AND-RESUME.md](DEPLOY-AND-RESUME.md).

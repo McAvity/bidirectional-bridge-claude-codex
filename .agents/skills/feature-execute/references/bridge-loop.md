@@ -44,8 +44,11 @@ on it alone:
   Exclude `feature.json`, `reviews/`, `decisions/` and other features.
 - `expected_deliverable`: package path, SHA-256, purpose, `base..head`, ledger path, outcome.
 - `verification_criteria`: concrete commands that must pass on the final code.
-- `deadline_ms`: below the client tool timeout (1 500 000 for a 1800 s timeout); split work
-  that needs longer. `max_turns` sized to the work (the bridge accepts at most 64).
+- `deadline_ms`: the executor's own bound, below the client tool timeout minus a margin for
+  the kill grace, the deliverable and the package check (4 500 000 for a 5400 s timeout,
+  1 500 000 for 1800 s). A client tool timeout that fires first does not stop the round.
+  `max_turns` sized to the work: the bridge accepts at most 256, the runtime default is 12,
+  and a 75-minute round needs roughly 200 — an undersized ceiling ends the round early.
 - `idempotency_key`: `<feature-id>:round-<N>`, N = `len(task_ids) + 1` read from
   `bridge_feature_get` in state `ready` or `awaiting_review` after the previous round was
   reviewed.
@@ -65,8 +68,23 @@ nothing on its own.
 | `waiting_user` | Show the pending question; wait for the user's real answer. | Run, recover, or treat silence as consent. |
 | `accepted` | Finish the root task. | Start more rounds. |
 
-A terminal `FAILED` round or a strict-resume failure is not recoverable by these tools:
-report the exact error to the user. Do not start a fresh Claude session.
+A `FAILED` round whose last attempt ended `TIMEOUT` (the bridge stopped it at `deadline_ms`)
+keeps its session and can be reopened once, explicitly, when the extra runtime is authorized:
+`bridge_resume_delegated_task({task_id, recover_timeout: true, deadline_ms: <new budget>,
+max_turns: <sized>, idempotency_key: "<task>:timeout-recovery-<n>", message: <optional>})`.
+Before calling it: read `bridge_get_task`, confirm the attempt outcome is `TIMEOUT` and no
+worker process survives, choose a deadline that reflects why the round ran out of time, and
+state the new budget to the user if the authorization did not already cover it. Repeating the
+same request replays it; it never starts a second worker.
+
+Any other terminal `FAILED` round, a strict-resume failure, or a second timeout in a row is
+not recoverable by these tools: report the exact error to the user. Never start a fresh
+Claude session, and never treat recovery as an automatic retry.
+
+`bridge_get_task` also lists `termination_evidence` for attempts that ended without a result:
+metadata and a local file path. Read that file (`jq . <path>`) for the runtime's bounded
+stderr tail and process facts before deciding what the new deadline should be. Its content is
+diagnostic, not round input.
 
 ## Review each round
 

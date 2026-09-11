@@ -39,6 +39,19 @@ The current role owner `codex` is not a unique manager session identity. Use one
 manager/feature per worktree. No closed-manager wake-up, orphan supervisor or /goal support
 is claimed. docs/tasks/review-integration-drift.md is a proposal, not active workflow policy.
 
+## Timeout recovery branch (proposed, not deployed)
+
+Branch `timeout-recovery` adds explicit recovery of a round the bridge stopped at its deadline
+(`bridge_resume_delegated_task` with `recover_timeout`, a required new `deadline_ms` and an
+optional per-attempt `max_turns`), bounded redacted termination evidence next to the database,
+a finite turn ceiling of 256, and the 75-minute round / 5400 s client-timeout configuration.
+Every other `FAILED` stays terminal and no path falls back to a fresh session. Scope, criteria,
+evidence limits and the deployment/resume procedure are in
+[docs/tasks/timeout-recovery/](tasks/timeout-recovery/REPORT.md). Validation on that branch:
+build, 379 JS tests, 19 + 110 Python tests, documentation check. Nothing was deployed, no
+database was touched, and `<task-id>` has not been resumed; that needs review, an
+explicit decision and the pinned-runtime procedure.
+
 ## Source migration map
 
 | Historical source | Canonical source / disposition |
