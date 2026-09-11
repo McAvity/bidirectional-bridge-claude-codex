@@ -1,3 +1,22 @@
+# McAvity feature workflow bridge
+
+This MIT-licensed fork of [grizzly2005/bidirectional-bridge-claude-codex](https://github.com/grizzly2005/bidirectional-bridge-claude-codex)
+adds persistent Claude feature sessions, explicit manager recovery messages and user decision
+routing. The `feature-workflow` branch contains the extensions; its upstream base is
+`a3d0d2180dbb8ae38837ead288d23bf955771421`.
+
+The six feature workflow skills live in `.agents/skills/`, with their shared guide in
+[docs/features/README.md](docs/features/README.md). They are the canonical distribution
+sources and may also be used to develop this repository. Project-specific authorization
+and instructions still apply. The paired `using-bridge` skills live under `.codex/` and
+`.claude/`. See [fork setup and limitations](docs/fork-setup.md).
+
+Historical upstream certification artifacts do **not** certify these modified sources.
+This fork has not issued a new certification. See the current build and test results
+instead; do not interpret an old manifest as validation of this branch.
+
+---
+
 # Claude Code ↔ Codex coordination bridge
 
 > **Status: Experimental · Pre-1.0 · under active development · not production-certified.**
@@ -414,3 +433,12 @@ because this release publishes source on GitHub, not packages to the npm registr
 - [Normative protocol](docs/PROTOCOL.md) — lifecycle, tools, error codes
 - [Bridge skill context pack](BRIDGE_SKILL_CONTEXT_PACK.md) — background on the skill design
 - [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
+
+### Verification during repairs
+
+For pre-fix failures and final acceptance checks, see [Claude verification after a repair](docs/claude-verification.md).
+
+For a blocked Claude child awaiting a decision, see [Manager clarification on recovery](docs/manager-clarification.md).
+
+For a Claude session pinned across completed feature rounds, explicit user questions,
+and manager acceptance, see [feature workflow](docs/feature-workflow.md).

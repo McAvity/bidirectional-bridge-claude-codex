@@ -1,3 +1,41 @@
+# Next release plan
+
+The first milestone is a self-contained public fork with the upstream history,
+MIT notices, source skills, build instructions and repeatable local tests. This branch
+establishes that baseline. Private pilot logs and user transcripts are not release inputs.
+
+Next work is split into reviewable branches and worktrees:
+
+1. **Session and workspace isolation.** Bind each feature to its manager session,
+   worktree and worker session. One active manager per worktree for the initial
+   supported mode. Never resume a guardian/approval session as the manager, and
+   never pick a session solely by newest timestamp. Test two concurrent feature
+   worktrees and restart one without affecting the other.
+2. **Diagnostics.** Correlated events, version/configuration metadata without secrets,
+   bounded log retention and a consistent database snapshot. Export one feature's
+   diagnostics without invoking a worker. Full transcripts are optional and require
+   inspection before sharing.
+3. **Simple setup.** Versioned installation, project-local MCP and skill setup,
+   preflight/doctor, safe updates and normal `codex` startup. Preserve existing
+   settings and user changes. Avoid manually applied historical patches.
+4. **Acceptance.** Verify install from a clean clone, parallel features, precise
+   resume, diagnostics after a controlled failure and update without lost state.
+   Incorporate the separate review/correction pilot after its results are reviewed.
+5. **Dependency maintenance.** The imported lockfile has known npm audit findings;
+   resolve and test them before promoting a stable release. At bootstrap,
+   `npm audit --omit=dev` reports two moderate and one high finding. The unchanged
+   upstream dependency baseline is not a security certification.
+
+Development of the bridge must use a separate stable bridge build to run agents;
+workers must not modify the runtime currently supervising their own tasks.
+Orphan-process supervision, waking a closed manager and `/goal` remain outside
+this release plan. Merge integration and shared test resources need coordination
+across worktrees even when file writes are isolated.
+
+---
+
+## Historical upstream roadmap
+
 # Roadmap
 
 The project is experimental, pre-1.0, and under active development. Nothing on this page is a

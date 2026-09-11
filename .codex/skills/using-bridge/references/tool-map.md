@@ -15,6 +15,17 @@ Use the live MCP schema as the final authority. Load this map only when the exac
 | `bridge_submit_deliverable` | Finalize the owned root with structured result and real verification. |
 | `bridge_release_lease` | Release a manually acquired manager lease. |
 
+## Feature rounds (Codex manager, one Claude session)
+
+| Tool | Use |
+|---|---|
+| `bridge_feature_create` | Pin a feature to the owned root; launches nothing. |
+| `bridge_feature_get` | Read state, ordered round task ids and the pending question. Call first after any interruption. |
+| `bridge_feature_run` | Launch one round; after `DONE` it strictly resumes the same Claude session in a new task. Same key replays. |
+| `bridge_feature_wait_user` | Persist a blocking question for the user; nothing is sent to Claude. |
+| `bridge_feature_answer_user` | Record the user's answer; launches and forwards nothing. |
+| `bridge_feature_accept` | Accept after the acceptance decision; no rounds afterwards. |
+
 ## Conditional task and coordination tools
 
 | Tool | Use |

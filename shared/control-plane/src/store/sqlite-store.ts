@@ -36,6 +36,7 @@ import {
   type VerificationResult,
 } from "@bridge/protocol";
 import type {
+  FeatureRecord,
   AttemptTelemetryQuery,
   EventAppend,
   EventQuery,
@@ -68,11 +69,13 @@ export interface SqliteStoreOptions {
   readonly onJournalFallback?: (requested: string, actual: string, reason: string) => void;
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 /** Bound concurrent native-server startup without failing immediately on schema/WAL locks. */
 const SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
 const DDL = `
+CREATE TABLE IF NOT EXISTS features (feature_id TEXT PRIMARY KEY, json TEXT NOT NULL);
+
 CREATE TABLE IF NOT EXISTS schema_meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -734,6 +737,21 @@ export class SqliteStateStore implements StateStore {
          VALUES(?,?,?,?,?) ON CONFLICT(key) DO NOTHING`,
       )
       .run(r.key, r.operation, r.request_hash, r.response_json, r.created_at);
+  }
+
+  getFeature(id: string): FeatureRecord | undefined {
+    const row = this.db.prepare("SELECT json FROM features WHERE feature_id = ?").get(id) as { json: string } | undefined;
+    return row ? JSON.parse(row.json) as FeatureRecord : undefined;
+  }
+
+  putFeature(record: FeatureRecord): void {
+    this.db.prepare("INSERT INTO features(feature_id, json) VALUES (?, ?) ON CONFLICT(feature_id) DO UPDATE SET json=excluded.json")
+      .run(record.feature_id, JSON.stringify(record));
+  }
+
+  listFeatures(): FeatureRecord[] {
+    return (this.db.prepare("SELECT json FROM features ORDER BY feature_id").all() as { json: string }[])
+      .map(row => JSON.parse(row.json) as FeatureRecord);
   }
 
   close(): void {

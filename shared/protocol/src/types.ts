@@ -434,6 +434,7 @@ export const EventType = {
   ATTEMPT_HANDLE_SET: "attempt.handle_set",
   ATTEMPT_ENDED: "attempt.ended",
   ATTEMPT_TELEMETRY_RECORDED: "attempt.telemetry_recorded",
+  FEATURE_UPDATED: "feature.updated",
   RECOVERY_REQUESTED: "recovery.requested",
   RESUME_ATTEMPTED: "resume.attempted",
   RESUME_SUCCEEDED: "resume.succeeded",
@@ -502,6 +503,8 @@ export interface ResumeTaskRequest {
 
 /** Internal request derived from a caller-bound manager MCP session. */
 export interface ResumeDelegatedTaskRequest {
+  /** Optional clarification for a BLOCKED Claude child; requires an idempotency key. */
+  readonly message?: string;
   readonly task_id: TaskId;
   readonly requested_by: AgentId;
   readonly idempotency_key?: string;

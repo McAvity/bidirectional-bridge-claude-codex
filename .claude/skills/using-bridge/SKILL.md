@@ -100,6 +100,27 @@ For substantial audits or reports, keep `summary` concise, publish the complete 
 
 Read `references/contracts.md` when constructing an unfamiliar payload or validating a worker result.
 
+## Feature rounds
+
+A feature pinned to one Claude session through `bridge_feature_*` (Codex manager only) is
+one delegated workstream, not a series of children. Each round is still one bounded contract
+with one structured answer that meets the delegation criteria on its own, and the whole
+feature counts as one child toward the two-child default. Your independent review between
+rounds makes them bounded exchanges, not the continuous conversation excluded above.
+
+- Start rounds with `bridge_feature_run`, never `bridge_delegate`. After `DONE`, a correction
+  or the next task is a new round with a new idempotency key; it is not a sibling replacement.
+- Recover a `BLOCKED` round with `bridge_resume_delegated_task` and `message`; never start a
+  round around it. The bridge runs one round at a time.
+- Questions for the user go through `bridge_feature_wait_user` and
+  `bridge_feature_answer_user`. Claude receives only what you write into a round contract or a
+  recovery message.
+- `bridge_feature_accept` closes further rounds; call it only after the acceptance decision.
+- As the Claude worker of a round, complete that contract; do not delegate or call bridge tools.
+
+In a repository with the `feature-*` workflow, drive the loop with its `feature-execute`
+reference `bridge-loop.md`; otherwise follow `docs/feature-workflow.md` of the bridge.
+
 ## Respect ownership and leases
 
 - Mutate only tasks owned by the bound caller.

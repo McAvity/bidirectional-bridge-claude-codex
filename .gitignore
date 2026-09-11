@@ -51,3 +51,7 @@ id_rsa
 
 # Operating-system metadata
 .DS_Store
+
+# Python test output
+__pycache__/
+*.pyc

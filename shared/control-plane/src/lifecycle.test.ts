@@ -273,6 +273,17 @@ describe("verification gate", () => {
     ).toThrow(/failing/);
   });
 
+  it("does not let a same-command green check erase a recorded failure", () => {
+    const id = working();
+    cp.deliverables.recordVerification(id, "claude", {
+      kind: "test", command: "npm test", passed: false, exit_code: 1, summary: "failed",
+    });
+    expect(() => cp.deliverables.submit({
+      ...base(id), status: DeliverableStatus.COMPLETE, summary: "done",
+      verification_performed: ["npm test"], verification_results: [passing()],
+    })).toThrow(/failing/);
+  });
+
   it("accepts COMPLETE with passing evidence and reaches DONE via VERIFYING", () => {
     const id = working();
     cp.deliverables.submit({

@@ -117,6 +117,15 @@ if (mode === "hang") {
           // Deliberately missing a command: the adapter must drop it as non-evidence.
           { kind: "test", passed: true, exit_code: 0, summary: "no command given" },
         ];
+  if (["redgreen", "reproduction", "missing-snapshot", "same-snapshot", "reproduction-only", "final-failure"].includes(mode)) {
+    verificationResults.length = 0;
+    if (mode === "redgreen") verificationResults.push({ kind: "test", command: "node --test", passed: false, exit_code: 1, summary: "pre-fix: 3 failed" });
+    if (mode !== "reproduction-only") verificationResults.push({ kind: "test", command: "node --test", passed: mode !== "final-failure", exit_code: mode === "final-failure" ? 1 : 0, summary: "final snapshot" });
+  }
+  const historical = ["reproduction", "missing-snapshot", "same-snapshot", "reproduction-only", "final-failure"].includes(mode)
+    ? { reproduction_results: [{ kind: "test", command: "node --test", passed: false, exit_code: 1, summary: "pre-fix: 3 failed" }],
+        ...(mode === "missing-snapshot" ? {} : { reproduction_snapshot: "ranges.mjs sha256:" + "a".repeat(64), verification_snapshot: "ranges.mjs sha256:" + (mode === "same-snapshot" ? "a" : "b").repeat(64) }) }
+    : {};
   const detailedReport =
     mode === "large"
       ? [
@@ -140,6 +149,7 @@ if (mode === "hang") {
             {
               summary: `runtime info collected${resumedNote}`,
               changed_scope: [],
+              ...historical,
               ...(mode === "summaryonly"
                 ? { verification_performed: ["npm test"] }
                 : { verification_results: verificationResults }),

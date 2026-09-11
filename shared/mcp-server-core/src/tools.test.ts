@@ -90,6 +90,13 @@ describe("MCP tool surface", () => {
       "bridge_check_scope",
       "bridge_submit_deliverable",
       "bridge_delegate",
+      "bridge_feature_accept",
+      "bridge_feature_answer_user",
+      "bridge_feature_create",
+      "bridge_feature_get",
+      "bridge_feature_run",
+      "bridge_feature_wait_user",
+
       "bridge_snapshot",
       "bridge_read_events",
       "bridge_set_execution_handle",
@@ -99,6 +106,23 @@ describe("MCP tool surface", () => {
     ]) {
       expect(names).toContain(required);
     }
+  });
+
+  it("routes user questions separately and enforces identity and delegation policy for features", async () => {
+    const manager = ctx("codex");
+    const parent = await call("bridge_create_task", { spec: spec() }, manager);
+    await call("bridge_claim_task", { task_id: parent.data.task_id }, manager);
+    expect((await call("bridge_feature_create", { feature_id: "f", parent_task_id: parent.data.task_id }, manager)).isError).toBe(false);
+    expect((await call("bridge_feature_get", { feature_id: "f" }, ctx("claude"))).isError).toBe(true);
+    expect((await call("bridge_feature_get", { feature_id: "f", agent: "codex" }, ctx("claude"))).isError).toBe(true);
+    const waiting = await call("bridge_feature_wait_user", { feature_id: "f", question_id: "q", question: "Choice?" }, manager);
+    expect(waiting.data.state).toBe("waiting_user");
+    const answered = await call("bridge_feature_answer_user", { feature_id: "f", question_id: "q", answer: "B" }, manager);
+    expect(answered.data.state).toBe("ready");
+    expect(cp.tasks.list()).toHaveLength(1);
+    const denied = await call("bridge_feature_run", { feature_id: "f", spec: spec(), deadline_ms: 1000, idempotency_key: "r1" }, ctx("codex", "deny"));
+    expect(denied.isError).toBe(true);
+    expect(cp.tasks.list()).toHaveLength(1);
   });
 
   it("is agent-neutral: no tool name or description mentions a specific agent vendor", () => {
@@ -430,7 +454,7 @@ describe("MCP tool surface", () => {
     const tool = TOOLS.find(
       (candidate) => candidate.name === "bridge_resume_delegated_task",
     )!;
-    expect(Object.keys(tool.inputShape).sort()).toEqual(["idempotency_key", "task_id"]);
+    expect(Object.keys(tool.inputShape).sort()).toEqual(["idempotency_key", "message", "task_id"]);
     const resumed = await call(
       "bridge_resume_delegated_task",
       { task_id: child.task_id, idempotency_key: "delegated-resume-tool-once" },

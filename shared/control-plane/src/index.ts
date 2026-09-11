@@ -49,3 +49,6 @@ export type {
 
 export { hashRequest, runIdempotent, stableStringify } from "./idempotency.js";
 export type { IdempotentOptions } from "./idempotency.js";
+
+export { FeatureWorkflow } from "./feature-workflow.js";
+export type { FeatureRecord } from "./store/state-store.js";

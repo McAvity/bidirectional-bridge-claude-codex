@@ -193,13 +193,18 @@ export class DeliverableService {
   }
 }
 
-/** Union by (kind, command); the deliverable's copy wins on collision. */
+/** Deduplicate identical evidence only; a later same-command success cannot erase a failure. */
 function mergeEvidence(
   recorded: readonly VerificationResult[],
   submitted: readonly VerificationResult[],
 ): VerificationResult[] {
   const byKey = new Map<string, VerificationResult>();
-  for (const r of recorded) byKey.set(`${r.kind}::${r.command}`, r);
-  for (const r of submitted) byKey.set(`${r.kind}::${r.command}`, r);
+  for (const r of [...recorded, ...submitted]) {
+    const key = JSON.stringify([
+      r.kind, r.command, r.passed, r.exit_code, r.summary,
+      r.duration_ms ?? null, r.output_excerpt ?? null,
+    ]);
+    byKey.set(key, r);
+  }
   return [...byKey.values()];
 }

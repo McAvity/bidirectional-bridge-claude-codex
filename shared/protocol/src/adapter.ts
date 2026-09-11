@@ -58,6 +58,10 @@ export interface TaskInvocation {
   readonly previous_execution_handle?: string | null;
   /** Recovery must fail rather than silently starting a replacement runtime session. */
   readonly resume_required?: boolean;
+  /** New feature round with a new contract, continuing a completed predecessor. */
+  readonly continuation_of_task_id?: string;
+  /** Durable manager clarification for this specific recovery attempt. */
+  readonly manager_message?: string;
 }
 
 /** Callbacks the control plane injects so an adapter can report without owning state. */

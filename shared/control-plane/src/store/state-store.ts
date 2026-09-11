@@ -75,7 +75,22 @@ export interface IdempotencyRecord {
  * All methods are synchronous: SQLite is synchronous, and keeping the store sync means
  * `transaction` can guarantee atomicity without await points that could interleave.
  */
+export interface FeatureRecord {
+  feature_id: string;
+  manager: AgentId;
+  parent_task_id: string;
+  latest_task_id: string | null;
+  active_task_id: string | null;
+  task_ids: string[];
+  state: "ready" | "running" | "awaiting_review" | "waiting_user" | "blocked" | "accepted";
+  question: { id: string; text: string; answer: string | null } | null;
+  updated_at: number;
+}
+
 export interface StateStore {
+  getFeature(id: string): FeatureRecord | undefined;
+  putFeature(record: FeatureRecord): void;
+  listFeatures(): FeatureRecord[];
   /** Runs `fn` inside an immediate write transaction. Rolls back on throw. */
   transaction<T>(fn: () => T): T;
 

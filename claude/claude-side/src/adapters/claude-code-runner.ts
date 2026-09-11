@@ -162,6 +162,10 @@ export interface ClaudeStructuredOutput {
   readonly changed_files?: readonly string[];
   /** Canonical structured evidence field from the protocol Deliverable. */
   readonly verification_results?: readonly VerificationResult[];
+  /** Checks on the pre-fix snapshot: preserved as evidence, never acceptance checks. */
+  readonly reproduction_results?: readonly VerificationResult[];
+  readonly reproduction_snapshot?: string | null;
+  readonly verification_snapshot?: string | null;
   /** Legacy Claude-runner alias retained for existing resumable sessions. */
   readonly verifications?: readonly VerificationResult[];
   readonly remaining_risks?: readonly string[];
@@ -359,10 +363,29 @@ export function buildPrompt(invocation: TaskInvocation, resuming: boolean): stri
   const { spec } = invocation;
   const lines: string[] = [];
 
-  if (resuming) {
+  if (resuming && invocation.continuation_of_task_id) {
+    lines.push(
+      `You are continuing the same feature session after completed task ${invocation.continuation_of_task_id}.`,
+      "This is a NEW task with the objective, write scope and acceptance criteria below.",
+      "Use the previous conversation for context; preserve completed work unless this new contract asks to change it.",
+      "",
+    );
+  } else if (resuming) {
     lines.push(
       "You are resuming a previously interrupted task in this same session.",
       "Continue from where you left off; do not restart work that is already done.",
+      "",
+    );
+  }
+
+  if (resuming && invocation.manager_message !== undefined) {
+    lines.push(
+      "## Manager clarification for this recovery attempt",
+      "Use this answer to resolve the blocker in the existing task. The original objective,",
+      "write scope and acceptance criteria still apply. If the answer requires changing them,",
+      "report the conflict instead of silently expanding the task. Do not repeat completed work.",
+      invocation.manager_message,
+      "## End manager clarification",
       "",
     );
   }
@@ -401,6 +424,9 @@ export function buildPrompt(invocation: TaskInvocation, resuming: boolean): stri
     "{",
     '  "summary": "concise synthesis, one paragraph",',
     '  "changed_scope": ["repo/relative/path.ts"],',
+    '  "reproduction_snapshot": null,',
+    '  "reproduction_results": [],',
+    '  "verification_snapshot": "commit or SHA-256 of the tested code (identify files)",',
     '  "verification_results": [',
     '    {"kind": "test", "command": "npm test", "passed": true, "exit_code": 0, "summary": "12 passed"}',
     "  ],",
@@ -412,6 +438,14 @@ export function buildPrompt(invocation: TaskInvocation, resuming: boolean): stri
     "",
     "`kind` must be one of: test, typecheck, build, lint, static_analysis, benchmark, manual.",
     "Use an empty verification_results array if you genuinely ran no checks — do not invent them.",
+    "verification_results contains ONLY checks on the final code snapshot, after all code edits.",
+    "Put pre-fix checks, including expected failures, in reproduction_results instead.",
+    "When reproduction_results is nonempty, provide reproduction_snapshot and verification_snapshot:",
+    "use actual commits or SHA-256 hashes with file paths; capture each before its checks.",
+    "They must identify different code snapshots. Do not invent identities or omit final failures.",
+    "If the code changes after final checks, rerun those checks on the new snapshot.",
+    "Historical evidence is preserved in an artifact and never counted as a passing final check.",
+    "Keep the final report concise; do not repeat the ledger or run unrelated checks.",
     "Do not emit verification_performed; the bridge derives it from verification_results.",
   );
 
@@ -508,8 +542,10 @@ function splitUtf8(value: string, maxBytes: number): string[] {
   return chunks;
 }
 
-async function preserveDetailedReport(text: string, ctx: InvocationContext): Promise<ArtifactId[]> {
-  if (text.length <= CLAUDE_SUMMARY_MAX_CHARS) return [];
+async function preserveDetailedReport(
+  text: string, ctx: InvocationContext, force = false,
+): Promise<ArtifactId[]> {
+  if (!force && text.length <= CLAUDE_SUMMARY_MAX_CHARS) return [];
   const chunks = splitUtf8(text, CLAUDE_REPORT_CHUNK_MAX_BYTES);
   const reportSha256 = createHash("sha256").update(text, "utf8").digest("hex");
   const artifacts: ArtifactId[] = [];
@@ -881,7 +917,27 @@ export class ClaudeCodeRunner implements ClaudeRunner {
     const verifications = sanitizeVerifications(
       structured?.verification_results ?? structured?.verifications,
     );
-    const artifacts = await preserveDetailedReport(text, ctx);
+    const reproduction = structured?.reproduction_results;
+    const hasReproduction = reproduction !== undefined &&
+      (!Array.isArray(reproduction) || reproduction.length > 0);
+    const before = structured?.reproduction_snapshot;
+    const after = structured?.verification_snapshot;
+    const snapshotPattern = /(?:\b[0-9a-f]{40}\b|\b[0-9a-f]{64}\b)/i;
+    const invalidReproduction = hasReproduction && (
+      !Array.isArray(reproduction) ||
+      sanitizeVerifications(reproduction).length !== reproduction.length ||
+      typeof before !== "string" ||
+      typeof after !== "string" ||
+      !snapshotPattern.test(before) ||
+      !snapshotPattern.test(after) ||
+      before.match(snapshotPattern)?.[0].toLowerCase() === after.match(snapshotPattern)?.[0].toLowerCase()
+    );
+    const evidenceBlocker = invalidReproduction
+      ? "reproduction evidence requires valid checks and distinct identified pre-fix/final snapshots"
+      : null;
+    // Preserve even short reports: otherwise the historical results and their snapshot
+    // identities would be lost when only final checks enter the canonical deliverable.
+    const artifacts = await preserveDetailedReport(text, ctx, hasReproduction);
 
     await ctx.report({
       state: TaskState.VERIFYING,
@@ -889,7 +945,7 @@ export class ClaudeCodeRunner implements ClaudeRunner {
       owned_scope: invocation.spec.scope.paths,
       progress: 1,
       artifacts,
-      blockers: structured?.blocker ? [String(structured.blocker)] : [],
+      blockers: evidenceBlocker ? [evidenceBlocker] : structured?.blocker ? [String(structured.blocker)] : [],
       next_action: "submit deliverable",
     });
 
@@ -904,7 +960,8 @@ export class ClaudeCodeRunner implements ClaudeRunner {
       ...(structured?.recommended_next_action
         ? { recommended_next_action: structured.recommended_next_action }
         : {}),
-      ...(structured?.blocker ? { blocker: String(structured.blocker) } : {}),
+      ...(evidenceBlocker || structured?.blocker
+        ? { blocker: evidenceBlocker ?? String(structured?.blocker) } : {}),
       commit_or_diff: null,
       telemetry: telemetryUpdate,
     };

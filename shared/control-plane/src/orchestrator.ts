@@ -38,6 +38,9 @@ import { normalizeAttemptTelemetry } from "./attempt-service.js";
 import { hashRequest } from "./idempotency.js";
 
 export interface DelegateOptions {
+  /** Internal feature reservation, committed atomically with the new task. */
+  readonly onTaskCreated?: (task: Task) => void;
+  readonly resumeFromTaskId?: string;
   /** Extra time beyond `deadline_ms` before the lease lapses; default 30s. */
   readonly leaseGraceMs?: number;
   readonly onEvent?: (type: string, detail: Record<string, unknown>) => void;
@@ -52,6 +55,7 @@ const RESUME_CAPABILITY = "resume";
 type RecoveryAuthorizationKind = "owner" | "delegated_manager";
 
 interface RecoveryRequest {
+  readonly message?: string;
   readonly task_id: string;
   readonly requested_by: AgentId;
   readonly idempotency_key?: string;
@@ -64,6 +68,7 @@ interface RecoveryAuthorization {
 }
 
 interface RecoveryReservation {
+  readonly message?: string;
   readonly task_id: string;
   readonly authorization_kind: RecoveryAuthorizationKind;
   readonly requested_by: AgentId;
@@ -78,6 +83,7 @@ interface RecoveryReservation {
 }
 
 interface ActiveRecovery {
+  readonly request_hash: string;
   readonly idempotency_key?: string;
   readonly authorization_key: string;
   readonly promise: Promise<ResumeTaskOutcome>;
@@ -110,17 +116,22 @@ export class Orchestrator {
 
     const maxAttempts = Math.max(1, (request.max_attempts ?? 0) + 1);
 
-    const task = this.cp.tasks.create({
-      spec: { ...request.spec, preferred_agent: request.to },
-      created_by: request.from,
-      ...(request.run_id ? { run_id: request.run_id } : {}),
-      ...(request.parent_task_id !== undefined
-        ? { parent_task_id: request.parent_task_id }
-        : {}),
-      ...(request.delegation_depth !== undefined
-        ? { delegation_depth: request.delegation_depth }
-        : {}),
-      ...(request.idempotency_key ? { idempotency_key: `${request.idempotency_key}:create` } : {}),
+    const task = this.cp.store.transaction(() => {
+      const created = this.cp.tasks.create({
+        spec: { ...request.spec, preferred_agent: request.to },
+        created_by: request.from,
+        ...(request.run_id ? { run_id: request.run_id } : {}),
+        ...(request.parent_task_id !== undefined
+          ? { parent_task_id: request.parent_task_id }
+          : {}),
+        ...(request.delegation_depth !== undefined
+          ? { delegation_depth: request.delegation_depth }
+          : {}),
+        ...(request.idempotency_key ? { idempotency_key: `${request.idempotency_key}:create` } : {}),
+      });
+
+      options.onTaskCreated?.(created);
+      return created;
     });
 
     this.cp.store.appendEvent(
@@ -264,7 +275,16 @@ export class Orchestrator {
       // then crashes still leaves a row the next attempt can resume from.
       this.cp.attempts.start(task.task_id, attempt, request.to);
       attemptOpened = true;
-      const previousHandle = this.cp.attempts.previousHandle(task.task_id, attempt);
+      const previousHandle = options.resumeFromTaskId
+        ? this.cp.attempts.list(options.resumeFromTaskId).at(-1)?.execution_handle ?? null
+        : this.cp.attempts.previousHandle(task.task_id, attempt);
+      if (options.resumeFromTaskId && !previousHandle) {
+        throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "feature continuation has no persisted session");
+      }
+      if (options.resumeFromTaskId && previousHandle) {
+        this.cp.attempts.saveHandle(task.task_id, attempt, request.to, previousHandle);
+      }
+      let confirmedHandle = false;
       const inputs = this.cp.artifacts.resolveMany(request.input_artifacts);
       inputArtifactCount = inputs.length;
       inputArtifactBytes = inputs.reduce((total, artifact) => total + artifact.bytes, 0);
@@ -283,6 +303,7 @@ export class Orchestrator {
         attempt,
         idempotency_key: `${request.idempotency_key ?? task.task_id}:${attempt}`,
         previous_execution_handle: previousHandle,
+        ...(options.resumeFromTaskId ? { resume_required: true, continuation_of_task_id: options.resumeFromTaskId } : {}),
       };
 
       const ctx = this.makeContext(
@@ -291,6 +312,10 @@ export class Orchestrator {
         controller.signal,
         attempt,
         telemetryUpdate,
+        options.resumeFromTaskId ? (handle) => {
+          if (handle !== previousHandle) throw new BridgeError(ErrorCode.ADAPTER_FAILURE, "feature resume changed session");
+          confirmedHandle = true;
+        } : undefined,
       );
 
       timer = setTimeout(() => {
@@ -300,6 +325,9 @@ export class Orchestrator {
 
       observedRuntimeStartedAt = this.cp.clock.now();
       const deliverable = await adapter.invoke(invocation, ctx);
+      if (options.resumeFromTaskId && !confirmedHandle) {
+        throw new BridgeError(ErrorCode.ADAPTER_FAILURE, "feature resume did not confirm its session");
+      }
       observedRuntimeEndedAt = this.cp.clock.now();
       terminationKind = AttemptTerminationKind.COMPLETED;
 
@@ -426,6 +454,14 @@ export class Orchestrator {
     request: RecoveryRequest,
     kind: RecoveryAuthorizationKind,
   ): Promise<ResumeTaskOutcome> {
+    if (request.message !== undefined && (
+      kind !== "delegated_manager" ||
+      typeof request.message !== "string" || !request.message.trim() ||
+      request.message.length > 8000 || !request.idempotency_key?.trim()
+    )) {
+      throw new BridgeError(ErrorCode.INVALID_ARGUMENT,
+        "message must contain 1-8000 characters and requires an idempotency_key");
+    }
     const task = this.cp.tasks.get(request.task_id);
     const authorization = this.authorizeRecoveryIdentity(task, request, kind);
     const authorizationKey = this.recoveryAuthorizationKey(authorization);
@@ -437,6 +473,10 @@ export class Orchestrator {
         active.idempotency_key === request.idempotency_key &&
         active.authorization_key === authorizationKey
       ) {
+        if (active.request_hash !== this.recoveryRequestHash(request, kind)) {
+          throw new BridgeError(ErrorCode.IDEMPOTENCY_MISMATCH,
+            "active recovery key was used with a different message");
+        }
         return active.promise;
       }
       throw new BridgeError(
@@ -453,6 +493,7 @@ export class Orchestrator {
     this.activeRecoveries.set(task.task_id, {
       ...(request.idempotency_key ? { idempotency_key: request.idempotency_key } : {}),
       authorization_key: authorizationKey,
+      request_hash: this.recoveryRequestHash(request, kind),
       promise,
     });
     try {
@@ -481,8 +522,21 @@ export class Orchestrator {
       if (racedReplay !== null) return { reservation: racedReplay, replayed: true };
 
       const task = this.cp.tasks.get(request.task_id);
+      for (const feature of this.cp.store.listFeatures()) {
+        if (feature.task_ids.includes(task.task_id) && (
+          feature.state === "waiting_user" || feature.state === "accepted" ||
+          feature.latest_task_id !== task.task_id
+        )) throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "feature state prevents this recovery");
+      }
       const authorization = this.authorizeRecoveryIdentity(task, request, kind);
       const executionAgent = authorization.execution_agent;
+      if (request.message !== undefined && (
+        kind !== "delegated_manager" || executionAgent !== "claude" ||
+        task.state !== TaskState.BLOCKED
+      )) {
+        throw new BridgeError(ErrorCode.INVALID_ARGUMENT,
+          "manager messages are supported only for BLOCKED delegated Claude tasks");
+      }
       this.cp.tasks.assertRecoverable(task);
       this.cp.tasks.assertPersistedLineage(task);
 
@@ -626,6 +680,7 @@ export class Orchestrator {
       );
 
       const reservation: RecoveryReservation = {
+        ...(request.message !== undefined ? { message: request.message } : {}),
         task_id: task.task_id,
         authorization_kind: authorization.kind,
         requested_by: request.requested_by,
@@ -688,6 +743,7 @@ export class Orchestrator {
       idempotency_key: `${request.idempotency_key ?? task.task_id}:recovery:${reservation.recovered_attempt}`,
       previous_execution_handle: persistedHandle,
       resume_required: true,
+      ...(reservation.message !== undefined ? { manager_message: reservation.message } : {}),
     };
     const context = this.makeContext(
       task.task_id,
@@ -895,6 +951,7 @@ export class Orchestrator {
     }
     const parsed = JSON.parse(record.response_json) as Partial<RecoveryReservation>;
     if (
+      parsed.message !== request.message ||
       parsed.task_id !== request.task_id ||
       !Number.isInteger(parsed.previous_attempt) ||
       !Number.isInteger(parsed.recovered_attempt) ||
@@ -1046,6 +1103,7 @@ export class Orchestrator {
           task_id: request.task_id,
           requested_by: request.requested_by,
           authorization_kind: kind,
+          ...(request.message !== undefined ? { message: request.message } : {}),
         });
   }
 

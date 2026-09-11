@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-exchange"
+  short_description: "Exchange feature ZIPs with conflict checks"
+  default_prompt: "Use $feature-exchange for the selected feature and follow docs/features/README.md."

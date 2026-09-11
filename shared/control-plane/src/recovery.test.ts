@@ -805,3 +805,71 @@ describe("manager-authorized delegated recovery", () => {
     cp.close();
   });
 });
+
+
+describe("manager clarification on blocked Claude recovery", () => {
+  it("persists the exact message with the attempt and replays across orchestrator instances", async () => {
+    const { cp, child, orchestrator, workerFixture } = setupDelegated(1201);
+    const original = cp.tasks.get(child.task_id).spec;
+    const request = { task_id: child.task_id, requested_by: "codex", idempotency_key: "answer-1", message: "Use option B.\nKeep the existing scope." };
+    const first = await orchestrator.resumeDelegatedTask(request);
+    expect(first.state).toBe(TaskState.DONE);
+    expect(workerFixture.seen[0]!.manager_message).toBe(request.message);
+    expect(workerFixture.seen[0]!.previous_execution_handle).toBe(HANDLE);
+    expect(cp.tasks.get(child.task_id).spec).toEqual(original);
+    const saved = JSON.parse(cp.store.getIdempotency("answer-1")!.response_json);
+    expect(saved.message).toBe(request.message);
+    expect(saved.recovered_attempt).toBe(first.recovered_attempt);
+    const second = await new Orchestrator(cp).resumeDelegatedTask(request);
+    expect(second.recovered_attempt).toBe(first.recovered_attempt);
+    expect(workerFixture.calls()).toBe(1);
+    await expect(new Orchestrator(cp).resumeDelegatedTask({ ...request, message: "Use option C" }))
+      .rejects.toMatchObject({ code: ErrorCode.IDEMPOTENCY_MISMATCH });
+    cp.close();
+  });
+
+  it("joins identical in-flight messages but rejects a changed message", async () => {
+    let release!: () => void;
+    let started!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const invoked = new Promise<void>(resolve => { started = resolve; });
+    const { cp, child, orchestrator, workerFixture } = setupDelegated(1202, { gate, onStart: started });
+    const request = { task_id: child.task_id, requested_by: "codex", idempotency_key: "answer-active", message: "Use B" };
+    const first = orchestrator.resumeDelegatedTask(request);
+    await invoked;
+    const second = orchestrator.resumeDelegatedTask(request);
+    await expect(orchestrator.resumeDelegatedTask({ ...request, message: "Use C" }))
+      .rejects.toMatchObject({ code: ErrorCode.IDEMPOTENCY_MISMATCH });
+    release();
+    await Promise.all([first, second]);
+    expect(workerFixture.calls()).toBe(1);
+    cp.close();
+  });
+
+  it.each(["", "   ", "x".repeat(8001)])("rejects invalid message without reserving a new attempt", async message => {
+    const { cp, child, orchestrator, workerFixture } = setupDelegated(1203);
+    await expect(orchestrator.resumeDelegatedTask({ task_id: child.task_id, requested_by: "codex", idempotency_key: "invalid", message }))
+      .rejects.toMatchObject({ code: ErrorCode.INVALID_ARGUMENT });
+    expect(cp.attempts.list(child.task_id)).toHaveLength(1);
+    expect(workerFixture.calls()).toBe(0);
+    cp.close();
+  });
+
+  it("requires a key and cannot use a fresh message to reopen DONE", async () => {
+    const { cp, child, orchestrator } = setupDelegated(1204);
+    const request = { task_id: child.task_id, requested_by: "codex", message: "Use B" };
+    await expect(orchestrator.resumeDelegatedTask(request)).rejects.toMatchObject({ code: ErrorCode.INVALID_ARGUMENT });
+    await orchestrator.resumeDelegatedTask({ ...request, idempotency_key: "first" });
+    await expect(orchestrator.resumeDelegatedTask({ ...request, idempotency_key: "new" }))
+      .rejects.toMatchObject({ code: ErrorCode.INVALID_ARGUMENT });
+    expect(cp.attempts.list(child.task_id)).toHaveLength(2);
+    cp.close();
+  });
+
+  it("cannot deliver a message through the wrong manager", async () => {
+    const { cp, child, orchestrator, workerFixture } = setupDelegated(1205);
+    await expect(orchestrator.resumeDelegatedTask({ task_id: child.task_id, requested_by: "outsider", idempotency_key: "wrong", message: "Use B" })).rejects.toBeInstanceOf(BridgeError);
+    expect(workerFixture.calls()).toBe(0);
+    cp.close();
+  });
+});

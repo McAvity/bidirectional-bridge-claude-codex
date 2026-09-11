@@ -242,6 +242,38 @@ describe("control plane -> ClaudeAdapter -> Claude Code subprocess -> Deliverabl
     expect(cp.tasks.get(outcome.task_id).state).toBe("BLOCKED");
   });
 
+  it("preserves red/green evidence rather than replacing a same-command failure", async () => {
+    const outcome = await delegate("redgreen");
+    expect(outcome.deliverable?.status).toBe(DeliverableStatus.PARTIAL);
+    expect(outcome.deliverable?.verification_results.map(v => v.passed)).toEqual([false, true]);
+  });
+
+  it("accepts final green checks while preserving pre-fix red checks and snapshots", async () => {
+    const outcome = await delegate("reproduction");
+    expect(outcome.deliverable?.status).toBe(DeliverableStatus.COMPLETE);
+    expect(outcome.deliverable?.verification_results.map(v => v.passed)).toEqual([true]);
+    expect(outcome.deliverable?.artifacts).toHaveLength(1);
+    const artifact = cp.artifacts.get(outcome.deliverable!.artifacts[0]!);
+    expect(artifact.inline).toContain('"reproduction_results"');
+    expect(artifact.inline).toContain('"passed": false');
+    expect(artifact.inline).toContain("a".repeat(64));
+    expect(artifact.inline).toContain("b".repeat(64));
+    expect(cp.tasks.get(outcome.task_id).state).toBe("DONE");
+  });
+
+  it.each(["missing-snapshot", "same-snapshot"])("blocks ambiguous historical evidence: %s", async mode => {
+    const outcome = await delegate(mode);
+    expect(outcome.deliverable?.status).toBe(DeliverableStatus.PARTIAL);
+    expect(outcome.deliverable?.artifacts).toHaveLength(1);
+    expect(cp.tasks.get(outcome.task_id).state).toBe("BLOCKED");
+  });
+
+  it.each(["reproduction-only", "final-failure"])("never counts historical evidence as final success: %s", async mode => {
+    const outcome = await delegate(mode);
+    expect(outcome.deliverable?.status).toBe(DeliverableStatus.PARTIAL);
+    expect(cp.tasks.get(outcome.task_id).state).toBe("BLOCKED");
+  });
+
   it("preserves a large verified report as a durable artifact and reaches DONE", async () => {
     const outcome = await delegate("large");
     expect(outcome.error).toBeNull();
@@ -374,8 +406,15 @@ describe("session resumption", () => {
       attempt: 1,
       idempotency_key: "k",
       previous_execution_handle: "prev-session",
+      manager_message: "Decision: use option B.",
     };
+    const continuation = buildPrompt({ ...invocation, continuation_of_task_id: "task_previous" } as never, true);
+    expect(continuation).toContain("NEW task");
+    expect(continuation).toContain("task_previous");
+    expect(continuation).not.toContain("previously interrupted");
     expect(buildPrompt(invocation as never, true)).toContain("resuming");
+    expect(buildPrompt(invocation as never, true)).toContain("Decision: use option B.");
+    expect(buildPrompt(invocation as never, false)).not.toContain("Decision: use option B.");
     expect(buildPrompt(invocation as never, false)).not.toContain("resuming");
   });
 

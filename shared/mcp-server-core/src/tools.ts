@@ -25,7 +25,7 @@ import {
   type TaskSpec,
   type VerificationResult,
 } from "@bridge/protocol";
-import type { ControlPlane, Orchestrator } from "@bridge/control-plane";
+import { FeatureWorkflow, type ControlPlane, type Orchestrator } from "@bridge/control-plane";
 
 /* ------------------------------------------------------------------ *
  * Zod shapes (the MCP SDK builds JSON Schema from these)
@@ -125,6 +125,55 @@ const who = (args: Record<string, unknown>, ctx: ToolContext): AgentId => {
 };
 
 export const TOOLS: readonly ToolDefinition[] = [
+  {
+    name: "bridge_feature_create",
+    title: "Create a feature workflow",
+    description: "Pin future Claude rounds to one feature. Requires a parent task owned by the Codex manager. Does not launch Claude.",
+    inputShape: { feature_id: z.string().min(1).max(200), parent_task_id: z.string(), ...agentArg },
+    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).create(a["feature_id"] as string, who(a, c), a["parent_task_id"] as string),
+  },
+  {
+    name: "bridge_feature_get",
+    title: "Read a feature workflow",
+    description: "Read durable routing state, latest task and pending user question. Inspect that task's deliverable/artifacts to retrieve feature-exchange packages.",
+    inputShape: { feature_id: z.string(), ...agentArg },
+    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).get(a["feature_id"] as string, who(a, c)),
+  },
+  {
+    name: "bridge_feature_run",
+    title: "Run a feature round",
+    description: "Explicitly launch one Claude round. After DONE, create a new task and strictly resume the same session. BLOCKED tasks use bridge_resume_delegated_task. Replays never launch another worker.",
+    inputShape: { feature_id: z.string(), spec: taskSpecShape, input_artifacts: z.array(z.string()).default([]),
+      deadline_ms: z.number().int().min(1000).max(86_400_000), idempotency_key: z.string().min(1), ...agentArg },
+    handler: (a, c) => {
+      if (c.delegationPolicy === "deny") throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "delegation is denied by this server's startup policy");
+      return new FeatureWorkflow(c.cp, c.orchestrator).run({ feature_id: a["feature_id"] as string,
+        manager: who(a, c), spec: a["spec"] as TaskSpec, input_artifacts: (a["input_artifacts"] as string[]) ?? [],
+        deadline_ms: a["deadline_ms"] as number, idempotency_key: a["idempotency_key"] as string });
+    },
+  },
+  {
+    name: "bridge_feature_wait_user",
+    title: "Pause a feature for user input",
+    description: "Persist a blocking question addressed to the user. Never sends it to Claude. The manager must show the question to the user separately.",
+    inputShape: { feature_id: z.string(), question_id: z.string().min(1), question: z.string().min(1).max(8000), ...agentArg },
+    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).waitUser(a["feature_id"] as string, who(a, c), a["question_id"] as string, a["question"] as string),
+  },
+  {
+    name: "bridge_feature_answer_user",
+    title: "Record the user answer",
+    description: "Record an answer to the current question without launching Claude or forwarding it. To act on it, write the applicable decision into the next feature_run spec, or for a BLOCKED task into bridge_resume_delegated_task.message.",
+    inputShape: { feature_id: z.string(), question_id: z.string().min(1), answer: z.string().min(1).max(8000), ...agentArg },
+    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).answerUser(a["feature_id"] as string, who(a, c), a["question_id"] as string, a["answer"] as string),
+  },
+  {
+    name: "bridge_feature_accept",
+    title: "Accept a reviewed feature",
+    description: "Manager explicitly accepts the completed feature after its review and the required acceptance decision. No rounds are possible afterwards. Worker COMPLETE alone never accepts the feature.",
+    inputShape: { feature_id: z.string(), ...agentArg },
+    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).accept(a["feature_id"] as string, who(a, c)),
+  },
+
   {
     name: "bridge_server_info",
     title: "Inspect the bound bridge session",
@@ -322,12 +371,15 @@ export const TOOLS: readonly ToolDefinition[] = [
       "ownership, accepts identity overrides, creates a replacement task, or exposes a handle.",
     inputShape: {
       task_id: z.string(),
+      message: z.string().min(1).max(8000).optional()
+        .describe("Clarification for a BLOCKED Claude child, within its existing objective and scope. Requires idempotency_key."),
       ...idemArg,
     },
     handler: (args, ctx) =>
       ctx.orchestrator.resumeDelegatedTask({
         task_id: args["task_id"] as string,
         requested_by: ctx.defaultAgent,
+        ...(args["message"] !== undefined ? { message: args["message"] as string } : {}),
         ...(args["idempotency_key"]
           ? { idempotency_key: args["idempotency_key"] as string }
           : {}),
