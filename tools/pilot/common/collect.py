@@ -31,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import codex_args  # noqa: E402  (shared manager-session predicate)
 
-COLLECTOR_VERSION = 3
+COLLECTOR_VERSION = 4
 # Path fragments of operator material; an agent reading them is reported (never blocked).
 CONTAMINATION = ['tools/pilot/', 'operator-results', 'EXPECTED.md', 'check_cases', 'reference/src', 'OPERATOR.md', 'PLAN.md']
 INJECTED_PREFIXES = ('<', '# AGENTS.md', '# Context from my IDE')
