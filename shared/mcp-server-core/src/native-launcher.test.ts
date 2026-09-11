@@ -2,15 +2,17 @@ import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:chil
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
   statSync,
   symlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -43,6 +45,7 @@ class NativeHarness {
     workspace?: string,
     db?: string,
     cwd = repoRoot,
+    env: NodeJS.ProcessEnv = process.env,
   ) {
     const args = [launcher, "--caller", caller, "--delegation", policy];
     if (workspace !== undefined) args.push("--workspace", workspace);
@@ -50,7 +53,7 @@ class NativeHarness {
     this.child = spawn(
       process.execPath,
       args,
-      { cwd, stdio: ["pipe", "pipe", "pipe"], windowsHide: true },
+      { cwd, env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true },
     ) as ChildProcessWithoutNullStreams;
     this.exited = new Promise((done) => this.child.once("exit", done));
     this.child.stdout.setEncoding("utf8");
@@ -413,4 +416,96 @@ describe("native project MCP launcher", () => {
       ).toEqual([0, 0, 0]);
     }
   }, 30_000);
+
+  it("recovers a timed-out feature round after a bridge restart in the same runtime session", async () => {
+    // A stand-in `claude` on PATH speaks the real stream-json protocol; no model is called.
+    const workspace = mkdtempSync(join(tmpdir(), "bridge-timeout-e2e-"));
+    const bin = join(workspace, "bin");
+    mkdirSync(bin);
+    const fakeCli = join(repoRoot, "claude", "claude-side", "test", "fixtures", "fake-claude-cli.mjs");
+    const argvFile = join(workspace, "claude-argv.json");
+    writeFileSync(join(bin, "claude"), `#!/bin/sh\nexec "${process.execPath}" "${fakeCli}" "$@"\n`, { mode: 0o755 });
+    const env = (mode: string): NodeJS.ProcessEnv => ({
+      ...process.env,
+      PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
+      FAKE_CLAUDE_MODE: mode,
+      FAKE_CLAUDE_ARGV_FILE: argvFile,
+      FAKE_CLAUDE_STDERR: "fake runtime warning: upstream slow\n",
+    });
+    const db = join(workspace, ".bridge", "bridge.db");
+    const first = new NativeHarness("codex", "allow", workspace, db, repoRoot, env("hang"));
+    let second: NativeHarness | undefined;
+    try {
+      await first.initialize();
+      const root = await first.callTool("bridge_create_task", { spec: taskSpec() });
+      await first.callTool("bridge_claim_task", { task_id: root.data.task_id });
+      await first.callTool("bridge_set_state", { task_id: root.data.task_id, to: "WORKING" });
+      await first.callTool("bridge_feature_create", { feature_id: "F-e2e", parent_task_id: root.data.task_id });
+      const round = await first.callTool("bridge_feature_run", {
+        feature_id: "F-e2e",
+        spec: {
+          objective: "write the contract",
+          scope: { paths: ["docs/contract/**"] },
+          dependencies: [],
+          expected_deliverable: "contract",
+          verification_criteria: ["node --version runs"],
+          max_turns: 32,
+        },
+        deadline_ms: 1_000,
+        idempotency_key: "F-e2e:round-1",
+      });
+      expect(round.isError, JSON.stringify(round.data)).toBe(false);
+      expect(round.data.task.state).toBe("FAILED");
+      expect(round.data.error.code).toBe("TIMEOUT");
+      const taskId = round.data.task.task_id as string;
+
+      const failed = await first.callTool("bridge_get_task", { task_id: taskId });
+      expect(failed.data.attempts[0]).toMatchObject({ outcome: "TIMEOUT" });
+      const [evidence] = failed.data.termination_evidence;
+      expect(evidence).toMatchObject({ attempt: 0, termination_kind: "timeout", reason: "deadline" });
+      expect(readFileSync(evidence.path, "utf8")).toContain("fake runtime warning");
+      expect(JSON.stringify(failed.data)).not.toContain("fake runtime warning");
+      expect(await first.shutdown()).toBe(0);
+
+      second = new NativeHarness("codex", "allow", workspace, db, repoRoot, env("ok"));
+      await second.initialize();
+      expect((await second.callTool("bridge_feature_get", { feature_id: "F-e2e" })).data.state).toBe("blocked");
+      const request = {
+        task_id: taskId,
+        recover_timeout: true,
+        deadline_ms: 4_500_000,
+        max_turns: 120,
+        idempotency_key: "F-e2e:timeout-1",
+      };
+      const resumed = await second.callTool("bridge_resume_delegated_task", request);
+      expect(resumed.isError, JSON.stringify(resumed.data)).toBe(false);
+      expect(resumed.data).toMatchObject({
+        task_id: taskId,
+        recovered_attempt: 1,
+        resumed_from_attempt: 0,
+        same_execution_handle: true,
+        recovery_mode: "timeout",
+        deadline_ms: 4_500_000,
+        state: "DONE",
+      });
+      const argv = (JSON.parse(readFileSync(argvFile, "utf8")) as { args: string[] }).args;
+      expect(argv[argv.indexOf("--resume") + 1]).toBe("11111111-2222-4333-8444-555555555555");
+      expect(argv[argv.indexOf("--max-turns") + 1]).toBe("120");
+
+      const replay = await second.callTool("bridge_resume_delegated_task", request);
+      expect(replay.data.recovered_attempt).toBe(1);
+      expect((await second.callTool("bridge_feature_get", { feature_id: "F-e2e" })).data)
+        .toMatchObject({ state: "awaiting_review", task_ids: [taskId] });
+      expect((await second.callTool("bridge_get_task", { task_id: taskId })).data.attempts).toHaveLength(2);
+
+      for (const line of [...first.stdoutLines, ...second.stdoutLines]) {
+        expect(JSON.parse(line)).toMatchObject({ jsonrpc: "2.0" });
+      }
+    } finally {
+      await first.shutdown();
+      const exit = second ? await second.shutdown() : 0;
+      rmSync(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      expect(exit, `second launcher stderr: ${second?.stderr.join("").slice(-1000) ?? ""}`).toBe(0);
+    }
+  }, 60_000);
 });

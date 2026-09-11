@@ -13,11 +13,13 @@ import {
   type BridgeEvent,
   type RandomSource,
 } from "@bridge/protocol";
+import { dirname, join, resolve } from "node:path";
 import { SimpleAdapterRegistry } from "./adapter-registry.js";
 import { ArtifactRegistry } from "./artifact-registry.js";
 import { AttemptService } from "./attempt-service.js";
 import { type Clock, systemClock } from "./clock.js";
 import { DeliverableService } from "./deliverable-service.js";
+import { TerminationEvidenceStore } from "./evidence-store.js";
 import { LeaseManager } from "./lease-manager.js";
 import { SqliteStateStore, type JournalMode } from "./store/sqlite-store.js";
 import type { EventQuery, StateStore } from "./store/state-store.js";
@@ -36,6 +38,12 @@ export interface ControlPlaneOptions {
   readonly store?: StateStore;
   readonly inlineArtifactLimitBytes?: number;
   readonly onWarning?: (message: string, details?: Record<string, unknown>) => void;
+  /**
+   * Directory for termination evidence files. Defaults to `<database dir>/evidence` for a
+   * file database; an in-memory or injected store has none unless one is given here.
+   * `null` disables evidence files explicitly.
+   */
+  readonly evidenceDir?: string | null;
 }
 
 export class ControlPlane {
@@ -46,10 +54,11 @@ export class ControlPlane {
   readonly artifacts: ArtifactRegistry;
   readonly deliverables: DeliverableService;
   readonly attempts: AttemptService;
+  readonly evidence: TerminationEvidenceStore;
   readonly adapters: AdapterRegistry;
   readonly workspaceRoot: string;
 
-  private constructor(options: ControlPlaneOptions, store: StateStore) {
+  private constructor(options: ControlPlaneOptions, store: StateStore, evidenceDir: string | null) {
     this.workspaceRoot = options.workspaceRoot;
     this.store = store;
     this.clock = options.clock ?? systemClock;
@@ -68,14 +77,22 @@ export class ControlPlane {
     );
     this.deliverables = new DeliverableService(store, this.clock, this.tasks);
     this.attempts = new AttemptService(store, this.clock);
+    this.evidence = new TerminationEvidenceStore(store, this.clock, evidenceDir);
     this.adapters = new SimpleAdapterRegistry();
   }
 
   static open(options: ControlPlaneOptions): ControlPlane {
+    const databasePath = options.databasePath ?? `${options.workspaceRoot}/.bridge/bridge.db`;
+    const evidenceDir =
+      options.evidenceDir !== undefined
+        ? options.evidenceDir
+        : options.store !== undefined || databasePath === ":memory:"
+          ? null
+          : join(dirname(resolve(databasePath)), "evidence");
     const store =
       options.store ??
       new SqliteStateStore({
-        path: options.databasePath ?? `${options.workspaceRoot}/.bridge/bridge.db`,
+        path: databasePath,
         journalMode: options.journalMode ?? "auto",
         onJournalFallback: (requested, actual, reason) =>
           options.onWarning?.(
@@ -84,7 +101,7 @@ export class ControlPlane {
             { requested, actual },
           ),
       });
-    return new ControlPlane(options, store);
+    return new ControlPlane(options, store, evidenceDir);
   }
 
   /* ---------------- supervisor-facing reads ---------------- */

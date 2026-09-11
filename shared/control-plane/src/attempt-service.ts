@@ -38,7 +38,7 @@ import type { AttemptTelemetryQuery, StateStore } from "./store/state-store.js";
  * It is a guardrail against the realistic failure: an adapter author passing the whole
  * session object, or a bearer token, because the field was conveniently to hand.
  */
-const SECRET_PATTERNS: ReadonlyArray<{ readonly label: string; readonly re: RegExp }> = [
+export const SECRET_PATTERNS: ReadonlyArray<{ readonly label: string; readonly re: RegExp }> = [
   { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_-]{16,}/ },
   { label: "Anthropic-style key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
   { label: "GitHub token", re: /\bgh[pousr]_[A-Za-z0-9]{16,}/ },

@@ -12,9 +12,14 @@
 import {
   BridgeError,
   AttemptTerminationKind,
+  DEADLINE_ABORT_REASON,
   DeliverableStatus,
   ErrorCode,
   EventType,
+  MAX_RECOVERY_DEADLINE_MS,
+  MAX_TASK_MAX_TURNS,
+  MIN_RECOVERY_DEADLINE_MS,
+  MIN_TASK_MAX_TURNS,
   TaskState,
   conflictingPairs,
   type AgentId,
@@ -25,12 +30,15 @@ import {
   type DelegationOutcome,
   type DelegationRequest,
   type InvocationContext,
+  type RecoveryMode,
   type ResumeDelegatedTaskRequest,
   type ResumeTaskOutcome,
   type ResumeTaskRequest,
   type StatusUpdate,
   type Task,
+  type TaskAttempt,
   type TaskInvocation,
+  type TerminationEvidence,
   type VerificationResult,
 } from "@bridge/protocol";
 import type { ControlPlane } from "./control-plane.js";
@@ -59,6 +67,9 @@ interface RecoveryRequest {
   readonly task_id: string;
   readonly requested_by: AgentId;
   readonly idempotency_key?: string;
+  readonly recover_timeout?: boolean;
+  readonly deadline_ms?: number;
+  readonly max_turns?: number;
 }
 
 interface RecoveryAuthorization {
@@ -80,6 +91,10 @@ interface RecoveryReservation {
   readonly input_artifact_ids: readonly string[];
   readonly requested_at: number;
   readonly deadline_ms: number;
+  /** Absent in reservations written before timeout recovery; those are `stranded`. */
+  readonly mode?: RecoveryMode;
+  readonly previous_state?: TaskState;
+  readonly max_turns?: number;
 }
 
 interface ActiveRecovery {
@@ -320,7 +335,7 @@ export class Orchestrator {
 
       timer = setTimeout(() => {
         timedOut = true;
-        controller.abort();
+        controller.abort(DEADLINE_ABORT_REASON);
       }, request.deadline_ms);
 
       observedRuntimeStartedAt = this.cp.clock.now();
@@ -454,14 +469,7 @@ export class Orchestrator {
     request: RecoveryRequest,
     kind: RecoveryAuthorizationKind,
   ): Promise<ResumeTaskOutcome> {
-    if (request.message !== undefined && (
-      kind !== "delegated_manager" ||
-      typeof request.message !== "string" || !request.message.trim() ||
-      request.message.length > 8000 || !request.idempotency_key?.trim()
-    )) {
-      throw new BridgeError(ErrorCode.INVALID_ARGUMENT,
-        "message must contain 1-8000 characters and requires an idempotency_key");
-    }
+    this.validateRecoveryRequest(request, kind);
     const task = this.cp.tasks.get(request.task_id);
     const authorization = this.authorizeRecoveryIdentity(task, request, kind);
     const authorizationKey = this.recoveryAuthorizationKey(authorization);
@@ -522,22 +530,42 @@ export class Orchestrator {
       if (racedReplay !== null) return { reservation: racedReplay, replayed: true };
 
       const task = this.cp.tasks.get(request.task_id);
+      const mode: RecoveryMode = request.recover_timeout === true ? "timeout" : "stranded";
       for (const feature of this.cp.store.listFeatures()) {
-        if (feature.task_ids.includes(task.task_id) && (
+        if (!feature.task_ids.includes(task.task_id)) continue;
+        if (kind === "delegated_manager" && feature.manager !== request.requested_by) {
+          throw new BridgeError(
+            ErrorCode.NOT_OWNER,
+            `${request.requested_by} is not the manager bound to feature ${feature.feature_id}`,
+            { task_id: task.task_id, feature_id: feature.feature_id, caller: request.requested_by },
+          );
+        }
+        if (
           feature.state === "waiting_user" || feature.state === "accepted" ||
           feature.latest_task_id !== task.task_id
-        )) throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "feature state prevents this recovery");
+        ) throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "feature state prevents this recovery");
       }
       const authorization = this.authorizeRecoveryIdentity(task, request, kind);
       const executionAgent = authorization.execution_agent;
+      const messageState = mode === "timeout" ? TaskState.FAILED : TaskState.BLOCKED;
       if (request.message !== undefined && (
         kind !== "delegated_manager" || executionAgent !== "claude" ||
-        task.state !== TaskState.BLOCKED
+        task.state !== messageState
       )) {
         throw new BridgeError(ErrorCode.INVALID_ARGUMENT,
-          "manager messages are supported only for BLOCKED delegated Claude tasks");
+          "manager messages are supported only for BLOCKED or timed-out delegated Claude tasks");
       }
-      this.cp.tasks.assertRecoverable(task);
+      if (mode === "timeout") {
+        if (task.state !== TaskState.FAILED) {
+          throw new BridgeError(
+            ErrorCode.ILLEGAL_TRANSITION,
+            `recover_timeout applies only to a FAILED task; ${task.task_id} is ${task.state}`,
+            { task_id: task.task_id, state: task.state },
+          );
+        }
+      } else {
+        this.cp.tasks.assertRecoverable(task);
+      }
       this.cp.tasks.assertPersistedLineage(task);
 
       const adapter = this.cp.adapters.get(executionAgent);
@@ -577,6 +605,7 @@ export class Orchestrator {
           },
         );
       }
+      if (mode === "timeout") this.assertTimedOutFailure(task, prior);
 
       const liveLeases = this.cp.leases.listLive();
       const liveTaskLease = liveLeases.find((lease) => lease.task_id === task.task_id);
@@ -617,7 +646,9 @@ export class Orchestrator {
       const inputArtifactIds = this.recoveryInputArtifactIds(task.task_id);
       // Fail before reserving any state if the original durable inputs cannot be resolved.
       this.cp.artifacts.resolveMany(inputArtifactIds);
-      const deadlineMs = this.recoveryDeadline(task);
+      // Timeout recovery always carries an explicit deadline (validated before this point);
+      // the deadline that just proved too short is never reused implicitly.
+      const deadlineMs = request.deadline_ms ?? this.recoveryDeadline(task);
       const requestedAt = this.cp.clock.now();
       this.cp.store.appendEvent(
         {
@@ -629,6 +660,11 @@ export class Orchestrator {
             recovered_attempt: recoveredAttempt,
             authorization_kind: authorization.kind,
             execution_agent: executionAgent,
+            mode,
+            previous_state: task.state,
+            deadline_ms: deadlineMs,
+            previous_deadline_ms: this.delegatedDeadline(task.task_id),
+            ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
           },
           ...(request.idempotency_key ? { idempotency_key: request.idempotency_key } : {}),
         },
@@ -653,6 +689,7 @@ export class Orchestrator {
         task_id: task.task_id,
         agent: executionAgent,
         next_attempt: recoveredAttempt,
+        ...(mode === "timeout" ? { from_timeout: true } : {}),
       });
       this.cp.attempts.startResumed(
         task.task_id,
@@ -673,6 +710,9 @@ export class Orchestrator {
             persisted_handle_present: true,
             requested_by: request.requested_by,
             authorization_kind: authorization.kind,
+            mode,
+            deadline_ms: deadlineMs,
+            ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
           },
           ...(request.idempotency_key ? { idempotency_key: request.idempotency_key } : {}),
         },
@@ -692,6 +732,9 @@ export class Orchestrator {
         input_artifact_ids: inputArtifactIds,
         requested_at: requestedAt,
         deadline_ms: deadlineMs,
+        mode,
+        previous_state: task.state,
+        ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
       };
       if (request.idempotency_key) {
         this.cp.store.putIdempotency({
@@ -734,7 +777,8 @@ export class Orchestrator {
       run_id: task.run_id,
       parent_task_id: task.parent_task_id,
       delegation_depth: task.delegation_depth,
-      spec: task.spec,
+      // An explicit recovery turn ceiling applies to this attempt only.
+      spec: reservation.max_turns === undefined ? task.spec : { ...task.spec, max_turns: reservation.max_turns },
       inputs,
       workspace_root: this.cp.workspaceRoot,
       lease_id: reservation.fresh_lease_id,
@@ -770,7 +814,7 @@ export class Orchestrator {
     try {
       timer = setTimeout(() => {
         timedOut = true;
-        controller.abort();
+        controller.abort(DEADLINE_ABORT_REASON);
       }, reservation.deadline_ms);
       runtimeStartedAt = this.cp.clock.now();
       const returned = await adapter.invoke(invocation, context);
@@ -918,6 +962,8 @@ export class Orchestrator {
       previous_attempt: reservation.previous_attempt,
       recovered_attempt: reservation.recovered_attempt,
       resumed_from_attempt: reservation.previous_attempt,
+      recovery_mode: reservation.mode ?? "stranded",
+      deadline_ms: reservation.deadline_ms,
       same_execution_handle:
         reportedHandle === persistedHandle && finalAttempt.execution_handle === persistedHandle,
       fresh_lease_id: reservation.fresh_lease_id,
@@ -960,7 +1006,9 @@ export class Orchestrator {
       !Array.isArray(parsed.input_artifact_ids) ||
       !parsed.input_artifact_ids.every((artifactId) => typeof artifactId === "string") ||
       typeof parsed.requested_at !== "number" ||
-      typeof parsed.deadline_ms !== "number"
+      typeof parsed.deadline_ms !== "number" ||
+      (parsed.mode !== undefined && parsed.mode !== "stranded" && parsed.mode !== "timeout") ||
+      (parsed.max_turns !== undefined && !Number.isInteger(parsed.max_turns))
     ) {
       throw new BridgeError(
         ErrorCode.INTERNAL,
@@ -1097,13 +1145,20 @@ export class Orchestrator {
     request: RecoveryRequest,
     kind: RecoveryAuthorizationKind,
   ): string {
+    // Fields are included only when supplied, so keys stored before they existed still match.
+    const budget = {
+      ...(request.recover_timeout === true ? { recover_timeout: true } : {}),
+      ...(request.deadline_ms !== undefined ? { deadline_ms: request.deadline_ms } : {}),
+      ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
+    };
     return kind === "owner"
-      ? hashRequest({ task_id: request.task_id, requested_by: request.requested_by })
+      ? hashRequest({ task_id: request.task_id, requested_by: request.requested_by, ...budget })
       : hashRequest({
           task_id: request.task_id,
           requested_by: request.requested_by,
           authorization_kind: kind,
           ...(request.message !== undefined ? { message: request.message } : {}),
+          ...budget,
         });
   }
 
@@ -1151,6 +1206,8 @@ export class Orchestrator {
       previous_attempt: reservation.previous_attempt,
       recovered_attempt: reservation.recovered_attempt,
       resumed_from_attempt: reservation.resumed_from_attempt,
+      recovery_mode: reservation.mode ?? "stranded",
+      deadline_ms: reservation.deadline_ms,
       same_execution_handle:
         prior.execution_handle !== null && prior.execution_handle === attempt.execution_handle,
       fresh_lease_id: reservation.fresh_lease_id,
@@ -1160,6 +1217,128 @@ export class Orchestrator {
       telemetry,
       error,
     };
+  }
+
+  /** Reject a malformed recovery request before reading or reserving any state. */
+  private validateRecoveryRequest(request: RecoveryRequest, kind: RecoveryAuthorizationKind): void {
+    const invalid = (message: string, details: Record<string, unknown> = {}): BridgeError =>
+      new BridgeError(ErrorCode.INVALID_ARGUMENT, message, { task_id: request.task_id, ...details });
+    if (request.message !== undefined && (
+      kind !== "delegated_manager" ||
+      typeof request.message !== "string" || !request.message.trim() ||
+      request.message.length > 8000 || !request.idempotency_key?.trim()
+    )) {
+      throw invalid("message must contain 1-8000 characters and requires an idempotency_key");
+    }
+    if (request.recover_timeout !== undefined && typeof request.recover_timeout !== "boolean") {
+      throw invalid("recover_timeout must be true or omitted");
+    }
+    if (request.recover_timeout === true) {
+      if (kind !== "delegated_manager") {
+        throw invalid("only the direct manager can reopen a timed-out task (bridge_resume_delegated_task)");
+      }
+      if (!request.idempotency_key?.trim()) throw invalid("timeout recovery requires an idempotency_key");
+      if (request.deadline_ms === undefined) {
+        throw invalid("timeout recovery requires an explicit deadline_ms; the deadline that expired is never reused");
+      }
+    }
+    if (request.deadline_ms !== undefined && (
+      !Number.isInteger(request.deadline_ms) ||
+      request.deadline_ms < MIN_RECOVERY_DEADLINE_MS ||
+      request.deadline_ms > MAX_RECOVERY_DEADLINE_MS
+    )) {
+      throw invalid(
+        `deadline_ms must be an integer from ${MIN_RECOVERY_DEADLINE_MS} through ${MAX_RECOVERY_DEADLINE_MS}`,
+        { deadline_ms: request.deadline_ms },
+      );
+    }
+    if (request.max_turns !== undefined && (
+      !Number.isInteger(request.max_turns) ||
+      request.max_turns < MIN_TASK_MAX_TURNS ||
+      request.max_turns > MAX_TASK_MAX_TURNS
+    )) {
+      throw invalid(
+        `max_turns must be an integer from ${MIN_TASK_MAX_TURNS} through ${MAX_TASK_MAX_TURNS}`,
+        { max_turns: request.max_turns },
+      );
+    }
+  }
+
+  /**
+   * Prove from durable records that a FAILED task was stopped by the bridge deadline and by
+   * nothing else. Only the attempt outcome, the FAILED transition and the attempt telemetry
+   * are read, all of which the bridge wrote before timeout recovery existed, so historical
+   * timeouts qualify exactly like new ones. Every other FAILED stays terminal.
+   */
+  private assertTimedOutFailure(task: Task, prior: TaskAttempt): void {
+    const refuse = (message: string, details: Record<string, unknown> = {}): BridgeError =>
+      new BridgeError(ErrorCode.ILLEGAL_TRANSITION, message, {
+        task_id: task.task_id,
+        attempt: prior.attempt,
+        ...details,
+      });
+    if (prior.ended_at === undefined) {
+      throw refuse(
+        `attempt ${prior.attempt} of ${task.task_id} is still open; confirm its runtime stopped first`,
+      );
+    }
+    if (prior.outcome !== ErrorCode.TIMEOUT) {
+      throw refuse(
+        `attempt ${prior.attempt} ended with ${prior.outcome ?? "no outcome"}; only a bridge deadline TIMEOUT can be reopened`,
+        { outcome: prior.outcome ?? null },
+      );
+    }
+    const history = this.cp.events({
+      task_id: task.task_id,
+      types: [EventType.TASK_STATE_CHANGED, EventType.ATTEMPT_ENDED],
+      limit: 100_000,
+    });
+    let failedIndex = -1;
+    for (let index = history.length - 1; index >= 0; index--) {
+      const event = history[index]!;
+      if (event.type === EventType.TASK_STATE_CHANGED && event.payload["to"] === TaskState.FAILED) {
+        failedIndex = index;
+        break;
+      }
+    }
+    const failed = failedIndex < 0 ? undefined : history[failedIndex];
+    const reason = failed?.payload["reason"];
+    if (
+      failed === undefined ||
+      failed.agent !== task.owner ||
+      typeof reason !== "string" ||
+      !reason.startsWith(`${ErrorCode.TIMEOUT}:`)
+    ) {
+      throw refuse("the FAILED transition was not recorded by the bridge deadline", {
+        reason: typeof reason === "string" ? reason.slice(0, 200) : null,
+      });
+    }
+    const endedBeforeFailure = history.slice(0, failedIndex).some((event) =>
+      event.type === EventType.ATTEMPT_ENDED &&
+      event.payload["attempt"] === prior.attempt &&
+      event.payload["outcome"] === ErrorCode.TIMEOUT,
+    );
+    if (!endedBeforeFailure) {
+      throw refuse(`attempt ${prior.attempt} did not end with TIMEOUT before the task failed`);
+    }
+    const telemetry = this.cp.attempts.queryTelemetry({
+      task_id: task.task_id,
+      attempt: prior.attempt,
+      limit: 1,
+    })[0];
+    if (telemetry !== undefined && telemetry.termination_kind !== AttemptTerminationKind.TIMEOUT) {
+      throw refuse(`attempt telemetry records ${telemetry.termination_kind}, not a timeout`, {
+        termination_kind: telemetry.termination_kind,
+      });
+    }
+  }
+
+  /** The deadline the original delegation requested, for audit only; never reused. */
+  private delegatedDeadline(task_id: string): number | null {
+    const delegation = this.cp
+      .events({ task_id, types: [EventType.DELEGATION_REQUESTED], limit: 1 })[0];
+    const value = delegation?.payload["deadline_ms"];
+    return typeof value === "number" ? value : null;
   }
 
   private recoveryDeadline(task: Task): number {
@@ -1225,6 +1404,9 @@ export class Orchestrator {
       },
       async raiseBlocker(reason: string): Promise<void> {
         cp.tasks.block(task_id, agent, reason);
+      },
+      async recordTerminationEvidence(evidence: TerminationEvidence): Promise<void> {
+        cp.evidence.record({ task_id, attempt, agent, evidence });
       },
       signal,
     };

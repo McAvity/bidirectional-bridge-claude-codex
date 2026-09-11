@@ -13,11 +13,15 @@ Status: W TOKU. Plan: [PLAN.md](PLAN.md), AC: [ACCEPTANCE.md](ACCEPTANCE.md).
 - [x] Weryfikacja klientów w źródłach (Codex 0.154.0 sparse clone w scratchpadzie, TS SDK,
       binarka Claude Code 2.1.269).
 - [x] Plan, AC, PROGRESS.
-- [ ] Testy RED: control-plane timeout recovery.
-- [ ] Implementacja recovery (protocol, task-service, orchestrator, tools).
-- [ ] Testy RED/GREEN: dowody zakończenia (runner + evidence store).
-- [ ] E2E launcher z fake `claude`.
-- [ ] Limit tur, konfiguracja 75/90.
+- [x] Testy RED: control-plane timeout recovery (`timeout-recovery.test.ts`, 19 RED z
+      `not recoverable from FAILED`).
+- [x] Implementacja recovery (protocol, task-service, orchestrator, tools) → GREEN.
+- [x] Testy RED/GREEN: dowody zakończenia (`evidence.test.ts`,
+      `claude-code-runner.evidence.test.ts`, `evidence-store.ts`, callback w runnerze,
+      `DEADLINE_ABORT_REASON`).
+- [x] E2E launcher z fake `claude` na PATH (`native-launcher.test.ts`).
+- [x] Limit tur 64 → 256 (test RED `expected 64 to be 256` → GREEN).
+- [ ] Konfiguracja 75/90 (`.codex/config.toml`, `.mcp.json`, przykład Claude’a).
 - [ ] Instrukcje ról i dokumentacja.
 - [ ] DEPLOY-AND-RESUME.md.
 - [ ] Pełna walidacja, commit(y), raport.

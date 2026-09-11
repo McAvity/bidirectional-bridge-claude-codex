@@ -179,7 +179,11 @@ export interface VerificationResult {
 /** Finite per-task turn-budget contract for runtimes that expose a turn ceiling. */
 export const MIN_TASK_MAX_TURNS = 1;
 export const DEFAULT_TASK_MAX_TURNS = 12;
-export const MAX_TASK_MAX_TURNS = 64;
+/**
+ * Finite upper bound. A 75-minute round at the ~3 turns/minute observed in practice needs
+ * about 200 turns; 64 would stop it structurally after roughly 25 minutes.
+ */
+export const MAX_TASK_MAX_TURNS = 256;
 
 export interface TaskSpec {
   /** One sentence: what "done" means. */
@@ -434,6 +438,8 @@ export const EventType = {
   ATTEMPT_HANDLE_SET: "attempt.handle_set",
   ATTEMPT_ENDED: "attempt.ended",
   ATTEMPT_TELEMETRY_RECORDED: "attempt.telemetry_recorded",
+  /** Metadata only; the bounded evidence itself is a local file, never an event payload. */
+  ATTEMPT_EVIDENCE_RECORDED: "attempt.evidence_recorded",
   FEATURE_UPDATED: "feature.updated",
   RECOVERY_REQUESTED: "recovery.requested",
   RESUME_ATTEMPTED: "resume.attempted",
@@ -494,11 +500,26 @@ export interface DelegationOutcome {
   readonly duration_ms: number;
 }
 
+/** Bounds for an explicit recovery deadline; the same range `bridge_feature_run` accepts. */
+export const MIN_RECOVERY_DEADLINE_MS = 1_000;
+export const MAX_RECOVERY_DEADLINE_MS = 86_400_000;
+
+/**
+ * `stranded`: a non-terminal task whose runtime was interrupted.
+ * `timeout`: a FAILED task that the bridge itself stopped at its deadline, reopened only by
+ * an explicit manager request with a new deadline.
+ */
+export type RecoveryMode = "stranded" | "timeout";
+
 /** Internal request derived from a caller-bound MCP session. */
 export interface ResumeTaskRequest {
   readonly task_id: TaskId;
   readonly requested_by: AgentId;
   readonly idempotency_key?: string;
+  /** Explicit budget for this recovery attempt; otherwise the task's persisted default. */
+  readonly deadline_ms?: number;
+  /** Turn ceiling for this recovery attempt only; the persisted contract is unchanged. */
+  readonly max_turns?: number;
 }
 
 /** Internal request derived from a caller-bound manager MCP session. */
@@ -508,6 +529,13 @@ export interface ResumeDelegatedTaskRequest {
   readonly task_id: TaskId;
   readonly requested_by: AgentId;
   readonly idempotency_key?: string;
+  /**
+   * Explicit opt-in to reopen a FAILED child whose last attempt ended at the bridge
+   * deadline. Requires `deadline_ms` and `idempotency_key`; never implied.
+   */
+  readonly recover_timeout?: boolean;
+  readonly deadline_ms?: number;
+  readonly max_turns?: number;
 }
 
 /** Result of resuming one existing task without changing its identity or lineage. */
@@ -520,6 +548,9 @@ export interface ResumeTaskOutcome {
   readonly previous_attempt: number;
   readonly recovered_attempt: number;
   readonly resumed_from_attempt: number;
+  readonly recovery_mode: RecoveryMode;
+  /** Deadline actually applied to the recovery attempt. */
+  readonly deadline_ms: number;
   readonly same_execution_handle: boolean;
   readonly fresh_lease_id: LeaseId;
   readonly lease_state: LeaseState;

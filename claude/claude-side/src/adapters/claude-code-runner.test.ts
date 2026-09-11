@@ -507,6 +507,17 @@ describe("execution bounding", () => {
     );
   });
 
+  it("lets a long bounded round request a turn ceiling above the old 64-turn cap", () => {
+    // A 75-minute round at the ~3 turns/minute observed in wave7 needs ~200 turns; the
+    // ceiling stays finite so a turn budget can never be removed.
+    expect(MAX_TASK_MAX_TURNS).toBe(256);
+    const args = new ClaudeCodeRunner().buildArgs(
+      invocationFor({ spec: spec({ max_turns: 200 }) }),
+      "prompt",
+    );
+    expect(args[args.indexOf("--max-turns") + 1]).toBe("200");
+  });
+
   it("grants tool access only to the leased scope directories", async () => {
     await delegate("ok");
     const { args } = readArgv();

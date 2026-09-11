@@ -10,6 +10,13 @@ export type { ControlPlaneOptions, ControlPlaneSnapshot, RecoveryReport } from "
 
 export { SimpleAdapterRegistry } from "./adapter-registry.js";
 
+export {
+  TERMINATION_EVIDENCE_SCHEMA,
+  TERMINATION_EVIDENCE_STDERR_MAX_BYTES,
+  TerminationEvidenceStore,
+} from "./evidence-store.js";
+export type { RecordTerminationEvidenceInput, TerminationEvidenceRecord } from "./evidence-store.js";
+
 export { MAX_DELEGATION_DEPTH, TaskService } from "./task-service.js";
 export type {
   BeginRecoveryInput,
