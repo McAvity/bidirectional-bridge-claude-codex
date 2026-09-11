@@ -1,0 +1,24 @@
+Astra, zlecam Ci feature F-001-duration w tym repozytorium. Ty koordynujesz, a Claude Code
+wykonuje implementację przez MCP bridge (narzędzia bridge_*).
+
+Materiały: docs/features/F-001-duration/brief.md, design.md, work-items/F-001-T01.md,
+docs/features/README.md. Procedura: skill $feature-execute, a dla rund przez bridge
+.agents/skills/feature-execute/references/bridge-loop.md.
+
+Zakres i autoryzacja:
+- Zakres: F-001-T01 (biblioteka duration, AC-01..AC-05) zgodnie z briefem i projektem.
+- Zgadzam się na delegowanie implementacji Claude'owi przez bridge i na lokalne commity na
+  main (bez push). Sam nie piszesz kodu produktu i nie uruchamiasz własnych subagentów.
+- Każdą rundę sprawdzasz niezależnie: kod, testy i przypadki właściciela produktu z
+  {CASES}.
+  To Twój materiał kontrolny; nie przekazuj go wykonawcy.
+- Poprawki, które przywracają lub zapewniają zachowanie opisane w briefie w tym zakresie,
+  zlecasz bez pytania mnie. Pytaj tylko o decyzje, których brief i zakres nie rozstrzygają.
+- Paczki rund zapisuj w {EXCHANGE}.
+- Budżet: najwyżej 4 rundy Claude'a.
+- Odbiór nie jest częścią tego zlecenia. Gdy review całego zakresu da PASS, przygotuj paczkę
+  końcową, krótko podsumuj wynik z dowodami i zakończ turę. Nie pytaj o akceptację i nie
+  zamykaj featura w bridge'u.
+
+Pracuj samodzielnie. Turę kończ tylko raportem, prawdziwą blokadą albo pytaniem, którego
+nie możesz rozstrzygnąć sam — wtedy jedno konkretne pytanie z opcjami i rekomendacją.

@@ -1,0 +1,56 @@
+#!/usr/bin/env node
+// Scripted stand-in for `claude` — ONLY for the dry run of the rework-test TOOLING (no model).
+// Speaks the bridge runner's stream-json contract. Round 1 writes the operator reference
+// implementation; a round whose contract contains "Runda poprawek" restores the exact to_seconds.
+// It also appends each prompt to a local transcript so the collector can be exercised.
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const REWORK = resolve(HERE, '../..');
+const args = process.argv.slice(2);
+if (args.includes('--version')) { process.stdout.write('0.0.0-dryrun (fake claude)\n'); process.exit(0); }
+const flag = n => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
+const prompt = flag('-p') ?? '';
+// One synthetic session per dry-run repository, so transcripts of earlier dry runs never count.
+const digest = createHash('sha256').update(process.cwd()).digest('hex');
+const sessionId = flag('--resume') ?? `${digest.slice(0, 8)}-${digest.slice(8, 12)}-4${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
+const emit = o => process.stdout.write(JSON.stringify(o) + '\n');
+const sh = (cmd, a) => execFileSync(cmd, a, { encoding: 'utf8' }).trim();
+const write = (p, t) => { mkdirSync(dirname(resolve(p)), { recursive: true }); writeFileSync(p, t); };
+// DRYRUN_TRANSCRIPTS is set by dryrun.mjs (inherited through the bridge); never inside the checkout.
+if (!process.env.DRYRUN_TRANSCRIPTS) { process.stderr.write('DRYRUN_TRANSCRIPTS is not set\n'); process.exit(3); }
+const transcripts = resolve(process.env.DRYRUN_TRANSCRIPTS, 'dryrun');
+mkdirSync(transcripts, { recursive: true });
+appendFileSync(resolve(transcripts, `${sessionId}.jsonl`), JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }) + '\n');
+emit({ type: 'system', subtype: 'init', cwd: process.cwd(), session_id: sessionId, model: 'claude-opus-5', claude_code_version: '0.0.0-dryrun' });
+
+const ledgerDir = prompt.match(/w katalogu (\S+?)\/? \(/)?.[1];
+let n = 1; while (existsSync(`${ledgerDir}/${String(n).padStart(2, '0')}.md`)) n++;
+const ledger = `${ledgerDir}/${String(n).padStart(2, '0')}.md`;
+const out = prompt.match(/--output (\S+)\./)?.[1];
+const base = prompt.match(/--base (\S+),/)?.[1];
+const correction = prompt.includes('Runda poprawek');
+if (correction) {
+  copyFileSync(resolve(REWORK, 'agent/fixture/src/textkit/units.py'), 'src/textkit/units.py');
+} else {
+  copyFileSync(resolve(REWORK, 'operator/reference/src/textkit/duration.py'), 'src/textkit/duration.py');
+  write('tests/test_duration.py', 'import unittest\n\nfrom textkit.duration import format_duration, parse_duration\n\n\n' +
+    'class DurationTest(unittest.TestCase):\n    def test_examples(self):\n        self.assertEqual(parse_duration("1h30m"), 5400)\n' +
+    '        self.assertEqual(format_duration(5415), "1h 30m 15s")\n\n\nif __name__ == "__main__":\n    unittest.main()\n');
+}
+write(ledger, `# Ledger (dry run)\nOutcome: complete\n`);
+sh('git', ['add', '-A', 'src', 'tests', ledger]);
+sh('git', ['commit', '-q', '-m', `dry-run round work${correction ? ' (correction)' : ''}`]);
+sh('python3', ['.agents/skills/feature-exchange/scripts/feature_exchange.py', 'export', '--feature', 'docs/features/F-001-duration',
+  '--purpose', correction ? 'corrections-review' : 'implementation-review', '--base', base, '--output', out]);
+const v = JSON.parse(sh('python3', ['.agents/skills/feature-exchange/scripts/feature_exchange.py', 'verify', '--archive', out]));
+const summary = `PACKAGE=${out} SHA256=${v.archive_sha256} PURPOSE=${v.purpose} RANGE=${base}..${v.code_range.head} LEDGER=${ledger}. Dry-run round COMPLETE.`;
+const contract = '```json\n' + JSON.stringify({ summary, changed_scope: ['src/textkit/'], verification_results: [
+  { kind: 'test', command: 'PYTHONPATH=src python3 -m unittest discover -s tests -v', passed: true, exit_code: 0, summary: 'dry run' }],
+  remaining_risks: [], recommended_next_action: 'review', blocker: null }, null, 2) + '\n```';
+emit({ type: 'assistant', message: { model: 'claude-opus-5', role: 'assistant', content: [{ type: 'text', text: contract }] }, session_id: sessionId });
+emit({ type: 'result', subtype: 'success', is_error: false, session_id: sessionId, num_turns: 1, total_cost_usd: 0, result: contract, duration_ms: 10 });

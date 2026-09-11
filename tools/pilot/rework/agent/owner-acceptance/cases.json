@@ -1,0 +1,258 @@
+{
+ "feature": "F-001-duration",
+ "source": "Przypadki odbiorcze właściciela produktu, wyprowadzone z kryteriów brief.md (AC-01..AC-05).",
+ "use": "Do niezależnej weryfikacji odbiorczej przez koordynatora.",
+ "format": {
+  "parse_duration": "input -> expect (sekundy) albo expect_error",
+  "format_duration": "seconds, style -> expect albo expect_error"
+ },
+ "cases": [
+  {
+   "call": "parse_duration",
+   "input": "90s",
+   "expect": 90
+  },
+  {
+   "call": "parse_duration",
+   "input": "15m",
+   "expect": 900
+  },
+  {
+   "call": "parse_duration",
+   "input": "2h",
+   "expect": 7200
+  },
+  {
+   "call": "parse_duration",
+   "input": "1d",
+   "expect": 86400
+  },
+  {
+   "call": "parse_duration",
+   "input": "1w",
+   "expect": 604800
+  },
+  {
+   "call": "parse_duration",
+   "input": "2H",
+   "expect": 7200
+  },
+  {
+   "call": "parse_duration",
+   "input": "3D",
+   "expect": 259200
+  },
+  {
+   "call": "parse_duration",
+   "input": "1h30m",
+   "expect": 5400
+  },
+  {
+   "call": "parse_duration",
+   "input": "30m 1h",
+   "expect": 5400
+  },
+  {
+   "call": "parse_duration",
+   "input": "1h 30m 15s",
+   "expect": 5415
+  },
+  {
+   "call": "parse_duration",
+   "input": "1w1d",
+   "expect": 691200
+  },
+  {
+   "call": "parse_duration",
+   "input": "45s 2m",
+   "expect": 165
+  },
+  {
+   "call": "parse_duration",
+   "input": "1.5h",
+   "expect": 5400
+  },
+  {
+   "call": "parse_duration",
+   "input": "0.25d",
+   "expect": 21600
+  },
+  {
+   "call": "parse_duration",
+   "input": "0.5w",
+   "expect": 302400
+  },
+  {
+   "call": "parse_duration",
+   "input": "1.25h",
+   "expect": 4500
+  },
+  {
+   "call": "parse_duration",
+   "input": "0.01h",
+   "expect": 36
+  },
+  {
+   "call": "parse_duration",
+   "input": "4.1h",
+   "expect": 14760
+  },
+  {
+   "call": "parse_duration",
+   "input": "8.2h",
+   "expect": 29520
+  },
+  {
+   "call": "parse_duration",
+   "input": "2.05h",
+   "expect": 7380
+  },
+  {
+   "call": "parse_duration",
+   "input": "0.7d",
+   "expect": 60480
+  },
+  {
+   "call": "parse_duration",
+   "input": "1.4d",
+   "expect": 120960
+  },
+  {
+   "call": "parse_duration",
+   "input": "0.82w",
+   "expect": 495936
+  },
+  {
+   "call": "parse_duration",
+   "input": "1d 4.1h",
+   "expect": 101160
+  },
+  {
+   "call": "parse_duration",
+   "input": "0h",
+   "expect": 0
+  },
+  {
+   "call": "parse_duration",
+   "input": "",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "90",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "5x",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "1h1h",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "-5m",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "1.5m",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "2.5s",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "1.255h",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "h",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "parse_duration",
+   "input": "1h 30",
+   "expect_error": "ValueError"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 0,
+   "style": "compact",
+   "expect": "0s"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 59,
+   "style": "compact",
+   "expect": "59s"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 5415,
+   "style": "compact",
+   "expect": "1h 30m 15s"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 90061,
+   "style": "compact",
+   "expect": "1d 1h 1m 1s"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 86400,
+   "style": "compact",
+   "expect": "1d"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 604800,
+   "style": "compact",
+   "expect": "7d"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 3600,
+   "style": "compact",
+   "expect": "1h"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 0,
+   "style": "clock",
+   "expect": "00:00:00"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 5415,
+   "style": "clock",
+   "expect": "01:30:15"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 90061,
+   "style": "clock",
+   "expect": "25:01:01"
+  },
+  {
+   "call": "format_duration",
+   "seconds": 59,
+   "style": "clock",
+   "expect": "00:00:59"
+  },
+  {
+   "call": "format_duration",
+   "seconds": -1,
+   "style": "compact",
+   "expect_error": "ValueError"
+  }
+ ]
+}

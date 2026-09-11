@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-001-duration",
+  "phase": "execution",
+  "brief": "docs/features/F-001-duration/brief.md",
+  "design": "docs/features/F-001-duration/design.md",
+  "tasks": [
+    "work-items/F-001-T01.md"
+  ],
+  "context_files": [
+    "AGENTS.md"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "Zlecenie wykonania od użytkownika; koordynator zapisuje autoryzację i uruchamia rundy."
+}
