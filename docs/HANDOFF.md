@@ -50,3 +50,18 @@ is claimed. docs/tasks/review-integration-drift.md is a proposal, not active wor
 No personal session IDs or machine configuration should be added here. Keep local cutover
 commands outside the directories being moved. After resume, old experiments paths refer
 to the archive and must not be reused as runtime paths.
+
+## Publication provenance
+
+Local review IDs above map to public commits below. Only private session-link trailers
+were removed; source trees are unchanged. Original reviewed history remains in the local archive.
+
+| Local review commit | Public commit |
+|---|---|
+| d850a02 | 306d3f2 |
+| 7ae7f15 | a7a6182 |
+| ceaf7f5 | 7403418 |
+| 5b86f8e | 258370b |
+| 4469246 | dfeed9c |
+| 66b6f99 | 66c7347 |
+| 70d8dd4 | e26b321 |
