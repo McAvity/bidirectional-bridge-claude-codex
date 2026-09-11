@@ -5,7 +5,7 @@
 // It also appends each prompt to a local transcript so the collector can be exercised.
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,7 +25,9 @@ const write = (p, t) => { mkdirSync(dirname(resolve(p)), { recursive: true }); w
 if (!process.env.DRYRUN_TRANSCRIPTS) { process.stderr.write('DRYRUN_TRANSCRIPTS is not set\n'); process.exit(3); }
 const transcripts = resolve(process.env.DRYRUN_TRANSCRIPTS, 'dryrun');
 mkdirSync(transcripts, { recursive: true });
-appendFileSync(resolve(transcripts, `${sessionId}.jsonl`), JSON.stringify({ type: 'user', message: { role: 'user', content: prompt } }) + '\n');
+// Same record identity fields as a real Claude Code transcript: uuid and timestamp.
+appendFileSync(resolve(transcripts, `${sessionId}.jsonl`), JSON.stringify({ type: 'user', uuid: randomUUID(), timestamp: new Date().toISOString(),
+  sessionId, isSidechain: false, message: { role: 'user', content: prompt } }) + '\n');
 emit({ type: 'system', subtype: 'init', cwd: process.cwd(), session_id: sessionId, model: 'claude-opus-5', claude_code_version: '0.0.0-dryrun' });
 
 const ledgerDir = prompt.match(/w katalogu (\S+?)\/? \(/)?.[1];

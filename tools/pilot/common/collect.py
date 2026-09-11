@@ -362,19 +362,20 @@ def claude_transcript(handle, forbidden, decision_hint):
     for rec in jsonl(files[0]):
         msg = rec.get('message') or {}
         content = msg.get('content')
-        if rec.get('type') == 'user':
+        if rec.get('type') == 'user' and not rec.get('isSidechain'):
             text = content if isinstance(content, str) else '\n'.join(
                 c.get('text', '') for c in content or [] if isinstance(c, dict) and c.get('type') == 'text')
-            if 'You are executing a bounded task delegated' in text:
-                prompts.append(text)
+            if BRIDGE_PROMPT in text:
+                # Record identity and time are what bind a prompt to one attempt (prompt_coverage).
+                prompts.append({'text': text, 'uuid': rec.get('uuid'), 'at': rec.get('timestamp')})
         elif rec.get('type') == 'assistant' and isinstance(content, list):
             tool_inputs += [json.dumps(c.get('input')) for c in content if isinstance(c, dict) and c.get('type') == 'tool_use']
-    joined = '\n'.join(prompts)
+    joined = '\n'.join(p['text'] for p in prompts)
     leaks = [f for f in forbidden if f and f in joined]
     contamination = sorted({n for n in CONTAMINATION + ['acceptance-owner'] for t in tool_inputs if n in t})
     return {'found': True, 'bridge_prompts': len(prompts), '_prompts': prompts,
-            'continuation_prompts': sum('continuing the same feature session' in p for p in prompts),
-            'recovery_prompts': sum('Manager clarification' in p for p in prompts),
+            'continuation_prompts': len({p['uuid'] for p in prompts if CONTINUATION.search(p['text'])}),
+            'recovery_prompts': len({p['uuid'] for p in prompts if any(m in p['text'] for m in RECOVERY_MARKERS)}),
             'user_channel_leaks': leaks, 'decision_hint_present': bool(decision_hint and decision_hint in joined),
             'contamination': contamination}
 
@@ -582,12 +583,71 @@ def question_inventory(question_ids, calls, feature, snapshots):
     return {'texts': texts, 'unparsed_calls': unparsed}
 
 
+# Markers written by the bridge runner (claude-code-runner.ts buildPrompt).
+BRIDGE_PROMPT = 'You are executing a bounded task delegated through a multi-agent coordination bridge.'
+CONTINUATION = re.compile(r'You are continuing the same feature session after completed task (\S+?)\.')
+RECOVERY_MARKERS = ('## Manager clarification for this recovery attempt', 'You are resuming a previously interrupted task in this same session.')
+PROMPT_WINDOW_SLACK_MS = 2000
+
+
+def objective_block(objective):
+    """The contract exactly as the runner embeds it; a quote inside other text does not match."""
+    return f'## Objective\n{objective}\n\n## Expected deliverable'
+
+
 def prompt_coverage(transcript, rounds):
-    prompts = transcript.get('_prompts') or []
+    """Bind every bridge attempt (task_attempts) to exactly one distinct prompt record of the executor
+    transcript: a record identity (uuid) and a timestamp inside that attempt's window, and text that
+    fits the attempt — the round's contract as its objective; for a recovery attempt a resume or
+    manager-clarification marker; a continuation marker, when present, names the previous round.
+    Prompts are never just counted: anything that cannot be bound is a problem, and coverage is
+    complete only without problems. Transcript text is read, never executed."""
+    found = bool(transcript.get('found'))
+    problems, prompts, seen, duplicates = [], [], set(), 0
+    for p in transcript.get('_prompts') or []:
+        if not isinstance(p, dict) or not p.get('uuid') or not p.get('at'):
+            problems.append('prompt record without uuid or timestamp: cannot bind it to an attempt')
+            continue
+        if p['uuid'] in seen:
+            duplicates += 1
+            continue
+        seen.add(p['uuid'])
+        prompts.append(p)
+    bound, bindings, missing = {}, [], []
+    for i, r in enumerate(rounds):
+        for a in r.get('attempts') or []:
+            label = f"{r['task_id']}#{a['attempt']}"
+            low, high = a['started_at'] - PROMPT_WINDOW_SLACK_MS, (a['ended_at'] or 10**15) + PROMPT_WINDOW_SLACK_MS
+            candidates = [p for p in prompts if low <= ts_ms(p['at']) <= high]
+            if len(candidates) != 1:
+                problems.append(f'{label}: {len(candidates)} bridge prompts in the attempt window')
+                missing.append(r['task_id'])
+                continue
+            p = candidates[0]
+            if p['uuid'] in bound:
+                problems.append(f"{label}: prompt already bound to {bound[p['uuid']]}")
+                missing.append(r['task_id'])
+                continue
+            bound[p['uuid']] = label
+            bindings.append({'attempt': label, 'prompt_uuid': p['uuid'], 'at': p['at']})
+            if objective_block(r['objective']) not in p['text']:
+                problems.append(f'{label}: prompt does not carry the round contract as its objective')
+            if a['attempt'] > 0 and not any(m in p['text'] for m in RECOVERY_MARKERS):
+                problems.append(f'{label}: recovery prompt without a resume or manager-clarification marker')
+            cont = CONTINUATION.search(p['text'])
+            if cont and a['attempt'] == 0:
+                previous = rounds[i - 1]['task_id'] if i else None
+                if cont.group(1) != previous:
+                    problems.append(f'{label}: continuation marker names {cont.group(1)}, not the previous round {previous}')
+    unbound = [p['uuid'] for p in prompts if p['uuid'] not in bound]
+    if unbound:
+        problems.append(f'{len(unbound)} bridge prompt(s) outside every attempt window')
     attempts = sum(len(r.get('attempts') or []) for r in rounds)
-    missing = [r['task_id'] for r in rounds if not any(r['objective'] in p for p in prompts)]
-    return {'transcript_found': bool(transcript.get('found')), 'attempts': attempts, 'bridge_prompts': len(prompts),
-            'missing_tasks': missing, 'complete': bool(transcript.get('found')) and len(prompts) >= attempts and not missing}
+    if not attempts:
+        problems.append('no bridge attempt to bind')
+    return {'transcript_found': found, 'attempts': attempts, 'bridge_prompts': len(prompts), 'duplicate_records': duplicates,
+            'bindings': bindings, 'missing_tasks': sorted(set(missing)), 'unbound_prompts': unbound, 'problems': problems,
+            'complete': found and not problems}
 
 
 def channel_check(transcript, rounds, inventory, spec_texts, extra_forbidden):
@@ -596,7 +656,7 @@ def channel_check(transcript, rounds, inventory, spec_texts, extra_forbidden):
     transcript holds a bridge prompt for every attempt and every task contract, and every question
     text is known. Otherwise INFRA — a missing transcript is not a clean one."""
     forbidden = [t[:80] for t in inventory['texts'].values() if t] + [f[:80] for f in extra_forbidden if f]
-    prompts = transcript.get('_prompts') or []
+    prompts = [p['text'] if isinstance(p, dict) else str(p) for p in transcript.get('_prompts') or []]
     coverage = prompt_coverage(transcript, rounds)
     unresolved = [q for q, t in inventory['texts'].items() if not t]
     detail = {'prompt_coverage': coverage, 'unresolved_questions': unresolved, 'unparsed_wait_user_calls': inventory['unparsed_calls'],

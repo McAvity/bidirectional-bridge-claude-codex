@@ -430,12 +430,28 @@ class PackageCoverage(unittest.TestCase):
         self.assertEqual(collect.package_coverage([], self.exchange, self.verify)[0], 'N/A')
 
 
+def prompt(uuid, at_ms, objective, lead=''):
+    """A bridge prompt record as the collector reads it from the executor transcript."""
+    return {'uuid': uuid, 'at': collect.ms_to_iso(at_ms),
+            'text': f'{lead}You are executing a bounded task delegated through a multi-agent coordination bridge.\n\n'
+                    f'## Objective\n{objective}\n\n## Expected deliverable\npackage'}
+
+
+def attempt(n, start, end):
+    return {'attempt': n, 'started_at': start, 'ended_at': end}
+
+
+BASE_MS = 1_789_000_000_000
+CONT = 'You are continuing the same feature session after completed task {}.\n'
+RECOVERY = '## Manager clarification for this recovery attempt\nanswer\n## End manager clarification\n\n'
+
+
 class ChannelEvidence(unittest.TestCase):
-    """R7-01: the channel check needs complete evidence; missing coverage is INFRA, not PASS."""
-    ROUNDS = [{'task_id': 't1', 'objective': 'Round 1 contract text', 'attempts': [{'attempt': 0}]},
-              {'task_id': 't2', 'objective': 'Round 2 contract text', 'attempts': [{'attempt': 0}]}]
-    PROMPTS = ['You are executing a bounded task delegated ...\nRound 1 contract text',
-               'You are continuing the same feature session ...\nRound 2 contract text']
+    """R7-01 / W8-R1: the channel check needs every attempt bound to its own prompt record."""
+    ROUNDS = [{'task_id': 't1', 'objective': 'Round 1 contract text', 'attempts': [attempt(0, BASE_MS, BASE_MS + 60_000)]},
+              {'task_id': 't2', 'objective': 'Round 2 contract text', 'attempts': [attempt(0, BASE_MS + 120_000, BASE_MS + 180_000)]}]
+    PROMPTS = [prompt('u1', BASE_MS + 900, 'Round 1 contract text'),
+               prompt('u2', BASE_MS + 120_900, 'Round 2 contract text', CONT.format('t1'))]
 
     def transcript(self, prompts):
         return {'found': True, 'bridge_prompts': len(prompts), '_prompts': prompts}
@@ -466,12 +482,13 @@ class ChannelEvidence(unittest.TestCase):
 
     def test_complete_evidence_without_leaks_passes(self):
         inventory = {'texts': {'q-01': 'private question'}, 'unparsed_calls': 1}
-        result, _ = collect.channel_check(self.transcript(self.PROMPTS), self.ROUNDS, inventory, ['Round 1 contract text'], ['side question'])
+        result, detail = collect.channel_check(self.transcript(self.PROMPTS), self.ROUNDS, inventory, ['Round 1 contract text'], ['side question'])
         self.assertEqual(result, 'PASS')
+        self.assertEqual([b['prompt_uuid'] for b in detail['prompt_coverage']['bindings']], ['u1', 'u2'])
 
     def test_leak_in_prompt_or_contract_fails(self):
         inventory = {'texts': {'q-01': 'private question'}, 'unparsed_calls': 0}
-        leaky = [self.PROMPTS[0] + ' private question', self.PROMPTS[1]]
+        leaky = [dict(self.PROMPTS[0], text=self.PROMPTS[0]['text'] + ' private question'), self.PROMPTS[1]]
         self.assertEqual(collect.channel_check(self.transcript(leaky), self.ROUNDS, inventory, [], [])[0], 'FAIL')
         self.assertEqual(collect.channel_check({'found': False}, self.ROUNDS, inventory, ['private question in spec'], [])[0], 'FAIL')
 
@@ -486,11 +503,76 @@ class ChannelEvidence(unittest.TestCase):
         self.assertEqual(collect.channel_check(transcript, self.ROUNDS, inventory, [], [])[0], 'INFRA')
 
 
-class Times(unittest.TestCase):
-    def test_mixed_timestamp_formats_compare_by_instant(self):
-        self.assertLess(collect.ts_ms('2026-01-01T16:58:10.010Z'), collect.ts_ms('2026-01-01T16:58:10.042Z'))
-        self.assertEqual(collect.ts_ms('2026-01-01T18:49:20+02:00'), collect.ts_ms('2026-01-01T16:49:20Z'))
-        self.assertEqual(collect.ts_ms('2026-01-01T16:40:15+00:00'), collect.ts_ms('2026-01-01T16:40:15.000Z'))
+class PromptBinding(unittest.TestCase):
+    """W8-R1: prompts are bound to attempts one to one, never counted."""
+    A = {'task_id': 'A', 'objective': 'contract-A', 'attempts': [attempt(0, BASE_MS, BASE_MS + 60_000)]}
+    B = {'task_id': 'B', 'objective': 'contract-B', 'attempts': [attempt(0, BASE_MS + 120_000, BASE_MS + 180_000),
+                                                                  attempt(1, BASE_MS + 240_000, BASE_MS + 300_000)]}
+
+    def coverage(self, prompts, rounds=None):
+        return collect.prompt_coverage({'found': True, '_prompts': prompts}, rounds or [self.A, self.B])
+
+    def test_review_example_plain_prompts_cannot_prove_coverage(self):
+        cov = self.coverage(['contract-A', 'contract-A', 'contract-B'])
+        self.assertFalse(cov['complete'])
+        self.assertTrue(any('uuid or timestamp' in p for p in cov['problems']))
+
+    def test_a_repeated_prompt_does_not_stand_in_for_a_missing_attempt(self):
+        # A's prompt twice (a second record), B's first attempt, no prompt for B's recovery attempt.
+        cov = self.coverage([prompt('a1', BASE_MS + 900, 'contract-A'), prompt('a2', BASE_MS + 1_900, 'contract-A'),
+                             prompt('b1', BASE_MS + 120_900, 'contract-B', CONT.format('A'))])
+        self.assertFalse(cov['complete'])
+        self.assertIn('A#0: 2 bridge prompts in the attempt window', cov['problems'])
+        self.assertIn('B#1: 0 bridge prompts in the attempt window', cov['problems'])
+        self.assertEqual(cov['missing_tasks'], ['A', 'B'])
+
+    def test_duplicate_records_of_one_prompt_count_once(self):
+        a1 = prompt('a1', BASE_MS + 900, 'contract-A')
+        cov = self.coverage([a1, dict(a1), prompt('b1', BASE_MS + 120_900, 'contract-B', CONT.format('A')),
+                             prompt('b2', BASE_MS + 240_900, 'contract-B', RECOVERY)])
+        self.assertTrue(cov['complete'], cov['problems'])
+        self.assertEqual(cov['duplicate_records'], 1)
+
+    def test_identical_contracts_of_two_tasks_are_bound_by_attempt_window(self):
+        same = [dict(self.A, objective='same contract'), dict(self.B, objective='same contract', attempts=self.B['attempts'][:1])]
+        complete = self.coverage([prompt('a1', BASE_MS + 900, 'same contract'),
+                                  prompt('b1', BASE_MS + 120_900, 'same contract', CONT.format('A'))], same)
+        self.assertTrue(complete['complete'], complete['problems'])
+        missing = self.coverage([prompt('a1', BASE_MS + 900, 'same contract')], same)
+        self.assertFalse(missing['complete'])
+        self.assertEqual(missing['missing_tasks'], ['B'])
+
+    def test_recovery_attempt_needs_a_recovery_prompt(self):
+        cov = self.coverage([prompt('a1', BASE_MS + 900, 'contract-A'), prompt('b1', BASE_MS + 120_900, 'contract-B'),
+                             prompt('b2', BASE_MS + 240_900, 'contract-B')])
+        self.assertIn('B#1: recovery prompt without a resume or manager-clarification marker', cov['problems'])
+
+    def test_continuation_must_name_the_previous_round(self):
+        cov = self.coverage([prompt('a1', BASE_MS + 900, 'contract-A'), prompt('b1', BASE_MS + 120_900, 'contract-B', CONT.format('X')),
+                             prompt('b2', BASE_MS + 240_900, 'contract-B', RECOVERY)])
+        self.assertIn('B#0: continuation marker names X, not the previous round A', cov['problems'])
+
+    def test_contract_quoted_inside_another_text_does_not_count(self):
+        nested = {'uuid': 'a1', 'at': collect.ms_to_iso(BASE_MS + 900),
+                  'text': 'You are executing a bounded task delegated through a multi-agent coordination bridge.\n\n'
+                          '## Objective\nReview this quote: contract-A\n\n## Expected deliverable\npackage'}
+        cov = self.coverage([nested], [self.A])
+        self.assertIn('A#0: prompt does not carry the round contract as its objective', cov['problems'])
+
+    def test_prompt_outside_every_window_is_reported(self):
+        cov = self.coverage([prompt('a1', BASE_MS + 900, 'contract-A'), prompt('zz', BASE_MS + 90_000, 'contract-A')], [self.A])
+        self.assertIn('1 bridge prompt(s) outside every attempt window', cov['problems'])
+
+    def test_real_transcript_records_carry_uuid_and_timestamp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / 'p').mkdir()
+            rec = {'type': 'user', 'uuid': 'u1', 'timestamp': '2026-01-01T00:00:01.000Z', 'isSidechain': False,
+                   'message': {'content': self.A and prompt('x', 0, 'contract-A')['text']}}
+            side = dict(rec, uuid='u2', isSidechain=True)
+            (Path(tmp) / 'p' / 'h.jsonl').write_text('\n'.join(json.dumps(r) for r in (rec, rec, side)) + '\n')
+            with patch.dict(os.environ, {'PILOT_CLAUDE_PROJECTS': tmp}):
+                transcript = collect.claude_transcript('h', [], None)
+        self.assertEqual([(p['uuid'], p['at']) for p in transcript['_prompts']], [('u1', '2026-01-01T00:00:01.000Z')] * 2)
 
 
 if __name__ == '__main__':
