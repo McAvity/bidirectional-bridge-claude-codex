@@ -27,6 +27,11 @@ Status: W TOKU. Plan: [PLAN.md](PLAN.md), AC: [ACCEPTANCE.md](ACCEPTANCE.md).
 - [x] Instrukcje ról i dokumentacja (bridge-loop, feature-execute, using-bridge w obu
       identycznych kopiach, recovery/feature-workflow/PROTOCOL/troubleshooting/fork-setup/README).
 - [x] [DEPLOY-AND-RESUME.md](DEPLOY-AND-RESUME.md) — gotowa do review, niewykonana.
+- [x] Poprawki procedury po review: dostarczenie instrukcji do worktree wave7 (nowy runtime
+      nie zmienia tamtejszych skilli), rozdzielenie kontroli procesów od listingu plików
+      bazy, kopia zapasowa przez SQLite `.backup` przed startem managera wraz ze sprawdzeniem
+      integralności, rozróżnienie odmowy żądania (task zostaje `FAILED`) od nieudanego strict
+      resume rozpoczętej próby (`BLOCKED`).
 - [x] Pełna walidacja: build, 379 testów JS, 19 + 110 testów Pythona, kontrola dokumentów,
       `git diff --check`.
 - [ ] Review użytkownika i decyzja o wdrożeniu (poza tym zadaniem).
