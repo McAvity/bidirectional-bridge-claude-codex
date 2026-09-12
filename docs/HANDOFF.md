@@ -4,6 +4,25 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
+## Wave10 — authorized main-first scenarios completed; review ready
+
+Preparation d7cdbb0, original bridge9e8f060 unchanged. Both retained R2 completed,
+A restarted in the exact native session while B remained active;77.708s real R2
+overlap. Both genuine Astra reviews PASS, verify4 PASS, final A6/B3 tests PASS.
+140 operator tests, pinned build,2 handshakes and preflight PASS. Separate foreign
+probe used the exact validated arguments: MANAGER_FOREIGN_THREAD on first attempt,
+full before/after state unchanged. All clients normally closed; no live MCP/workers.
+
+Segment868.526s: A3/B2 turns, Claude2/2, foreign1/2. R1 never repeated; histories and
+sessions preserved. Final features awaiting_review, unaccepted, A generation10/B8,
+epoch1 detached. No retry of an executed worker, replacement pair, recovery, push/merge.
+P1–P6 PASS; P7 four packages/tests/new budget PASS, original uninterrupted v2 still
+UNVERIFIED due preserved earlier gaps. This does not close all wave10.
+
+Next: review final report and decide acceptance; do not restart the completed relay
+or repeat R2. Latest evidence/checkpoint is the final section of wave10-report.md.
+Historical blockers and budgets below remain historical, superseded by this result.
+
 ## Wave10 — relay fixed; continuation stopped at foreign input schema
 
 Current fix4f32170 separates paste, explicit one-shot Enter and native rollout

@@ -590,3 +590,143 @@ Po rozszerzeniu zakresu: świeży operator/baseline zachowanych sesji generation
 foreign, B/r2, normalny restart A podczas B, A/r2 i immediate release, review i verify4.
 R1 nie powtarzać, nie tworzyć zastępczych par. Status: **RELAY POPRAWIONY / PILOT
 ZATRZYMANY NA SCHEMACIE PROBE**; bez push, merge ani deklaracji ukończenia wave10.
+
+
+## Wynik końcowy zatwierdzonego segmentu main-first
+
+**Wykonano oba zatwierdzone scenariusze: R2/restart/review oraz niezależny foreign.**
+Stan: GOTOWE DO REVIEW, bez deklarowania ukończenia całego wave10 ani nieprzerwanego
+pierwotnego pilota v2. Ta sekcja jest aktualnym wynikiem; wcześniejsze wpisy pozostają
+historią przygotowania, przerw i błędów, a nie nadal aktywnymi blokadami.
+
+### Commity, przygotowanie i granice
+
+Przygotowanie `d7cdbb0` opiera się na relay `4f32170`. Zmiany ograniczono do nowego
+scope/budżetu kolejności i dokładnych argumentów foreign z walidatorem. Ogólnego relay
+nie rozbudowano. Świeży osobny zestaw `/tmp/wave10-main-first/runtime` jest przypięty
+do d7cdbb0; build,2/2 handshake bez utworzenia stanu i preflight PASS. Produkcyjny
+bridge pozostał9e8f060 z pierwotnym hashem builda; końcowy preflight potwierdził brak
+zmiany. Nie przebudowywano działającego runtime ani głównego checkoutu.
+
+Gotowe argumenty foreign przeszły rzeczywisty MCP Zod inputShape z runtime9e8f060.
+Walidator nie tworzy serwera ani nie wywołuje handlera; negatywna kontrola paths=[]
+poprawnie odrzucona. Prawdziwy foreign dostał gotowy JSON i wykonał go bez zmian.
+30 ukierunkowanych oraz140 wszystkich bezmodelowych testów narzędzi PASS.
+Nie powtarzano pełnego review integracji. Mapowanie oczyszczonej historii z początku
+raportu pozostaje bez zmian; prywatne commity pilota nie zostały importowane jako przodki.
+
+### Główny scenariusz — dowody
+
+1. Oryginalne Astry A/B wznowione przez exact native resume, generation6→7,
+   z zachowanym R1 i waiting_user/q1 bez odpowiedzi. Bez zastępczych sesji/par.
+2. B zapisała syntetyczne `suffix -B` i uruchomiła jedno B/r2 w oryginalnej sesji
+   Claude’a. Worker wykonał nową bramkę; aktywna próba i gate-ready zapisane.
+3. Podczas aktywnego B normalnie zamknięto A (generation8, detached), wznowiono
+   dokładnie ten sam native thread i jawnie manager instance (generation9).
+   Astra odczytała tożsamość oraz waiting_user/q1 unanswered przed swoim R2.
+4. A zapisała syntetyczne `suffix -A`, uruchomiła jedno A/r2 w oryginalnym Claude.
+   Operator zaobserwował aktywne próby obu par i marker A, po czym zwolnił B.
+   Opóźnienie marker A→release: **0.139s**. Bramka B: **267.682s**, bez czekania
+   na wynik A. Rzeczywisty overlap prób R2: **77.708s**.
+5. A/r2 COMPLETE po81.283s, B/r2 COMPLETE po346.589s łącznie z bramką. Obie Astry
+   samodzielnie przeczytały dostawy, uruchomiły testy/verify i zapisały review PASS
+   w bridge (inline/status/artifact), bez mechanicznego zastępowania review przez
+   operatora. Przekazanie wyników potwierdzone przez natywne notify.
+
+Obie Astry początkowo przekazały zbyt długi objective. Otrzymały INVALID_ARGUMENT
+przed utworzeniem task/attempt, odczytały stan i skróciły kontrakt z kluczemr2.
+To W10-12: jawny błąd przygotowania i korekta przed wykonaniem, nie retry workera.
+W bazach są dokładnie dwa COMPLETE na parę: historyczne R1 i jedno nowe R2.
+Brak FAILED, recovery, dodatkowych rund lub niepewnego ponawiania wykonania.
+
+| Para / runda | Base | Head | Verify |
+| --- | --- | --- | --- |
+| A/r1 | f7921baf5305121b2cb985984e0b5446b35815b2 | db72419e7676d07dbd8df40a92d4bd238ec627a0 | PASS, oryginalny ZIP bez zmian |
+| A/r2 | db72419e7676d07dbd8df40a92d4bd238ec627a0 | 7cc6628928318c4677752c83eeeb64cffef80e68 | PASS |
+| B/r1 | 412fe2c609e3392a78b1d7eab96959a0782b7cd5 | 5d06b1244e1eaf7dbc573aac978209be730b5b2f | PASS, oryginalny ZIP bez zmian |
+| B/r2 | 5d06b1244e1eaf7dbc573aac978209be730b5b2f | e50dc4d8ebd777ba4b0b88b38faf0dee180b4a66 | PASS |
+
+Końcowe testy: A6/6, B3/3 PASS. Zakres commitów R2 wyłącznie render.py,
+test_render.py i nowy ledger execution/r2/01.md; oba worktree czyste, markery ignorowane.
+R1 ZIP-y i wcześniejsze prefiksy natywnych/Claude logów zachowane. Ta sama nazwa feature,
+rund i paczek w obu parach, ale oddzielne namespace, bazy, worktree i treść A/B.
+
+### Niezależny foreign — dowody
+
+Po zakończeniu obu workerów i review uruchomiono prawdziwego obcego Codexa w A.
+Jego natywne metadata source=cli/originator=codex-tui i thread różny od obu managerów.
+Wykonał dokładnie1 manager_status oraz1 create_task z niepustym paths i **dokładnie
+przygotowanym JSON**. Wynik rzeczywistego narzędzia: **MANAGER_FOREIGN_THREAD**,
+retryable=false. Bez takeover, zmiany sesji, delegacji czy obchodzenia walidacji.
+
+Pierwsza próba wystarczyła; druga z dozwolonych2 nie została wykorzystana.
+Przed/po identyczne w obu parach: bazy SQLite, logical.sql, database.owner,
+workspace.json, Git, paczki oraz markery A round2-started/B gate-ready/continue.
+To dowód guardu i braku mutacji, odrębny od historycznej odmowy-32602.
+
+### Kryteria — osobne wyniki i granice
+
+| Kryterium | Wynik | Podstawa |
+| --- | --- | --- |
+| P1 | PASS | Osobny przypięty build, dwa handshake i preflight; runtime bez zmian. |
+| P2 | PASS | Dwie prawdziwe Astry TUI i różni Claude; overlap R1 74.394s, R2 77.708s. |
+| P3 | PASS, dowody R1+R2 | Te same nazwy przy odrębnych bazach/worktree/namespace/ZIP/treści; brak mieszania. |
+| P4 | PASS, nowy segment | Waiting_user A, normalne close, exact resume i q1 podczas aktywnego B/r2. |
+| P5 | PASS, dowody R1+R2 | Każda para zachowuje własny Claude handle; dokładnie R1+R2, bez zastępczych prób. |
+| P6 | PASS, niezależny scenariusz | Prawdziwy foreign, dokładny JSON, MANAGER_FOREIGN_THREAD i identyczny pełny stan przed/po. |
+| P7 | PASS dla zatwierdzonego segmentu; pierwotny v2 UNVERIFIED | Cztery verify i końcowe testy PASS, aktualny zakres/budżet zachowane. Nie dowodzi pierwotnego nieprzerwanego okna60min. |
+
+Nie zmieniamy kryteriów historycznego pilota: jego przerwy nadal istnieją.
+Jedynie nowy pełny przebieg mógłby dowieść pierwotnej nieprzerwanej sekwencji v2;
+taki przebieg nie był zlecony i nie powtarzano w tym celu R1. Aktualny odbiór dotyczy
+wyraźnie zatwierdzonych scenariuszy na zachowanym stanie, nie retroaktywnego PASS v2.
+
+### Budżety, rzeczywiste zużycie i historia przerw
+
+Aktualne limity:2 Claude po45min/max_turns32, MCP55min, operator20min,
+gate25min/Bash30min, segment90min; potrzebne tury Astr autoryzowane. W procesach
+MCP potwierdzono lokalny Bash max1800000 i wyłączenie background; runtime deadline
+pochodzi z wywołań2700000ms. Globalnych defaultów nie zmieniono.
+
+| Segment | Tury operatorowe A/B/foreign | Claude | Czas / przyczyna końca |
+| --- | --- | --- | --- |
+| Wczesny19ad974 | Brak wysłanych promptów | 0 | Błędny marker wklejki, zachowany wynik historyczny |
+| Pierwotny9e8f060 R1 | 1/1/0 | 2 R1 | 381.310s; błędna interpretacja num_turns18 jako naruszenia max12 |
+| Kontynuacja79f75e0 | 1/1/0 | 0 | 469.078s do STOP; krótki prompt foreign niewysłany. Wcześniejsze około9min obejmowało końcowy audit |
+| Kontynuacja4f32170 | 1/1/1 | 0 | 255.103s; schema-32602 przed guardem, bez retry |
+| Main-first d7cdbb0 | 3/2/1 | 2 R2 | **868.526s (14min29s)**; zakończono oba scenariusze, wszyscy klienci normalnie zamknięci |
+
+W nowym segmencie wykorzystano2/2 wykonańClaude oraz1/2 próbforeign. To liczby tur
+operatorowych klientów, nie utożsamienie z liczbą wewnętrznych wywołań modelu.
+Telemetria R2: turn_count A10/B13, limit wykonawcy32; pola pozostają rozdzielone.
+Reported_cost_usd A0.800363/B0.8176555 to runtime-reported ekwiwalent, nie faktura
+ani dowód dodatkowej opłaty API. Rozliczanie na kontach użytkownika potwierdzone;
+nie zmieniano ustawień, nie sprawdzano ponownie paneli. Koszt Astr pozostaje unknown,
+nie zero. Raw telemetry zachowane prywatnie. Historycznych zegarów nie resetowano.
+
+### Końcowy punkt wznowienia / odbioru
+
+Wszystkie klienty zamknięte normalnie. Brak aktywnych workerów/MCP. Bazy quick_check OK;
+A epoch1/generation10, B epoch1/generation8, detached. Feature obu par awaiting_review
+po review PASS, **nie zaakceptowany**; odpowiedzi q1 syntetyczne. Korzenie managerów
+pozostają WORKING zgodnie z zakresem. Nie uruchamiać ponownie serve/R2, nie robić
+recovery DONE tasków ani kopiować baz. Następny krok: review raportu i decyzja odbioru.
+
+Dowody lokalne: `/tmp/wave10-main-first/continuation/` — manifest/approval, operator
+PTY/screens/actions/notify; evidence/final-audit.json, final-checks.json,
+timing-summary.json, telemetry.json, mcp-timeout-env.json, release-observation.json,
+foreign-comparison.json. W oryginalnym katalogu evidence: main-b-active-a-waiting,
+main-a-resumed-b-active, main-r2-overlap, main-complete-before-foreign,
+main-after-foreign. Native UUID, Claude handles, surowe logi i bazy poza Git.
+
+Lokalne commity obejmują wyłącznie przygotowanie i dokumentację. Bez push, merge,
+podmiany aktywnego runtime ani zmian innych fal. **GOTOWE DO REVIEW — zatwierdzona
+kontynuacja wykonana; cały wave10 nadal otwarty.**
+
+
+Zabezpieczenie dowodów po zamknięciu: snapshot main-final-closed oraz prywatne kopie
+obu rolloutów Astr, obu transkryptów Claude i foreign w evidence/session-copies.
+Indeks65 plików: /tmp/wave10-main-first/evidence-index.json, SHA-256
+259c5606d5b4aecb1a9e4eb4a5308eedbf6b62cd308928bfdb4ff2b2ce6f42bb.
+Indeks i kopie pozostają poza Git. Końcowe git diff --check oraz kontrola nowych linii
+pod kątem natywnych UUID/prywatnych ścieżek domowych PASS.

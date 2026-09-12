@@ -230,3 +230,17 @@ paths negative control, invokes zero handlers. Up to2 new foreign attempts autho
 a second is allowed only in the same client after evidence of rejection before
 execution and unchanged before/after state. Operator controls this condition; never
 reuse an uncertain submission. Scope/billing approval recorded locally, no new check.
+
+
+## Main-first result: completed, do not rerun
+
+Pinned preparation d7cdbb0 completed the authorized scenarios in868.526s. Both R2
+COMPLETE in retained Claude sessions; A exact restart during active B, immediate
+release0.139s after A marker,77.708s overlap. Genuine Astra reviews, verify4 and
+A6/B3 final tests PASS. One independent foreign attempt after workers completed:
+exact prepared JSON, MANAGER_FOREIGN_THREAD, full before/after state unchanged.
+All clients normally closed. Two Claude executions consumed; one of two foreign
+attempts used, no further attempt needed. Current bases are detached generation A10/B8,
+features awaiting_review and unaccepted. Do not restart this relay or repeat rounds.
+Next is review/acceptance of the final report. Earlier gaps remain historical; this
+is not a retroactive uninterrupted v2 pass. No model/runtime action pending.

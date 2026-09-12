@@ -1,6 +1,6 @@
 # Wave10 — postęp
 
-Status: **RELAY POPRAWIONY / PILOT ZATRZYMANY NA SCHEMACIE FOREIGN PROBE**. R2 nieuruchomione; cały wave10 nadal otwarty.
+Status: **ZATWIERDZONY SEGMENT MAIN-FIRST WYKONANY / GOTOWE DO REVIEW**. R2, restart i foreign udowodnione. Pierwotny nieprzerwany v2 niezaliczony; cały wave10 nadal otwarty.
 
 ## Scope / Inputs
 
@@ -17,7 +17,7 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | --- | --- | --- |
 | W10-01 | Historia wave7 zawiera prywatne ścieżki operatora i namespace rzeczywistego worktree oraz identyfikatory runtime. | Zamknięty: import oczyszczonego snapshotu bez przodków wave7; mapowanie wszystkich 32 commitów. Metadane author/committer mają publiczny noreply, brak wykrytych linków sesji/sekretów. |
 | W10-02 | Wave7 bazuje na kodzie sprzed timeout recovery; zastąpienie plików cofnęłoby opublikowane recovery. | Zamknięty: trzystronne połączenie; konflikty control-plane (lazy services + evidence) i tools (guard + budget) rozwiązane. Regresja FAILED/TIMEOUT przez dispatcher z restartem, takeover, foreign replay i no-mutation przechodzi. Pełne testy: 425 JS / 29 exchange / 115 pilot tooling PASS. |
-| W10-03 | Pilot wymaga dokładnie wspieranego hosta Codex 0.154.0 i prawdziwego kontekstu wywołań. | Przygotowanie zamknięte: host 0.154.0, preflight i dwa handshake PASS. Realne metadata/model path nadal NOT RUN; start wymaga zgody na konkretny budżet. |
+| W10-03 | Pilot wymaga wspieranego Codex0.154.0 i prawdziwego kontekstu wywołań. | Zamknięte: prawdziwe TUI, native metadata, exact resume i foreign guard potwierdzone w main-first; szczegóły i granice w raporcie. |
 | W10-04 | Opublikowany test stdio timeout nie przekazywał nowego kontekstu native; create odrzucony przed mutacją. | Zamknięty: harness ma native metadata i jawne resume_instance po EOF; 8/8 stdio i pełne 425/425 JS PASS. |
 | W10-05 | Nazwa operator.py przesłaniała moduł standardowy Python przy bezpośrednim starcie CLI. | Zamknięty: pilot.py i test subprocess --help PASS. Pierwsze prepare zatrzymane przed utworzeniem katalogu. |
 | W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Zamknięty: wbudowane zero retry i pełna ścieżka docs/features/F-W10-pair; finalne prepare oraz export/verify obu fixture PASS. |
@@ -25,9 +25,11 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | W10-08 | Bramka B/r1 180 s nie obejmowała rundy A 480 s oraz review/restartu. | Harmonogram v2: bramka wyłącznie B/r2, po r1/review obu par; 540 s bramki, 480 s operatora, B/r2 1200 s, MCP 1320 s, całość 60 min. Zamknięty: 9 testów narzędzia + portability PASS; nowy pin 406f0e1, build, dwa handshake i preflight PASS. |
 
 | W10-09 | Transport wejścia TUI zależny od renderowania wklejki. | Zamknięte poprawką4f32170: jawne paste/submit/confirm, 30 regresji oraz140 wszystkich testów pilota PASS. Rzeczywiste długie BOOT i krótkie FOREIGN przyjęte z natywnym potwierdzeniem, bez resend. |
-| W10-10 | Sukcesowe num_turns nie jest licznikiem limitowanym przez max_turns. | Wyjaśnione; egzekwowanie pozostaje w runnerze. Exact resume A/B potwierdzone; reszta kontynuacji zatrzymana na W10-09. |
+| W10-10 | Sukcesowe num_turns nie jest licznikiem limitowanym przez max_turns. | Wyjaśnione; runner egzekwuje max_turns32 dla R2. Obie R2 COMPLETE, bez porównywania telemetrii10/13 z limitem pętli. |
 
-| W10-11 | Niedookreślone „minimal no-write spec” pozwoliło foreign wybrać scope.paths=[], niezgodne ze schematem. | Otwarte: jedyna próba zwróciła -32602 przed guardem. Brak mutacji potwierdzony, P6 UNVERIFIED. STOP bez retry i R2; następna próba wymaga rozszerzenia wyczerpanego limitu foreign. |
+| W10-11 | Niedookreślony spec foreign pozwolił wybrać niepoprawne scope.paths=[]. | Zamknięte d7cdbb0: dokładny JSON, niepuste paths, walidacja realnego Zod bez handlera; rzeczywista pierwsza próba main-first MANAGER_FOREIGN_THREAD, pełny stan przed/po identyczny. Historyczne -32602 zachowane jako błąd przygotowania. |
+
+| W10-12 | Kontrakty R2 obu Astr miały początkowo objective ponad2000 znaków. | Skorygowane przez Astry po INVALID_ARGUMENT i potwierdzeniu braku task/attempt; każde R2 uruchomione dokładnie raz. To poprawka przed wykonaniem, bez retry workera ani nowej rundy. |
 
 ## Validation / Handoff
 
@@ -333,3 +335,40 @@ z bridge9e8f060: valid PASS, empty_paths rejected,0 handlerów.30 regresji PASS.
 Brak zmian ogólnego relay; zachowujemy jawny submit/confirm. Świeży pin i manifest
 odczytają generation6. Naprawialny błąd jednego scenariusza wymaga oceny wpływu;
 nie jest automatycznym zakazem pozostałych niezależnych kroków.
+
+
+Main-first w toku (pin d7cdbb0): świeży build,2/2 handshake, preflight PASS.
+Dokładne BOOT A/B generation6→7. B poprawiła zbyt długi objective po jednoznacznym
+INVALID_ARGUMENT przed utworzeniem zadania; brak pierwszego wykonania workera.
+Następnie jedno B/r2 w tej samej sesji, aktywna bramka. A normalnie zamknięta,
+exact resume generation8→9 i waiting_user/q1 potwierdzone podczas aktywnego B.
+Jedno A/r2; oba workery aktywne. Release po0.139s od markera A, bramka B267.682s.
+Snapshoty main-b-active-a-waiting, main-a-resumed-b-active, main-r2-overlap oraz
+lokalny release-observation zachowane poza Git. Czekamy na dostawy i review;
+nie oznaczamy jeszcze verify4 ani foreign PASS.
+
+
+### Main-first zakończony — wynik końcowy
+
+Pin przygotowania d7cdbb0; produkcyjny bridge9e8f060 niezmieniony. R2 A/B COMPLETE,
+77.708s overlap, same Claude handles i natywne sesje. R1/poprzednie prefiksy logów
+nienaruszone. A/r2 commit7cc6628928318c4677752c83eeeb64cffef80e68;
+B/r2 e50dc4d8ebd777ba4b0b88b38faf0dee180b4a66. Review rzeczywistych Astr PASS,
+verify4 PASS, końcowe testy A6/B3 PASS, czyste worktree.140 testów operatora PASS.
+
+Po zakończeniu obu workerów osobny foreign: dokładny zwalidowany JSON,1 status
++1 create_task, MANAGER_FOREIGN_THREAD. Bazy, logical.sql, owner, workspace marker,
+markery bramki, Git i paczki obu par identyczne przed/po. Druga próba nieużyta.
+Normalne zamknięcie wszystkich klientów; finalnie A generation10/B8, epoch1,
+detached, awaiting_review, q1 odpowiedziane syntetycznie, brak aktywnych workerów/MCP.
+
+Nowy segment868.526s (14min29s): Astra A3/B2, foreign1/2, Claude2/2; żadnego retry
+wykonanego workera, recovery, zastępczej pary, push/merge. P1–P6 PASS z opisanymi
+łącznymi/nowymi dowodami; P7 verify/testy/budżet nowego segmentu PASS, ale pierwotny
+nieprzerwany v2 pozostaje UNVERIFIED. Nie deklarujemy ukończenia całego wave10.
+
+Punkt wznowienia: nie uruchamiać ponownie zakończonego serve ani rund. Lokalny
+zestaw /tmp/wave10-main-first/continuation/evidence zawiera final-audit, final-checks,
+timing-summary, telemetry, release-observation i foreign-comparison; surowe dane
+poza Git. Następny krok to review raportu/odbiór, nie dalsze wykonanie modeli.
+Historia przerw i dokładne kryteria w końcowej sekcji wave10-report.md.
