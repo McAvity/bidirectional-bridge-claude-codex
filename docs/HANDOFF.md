@@ -1,5 +1,22 @@
 # Current handoff
 
+## Current status — wave10 and wave11 accepted, 2026-09-13
+
+The user authorized acceptance, integration, joint validation and publication.
+Wave10 delivery `6eef24a` and focused review `db41788` are combined with wave11
+`ed2f356`. Namespace, native manager isolation, timeout recovery and Z1–Z5 workflow
+instructions are retained. All older pending-action sections below are historical.
+
+The authorized segmented real-agent pilot supports P1–P6 and segment P7 PASS.
+Original uninterrupted v2 remains UNVERIFIED; no repeat is required for acceptance.
+Wave11 instructions are adopted; behavioral improvement is not yet empirically proven.
+No active/pinned runtime is rebuilt or deployed by this integration. Pilot synthetic
+features are not accepted on behalf of a real product user.
+
+Publication and CI are the remaining closure checks. Broader setup/diagnostics work,
+wave6 REWORK coverage and empirical long-duration limits remain separate work.
+
+
 Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-workflow.
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.

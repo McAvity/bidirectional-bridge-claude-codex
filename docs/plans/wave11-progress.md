@@ -1,5 +1,14 @@
 # Wave11 — postęp
 
+## Accepted integration — 2026-09-13
+
+Previously authorized Z1–Z5 implementation `ed2f356` is integrated with accepted
+wave10 and its namespace/recovery instructions. The user authorized publication.
+No new historical analysis or model experiment is required. Earlier proposal-only
+and awaiting-integration statuses below are historical. Effectiveness remains an
+observation for later real features, not a claim established by this integration.
+
+
 Status: **Z1–Z5 ZATWIERDZONE I WDROŻONE LOKALNIE NA WAVE11**.
 
 ## Wdrożenie zatwierdzonych instrukcji
@@ -114,3 +123,7 @@ Bez push, merge, wdrożenia instrukcji i zmian produktu.
 Następny krok należy do użytkownika: osobna akceptacja lub odrzucenie zaleceń Z1–Z5.
 Dopiero zaakceptowane zmiany można przygotować na aktualnej bazie w osobnym commicie,
 zachowując późniejsze zmiany namespace/izolacji. Nie uruchomiono kolejnej serii review.
+
+Joint validation (isolated worktree): npm ci --ignore-scripts, build, 425 JS,
+29 exchange and 140 pilot-tool tests PASS; documentation check 90 files PASS;
+git diff --check clean. No paid models. Publication/CI follows this checkpoint.

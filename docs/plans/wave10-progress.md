@@ -1,5 +1,15 @@
 # Wave10 — postęp
 
+## Accepted integration — 2026-09-13
+
+User instruction “zrob to” authorized acceptance of the reviewed result, integration
+with wave11, joint validation and publication. Delivery `6eef24a`, closing review
+`db41788`, wave11 `ed2f356`; original branches and private evidence preserved.
+The authorized segmented pilot is accepted with its recorded limitations; original
+uninterrupted v2 stays UNVERIFIED. No additional model run or runtime deployment.
+Joint validation and publication/CI will be recorded below.
+
+
 Status: **ZATWIERDZONY SEGMENT MAIN-FIRST WYKONANY / GOTOWE DO REVIEW**. R2, restart i foreign udowodnione. Pierwotny nieprzerwany v2 niezaliczony; cały wave10 nadal otwarty.
 
 ## Scope / Inputs
@@ -401,3 +411,7 @@ completion of the older wave6 REWORK scenario follows from this small pilot.
 Next: user acceptance of this result, integration with wave11 and joint validation,
 then publication/CI. Preserve the existing pinned runtimes and private evidence.
 No models, source fixes, merge, push or runtime rebuild performed in this review.
+
+Joint validation (isolated worktree): npm ci --ignore-scripts, build, 425 JS,
+29 exchange and 140 pilot-tool tests PASS; documentation check 90 files PASS;
+git diff --check clean. No paid models. Publication/CI follows this checkpoint.
