@@ -1,5 +1,10 @@
 # Wave11 — propozycja instrukcji i scenariusze
 
+> Aktualizacja: użytkownik zatwierdził Z1–Z5; instrukcje wdrożono lokalnie na
+> branchu wave11. Integracja po wave10 musi zachować jego zmiany, zwłaszcza
+> namespace wymiany. Szczegóły: [progress](wave11-progress.md). Poniżej zachowano
+> historyczny dokument analizy/propozycji sprzed akceptacji.
+
 Status: PROPOZYCJA, **nie wdrożono**. Podstawa: [raport](wave11-report.md), obserwacje
 O1–O9 i zalecenia Z1–Z5. [Dokładny diff](wave11-workflow-proposal.patch) powstał względem
 `b040ca1ab5e9a22525671373aa7cff99e4bd7dfe`. To materiał do osobnej akceptacji zaleceń,

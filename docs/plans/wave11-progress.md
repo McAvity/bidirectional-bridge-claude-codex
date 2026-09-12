@@ -1,5 +1,40 @@
 # Wave11 — postęp
 
+Status: **Z1–Z5 ZATWIERDZONE I WDROŻONE LOKALNIE NA WAVE11**.
+
+## Wdrożenie zatwierdzonych instrukcji
+
+Użytkownik zatwierdził zalecenia Z1–Z5 i zlecił wdrożenie na branchu `wave11`
+oraz lokalny commit. Baza wdrożenia: `b766fa4cc689769678fa19441313d98dd2ef921f`;
+własny worktree `~/.herdr/worktrees/bridge/wave11`, początkowo czysty.
+Zastosowano dokładnie zatwierdzony `wave11-workflow-proposal.patch` do sześciu plików:
+wspólnego workflow, feature-review, feature-execute i bridge-loop oraz obu kopii
+using-bridge. Historyczny patch i analiza pozostają zachowane.
+
+Instrukcje rozdzielają blokery, uwagi i osobne zadania; korekty śledzą otwarte ID,
+dodatkowy reviewer wymaga konkretnej wartości, a trzeci nawrót problemu uruchamia
+ocenę prostszego podejścia. Nadal obowiązują istotne wymagania, granice autoryzacji
+i odrębny odbiór użytkownika. Nie dodano dokumentu ani pytania dla samego kroku wstecz.
+
+Walidacja wdrożenia: quick_validate dla czterech zmienionych skilli PASS;
+spójność treści wspólnych instrukcji, ról i bramki akceptacji sprawdzona;
+obie kopie using-bridge identyczne. Kontrola dokumentacji: 36 plików PASS;
+trzy względne odsyłacze w zmienionych skillach/referencji: PASS.
+`git apply --reverse --check` dla zachowanego patcha i `git diff --check`: PASS.
+Bez testów produktu i modeli — zmiany tekstowe.
+
+**Integracja nastąpi po wave10 i musi zachować jego zmiany, zwłaszcza namespace
+wymiany.** Nie zastępować wtedy całych plików starszymi kopiami z wave11; przenieść
+zmiany Z1–Z5 i rozliczyć nakładające się fragmenty na aktualnej bazie po wave10.
+W tym kroku nie zmieniano worktree ani instrukcji wave10, baz lub przypiętego runtime.
+Bez merge, push, delegacji i uruchamiania modeli; bez ponownej analizy historycznej.
+
+Commit wdrożenia: `docs(wave11): apply approved workflow simplifications`;
+SHA podaje końcowe przekazanie, bez samoodwołującego hasha w treści commita.
+Następny krok: odczekać na zakończenie wave10, następnie osobno zlecona integracja.
+
+## Zachowany zapis etapu analizy — przed akceptacją Z1–Z5
+
 Status: **ANALIZA GOTOWA DO REVIEW**. Plan: [wave11.md](wave11.md).
 Zalecenia oczekują osobnej akceptacji; aktywnych skilli nie zmieniono.
 

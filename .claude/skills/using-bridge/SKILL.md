@@ -73,7 +73,7 @@ achieve a usage percentage during ordinary work.
 5. **Delegate the selected child.** Call `bridge_delegate` with the root `run_id`, root `task_id` as `parent_task_id`, depth `1`, a bounded task spec, necessary artifact IDs, a realistic deadline, and normally `max_attempts: 0`. A second child needs the checkpoint justification above. Omit caller identity; the server binds it.
 6. **Let the orchestrator manage the child.** Do not manually create, claim, lease, finalize, or save handles for the child.
 7. **Consume the structured result.** Check that it answers the actual user request. Preserve `PARTIAL` or `FAILED` honestly.
-8. **Verify proportionately as manager.** Use real evidence appropriate to the task. Do not treat the worker’s claim as sufficient by itself.
+8. **Verify proportionately as manager.** Use real evidence appropriate to the task. Do not treat the worker’s claim as sufficient by itself. Distinguish acceptance blockers, nonblocking notes and separate tasks. Recheck open findings and concrete related regressions; another reviewer needs a named risk, evidence gap or required independence. In feature rounds apply the shared step-back rule at the third review of the same problem, even with progress; it is not a repair limit, extra document or automatic user question.
 9. **Finish the root.** Submit the manager deliverable with `bridge_submit_deliverable`; `COMPLETE` requires at least one real passing check and no failing check.
 10. **Release manager leases.** Release any lease acquired manually for the root.
 

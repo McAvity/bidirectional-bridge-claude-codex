@@ -1,5 +1,10 @@
 # Wave11 — decyzje Astry i nadmiar koordynacji
 
+> Aktualizacja: użytkownik zatwierdził Z1–Z5; instrukcje wdrożono lokalnie na
+> branchu wave11. Integracja po wave10 musi zachować jego zmiany, zwłaszcza
+> namespace wymiany. Szczegóły: [progress](wave11-progress.md). Poniżej zachowano
+> historyczny dokument analizy/propozycji sprzed akceptacji.
+
 Status: **ANALIZA GOTOWA DO REVIEW**. Zalecenia są propozycją; nie zostały przyjęte
 ani wdrożone. Analiza dotyczy odebranego zakresu izolacji wave7 i integracji wave9,
 nie całej mapy wydania wave7 ani technicznej poprawności bridge’a dzisiaj.

@@ -96,10 +96,12 @@ diagnostic, not round input.
 3. Check the round against its contract: `git diff --name-only <base>..HEAD` and
    `git status --porcelain` must stay within `scope.paths`, and `feature.json`, `reviews/`,
    `decisions/` and task files must be untouched by the executor.
-4. Use `$feature-review` (implementation or corrections mode): inspect `git diff base..head`
-   and the new ledger, rerun the decisive checks yourself, and write `reviews/NN-<mode>.md`
-   naming the reviewed task id. For every required finding carried from the previous review,
-   record `resolved`, `progress` or `no progress`.
+4. Use `$feature-review` in the appropriate mode: inspect the changed scope and new ledger,
+   rerun decisive checks, and record the reviewed task id and exact revision. For corrections,
+   append a dated entry to the existing review register and recheck open findings and concrete
+   related regressions; a new round alone does not require a new review file or another reviewer.
+   For every carried required finding, record `resolved`, `progress` or `no progress`.
+   Keep new material defects visible and retain earlier evidence whose scope is unchanged.
 5. A missing, failing or stale package, an empty `code_changes` range, uncommitted in-scope
    work or any change outside the scope is a required finding for the next round, not a user
    question.
@@ -114,8 +116,10 @@ diagnostic, not round input.
    - the same material finding with `no progress` in two consecutive reviews, or two
      consecutive recoveries of one task ending blocked on the same blocker → stop and ask
      the user with the cause of the impasse and the concrete decision needed. This is not a
-     limit on the number of rounds: keep going while rounds make progress, within any
-     explicit budget.
+     limit on the number of rounds: continue authorized corrections within the explicit budget.
+     Progress alone does not justify preserving an increasingly complex approach: at the third
+     review of the same problem in a phase, apply the shared step-back rule. This requires no
+     extra document or automatic user question and never permits accepting a material defect.
 
 Update `feature.json` (`phase`, `latest_review`, `latest_decision`, `next_action`) and task
 statuses after each review. Keep executor `COMPLETE`, your review verdict and user acceptance
@@ -124,7 +128,9 @@ as three separate facts.
 ## Ask the user
 
 `bridge_feature_wait_user` freezes every round and recovery of this feature until the answer
-is recorded. Before asking, finish the rounds that do not depend on the answer.
+is recorded. Before asking, check existing authorization, gather locally available essential
+evidence and finish the rounds that do not depend on the answer. Do not use a missing local
+investigation as a reason to ask whether an existing requirement should still apply.
 
 1. `bridge_feature_wait_user({feature_id, question_id: "q-NN", question})`, NN = the next
    number not yet used in this feature. The question is self-contained: the decision,
