@@ -66,6 +66,17 @@ class ContinuationTests(unittest.TestCase):
         state={**original,'attempts':original['attempts']+[{'execution_handle':'replacement','outcome':None}]}
         with self.assertRaisesRegex(ValueError,'Claude session changed'):C.check_worker_state(state,original)
 
+    def test_prepare_uses_multiline_prompts_for_the_verified_paste_path(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)/'old';root.mkdir();out=Path(d)/'continuation'
+            for name in ['ROUND2-A.txt','ROUND2-B.txt','RESUME-A.txt','FOREIGN.txt']:
+                (root/name).write_text('Synthetic one-line prompt')
+            with patch.object(C,'audit',return_value={'retained':'unchanged'}),patch.object(C.pilot,'git',return_value='synthetic-sha'):
+                C.prepare(root,out)
+            for name in json.loads((out/'manifest.json').read_text())['prompt_sha256']:
+                self.assertIn('\n',(out/name).read_text(),name)
+            self.assertFalse((out/'approval.json').exists())
+
     def test_old_approval_cannot_authorize_continuation(self):
         with tempfile.TemporaryDirectory() as d:
             out=Path(d);(out/'manifest.json').write_text('{}')

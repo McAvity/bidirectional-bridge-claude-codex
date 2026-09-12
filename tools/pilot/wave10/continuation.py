@@ -110,7 +110,8 @@ new feature, new manager root, review of R1 or package rewrite. Stop on any mism
 '''
         prompts[f'ROUND2-{p.upper()}.txt'] = COUNTER_NOTICE + (root/f'ROUND2-{p.upper()}.txt').read_text()
     prompts['RESTART-A.txt'] = COUNTER_NOTICE + (root/'RESUME-A.txt').read_text()
-    prompts['FOREIGN.txt'] = (root/'FOREIGN.txt').read_text()
+    # All prepared inputs use the same multiline PTY paste path verified in R1.
+    prompts['FOREIGN.txt'] = 'Foreign-manager probe only; no worker or takeover.\n' + (root/'FOREIGN.txt').read_text() + '\n'
     for name, text in prompts.items(): pilot.write(out/name, text)
     m = {'scope': SCOPE, 'budget': BUDGET, 'original_run': str(root),
          'operator_sha': pilot.git(pilot.SOURCE, 'rev-parse', 'HEAD'),

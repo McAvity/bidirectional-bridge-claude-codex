@@ -220,3 +220,20 @@ Scenariusz, semantyka i budżet: tools/pilot/wave10/CONTINUATION.md. Do zatwierd
 2 rundy Claude max12 (A 8 min/B 20 min), A 3 tury, B 2, foreign 1; segment 45 min.
 P1–P6 można oceniać przy zachowaniu wymaganych dowodów; P4 musi zajść na nowo w czasie
 B/r2. P7 oryginalnego nieprzerwanego v2 nie może stać się PASS przez sklejenie segmentów.
+
+Punkt wznowienia kontynuacji: pin narzędzi c136c7d, świeży pomocniczy build
+/tmp/wave10-continuation-c136c7d; build, dwa handshake, preflight PASS. Przygotowany
+manifest w continuation/ wiąże oryginalny pilot i runtime9e8f060; SHA-256 manifestu
+9ec2c2a18ee64739b1acd1eac14c87380d60eb441bf4e60b281c074c0d177931.
+Audit przed/po i ponowny preflight identyczne; właściwe approval.json i operator/
+nie istnieją. 23 testy narzędzi oraz 5 wybranych regresji runnera PASS. BuildArgs
+potwierdza konkretny limit12 i exactresume bez tworzenia procesów. W10-10: wyjaśnienie
+liczników i poprawka operatora gotowe; rzeczywista kontynuacja oczekuje decyzji o
+nowym scope/budżecie. Nie zmieniono starego zegara, approval, baz ani runtime.
+Dokładne kroki/budżet/kryteria: końcowa sekcja wave10-report.md i CONTINUATION.md.
+
+Końcowa korekta przygotowania: także FOREIGN.txt ma teraz jawnie wielowierszowy format,
+jak sprawdzona rzeczywista ścieżka wklejania R1. Nie dodajemy kolejnej heurystyki TUI.
+24 testy PASS, w tym przygotowanie wszystkich promptów tą samą ścieżką. To poprawka
+przed modelami; zestaw c136c7d zachowany jako wcześniejsze przygotowanie, następny pin
+narzędzi i manifest zastąpią go do startu. Oryginalny pilot/runtime pozostają bez zmian.
