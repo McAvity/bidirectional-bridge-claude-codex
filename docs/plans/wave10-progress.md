@@ -372,3 +372,32 @@ zestaw /tmp/wave10-main-first/continuation/evidence zawiera final-audit, final-c
 timing-summary, telemetry, release-observation i foreign-comparison; surowe dane
 poza Git. Następny krok to review raportu/odbiór, nie dalsze wykonanie modeli.
 Historia przerw i dokładne kryteria w końcowej sekcji wave10-report.md.
+
+
+## Coordinator closing review — 2026-09-12
+
+PASS recommendation for the explicitly authorized segmented pilot and integration
+at `6eef24a`; this is not user acceptance, merge, publication or deployment.
+Focused review only: operator corrections since `b05624d`, final evidence and
+compatibility with accepted wave11 `ed2f356`. No new product blocker found.
+
+Independent checks:
+- All 65 indexed local evidence files match their recorded SHA-256.
+- All 15 files in the before/after foreign snapshots compare byte-for-byte equal.
+- Final audit records exact prepared arguments, a distinct native foreign manager,
+  MANAGER_FOREIGN_THREAD, stable native manager/Claude sessions and healthy databases.
+- Final checks contain four passing package verifications, unchanged R1 archives,
+  A 6/6 and B 3/3 tests; timing records show 77.708 seconds of R2 overlap.
+- Targeted operator tests independently rerun: 30/30 PASS.
+- Git merge-tree of wave10 and wave11 succeeds without conflicts. Inspected combined
+  bridge-loop retains namespace, timeout recovery and the new focused-review and
+  step-back rules. This is a compatibility preview, not validation of a deployed merge.
+
+P1-P6 and the authorized segment's checks/budget support PASS. Original uninterrupted
+v2 remains UNVERIFIED; no rerun is recommended solely to change that historical fact.
+No empirical claim about 75/90-minute execution, general unattended reliability or
+completion of the older wave6 REWORK scenario follows from this small pilot.
+
+Next: user acceptance of this result, integration with wave11 and joint validation,
+then publication/CI. Preserve the existing pinned runtimes and private evidence.
+No models, source fixes, merge, push or runtime rebuild performed in this review.
