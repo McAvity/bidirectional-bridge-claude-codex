@@ -56,6 +56,11 @@ export interface BeginRecoveryInput {
   readonly task_id: TaskId;
   readonly agent: AgentId;
   readonly next_attempt: number;
+  /**
+   * Reopen a FAILED task whose failure the caller has already proven was the bridge
+   * deadline. This is the only way out of FAILED; `ALLOWED_TRANSITIONS` stays terminal.
+   */
+  readonly from_timeout?: boolean;
 }
 
 export interface DependencyReport {
@@ -483,7 +488,17 @@ export class TaskService {
   beginRecovery(input: BeginRecoveryInput): Task {
     return this.store.transaction(() => {
       const task = this.assertOwner(this.get(input.task_id), input.agent);
-      this.assertRecoverable(task);
+      if (input.from_timeout === true) {
+        if (task.state !== TaskState.FAILED) {
+          throw new BridgeError(
+            ErrorCode.ILLEGAL_TRANSITION,
+            `timeout recovery reopens only FAILED tasks; ${task.task_id} is ${task.state}`,
+            { task_id: task.task_id, state: task.state },
+          );
+        }
+      } else {
+        this.assertRecoverable(task);
+      }
       if (input.next_attempt !== task.attempt + 1) {
         throw new BridgeError(
           ErrorCode.ILLEGAL_TRANSITION,
@@ -504,8 +519,10 @@ export class TaskService {
       this.assertPersistedLineage(task);
 
       const now = this.clock.now();
+      // A reopened task is no longer complete; its FAILED transition stays in the event log.
+      const { completed_at: _completedAt, ...open } = task;
       const recovered: Task = {
-        ...task,
+        ...open,
         state: TaskState.WORKING,
         attempt: input.next_attempt,
         blockers: [],
@@ -521,7 +538,7 @@ export class TaskService {
           payload: {
             from: task.state,
             to: TaskState.WORKING,
-            reason: "recovery",
+            reason: input.from_timeout === true ? "timeout_recovery" : "recovery",
             attempt: input.next_attempt,
           },
         },

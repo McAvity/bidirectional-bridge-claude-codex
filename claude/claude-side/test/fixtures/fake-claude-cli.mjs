@@ -79,6 +79,12 @@ emit({
   uuid: "2cf21c75-ea12-42d4-ac74-550b8c2e05b4",
 });
 
+// Diagnostics a real CLI may print on stderr (warnings, API retries, fatal startup errors).
+// Pipes are synchronous on Linux, so this is fully written even before an immediate exit.
+if (env.FAKE_CLAUDE_STDERR) {
+  process.stderr.write(env.FAKE_CLAUDE_STDERR);
+}
+
 if (mode === "hang") {
   // Hold stdout open forever; the adapter must terminate us on deadline or cancel.
   setInterval(() => {}, 1 << 30);

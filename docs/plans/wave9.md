@@ -1,6 +1,6 @@
 # Wave9 — integracja timeout/recovery i aktualizacja statusów
 
-Status: ZAPLANOWANE. Ten dokument autoryzuje przygotowanie lokalnego brancha do review,
+Status: GOTOWE DO REVIEW — lokalny zakres wykonany; review, publikacja i CI pozostają. Ten dokument autoryzuje przygotowanie lokalnego brancha do review,
 nie push, merge do feature-workflow, wdrożenie ani uruchomienie agentów.
 
 ## Cel

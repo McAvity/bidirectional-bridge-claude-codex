@@ -369,7 +369,7 @@ describe("MCP tool surface", () => {
     cp.tasks.block(child.task_id, "codex", "stranded");
 
     const tool = TOOLS.find((candidate) => candidate.name === "bridge_resume_task")!;
-    expect(Object.keys(tool.inputShape).sort()).toEqual(["idempotency_key", "task_id"]);
+    expect(Object.keys(tool.inputShape).sort()).toEqual(["deadline_ms", "idempotency_key", "max_turns", "task_id"]);
     const denied = await call(
       "bridge_resume_task",
       { task_id: child.task_id },
@@ -454,7 +454,9 @@ describe("MCP tool surface", () => {
     const tool = TOOLS.find(
       (candidate) => candidate.name === "bridge_resume_delegated_task",
     )!;
-    expect(Object.keys(tool.inputShape).sort()).toEqual(["idempotency_key", "message", "task_id"]);
+    expect(Object.keys(tool.inputShape).sort()).toEqual([
+      "deadline_ms", "idempotency_key", "max_turns", "message", "recover_timeout", "task_id",
+    ]);
     const resumed = await call(
       "bridge_resume_delegated_task",
       { task_id: child.task_id, idempotency_key: "delegated-resume-tool-once" },
@@ -473,6 +475,92 @@ describe("MCP tool surface", () => {
     expect(invoked).toEqual(["claude"]);
     expect(cp.tasks.get(child.task_id).owner).toBe("claude");
     expect(cp.tasks.list()).toHaveLength(2);
+  });
+
+  it("reopens a timed-out FAILED child only through the explicit manager opt-in", async () => {
+    const invoked: number[] = [];
+    cp.adapters.register({
+      info: {
+        agent: "claude",
+        implementation: "timeout-tool-fixture",
+        version: "1.0.0",
+        capabilities: ["resume"],
+        max_concurrency: 1,
+      },
+      async health() {
+        return { status: AdapterHealth.READY, checked_at: clock.now() };
+      },
+      async invoke(invocation, invocationContext) {
+        invoked.push(invocation.deadline_at - clock.now());
+        await invocationContext.saveExecutionHandle(invocation.previous_execution_handle!);
+        const check = passing("timeout tool fixture");
+        await invocationContext.recordVerification(check);
+        return {
+          task_id: invocation.task_id,
+          agent: "claude",
+          status: DeliverableStatus.COMPLETE,
+          summary: "timed-out child resumed",
+          changed_scope: [],
+          artifacts: [],
+          commit_or_diff: null,
+          verification_performed: [check.command],
+          verification_results: [check],
+          remaining_risks: [],
+          dependencies_unblocked: [],
+          recommended_next_action: "none",
+          at: clock.now(),
+        };
+      },
+      async cancel() {},
+    });
+    const parent = cp.tasks.create({ spec: spec(), created_by: "codex", run_id: "run_0000000001" });
+    cp.tasks.claim(parent.task_id, "codex");
+    const child = cp.tasks.create({
+      spec: spec({ scope: CLAUDE_SCOPE, preferred_agent: "claude" }),
+      created_by: "codex",
+      parent_task_id: parent.task_id,
+    });
+    cp.tasks.claim(child.task_id, "claude");
+    cp.tasks.transition({ task_id: child.task_id, agent: "claude", to: TaskState.WORKING });
+    cp.attempts.start(child.task_id, 0, "claude");
+    cp.attempts.saveHandle(child.task_id, 0, "claude", "session_timeout_tool");
+    cp.attempts.end(child.task_id, 0, "claude", ErrorCode.TIMEOUT);
+    cp.tasks.transition({
+      task_id: child.task_id,
+      agent: "claude",
+      to: TaskState.FAILED,
+      reason: "TIMEOUT: adapter 'claude' exceeded its 900000ms deadline",
+    });
+
+    const plain = await call("bridge_resume_delegated_task", { task_id: child.task_id, idempotency_key: "plain" }, ctx("codex"));
+    expect(plain.data.error.code).toBe(ErrorCode.ILLEGAL_TRANSITION);
+    const noDeadline = await call(
+      "bridge_resume_delegated_task",
+      { task_id: child.task_id, recover_timeout: true, idempotency_key: "no-deadline" },
+      ctx("codex"),
+    );
+    expect(noDeadline.data.error.code).toBe(ErrorCode.INVALID_ARGUMENT);
+    const owner = TOOLS.find((candidate) => candidate.name === "bridge_resume_task")!;
+    expect(Object.keys(owner.inputShape).sort()).toEqual(["deadline_ms", "idempotency_key", "max_turns", "task_id"]);
+    expect(invoked).toHaveLength(0);
+
+    const resumed = await call(
+      "bridge_resume_delegated_task",
+      { task_id: child.task_id, recover_timeout: true, deadline_ms: 4_500_000, max_turns: 120, idempotency_key: "timeout-1" },
+      ctx("codex"),
+    );
+    expect(resumed.isError).toBe(false);
+    expect(resumed.data).toMatchObject({
+      task_id: child.task_id,
+      recovered_attempt: 1,
+      resumed_from_attempt: 0,
+      recovery_mode: "timeout",
+      deadline_ms: 4_500_000,
+      same_execution_handle: true,
+      state: TaskState.DONE,
+    });
+    expect(invoked).toEqual([4_500_000]);
+    expect(JSON.stringify(resumed.data)).not.toContain("session_timeout_tool");
   });
 
   it("creates child lineage and queries normalized telemetry without exporting handles", async () => {

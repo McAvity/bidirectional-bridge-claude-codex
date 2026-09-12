@@ -48,6 +48,7 @@ import { once } from "node:events";
 import {
   AttemptTerminationKind,
   BridgeError,
+  DEADLINE_ABORT_REASON,
   DEFAULT_TASK_MAX_TURNS,
   ErrorCode,
   MAX_TASK_MAX_TURNS,
@@ -58,6 +59,7 @@ import {
   type ArtifactId,
   type InvocationContext,
   type TaskInvocation,
+  type TerminationEvidence,
   type VerificationResult,
 } from "@bridge/protocol";
 import type { ClaudeRunResult, ClaudeRunner } from "./claude-adapter.js";
@@ -695,6 +697,15 @@ export class ClaudeCodeRunner implements ClaudeRunner {
     let killedForDeadline = false;
     let killedForCancel = false;
 
+    // Termination evidence: counts and times only, never frame content or argv.
+    let stderrBytes = 0;
+    let stdoutBytes = 0;
+    let frameCount = 0;
+    const frameTypes: Record<string, number> = {};
+    let lastFrameAt: number | null = null;
+    let sigtermSent = false;
+    let sigkillSent = false;
+
     // Runtime identity, taken from the frames that authoritatively carry it.
     let runtimeVersion: string | null = null;
     let model: string | null = null;
@@ -706,10 +717,14 @@ export class ClaudeCodeRunner implements ClaudeRunner {
 
     const killGrace = this.options.killGraceMs ?? DEFAULT_KILL_GRACE_MS;
     const hardKill = (): void => {
-      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+      if (child.exitCode === null && child.signalCode === null) {
+        sigkillSent = true;
+        child.kill("SIGKILL");
+      }
     };
     const stop = (): void => {
       if (child.exitCode !== null || child.signalCode !== null) return;
+      sigtermSent = true;
       child.kill("SIGTERM");
       setTimeout(hardKill, killGrace).unref?.();
     };
@@ -730,8 +745,14 @@ export class ClaudeCodeRunner implements ClaudeRunner {
     }
 
     const onAbort = (): void => {
-      killedForCancel = true;
-      this.log(`[claude-runner] cancelled ${invocation.task_id}; terminating`);
+      // The control plane marks an abort at its own deadline; anything else is a cancel.
+      if (ctx.signal.reason === DEADLINE_ABORT_REASON) {
+        killedForDeadline = true;
+        this.log(`[claude-runner] bridge deadline reached for ${invocation.task_id}; terminating`);
+      } else {
+        killedForCancel = true;
+        this.log(`[claude-runner] cancelled ${invocation.task_id}; terminating`);
+      }
       stop();
     };
     ctx.signal.addEventListener("abort", onAbort, { once: true });
@@ -741,12 +762,17 @@ export class ClaudeCodeRunner implements ClaudeRunner {
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (c: string) => {
+      stderrBytes += Buffer.byteLength(c, "utf8");
       stderr += c;
       if (stderr.length > 64_000) stderr = stderr.slice(-64_000);
     });
 
     const handleFrame = async (frame: ClaudeFrame): Promise<void> => {
       frames.push(frame);
+      frameCount += 1;
+      lastFrameAt = Date.now();
+      const frameType = typeof frame.type === "string" && /^[a-z_]{1,40}$/u.test(frame.type) ? frame.type : "other";
+      frameTypes[frameType] = (frameTypes[frameType] ?? 0) + 1;
       const id = (frame as { session_id?: unknown }).session_id;
 
       // Requirement 3: persist the real session id the instant it exists. The init frame
@@ -790,6 +816,7 @@ export class ClaudeCodeRunner implements ClaudeRunner {
     // init frames would otherwise race to write the handle.
     let chain: Promise<void> = Promise.resolve();
     child.stdout.on("data", (chunk: string) => {
+      stdoutBytes += Buffer.byteLength(chunk, "utf8");
       buffer += chunk;
       stdoutTail = (stdoutTail + chunk).slice(-8_000);
       let idx: number;
@@ -844,6 +871,45 @@ export class ClaudeCodeRunner implements ClaudeRunner {
     }
     this.lastTelemetry.set(invocation.task_id, telemetry);
     const telemetryUpdate = toTelemetryUpdate(telemetry);
+
+    // Deadline and cancel return no stderr, and a missing result frame throws: hand the
+    // bounded stderr tail and process facts to the control plane before any of that.
+    if (telemetry.termination_kind !== AttemptTerminationKind.COMPLETED) {
+      const evidence: TerminationEvidence = {
+        runtime: CLAUDE_RUNTIME_NAME,
+        runtime_version: runtimeVersion,
+        termination_kind: telemetry.termination_kind,
+        reason: terminationReason({
+          cancelled: killedForCancel,
+          timed_out: killedForDeadline,
+          profile_mismatch: profileMismatch,
+          frame: resultFrame,
+        }),
+        deadline_at: invocation.deadline_at,
+        process: {
+          exit_code: exitCode,
+          signal: exitSignal,
+          started_at: startedAt,
+          ended_at: endedAt,
+          sigterm_sent: sigtermSent,
+          sigkill_sent: sigkillSent,
+        },
+        stream: {
+          stdout_bytes: stdoutBytes,
+          frames: frameCount,
+          frame_types: { ...frameTypes },
+          first_output_at: firstOutputAt,
+          last_frame_at: lastFrameAt,
+          result_frame: resultFrame !== null,
+        },
+        stderr: { total_bytes: stderrBytes, tail: stderr },
+      };
+      try {
+        await ctx.recordTerminationEvidence?.(evidence);
+      } catch (err) {
+        this.log(`[claude-runner] could not record termination evidence: ${(err as Error).message}`);
+      }
+    }
 
     /* ---- map the run onto a structured result ---- */
 
@@ -1030,6 +1096,23 @@ function terminationKind(input: BuildRunnerTelemetryInput): AttemptTerminationKi
     return AttemptTerminationKind.FAILED;
   }
   return AttemptTerminationKind.COMPLETED;
+}
+
+/** Short machine label for termination evidence, in the same precedence as `terminationKind`. */
+function terminationReason(input: {
+  readonly cancelled: boolean;
+  readonly timed_out: boolean;
+  readonly profile_mismatch: boolean;
+  readonly frame: ClaudeResultFrame | null;
+}): string {
+  if (input.cancelled) return "cancelled";
+  if (input.timed_out) return "deadline";
+  if (input.profile_mismatch) return "profile_mismatch";
+  if (!input.frame) return "no_result_frame";
+  if (input.frame.subtype === "error_max_turns" || input.frame.terminal_reason === "max_turns") {
+    return "max_turns";
+  }
+  return "runtime_error";
 }
 
 /** The single model the attempt ran on, when the runtime names exactly one. */

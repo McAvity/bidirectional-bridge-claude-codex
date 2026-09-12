@@ -21,6 +21,7 @@ import type {
 } from "./ids.js";
 import type {
   Artifact,
+  AttemptTerminationKind,
   AttemptTelemetryUpdate,
   Deliverable,
   StatusUpdate,
@@ -94,8 +95,54 @@ export interface InvocationContext {
    * writes a partial telemetry row.
    */
   reportTelemetry?(update: AttemptTelemetryUpdate): Promise<void>;
-  /** Aborted when the deadline passes or the task is cancelled. */
+  /**
+   * Hand over bounded diagnostics for an attempt that did not complete normally (deadline,
+   * cancel, missing result, runtime error). The control plane stores them locally, at most
+   * once per attempt; they never travel in MCP responses. Never include prompts, argv,
+   * conversation content or session handles.
+   */
+  recordTerminationEvidence?(evidence: TerminationEvidence): Promise<void>;
+  /**
+   * Aborted when the deadline passes or the task is cancelled. A deadline abort carries
+   * `DEADLINE_ABORT_REASON` as `signal.reason`.
+   */
   readonly signal: AbortSignal;
+}
+
+/** `AbortSignal.reason` the control plane uses when an attempt reaches its deadline. */
+export const DEADLINE_ABORT_REASON = "bridge-deadline";
+
+/** What a runtime adapter observed about an abnormal end; the control plane bounds it. */
+export interface TerminationEvidence {
+  readonly runtime: string;
+  readonly runtime_version: string | null;
+  readonly termination_kind: AttemptTerminationKind;
+  /** Short machine label, e.g. `deadline`, `cancelled`, `no_result_frame`, `runtime_error`. */
+  readonly reason: string;
+  readonly deadline_at: number | null;
+  readonly process: {
+    readonly exit_code: number | null;
+    readonly signal: string | null;
+    readonly started_at: number;
+    readonly ended_at: number;
+    readonly sigterm_sent: boolean;
+    readonly sigkill_sent: boolean;
+  };
+  /** Counts and times only; frame content is never included. */
+  readonly stream: {
+    readonly stdout_bytes: number;
+    readonly frames: number;
+    readonly frame_types: Readonly<Record<string, number>>;
+    readonly first_output_at: number | null;
+    readonly last_frame_at: number | null;
+    readonly result_frame: boolean;
+  };
+  readonly stderr: {
+    /** Every stderr byte the runtime wrote, including bytes no longer retained. */
+    readonly total_bytes: number;
+    /** The retained end of stderr, as the runtime adapter kept it. */
+    readonly tail: string;
+  };
 }
 
 /** Static description of an adapter, used for capability checks and logging. */

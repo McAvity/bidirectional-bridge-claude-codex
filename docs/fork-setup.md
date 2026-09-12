@@ -15,8 +15,9 @@ existing local modifications. These are plain source files; no historical ZIP or
 is needed. Copy the paired `using-bridge` skill directories when applicable.
 Configure the project's MCP server to run `node` with an absolute path to this
 checkout's `scripts/native-bridge-mcp.mjs`, followed by `--caller codex --delegation allow
---workspace <absolute-project-root>`. Set the tool timeout to 1800 seconds and keep
-round deadlines below it. Keep the build used by active workers stable while developing
+--workspace <absolute-project-root>`. Set the client tool timeout above the longest round
+deadline plus a margin — this repository uses `tool_timeout_sec = 5400` for rounds up to
+`deadline_ms = 4500000` — and remember that the client timeout never stops a running round. Keep the build used by active workers stable while developing
 changes in another worktree. Authenticate the local Codex and Claude installations
 normally; no credentials belong in this repository.
 

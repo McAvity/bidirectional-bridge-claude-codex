@@ -15,7 +15,9 @@
 import { z } from "zod";
 import {
   BridgeError,
+  MAX_RECOVERY_DEADLINE_MS,
   MAX_TASK_MAX_TURNS,
+  MIN_RECOVERY_DEADLINE_MS,
   MIN_TASK_MAX_TURNS,
   DeliverableStatus,
   ErrorCode,
@@ -98,6 +100,27 @@ const idemArg = {
     .optional()
     .describe("Replay-safety key. Retrying with the same key returns the original result."),
 };
+/** Per-attempt recovery budget. It never changes the persisted task contract. */
+const recoveryBudgetArgs = {
+  deadline_ms: z
+    .number()
+    .int()
+    .min(MIN_RECOVERY_DEADLINE_MS)
+    .max(MAX_RECOVERY_DEADLINE_MS)
+    .optional()
+    .describe("Explicit runtime deadline for this recovery attempt. Required with recover_timeout; keep it below the client tool timeout."),
+  max_turns: z
+    .number()
+    .int()
+    .min(MIN_TASK_MAX_TURNS)
+    .max(MAX_TASK_MAX_TURNS)
+    .optional()
+    .describe("Turn ceiling for this recovery attempt only; the task contract is unchanged."),
+};
+const recoveryBudget = (args: Record<string, unknown>) => ({
+  ...(args["deadline_ms"] !== undefined ? { deadline_ms: args["deadline_ms"] as number } : {}),
+  ...(args["max_turns"] !== undefined ? { max_turns: args["max_turns"] as number } : {}),
+});
 const lineageArgs = {
   run_id: z
     .string()
@@ -277,6 +300,8 @@ export const TOOLS: readonly ToolDefinition[] = [
         verifications: ctx.cp.deliverables.listVerifications(task_id),
         attempts: ctx.cp.attempts.list(task_id),
         telemetry: ctx.cp.attempts.queryTelemetry({ task_id }),
+        // Location and integrity only; the stderr tail is read from the local file.
+        termination_evidence: ctx.cp.evidence.list(task_id),
       };
     },
   },
@@ -349,6 +374,7 @@ export const TOOLS: readonly ToolDefinition[] = [
       "this operation never creates a task or accepts replacement identity fields.",
     inputShape: {
       task_id: z.string(),
+      ...recoveryBudgetArgs,
       ...idemArg,
     },
     handler: (args, ctx) =>
@@ -358,6 +384,7 @@ export const TOOLS: readonly ToolDefinition[] = [
         ...(args["idempotency_key"]
           ? { idempotency_key: args["idempotency_key"] as string }
           : {}),
+        ...recoveryBudget(args),
       }),
   },
   {
@@ -368,11 +395,16 @@ export const TOOLS: readonly ToolDefinition[] = [
       "caller's owned parent task. Authorization comes from durable parent/child lineage; " +
       "the child owner remains the execution identity for its adapter, attempt, lease, " +
       "deliverable, telemetry, and persisted runtime session. This operation never transfers " +
-      "ownership, accepts identity overrides, creates a replacement task, or exposes a handle.",
+      "ownership, accepts identity overrides, creates a replacement task, or exposes a handle. " +
+      "A FAILED child stays terminal unless recover_timeout is set and durable state proves its " +
+      "last attempt was stopped by the bridge deadline with a persisted session.",
     inputShape: {
       task_id: z.string(),
       message: z.string().min(1).max(8000).optional()
-        .describe("Clarification for a BLOCKED Claude child, within its existing objective and scope. Requires idempotency_key."),
+        .describe("Clarification for a BLOCKED or timed-out Claude child, within its existing objective and scope. Requires idempotency_key."),
+      recover_timeout: z.boolean().optional()
+        .describe("Reopen a FAILED child whose last attempt ended at the bridge deadline (TIMEOUT) with a persisted session. Requires deadline_ms and idempotency_key; use only after the extra runtime is authorized."),
+      ...recoveryBudgetArgs,
       ...idemArg,
     },
     handler: (args, ctx) =>
@@ -380,9 +412,13 @@ export const TOOLS: readonly ToolDefinition[] = [
         task_id: args["task_id"] as string,
         requested_by: ctx.defaultAgent,
         ...(args["message"] !== undefined ? { message: args["message"] as string } : {}),
+        ...(args["recover_timeout"] !== undefined
+          ? { recover_timeout: args["recover_timeout"] as boolean }
+          : {}),
         ...(args["idempotency_key"]
           ? { idempotency_key: args["idempotency_key"] as string }
           : {}),
+        ...recoveryBudget(args),
       }),
   },
   {

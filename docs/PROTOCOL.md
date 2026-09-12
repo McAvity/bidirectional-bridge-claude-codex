@@ -78,8 +78,19 @@ Strict stranded-task recovery has two entry points. `bridge_resume_task` require
 caller to own the task. `bridge_resume_delegated_task` authorizes the owner of a direct parent
 to request recovery of the child it created, after SQLite proves the direct parent, same run,
 adjacent depth, parent ownership, child creator, child owner, and recoverable persisted state.
-Both accept only a `task_id` and optional idempotency key; owner, lineage, scope, target
-runtime, and opaque handle are read from durable state.
+Both accept a `task_id`, an optional idempotency key, and an optional per-attempt budget
+(`deadline_ms`, `max_turns`); owner, lineage, scope, target runtime, and opaque handle are
+read from durable state, and the persisted task contract is never rewritten.
+
+`FAILED` is terminal with one explicit exception. `bridge_resume_delegated_task` with
+`recover_timeout: true`, an explicit `deadline_ms` and an idempotency key reopens a child that
+the bridge itself stopped at its deadline, proven in durable state: the current attempt ended
+with outcome `TIMEOUT`, the owner's following `FAILED` transition names that timeout, attempt
+telemetry (when present) records a timeout, and the session handle survived. It reactivates
+the same task as `FAILED -> WORKING` with reason `timeout_recovery` — the only exit from
+`FAILED`, kept out of `ALLOWED_TRANSITIONS` so ordinary state changes cannot reach it — and
+leaves the timed-out attempt's outcome and telemetry unchanged. Any other `FAILED` stays
+terminal, and `bridge_resume_task` never accepts the flag.
 
 Authorization identity and execution identity are distinct for delegated recovery. The
 manager is only `requested_by`; the child's persisted owner remains the execution agent for
@@ -165,9 +176,11 @@ agent-to-agent loops: one request, one answer. A delegate that needs something i
 get returns `PARTIAL` with a blocker; it never opens a conversation back. Inputs are
 artifact ids, so the delegate reads exactly what it was given, not a transcript.
 
-`TaskSpec.max_turns` optionally selects a finite runtime ceiling from 1 through 64. Omission
+`TaskSpec.max_turns` optionally selects a finite runtime ceiling from 1 through 256. Omission
 keeps the conservative runtime default of 12. The field persists with the task, so strict
-same-task recovery uses the same ceiling. It does not permit model or effort overrides:
+same-task recovery uses the same ceiling unless the recovery request passes its own
+`max_turns` for that attempt. A deadline alone does not extend a round: a ceiling sized for a
+short round ends a long one early. It does not permit model or effort overrides:
 bridge-created Claude workers always request `opus` with `high` effort.
 
 The orchestrator guarantees the lease is released on every exit path — success, timeout,

@@ -55,8 +55,10 @@ stored in the shared coordination database; avoid putting secrets in them.
 - `waiting_user`: new runs and recovery of feature tasks are forbidden. Recording the
   answer returns the feature to `ready`, `awaiting_review` or `blocked`, following its
   latest task.
-- `blocked`: latest ended round is not `DONE`; inspect task state/error. The existing
-  recovery API supports `BLOCKED`, not terminal `FAILED` tasks.
+- `blocked`: latest ended round is not `DONE`; inspect task state/error. Recovery covers
+  `BLOCKED` tasks and, with the explicit `recover_timeout` opt-in and a new `deadline_ms`,
+  a `FAILED` task whose last attempt ended at the bridge deadline with its session kept.
+  Every other `FAILED` stays terminal.
 - `accepted`: final manager acceptance; no more rounds or recovery.
 
 A round key is scoped to the feature and atomically reserved with its task. Reusing
@@ -84,8 +86,10 @@ acceptance.
 A stranded `running` reservation does not expire when a lease expires. Inspect the
 latest task/attempt and confirm the old worker has stopped before using existing
 recovery. A crash before an attempt/session handle was persisted cannot be resumed
-automatically. Terminal `FAILED` rounds and such early crashes require manual
-reconciliation; there is deliberately no tool that silently clears the lock or
+automatically. A round that the bridge stopped at its deadline is reopened only by an
+explicit `bridge_resume_delegated_task({recover_timeout: true, deadline_ms, ...})`;
+other terminal `FAILED` rounds and such early crashes require manual reconciliation.
+There is deliberately no tool that silently clears the lock, retries automatically, or
 starts a replacement session. Routine dependency, scope and artifact preflight
 errors roll back the new task/reservation. An unrelated cross-process scope race
 can still fail after reservation; inspect the task/error before intervening.

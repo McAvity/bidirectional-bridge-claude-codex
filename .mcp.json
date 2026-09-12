@@ -12,6 +12,7 @@
         "--workspace",
         "${CLAUDE_PROJECT_DIR:-.}"
       ],
+      "timeout": 5400000,
       "env": {}
     }
   }
