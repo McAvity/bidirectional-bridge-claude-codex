@@ -54,7 +54,11 @@ await client.connect(new StdioClientTransport({
          GIT_COMMITTER_NAME: 'claude-executor', GIT_COMMITTER_EMAIL: 'claude-executor@pilot.invalid' },
 }));
 const call = async (name, a) => {
-  const r = await client.callTool({ name, arguments: a }, undefined, { timeout: 600_000 });
+  // Synthetic host envelope for this scripted tooling check, not identity evidence from Codex.
+  const _meta = { threadId: 'dryrun-manager', 'x-codex-turn-metadata': {
+    session_id: 'dryrun-manager', thread_id: 'dryrun-manager', codex_version: '0.154.0',
+  } };
+  const r = await client.callTool({ name, arguments: a, _meta }, undefined, { timeout: 600_000 });
   if (r.isError) throw new Error(`${name}: ${r.content?.[0]?.text}`);
   return JSON.parse(r.content[0].text);
 };

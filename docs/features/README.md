@@ -55,7 +55,7 @@ nie rozszerzaj pracy na niezatwierdzone przyszłe fale.
 Nie zatrzymuj się po każdym tasku po moją zgodę ani wymianę ZIP-ów.
 Wróć wcześniej tylko z konkretną decyzją poza udzieloną zgodą lub rzeczywistym
 impasem. Po lokalnym review całości przygotuj przez $feature-exchange jeden ZIP
-w ~/tmp z ledgerami, review, dowodami i executive summary do odbioru.
+w przestrzeni wymiany tego worktree (`packages/`) z ledgerami, review, dowodami i executive summary do odbioru.
 ```
 
 ## Pliki i właściciele informacji
@@ -170,7 +170,7 @@ Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature
 
 ## Wymiana ZIP-ów
 
-Cała wymiana odbywa się przez `~/tmp`: eksporty, zachowane oryginały, otrzymane zwrotki i staging każdej zwrotki. Utwórz katalog w razie potrzeby i stosuj unikalne nazwy z ID featura, celem i numerem przebiegu. Zwrotkę pobraną gdzie indziej skopiuj najpierw do `~/tmp`. W poleceniach używaj `"$HOME/tmp/..."`; helper obsługuje też cytowane `~/tmp/...`. Staging pozostaje nowym katalogiem poza repo, a oryginalne ZIP-y nie są nadpisywane. Ta lokalizacja obowiązuje, dopóki użytkownik nie wskaże innej; jeśli koliduje z położeniem repo, rozstrzygnij tylko ten konflikt.
+Wymiana odbywa się w przestrzeni nazw danego worktree: `~/tmp/bridge-exchange/ws_<16 hex>/` z katalogami `packages/`, `incoming/` i `staging/`. Klucz to pierwsze 16 znaków SHA-256(kanoniczny root worktree + NUL + kanoniczny katalog git tego worktree), więc dwa worktree jednego repozytorium nie kolidują nawet przy identycznych nazwach featura, celu i rundy; to nigdy nie jest nazwa brancha, ID featura ani sesji. Ścieżkę wypisuje `feature_exchange.py namespace --repo <ścieżka>`; wybór jest tylko do odczytu i niczego nie przejmuje. Eksportuj przez `--name <plik>.zip`, staging przez `--stage-name <nazwa>`; jawne `--output`/`--staging` pozostają dosłowne. Zwrotkę pobraną gdzie indziej skopiuj najpierw do `incoming/` tej przestrzeni. Staging pozostaje nowym katalogiem poza repo, a oryginalne ZIP-y nie są nadpisywane. Dawne płaskie przykłady `~/tmp/<feature>-<cel>-<n>.zip` w historycznych ledgerach i review opisują ówczesny stan i nie są przepisywane.
 
 Skill `feature-exchange` zawiera skrypt Python 3.9+ bez dodatkowych zależności. Eksport zawsze obejmuje pełny katalog featura, zarejestrowane taski, ten przewodnik i jawny kontekst. Manifest zapisuje SHA-256 każdego pliku, HEAD repo, cel i granice materiału. Opcjonalny zakres kodu pochodzi z commitów; dokumenty pochodzą z bieżących plików. To rozróżnienie jest jawne.
 

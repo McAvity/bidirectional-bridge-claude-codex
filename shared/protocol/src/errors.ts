@@ -32,6 +32,20 @@ export const ErrorCode = {
   RUNTIME_PROFILE_MISMATCH: "RUNTIME_PROFILE_MISMATCH",
   /** Operation is not implemented by this build (e.g. deferred features). */
   UNIMPLEMENTED: "UNIMPLEMENTED",
+  /** Workspace/database state does not belong to this worktree. */
+  WORKSPACE_MISMATCH: "WORKSPACE_MISMATCH",
+  /** Per-request native context is missing, malformed, inconsistent or unsupported. */
+  NATIVE_CONTEXT_INVALID: "NATIVE_CONTEXT_INVALID",
+  /** Calling native thread is not the manager bound to this worktree. */
+  MANAGER_FOREIGN_THREAD: "MANAGER_FOREIGN_THREAD",
+  /** Calling connection is not the active instance of the bound manager. */
+  MANAGER_INSTANCE_FENCED: "MANAGER_INSTANCE_FENCED",
+  /** Caller was superseded by an explicit takeover. */
+  MANAGER_FENCED: "MANAGER_FENCED",
+  /** Another feature is active in this worktree. */
+  FEATURE_CONFLICT: "FEATURE_CONFLICT",
+  /** The worktree critical section is held elsewhere. */
+  STATE_LOCKED: "STATE_LOCKED",
   /** Unclassified internal fault. */
   INTERNAL: "INTERNAL",
 } as const;

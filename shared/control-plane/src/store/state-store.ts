@@ -85,9 +85,89 @@ export interface FeatureRecord {
   state: "ready" | "running" | "awaiting_review" | "waiting_user" | "blocked" | "accepted";
   question: { id: string; text: string; answer: string | null } | null;
   updated_at: number;
+  /** Worktree that owns this feature (contract §11); absent on pre-isolation records. */
+  workspace_id?: string | null;
+  /** Manager epoch that created or last adopted the feature. */
+  manager_epoch?: number | null;
+  /** One entry per launched round, attributing it to the manager that launched it. */
+  round_launches?: Array<{
+    task_id: string;
+    native_thread_id: string;
+    epoch: number;
+    launched_at: number;
+  }>;
+}
+
+/** Record A/B/C identity of the worktree that owns this database (contract §4.1). */
+export interface WorkspaceBindingRecord {
+  readonly workspace_id: string;
+  readonly kind: string;
+  readonly root: string;
+  readonly git_dir: string | null;
+  readonly git_common_dir: string | null;
+  readonly database_path: string;
+  readonly reservation_nonce: string;
+  readonly bound_at: number;
+  readonly legacy_adopted: number;
+  readonly adoption_json: string | null;
+}
+
+/** Current manager ownership of the worktree (contract §7). */
+export interface ManagerBindingRecord {
+  readonly epoch: number;
+  readonly native_thread_id: string;
+  readonly active_instance_id: string | null;
+  readonly instance_generation: number;
+  readonly active_feature_id: string | null;
+  readonly updated_at: number;
+}
+
+/** Append-only ownership history; one row per epoch. */
+export interface ManagerEpochRecord {
+  readonly epoch: number;
+  readonly native_thread_id: string;
+  readonly workspace_id: string | null;
+  readonly role: AgentId;
+  readonly adapter_id: string;
+  readonly native_corroboration: string;
+  readonly codex_version: string;
+  readonly thread_source: string | null;
+  readonly bound_at: number;
+  readonly bound_by_kind: string;
+  readonly ended_at: number | null;
+  readonly end_kind: string | null;
+  readonly takeover_reason: string | null;
+  readonly predecessor_epoch: number | null;
+}
+
+/** Append-only activation history: one row per activation, not per instance. */
+export interface ManagerInstanceRecord {
+  readonly epoch: number;
+  readonly instance_generation: number;
+  readonly instance_id: string;
+  readonly activated_at: number;
+  readonly activated_by_kind: string;
+  readonly ended_at: number | null;
+  readonly end_kind: string | null;
 }
 
 export interface StateStore {
+  /* ---- workspace + manager identity (optional: only the SQLite store implements it) ---- */
+  getWorkspaceBinding?(): WorkspaceBindingRecord | undefined;
+  putWorkspaceBinding?(record: WorkspaceBindingRecord): void;
+  getManagerBinding?(): ManagerBindingRecord | undefined;
+  putManagerBinding?(record: ManagerBindingRecord): void;
+  insertManagerEpoch?(record: ManagerEpochRecord): void;
+  updateManagerEpoch?(record: ManagerEpochRecord): void;
+  listManagerEpochs?(limit?: number): ManagerEpochRecord[];
+  insertManagerInstance?(record: ManagerInstanceRecord): void;
+  endManagerInstance?(epoch: number, generation: number, ended_at: number, end_kind: string): void;
+  instanceSeenInEpoch?(epoch: number, instance_id: string): boolean;
+  listManagerInstances?(epoch: number): ManagerInstanceRecord[];
+  /** Total rows across domain tables; 0 means a database with no history. */
+  countDomainRows?(): number;
+  schemaVersion?(): number;
+
   getFeature(id: string): FeatureRecord | undefined;
   putFeature(record: FeatureRecord): void;
   listFeatures(): FeatureRecord[];

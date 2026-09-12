@@ -75,6 +75,22 @@ owning manager can operate the feature tools. Recovery of older feature tasks is
 also rejected once a newer task exists. The feature reservation serializes session
 use even for disjoint write scopes and separate bridge connections.
 
+Round packages live in the worktree's own exchange namespace,
+`~/tmp/bridge-exchange/ws_<16 hex>/packages/`, which `feature_exchange.py namespace` prints;
+`--name` and `--stage-name` apply it, while an explicit `--output`/`--staging` stays literal. Two
+worktrees can therefore reuse one feature, purpose and round name without colliding.
+
+## Worktree and manager identity
+
+Feature rounds run inside one worktree owned by one native Codex session. Ownership is taken by
+the first authorized call, identified from the host's per-request MCP metadata; startup and reads
+claim nothing. A second session, or a second connection of the same session after a crash, is
+refused until it resumes or takes over explicitly. See
+[manager-identity.md](manager-identity.md) for the states, the tools
+(`bridge_manager_status`, `bridge_manager_resume_instance`, `bridge_manager_takeover`) and the
+refusal codes. A takeover never cancels a running round: the worker keeps going and its result is
+recorded as usual.
+
 ## Operational limits
 
 This first version supports a Codex manager, one Claude session per feature and

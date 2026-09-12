@@ -1,0 +1,85 @@
+{
+  "parallel_thread_ids_distinct": true,
+  "root_session_equals_thread": true,
+  "root_source": "vscode",
+  "live_resume_exact_id": true,
+  "restart_resume_exact_id": true,
+  "mcp_starts": [
+    {
+      "event": "start",
+      "env_present": {
+        "CODEX_THREAD_ID": false,
+        "CODEX_SESSION_ID": false
+      }
+    },
+    {
+      "event": "start",
+      "env_present": {
+        "CODEX_THREAD_ID": false,
+        "CODEX_SESSION_ID": false
+      }
+    },
+    {
+      "event": "start",
+      "env_present": {
+        "CODEX_THREAD_ID": false,
+        "CODEX_SESSION_ID": false
+      }
+    }
+  ],
+  "initialize_count": 3,
+  "initialize_top_keys": [
+    [
+      "capabilities",
+      "clientInfo",
+      "protocolVersion"
+    ],
+    [
+      "capabilities",
+      "clientInfo",
+      "protocolVersion"
+    ],
+    [
+      "capabilities",
+      "clientInfo",
+      "protocolVersion"
+    ]
+  ],
+  "initialize_has_native_id": false,
+  "native_mcp_calls": 3,
+  "call_thread_sequence_matches_native": true,
+  "parallel_threads_not_confused": true,
+  "resumed_call_preserves_native_id": true,
+  "argument_does_not_override_meta": true,
+  "offline_provider_requests": [
+    {
+      "tool_available": true,
+      "has_output": false
+    },
+    {
+      "tool_available": true,
+      "has_output": true
+    },
+    {
+      "tool_available": true,
+      "has_output": false
+    },
+    {
+      "tool_available": true,
+      "has_output": true
+    },
+    {
+      "tool_available": true,
+      "has_output": false
+    },
+    {
+      "tool_available": true,
+      "has_output": true
+    }
+  ],
+  "model_provider": "synthetic localhost HTTP; no real model configured",
+  "network_egress_measured": false,
+  "launcher_binding_allows_only_assigned_root": true,
+  "binding_mode_private": true,
+  "probe_version": "codex-cli 0.154.0"
+}

@@ -1,3 +1,5 @@
+import { dirname, join, resolve } from "node:path";
+import { TerminationEvidenceStore } from "./evidence-store.js";
 /**
  * The control plane facade.
  *
@@ -5,25 +7,30 @@
  * deliverables. Adapters and the MCP server talk to this and nothing below it, which is
  * what keeps D-003 ("the control plane is the only writer of state") enforceable rather
  * than aspirational.
+ *
+ * When a workspace identity is supplied the plane opens **lazily** (`ControlPlane.deferred`):
+ * process start and reads must not create or migrate a database, so the store is opened
+ * read-only for reads and read-write only on an authorized ownership path (contract §4.2–§4.4).
  */
 
 import {
+  BridgeError,
+  ErrorCode,
   type AdapterRegistry,
-  type AgentId,
   type BridgeEvent,
   type RandomSource,
 } from "@bridge/protocol";
-import { dirname, join, resolve } from "node:path";
 import { SimpleAdapterRegistry } from "./adapter-registry.js";
 import { ArtifactRegistry } from "./artifact-registry.js";
 import { AttemptService } from "./attempt-service.js";
 import { type Clock, systemClock } from "./clock.js";
 import { DeliverableService } from "./deliverable-service.js";
-import { TerminationEvidenceStore } from "./evidence-store.js";
 import { LeaseManager } from "./lease-manager.js";
-import { SqliteStateStore, type JournalMode } from "./store/sqlite-store.js";
+import { ManagerRegistry } from "./manager-registry.js";
+import { SqliteStateStore, type JournalMode, type StoreOpenMode } from "./store/sqlite-store.js";
 import type { EventQuery, StateStore } from "./store/state-store.js";
 import { TaskService } from "./task-service.js";
+import type { WorkspaceIdentity } from "./workspace-identity.js";
 
 export interface ControlPlaneOptions {
   /** Absolute path to the repository the agents operate on. */
@@ -38,70 +45,179 @@ export interface ControlPlaneOptions {
   readonly store?: StateStore;
   readonly inlineArtifactLimitBytes?: number;
   readonly onWarning?: (message: string, details?: Record<string, unknown>) => void;
-  /**
-   * Directory for termination evidence files. Defaults to `<database dir>/evidence` for a
-   * file database; an in-memory or injected store has none unless one is given here.
-   * `null` disables evidence files explicitly.
-   */
+  /** Canonical worktree identity; enables the isolation protocol and lazy opening. */
+  readonly workspace?: WorkspaceIdentity;
+  /** null disables evidence files; otherwise defaults beside the database. */
   readonly evidenceDir?: string | null;
 }
 
-export class ControlPlane {
+interface Services {
   readonly store: StateStore;
-  readonly clock: Clock;
   readonly tasks: TaskService;
   readonly leases: LeaseManager;
   readonly artifacts: ArtifactRegistry;
   readonly deliverables: DeliverableService;
   readonly attempts: AttemptService;
+  readonly managers: ManagerRegistry;
   readonly evidence: TerminationEvidenceStore;
+}
+
+export class ControlPlane {
+  readonly clock: Clock;
   readonly adapters: AdapterRegistry;
   readonly workspaceRoot: string;
+  readonly workspace: WorkspaceIdentity | undefined;
+  readonly databasePath: string;
 
-  private constructor(options: ControlPlaneOptions, store: StateStore, evidenceDir: string | null) {
-    this.workspaceRoot = options.workspaceRoot;
-    this.store = store;
+  private services: Services | undefined;
+  private openMode: StoreOpenMode | undefined;
+  /** Read-only projection, independent of the writer so reads never disturb a running round. */
+  private readServices: Services | undefined;
+
+  private constructor(
+    private readonly options: ControlPlaneOptions,
+    store: StateStore | undefined,
+  ) {
+    this.workspaceRoot = options.workspace?.root ?? options.workspaceRoot;
+    this.workspace = options.workspace;
+    this.databasePath = options.databasePath ?? `${this.workspaceRoot}/.bridge/bridge.db`;
     this.clock = options.clock ?? systemClock;
-    this.tasks = new TaskService(store, this.clock, options.rng);
-    this.leases = new LeaseManager(store, this.clock, options.rng);
-    this.artifacts = new ArtifactRegistry(
-      store,
-      this.clock,
-      {
-        workspaceRoot: options.workspaceRoot,
-        ...(options.inlineArtifactLimitBytes !== undefined
-          ? { inlineLimitBytes: options.inlineArtifactLimitBytes }
-          : {}),
-      },
-      options.rng,
-    );
-    this.deliverables = new DeliverableService(store, this.clock, this.tasks);
-    this.attempts = new AttemptService(store, this.clock);
-    this.evidence = new TerminationEvidenceStore(store, this.clock, evidenceDir);
     this.adapters = new SimpleAdapterRegistry();
+    if (store) this.attach(store, "initialize");
+  }
+
+  private attach(store: StateStore, mode: StoreOpenMode): void {
+    this.services = this.buildServices(store);
+    this.openMode = mode;
+  }
+
+  private buildServices(store: StateStore): Services {
+    const tasks = new TaskService(store, this.clock, this.options.rng);
+    return {
+      store,
+      tasks,
+      leases: new LeaseManager(store, this.clock, this.options.rng),
+      artifacts: new ArtifactRegistry(
+        store,
+        this.clock,
+        {
+          workspaceRoot: this.workspaceRoot,
+          ...(this.options.inlineArtifactLimitBytes !== undefined
+            ? { inlineLimitBytes: this.options.inlineArtifactLimitBytes }
+            : {}),
+        },
+        this.options.rng,
+      ),
+      deliverables: new DeliverableService(store, this.clock, tasks),
+      attempts: new AttemptService(store, this.clock),
+      managers: new ManagerRegistry(store, this.clock),
+      evidence: new TerminationEvidenceStore(store, this.clock,
+        this.options.evidenceDir !== undefined ? this.options.evidenceDir
+          : this.options.store !== undefined || this.databasePath === ":memory:"
+            ? null : join(dirname(resolve(this.databasePath)), "evidence")),
+    };
+  }
+
+  /** Services for reads: the writer when a round holds it, otherwise the read projection. */
+  private get readable(): Services {
+    if (this.services) return this.services;
+    if (this.readServices) return this.readServices;
+    throw new BridgeError(ErrorCode.INTERNAL, "control plane has no open connection");
+  }
+
+  private get active(): Services {
+    if (!this.services) {
+      if (this.readServices) return this.readServices;
+      throw new BridgeError(
+        ErrorCode.INTERNAL,
+        "control plane is not open; reads must call activate('readonly') and mutations the authorized path",
+      );
+    }
+    return this.services;
+  }
+
+  get store(): StateStore {
+    return this.active.store;
+  }
+  get tasks(): TaskService {
+    return this.active.tasks;
+  }
+  get leases(): LeaseManager {
+    return this.active.leases;
+  }
+  get artifacts(): ArtifactRegistry {
+    return this.active.artifacts;
+  }
+  get deliverables(): DeliverableService {
+    return this.active.deliverables;
+  }
+  get attempts(): AttemptService {
+    return this.active.attempts;
+  }
+  get evidence(): TerminationEvidenceStore {
+    return this.active.evidence;
+  }
+  get managers(): ManagerRegistry {
+    return this.active.managers;
+  }
+  get isOpen(): boolean {
+    return this.services !== undefined;
+  }
+  get mode(): StoreOpenMode | undefined {
+    return this.openMode;
   }
 
   static open(options: ControlPlaneOptions): ControlPlane {
-    const databasePath = options.databasePath ?? `${options.workspaceRoot}/.bridge/bridge.db`;
-    const evidenceDir =
-      options.evidenceDir !== undefined
-        ? options.evidenceDir
-        : options.store !== undefined || databasePath === ":memory:"
-          ? null
-          : join(dirname(resolve(databasePath)), "evidence");
-    const store =
-      options.store ??
-      new SqliteStateStore({
-        path: databasePath,
-        journalMode: options.journalMode ?? "auto",
-        onJournalFallback: (requested, actual, reason) =>
-          options.onWarning?.(
-            `SQLite journal mode fell back from ${requested} to ${actual}: ${reason}. ` +
-              `Concurrent reads during writes will block; move the database to a local disk to restore WAL.`,
-            { requested, actual },
-          ),
-      });
-    return new ControlPlane(options, store, evidenceDir);
+    const plane = new ControlPlane(options, options.store);
+    if (!options.store) plane.activate("initialize");
+    return plane;
+  }
+
+  /** Create a plane that has opened nothing yet (contract §4.2). */
+  static deferred(options: ControlPlaneOptions): ControlPlane {
+    return new ControlPlane(options, undefined);
+  }
+
+  /**
+   * Open the store in the requested mode, reopening when the mode must be upgraded.
+   * `readonly` never creates the file; `attach` opens read-write without DDL, migration,
+   * `schema_meta` or journal changes; `initialize` is the only mutating opener.
+   */
+  activate(mode: StoreOpenMode): void {
+    if (mode === "readonly") {
+      // A read must never close or replace a live writer: an adapter callback of a running
+      // round would lose its connection mid-flight (review R08-03).
+      if (this.services) return;
+      if (this.readServices) return;
+      this.readServices = this.buildServices(new SqliteStateStore({ path: this.databasePath, mode }));
+      return;
+    }
+    if (this.services && this.openMode === mode) return;
+    if (this.services && this.options.store) return; // injected store: nothing to reopen
+    this.closeStore();
+    const store = new SqliteStateStore({
+      path: this.databasePath,
+      journalMode: this.options.journalMode ?? "auto",
+      mode,
+      onJournalFallback: (requested, actual, reason) =>
+        this.options.onWarning?.(
+          `SQLite journal mode fell back from ${requested} to ${actual}: ${reason}. ` +
+            `Concurrent reads during writes will block; move the database to a local disk to restore WAL.`,
+          { requested, actual },
+        ),
+    });
+    this.attach(store, mode);
+  }
+
+  private closeStore(): void {
+    if (this.services && !this.options.store) this.services.store.close();
+    this.services = undefined;
+    this.openMode = undefined;
+  }
+
+  private closeRead(): void {
+    this.readServices?.store.close();
+    this.readServices = undefined;
   }
 
   /* ---------------- supervisor-facing reads ---------------- */
@@ -150,7 +266,16 @@ export class ControlPlane {
    */
   recover(): RecoveryReport {
     const expired = this.leases.reapExpired();
+    return { ...this.inspectRecovery(), expired_leases: expired.map((l) => l.lease_id) };
+  }
+
+  /**
+   * Pure counterpart of `recover()` (contract §4.2/§6.1): reports the same picture without
+   * expiring anything, so process start and Class R reads never write.
+   */
+  inspectRecovery(): RecoveryReport {
     const now = this.clock.now();
+    const live = this.leases.listLive();
     const stuck = this.store
       .listTasks({ state: ["WORKING", "VERIFYING", "CLAIMED"] })
       .map((t) => ({
@@ -158,13 +283,18 @@ export class ControlPlane {
         owner: t.owner,
         state: t.state,
         stale_ms: now - t.updated_at,
-        has_live_lease: this.leases.listLive().some((l) => l.task_id === t.task_id),
+        has_live_lease: live.some((l) => l.task_id === t.task_id),
       }));
-    return { expired_leases: expired.map((l) => l.lease_id), in_flight_tasks: stuck, at: now };
+    const expirable = this.store
+      .listHeldLeases()
+      .filter((l) => !this.leases.isLive(l, now))
+      .map((l) => l.lease_id);
+    return { expired_leases: [], expirable_leases: expirable, in_flight_tasks: stuck, at: now };
   }
 
   close(): void {
-    this.store.close();
+    this.closeRead();
+    this.closeStore();
   }
 }
 
@@ -190,6 +320,8 @@ export interface ControlPlaneSnapshot {
 
 export interface RecoveryReport {
   readonly expired_leases: readonly string[];
+  /** Leases already dead by wall clock; reaping them is bookkeeping, done under a guard. */
+  readonly expirable_leases?: readonly string[];
   readonly in_flight_tasks: ReadonlyArray<{
     task_id: string;
     owner: string | null;

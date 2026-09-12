@@ -1,0 +1,17 @@
+{
+  "baseline_head": "f978b69bc4cb70189d67c13d712e800f23ecf16a",
+  "purpose": "Coordinator-only working-tree snapshot frozen before BLOCKED recovery 2; exclude this self-describing file",
+  "files": {
+    "docs/HANDOFF.md": "a8df6a16d480e9d841a093f416fe0ca03c52d4ecf4e3c1344c265e36a9f054e8",
+    "docs/features/F-W7-manager-isolation/PROGRESS.md": "7f45a5a08ce9bf5edb812bc973d3d4ad3a6a91fcd875b9f493dbbdb025de7b7a",
+    "docs/features/F-W7-manager-isolation/decisions/03.md": "e82a8392d415715215d8573b67c3736c9e5d9757876eaaf47d66dfbf60403dfa",
+    "docs/features/F-W7-manager-isolation/design.md": "5d6ab996388a98fb836a4d12409f8081d0a9e7e58281f3d8921bb1ef26126138",
+    "docs/features/F-W7-manager-isolation/execution/integration/02.md": "c3994a54b95471df679d33b3312d129cbb9565c64c0e4bdc526f8ffa63001495",
+    "docs/features/F-W7-manager-isolation/feature.json": "df1e54babb93d8dad652ddf896d06ce2291e41e3a92450171d402265d1df84a1",
+    "docs/features/F-W7-manager-isolation/reviews/02-contracts.md": "7e43a6b63f2c1351f4338d905b607bcd15cc465f0db0a031d7102d7ad4ed6b33",
+    "docs/tasks/wave7-identity-01.md": "eda6ff5a98ab5fa532d2cb6b448beffa2fb76f44be66e02470ac5c5881851d2c",
+    "docs/tasks/wave7-identity-02.md": "3b532398dbc403a71e50c49dc2c7f9082cb0e50043ea6a5656e51239feb674be",
+    "work-items/W7-ID-01.md": "c9e5aea00476bebe76bcc8054f47e1ac58c456f80eb6a01b84d461482d16f614",
+    "work-items/W7-ID-02.md": "9ee1c5cc70c9af613efdf01f0122ef8cee27ad44e29e2a474ed20ca6cfe53667"
+  }
+}

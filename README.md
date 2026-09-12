@@ -32,6 +32,10 @@ and runtime telemetry, exposed to each client as a native project-scoped MCP ser
 The bridge is a coordination layer. It does not choose the better model, split work
 automatically, or merge code for you.
 
+Each worktree is owned by one native Codex session: ownership is bound by the first authorized
+call, process start and reads claim nothing, and a second session must take over explicitly.
+See [docs/manager-identity.md](docs/manager-identity.md).
+
 ## Table of contents
 
 - [What problem it solves](#what-problem-it-solves)

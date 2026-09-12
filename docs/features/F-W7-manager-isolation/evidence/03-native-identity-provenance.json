@@ -1,0 +1,18 @@
+{
+  "source_commit": "6b9826e3aa83b1a5947db50f4332cb9c65f1b340",
+  "source_tag": "rust-v0.154.0",
+  "source_origin_verified_as_openai_codex": true,
+  "source_worktree_clean": true,
+  "files_sha256": {
+    "codex-rs/core/src/mcp_tool_call.rs": "8971564fc9aaa3e087097f98d629ed731beb490cdc88fea8362ce5cbf65ffca2",
+    "codex-rs/core/src/mcp_tool_call_tests.rs": "7f15f182d1fc7efaf9161ac54674dee45eae1da91c5be25a8c6ec7d941fe31f2",
+    "codex-rs/core/src/hook_runtime.rs": "4666dab9737fcfd75a6036a1e46df0698571b81d925688b169de7dd9c70b307e",
+    "codex-rs/core/src/session/session.rs": "8baee944befc7896a19d8d59327c3566498c5cc8e8d497eb8085c60f27ccaa05",
+    "codex-rs/core/src/guardian/review_session.rs": "fa122c7ac109f7a547eae0d22bd6a0db84b0191997bf952ffd888bfac17b4b0f",
+    "codex-rs/codex-mcp/src/rmcp_client.rs": "1ebf5c5425d808ded8177825b26deba2d09a6fd017716ed38bbb104debf8e402",
+    "codex-rs/rmcp-client/src/utils.rs": "29e49df7365ecdd1f718c8c3e2d084c1a4aea5787bf8cf1f337e05f20ebfdcbf",
+    "codex-rs/rmcp-client/src/stdio_server_launcher.rs": "5579917be475bb5195677bb4eaa18e74c64ecca4bd947b6478cf0c55e4c0dad4"
+  },
+  "probe_sha256": "002a2e4db5291cf11528098e96074d4b2c3bf75d55dfb5d256fea71d0da5244a",
+  "result_sha256": "2e4ce77bc3ad7af4539cb2df197959d36bc0cda30bea4e116afcdeb556fb2fe1"
+}

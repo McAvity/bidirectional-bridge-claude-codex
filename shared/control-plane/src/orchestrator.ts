@@ -46,6 +46,19 @@ import { normalizeAttemptTelemetry } from "./attempt-service.js";
 import { hashRequest } from "./idempotency.js";
 
 export interface DelegateOptions {
+  /**
+   * Request-scoped authority check, run **inside** the reservation transaction before any
+   * task/attempt/lease/event write and before the worker is launched. Throwing here rolls the
+   * whole reservation back, so a takeover that commits after the caller's precheck denies the
+   * launch instead of racing it (contract section 6.3).
+   */
+  readonly authorize?: () => void;
+  /**
+   * Called once the reservation transaction has committed and before the runtime is invoked.
+   * This is the boundary where a bootstrap publishes its markers and releases the worktree
+   * critical section: the lock must not be held while a worker runs.
+   */
+  readonly onReserved?: () => void;
   /** Internal feature reservation, committed atomically with the new task. */
   readonly onTaskCreated?: (task: Task) => void;
   readonly resumeFromTaskId?: string;
@@ -61,6 +74,13 @@ const DELEGATED_RECOVERY_IDEMPOTENCY_OPERATION = "task.resume.delegated";
 const RESUME_CAPABILITY = "resume";
 
 type RecoveryAuthorizationKind = "owner" | "delegated_manager";
+
+export interface RecoveryOptions {
+  /** Request-scoped authority check executed inside the recovery reservation transaction. */
+  readonly authorize?: () => void;
+  /** Called after the recovery reservation commits, before the runtime is resumed. */
+  readonly onReserved?: () => void;
+}
 
 interface RecoveryRequest {
   readonly message?: string;
@@ -132,6 +152,7 @@ export class Orchestrator {
     const maxAttempts = Math.max(1, (request.max_attempts ?? 0) + 1);
 
     const task = this.cp.store.transaction(() => {
+      options.authorize?.();
       const created = this.cp.tasks.create({
         spec: { ...request.spec, preferred_agent: request.to },
         created_by: request.from,
@@ -148,6 +169,7 @@ export class Orchestrator {
       options.onTaskCreated?.(created);
       return created;
     });
+    options.onReserved?.();
 
     this.cp.store.appendEvent(
       {
@@ -450,8 +472,8 @@ export class Orchestrator {
    * The synchronous reservation phase is one SQLite transaction; runtime execution is
    * bounded and occurs after the write lock has been released.
    */
-  async resumeTask(request: ResumeTaskRequest): Promise<ResumeTaskOutcome> {
-    return this.resumeAuthorizedTask(request, "owner");
+  async resumeTask(request: ResumeTaskRequest, options: RecoveryOptions = {}): Promise<ResumeTaskOutcome> {
+    return this.resumeAuthorizedTask(request, "owner", options);
   }
 
   /**
@@ -461,13 +483,15 @@ export class Orchestrator {
    */
   async resumeDelegatedTask(
     request: ResumeDelegatedTaskRequest,
+    options: RecoveryOptions = {},
   ): Promise<ResumeTaskOutcome> {
-    return this.resumeAuthorizedTask(request, "delegated_manager");
+    return this.resumeAuthorizedTask(request, "delegated_manager", options);
   }
 
   private async resumeAuthorizedTask(
     request: RecoveryRequest,
     kind: RecoveryAuthorizationKind,
+    options: RecoveryOptions = {},
   ): Promise<ResumeTaskOutcome> {
     this.validateRecoveryRequest(request, kind);
     const task = this.cp.tasks.get(request.task_id);
@@ -497,7 +521,7 @@ export class Orchestrator {
     const replay = this.readRecoveryReservation(request, kind);
     if (replay !== null) return this.replayRecovery(replay);
 
-    const promise = this.resumeTaskOnce(request, kind);
+    const promise = this.resumeTaskOnce(request, kind, options);
     this.activeRecoveries.set(task.task_id, {
       ...(request.idempotency_key ? { idempotency_key: request.idempotency_key } : {}),
       authorization_key: authorizationKey,
@@ -515,8 +539,10 @@ export class Orchestrator {
   private async resumeTaskOnce(
     request: RecoveryRequest,
     kind: RecoveryAuthorizationKind,
+    options: RecoveryOptions = {},
   ): Promise<ResumeTaskOutcome> {
-    const prepared = this.prepareRecovery(request, kind);
+    const prepared = this.prepareRecovery(request, kind, options);
+    options.onReserved?.();
     if (prepared.replayed) return this.replayRecovery(prepared.reservation);
     return this.executeRecovery(request, prepared.reservation);
   }
@@ -524,8 +550,12 @@ export class Orchestrator {
   private prepareRecovery(
     request: RecoveryRequest,
     kind: RecoveryAuthorizationKind,
+    options: RecoveryOptions = {},
   ): { readonly reservation: RecoveryReservation; readonly replayed: boolean } {
     return this.cp.store.transaction(() => {
+      // Manager authority is re-checked inside the reservation transaction, before any
+      // attempt/lease/event write and before the runtime is resumed.
+      options.authorize?.();
       const racedReplay = this.readRecoveryReservation(request, kind);
       if (racedReplay !== null) return { reservation: racedReplay, replayed: true };
 

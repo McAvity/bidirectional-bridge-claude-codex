@@ -13,8 +13,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { ControlPlane, Orchestrator } from "@bridge/control-plane";
+import { ControlPlane, Orchestrator, type WorkspaceIdentity } from "@bridge/control-plane";
 import type { AgentAdapter, AgentId } from "@bridge/protocol";
+import { IdentityRuntime } from "./identity-runtime.js";
 import {
   TOOLS,
   runTool,
@@ -48,6 +49,17 @@ export interface BridgeServerOptions {
   readonly adapters?: readonly AgentAdapter[];
   /** Share an already-open control plane instead of opening one. */
   readonly controlPlane?: ControlPlane;
+  /**
+   * Canonical worktree identity. When present the server enforces the isolation protocol:
+   * it opens nothing at startup, reads stay read-only, and ownership is bound by the first
+   * authorized call carrying native per-request metadata.
+   */
+  readonly workspace?: WorkspaceIdentity;
+  /**
+   * Explicit, operator-requested adoption of an unbound legacy database (contract §10). Only a
+   * deliberate flag may set it; it is recorded with provenance in the binding row.
+   */
+  readonly adoptLegacy?: { readonly reason: string };
   /** Extra tools beyond the coordination set, for agent-specific surfaces. */
   readonly extraTools?: readonly ToolDefinition[];
   readonly serverName?: string;
@@ -63,6 +75,7 @@ export interface BridgeServerOptions {
 export class BridgeMcpServer {
   readonly cp: ControlPlane;
   readonly orchestrator: Orchestrator;
+  readonly identity: IdentityRuntime | undefined;
   private readonly server: McpServer;
   private readonly ctx: ToolContext;
   private readonly tools: readonly ToolDefinition[];
@@ -72,13 +85,24 @@ export class BridgeMcpServer {
 
   constructor(options: BridgeServerOptions) {
     this.ownsControlPlane = options.controlPlane === undefined;
+    const planeOptions = {
+      workspaceRoot: options.workspaceRoot,
+      ...(options.databasePath ? { databasePath: options.databasePath } : {}),
+      ...(options.onWarning ? { onWarning: options.onWarning } : {}),
+      ...(options.workspace ? { workspace: options.workspace } : {}),
+    };
     this.cp =
       options.controlPlane ??
-      ControlPlane.open({
-        workspaceRoot: options.workspaceRoot,
-        ...(options.databasePath ? { databasePath: options.databasePath } : {}),
-        ...(options.onWarning ? { onWarning: options.onWarning } : {}),
-      });
+      (options.workspace ? ControlPlane.deferred(planeOptions) : ControlPlane.open(planeOptions));
+    this.identity = options.workspace
+      ? new IdentityRuntime(
+          this.cp,
+          options.workspace,
+          options.agent ?? "bridge",
+          undefined,
+          options.adoptLegacy,
+        )
+      : undefined;
     this.orchestrator = new Orchestrator(this.cp);
     for (const adapter of options.adapters ?? []) this.cp.adapters.register(adapter);
 
@@ -87,6 +111,7 @@ export class BridgeMcpServer {
       orchestrator: this.orchestrator,
       defaultAgent: options.agent ?? "bridge",
       delegationPolicy: options.delegationPolicy ?? "allow",
+      ...(this.identity ? { identity: this.identity } : {}),
     };
 
     this.tools = [...TOOLS, ...(options.extraTools ?? [])];
@@ -103,7 +128,9 @@ export class BridgeMcpServer {
       this.server.registerTool(
         tool.name,
         { title: tool.title, description: tool.description, inputSchema: tool.inputShape },
-        async (args: Record<string, unknown>) => runTool(tool, args ?? {}, this.ctx),
+        async (args: Record<string, unknown>, extra?: { _meta?: unknown }) =>
+          // The per-request context is the only identity source (contract section 5.1).
+          runTool(tool, args ?? {}, this.ctx, extra?._meta),
       );
     }
   }
@@ -127,7 +154,10 @@ export class BridgeMcpServer {
     try {
       await this.server.close();
     } finally {
-      if (this.ownsControlPlane) this.cp.close();
+      // Clean detach first: it lets an ordinary restart of the same thread adopt without a
+      // handoff, while a crash still requires the explicit one.
+      this.identity?.detach();
+      if (this.ownsControlPlane && this.cp.isOpen) this.cp.close();
     }
   }
 

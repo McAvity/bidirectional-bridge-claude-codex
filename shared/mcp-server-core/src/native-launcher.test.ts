@@ -126,8 +126,12 @@ class NativeHarness {
     this.notify("notifications/initialized");
   }
 
-  async callTool(name: string, args: Record<string, unknown> = {}) {
-    const response = await this.request("tools/call", { name, arguments: args });
+  async callTool(name: string, args: Record<string, unknown> = {}, meta?: unknown) {
+    const response = await this.request("tools/call", {
+      name,
+      arguments: args,
+      ...(meta !== undefined ? { _meta: meta } : {}),
+    });
     const result = response.result as {
       readonly isError?: boolean;
       readonly content: ReadonlyArray<{ readonly text: string }>;
@@ -182,6 +186,21 @@ function taskSpec() {
     dependencies: [],
     expected_deliverable: "a durable root task",
     verification_criteria: ["the other stdio process can read it"],
+  };
+}
+
+/**
+ * Synthetic stand-in for the per-request metadata a Codex host attaches to a tool call
+ * (`params._meta`). It is a fixture envelope, not a live Codex session.
+ */
+function nativeMeta(threadId: string, version = "0.154.0"): Record<string, unknown> {
+  return {
+    threadId,
+    "x-codex-turn-metadata": {
+      session_id: threadId,
+      thread_id: threadId,
+      codex_version: version,
+    },
   };
 }
 
@@ -328,7 +347,46 @@ describe("native project MCP launcher", () => {
         caller: "codex",
         delegation: "allow",
       });
+      // Startup and reads claim nothing and write nothing (contract 4.2/4.3).
+      expect(existsSync(join(externalWorkspace, ".bridge", "bridge.db"))).toBe(false);
+      const status = await harness.callTool("bridge_manager_status");
+      expect(status.data.workspace).toMatchObject({ bound: false, database_exists: false });
+      expect(status.data.manager).toBeNull();
+
+      // The first authorized ownership call creates and binds the state.
+      const created = await harness.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-external-1"),
+      );
+      expect(created.isError).toBeFalsy();
       expect(existsSync(join(externalWorkspace, ".bridge", "bridge.db"))).toBe(true);
+      const bound = await harness.callTool("bridge_manager_status");
+      expect(bound.data.manager).toMatchObject({
+        native_thread_id: "thread-external-1",
+        epoch: 1,
+        instance_generation: 1,
+        is_calling_instance: true,
+      });
+
+      // A second native session is refused before it can mutate anything.
+      const foreign = await harness.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-external-2"),
+      );
+      expect(foreign.isError).toBe(true);
+      expect(foreign.data.error.code).toBe("MANAGER_FOREIGN_THREAD");
+
+      // Missing and unsupported envelopes are refused as well.
+      const noMeta = await harness.callTool("bridge_create_task", { spec: taskSpec() });
+      expect(noMeta.data.error.code).toBe("NATIVE_CONTEXT_INVALID");
+      const badVersion = await harness.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-external-1", "0.154.1"),
+      );
+      expect(badVersion.data.error.details.reason).toBe("native_adapter_unsupported");
       expect(existsSync(join(externalWorkspace, "scripts", "native-bridge-mcp.mjs"))).toBe(false);
     } finally {
       const exit = await harness.shutdown();
@@ -354,10 +412,11 @@ describe("native project MCP launcher", () => {
       expect((await codexDenied.callTool("bridge_server_info")).data)
         .toEqual({ caller: "codex", delegation: "deny" });
 
-      const root = await codex.callTool("bridge_create_task", {
-        spec: taskSpec(),
-        run_id: "run_0000000001",
-      });
+      const root = await codex.callTool(
+        "bridge_create_task",
+        { spec: taskSpec(), run_id: "run_0000000001" },
+        nativeMeta("thread-shared-1"),
+      );
       expect(root.data).toMatchObject({
         run_id: "run_0000000001",
         parent_task_id: null,
@@ -369,10 +428,11 @@ describe("native project MCP launcher", () => {
         created_by: "codex",
       });
 
-      const spoof = await codex.callTool("bridge_claim_task", {
-        task_id: root.data.task_id,
-        agent: "claude",
-      });
+      const spoof = await codex.callTool(
+        "bridge_claim_task",
+        { task_id: root.data.task_id, agent: "claude" },
+        nativeMeta("thread-shared-1"),
+      );
       expect(spoof.isError).toBe(true);
       expect(spoof.data.error.code).toBe("INVALID_ARGUMENT");
 
@@ -384,11 +444,11 @@ describe("native project MCP launcher", () => {
       expect(denied.isError).toBe(true);
       expect(denied.data.error.details).toMatchObject({ policy: "deny", caller: "claude" });
 
-      const deniedByCodex = await codexDenied.callTool("bridge_delegate", {
-        to: "claude",
-        spec: taskSpec(),
-        deadline_ms: 5_000,
-      });
+      const deniedByCodex = await codexDenied.callTool(
+        "bridge_delegate",
+        { to: "claude", spec: taskSpec(), deadline_ms: 5_000 },
+        nativeMeta("thread-shared-1"),
+      );
       expect(deniedByCodex.isError).toBe(true);
       expect(deniedByCodex.data.error.details).toMatchObject({
         policy: "deny",

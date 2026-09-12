@@ -38,13 +38,13 @@ export { AttemptService, normalizeAttemptTelemetry } from "./attempt-service.js"
 export type { NormalizeAttemptTelemetryInput } from "./attempt-service.js";
 
 export { Orchestrator } from "./orchestrator.js";
-export type { DelegateOptions } from "./orchestrator.js";
+export type { DelegateOptions, RecoveryOptions } from "./orchestrator.js";
 
 export { ManualClock, systemClock } from "./clock.js";
 export type { Clock } from "./clock.js";
 
 export { SqliteStateStore } from "./store/sqlite-store.js";
-export type { JournalMode, SqliteStoreOptions } from "./store/sqlite-store.js";
+export type { JournalMode, SqliteStoreOptions, StoreOpenMode } from "./store/sqlite-store.js";
 export type {
   EventAppend,
   EventQuery,
@@ -56,6 +56,50 @@ export type {
 
 export { hashRequest, runIdempotent, stableStringify } from "./idempotency.js";
 export type { IdempotentOptions } from "./idempotency.js";
+
+export {
+  resolveWorkspaceIdentity,
+  resolveDatabasePath,
+  stateDirectory,
+  canonicalizeWithoutCreating,
+} from "./workspace-identity.js";
+export type { WorkspaceIdentity, WorkspaceKind } from "./workspace-identity.js";
+
+export {
+  MARKER_NAME,
+  LOCK_NAME,
+  WorktreeCriticalSection,
+  assertProbeUsable,
+  assertStateDirectoryExplained,
+  buildMarker,
+  buildOwner,
+  completePublication,
+  markerPath,
+  newNonce,
+  ownerPath,
+  probeWorkspaceState,
+  publishReservation,
+  readMarker,
+  readOwner,
+  releaseOwnReservation,
+  repairRecordsFromBinding,
+} from "./workspace-state.js";
+export type { MarkerRecord, OwnerRecord, StateProbe } from "./workspace-state.js";
+
+export {
+  ManagerRegistry,
+  VERIFIED_ADAPTERS,
+  TURN_METADATA_KEY,
+  classifyNativeContext,
+} from "./manager-registry.js";
+export type { ManagerAuthority, NativeCallContext } from "./manager-registry.js";
+
+export type {
+  ManagerBindingRecord,
+  ManagerEpochRecord,
+  ManagerInstanceRecord,
+  WorkspaceBindingRecord,
+} from "./store/state-store.js";
 
 export { FeatureWorkflow } from "./feature-workflow.js";
 export type { FeatureRecord } from "./store/state-store.js";

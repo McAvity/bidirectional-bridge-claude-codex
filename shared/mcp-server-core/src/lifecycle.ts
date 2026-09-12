@@ -49,13 +49,11 @@ export interface ServeHandle {
  * Boot a server: recover, connect, and wire shutdown. Returns a handle so an embedder can
  * shut down explicitly rather than only via signals.
  */
-export async function serve(options: ServeOptions): Promise<ServeHandle> {
-  const log = options.log ?? stderrLog;
-  const proc = options.processRef ?? process;
-  const { server, label } = options;
-
-  // Expire leases orphaned by a previous crash before serving, so a dead session's scope
-  // does not stay locked against the surviving agent.
+function legacyBootRecovery(
+  server: BridgeMcpServer,
+  log: LogSink,
+  label: string,
+): { expired_leases: readonly string[]; in_flight_tasks: readonly unknown[] } {
   const recovery = server.cp.recover();
   if (recovery.expired_leases.length > 0 || recovery.in_flight_tasks.length > 0) {
     log(
@@ -63,6 +61,45 @@ export async function serve(options: ServeOptions): Promise<ServeHandle> {
         `${recovery.in_flight_tasks.length} task(s) were in flight`,
     );
   }
+  return recovery;
+}
+
+function reportOnlyRecovery(
+  server: BridgeMcpServer,
+  log: LogSink,
+  label: string,
+): { expired_leases: readonly string[]; in_flight_tasks: readonly unknown[] } {
+  try {
+    const probe = server.identity!.prepareRead();
+    if (!probe.databaseExists || !probe.binding) {
+      log(`[${label}] workspace ${server.identity!.workspace.root} has no bridge state yet`);
+      return { expired_leases: [], in_flight_tasks: [] };
+    }
+    const report = server.cp.inspectRecovery();
+    if ((report.expirable_leases?.length ?? 0) > 0 || report.in_flight_tasks.length > 0) {
+      log(
+        `[${label}] recoverable state: ${report.expirable_leases?.length ?? 0} expirable lease(s), ` +
+          `${report.in_flight_tasks.length} task(s) in flight` +
+          (probe.recoveryNeeded ? ", interrupted marker publication" : ""),
+      );
+    }
+    return { expired_leases: [], in_flight_tasks: report.in_flight_tasks };
+  } catch (error) {
+    log(`[${label}] workspace state is not usable: ${(error as Error).message}`);
+    return { expired_leases: [], in_flight_tasks: [] };
+  }
+}
+
+export async function serve(options: ServeOptions): Promise<ServeHandle> {
+  const log = options.log ?? stderrLog;
+  const proc = options.processRef ?? process;
+  const { server, label } = options;
+
+  // Report only. Process start must not write: expiring leases is bookkeeping performed later
+  // inside an authorized, guarded mutation (contract section 4.2).
+  const recovery = server.identity
+    ? reportOnlyRecovery(server, log, label)
+    : legacyBootRecovery(server, log, label);
 
   let shutting: Promise<void> | undefined;
   const shutdown = (reason: string): Promise<void> => {

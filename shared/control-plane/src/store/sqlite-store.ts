@@ -36,6 +36,10 @@ import {
   type VerificationResult,
 } from "@bridge/protocol";
 import type {
+  ManagerBindingRecord,
+  ManagerEpochRecord,
+  ManagerInstanceRecord,
+  WorkspaceBindingRecord,
   FeatureRecord,
   AttemptTelemetryQuery,
   EventAppend,
@@ -61,15 +65,27 @@ type DatabaseSync = InstanceType<typeof DatabaseSyncCtor>;
 
 export type JournalMode = "WAL" | "DELETE" | "auto";
 
+/**
+ * How this connection may touch the file (contract section 6.2).
+ *
+ * - `initialize` runs DDL, migration, the journal pragma and the `schema_meta` upsert, and is
+ *   reachable only from an authorized ownership path;
+ * - `attach` opens read-write but writes nothing by itself: no DDL, no migration, no
+ *   `schema_meta` upsert and no journal-mode change, even when the mode differs;
+ * - `readonly` opens a read-only connection for prechecks and Class R reads.
+ */
+export type StoreOpenMode = "initialize" | "attach" | "readonly";
+
 export interface SqliteStoreOptions {
   /** File path, or `:memory:` for an ephemeral store. */
   readonly path: string;
   readonly journalMode?: JournalMode;
   /** Called when the requested journal mode could not be applied. */
   readonly onJournalFallback?: (requested: string, actual: string, reason: string) => void;
+  readonly mode?: StoreOpenMode;
 }
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 /** Bound concurrent native-server startup without failing immediately on schema/WAL locks. */
 const SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
@@ -214,6 +230,65 @@ CREATE TABLE IF NOT EXISTS idempotency (
   response_json TEXT NOT NULL,
   created_at    INTEGER NOT NULL
 );
+
+-- Record C: which worktree owns this database (contract section 4.1).
+CREATE TABLE IF NOT EXISTS workspace_binding (
+  singleton         INTEGER PRIMARY KEY CHECK (singleton = 1),
+  workspace_id      TEXT NOT NULL,
+  kind              TEXT NOT NULL,
+  root              TEXT NOT NULL,
+  git_dir           TEXT,
+  git_common_dir    TEXT,
+  database_path     TEXT NOT NULL,
+  reservation_nonce TEXT NOT NULL,
+  bound_at          INTEGER NOT NULL,
+  legacy_adopted    INTEGER NOT NULL DEFAULT 0,
+  adoption_json     TEXT
+);
+
+-- Append-only ownership history. Epochs are monotonic and never reused.
+CREATE TABLE IF NOT EXISTS manager_epochs (
+  epoch                INTEGER PRIMARY KEY,
+  native_thread_id     TEXT NOT NULL,
+  workspace_id         TEXT,
+  role                 TEXT NOT NULL,
+  adapter_id           TEXT NOT NULL,
+  native_corroboration TEXT NOT NULL CHECK (native_corroboration = 'turn-metadata'),
+  codex_version        TEXT NOT NULL,
+  thread_source        TEXT,
+  bound_at             INTEGER NOT NULL,
+  bound_by_kind        TEXT NOT NULL,
+  ended_at             INTEGER,
+  end_kind             TEXT,
+  takeover_reason      TEXT,
+  predecessor_epoch    INTEGER
+);
+
+-- Append-only activation history: one row per activation, NOT per instance, so an instance
+-- may be superseded and explicitly reactivated inside one epoch.
+CREATE TABLE IF NOT EXISTS manager_instances (
+  epoch               INTEGER NOT NULL,
+  instance_generation INTEGER NOT NULL,
+  instance_id         TEXT NOT NULL,
+  activated_at        INTEGER NOT NULL,
+  activated_by_kind   TEXT NOT NULL,
+  ended_at            INTEGER,
+  end_kind            TEXT,
+  PRIMARY KEY (epoch, instance_generation)
+);
+-- Lookup index only; deliberately NOT unique so reactivation stays representable.
+CREATE INDEX IF NOT EXISTS ix_manager_instances_epoch_instance
+  ON manager_instances(epoch, instance_id);
+
+CREATE TABLE IF NOT EXISTS manager_binding (
+  singleton           INTEGER PRIMARY KEY CHECK (singleton = 1),
+  epoch               INTEGER NOT NULL,
+  native_thread_id    TEXT NOT NULL,
+  active_instance_id  TEXT,
+  instance_generation INTEGER NOT NULL,
+  active_feature_id   TEXT,
+  updated_at          INTEGER NOT NULL
+);
 `;
 
 type Row = Record<string, unknown>;
@@ -221,20 +296,41 @@ type Row = Record<string, unknown>;
 export class SqliteStateStore implements StateStore {
   private readonly db: DatabaseSync;
   private depth = 0;
-  readonly journalMode: string;
+  journalMode: string;
+
+  readonly mode: StoreOpenMode;
 
   constructor(options: SqliteStoreOptions) {
     const { path, journalMode = "auto" } = options;
-    if (path !== ":memory:") {
+    this.mode = options.mode ?? "initialize";
+    if (path !== ":memory:" && this.mode === "initialize") {
       mkdirSync(dirname(path), { recursive: true });
     }
-    this.db = new DatabaseSync(path);
+    this.db =
+      this.mode === "readonly"
+        ? new DatabaseSync(path, { readOnly: true })
+        : new DatabaseSync(path);
     // Codex and Claude each own a separate MCP stdio process and may open the same project
     // database at virtually the same instant. Schema creation and `journal_mode` briefly
     // require an exclusive lock; SQLite's default zero wait turns that harmless bootstrap
     // race into `database is locked`. Keep the wait finite so a genuinely wedged holder is
     // still surfaced rather than hanging client startup indefinitely.
     this.db.exec(`PRAGMA busy_timeout = ${SQLITE_BUSY_TIMEOUT_MS}`);
+    if (this.mode !== "initialize") {
+      // Attach and readonly are non-mutating by construction: the journal mode of an existing
+      // database is reported, never rewritten, and no DDL or schema_meta write happens here.
+      this.journalMode = this.readJournalMode();
+      if (this.mode === "attach") this.db.exec("PRAGMA foreign_keys = ON");
+      const found = this.schemaVersion();
+      if (found > SCHEMA_VERSION) {
+        throw new BridgeError(
+          ErrorCode.WORKSPACE_MISMATCH,
+          `database schema ${found} is newer than this build (${SCHEMA_VERSION})`,
+          { reason: "schema_unsupported", found, supported: SCHEMA_VERSION },
+        );
+      }
+      return;
+    }
     this.journalMode = this.configureJournal(path, journalMode, options.onJournalFallback);
     this.db.exec("PRAGMA foreign_keys = ON");
     this.db.exec("PRAGMA synchronous = NORMAL");
@@ -243,6 +339,51 @@ export class SqliteStateStore implements StateStore {
     this.db
       .prepare("INSERT OR REPLACE INTO schema_meta(key, value) VALUES('schema_version', ?)")
       .run(String(SCHEMA_VERSION));
+  }
+
+  /**
+   * Run DDL, migration and the `schema_meta` upsert as one transactional step.
+   *
+   * The authorized path calls this *inside* its own guarded transaction, so a denied caller
+   * never leaves schema changes behind and a rollback undoes them (contract section 6.3).
+   * `PRAGMA journal_mode` is deliberately not touched here: an existing database keeps the mode
+   * it already has.
+   */
+  initializeSchema(): void {
+    this.transaction(() => {
+      this.db.exec(DDL);
+      this.migrateSchema();
+      this.db
+        .prepare("INSERT OR REPLACE INTO schema_meta(key, value) VALUES('schema_version', ?)")
+        .run(String(SCHEMA_VERSION));
+    });
+  }
+
+  /**
+   * Set the journal mode for a database this process just created. Never called for an existing
+   * database: an established mode is reported and left alone.
+   */
+  ensureJournalMode(requested: JournalMode = "auto"): void {
+    if (this.mode === "readonly") return;
+    this.journalMode = this.configureJournal(":file:", requested, undefined);
+  }
+
+  /** True when the file already carries this build's schema. */
+  get schemaCurrent(): boolean {
+    return this.schemaVersion() === SCHEMA_VERSION;
+  }
+
+  static get schemaVersionSupported(): number {
+    return SCHEMA_VERSION;
+  }
+
+  private readJournalMode(): string {
+    try {
+      const row = this.db.prepare("PRAGMA journal_mode").get() as Row | undefined;
+      return (row?.["journal_mode"] as string | undefined) ?? "unknown";
+    } catch {
+      return "unknown";
+    }
   }
 
   /** Upgrade certified v1 databases without invalidating their existing task history. */
@@ -752,6 +893,247 @@ export class SqliteStateStore implements StateStore {
   listFeatures(): FeatureRecord[] {
     return (this.db.prepare("SELECT json FROM features ORDER BY feature_id").all() as { json: string }[])
       .map(row => JSON.parse(row.json) as FeatureRecord);
+  }
+
+  /* ---------------- workspace + manager identity ---------------- */
+
+  schemaVersion(): number {
+    try {
+      const row = this.db
+        .prepare("SELECT value FROM schema_meta WHERE key = 'schema_version'")
+        .get() as Row | undefined;
+      return row ? Number(row["value"]) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /** Per-table row counts, recorded as provenance when a legacy database is adopted. */
+  domainRowCounts(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const table of ["tasks", "features", "events", "leases", "artifacts", "task_attempts", "idempotency"]) {
+      try {
+        const row = this.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as Row;
+        counts[table] = Number(row["n"]);
+      } catch {
+        counts[table] = 0;
+      }
+    }
+    return counts;
+  }
+
+  /** Rows across domain tables; 0 means "no history", which is what legacy adoption needs. */
+  countDomainRows(): number {
+    let total = 0;
+    for (const table of [
+      "tasks",
+      "features",
+      "events",
+      "leases",
+      "artifacts",
+      "task_attempts",
+      "idempotency",
+    ]) {
+      try {
+        const row = this.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as Row;
+        total += Number(row["n"]);
+      } catch {
+        /* table absent in an older schema: nothing to count */
+      }
+    }
+    return total;
+  }
+
+  getWorkspaceBinding(): WorkspaceBindingRecord | undefined {
+    let row: Row | undefined;
+    try {
+      row = this.db.prepare("SELECT * FROM workspace_binding WHERE singleton = 1").get() as Row | undefined;
+    } catch {
+      return undefined; // table absent: a legacy database has no binding
+    }
+    if (!row) return undefined;
+    return {
+      workspace_id: row["workspace_id"] as string,
+      kind: row["kind"] as string,
+      root: row["root"] as string,
+      git_dir: (row["git_dir"] as string | null) ?? null,
+      git_common_dir: (row["git_common_dir"] as string | null) ?? null,
+      database_path: row["database_path"] as string,
+      reservation_nonce: row["reservation_nonce"] as string,
+      bound_at: Number(row["bound_at"]),
+      legacy_adopted: Number(row["legacy_adopted"] ?? 0),
+      adoption_json: (row["adoption_json"] as string | null) ?? null,
+    };
+  }
+
+  putWorkspaceBinding(r: WorkspaceBindingRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO workspace_binding(singleton, workspace_id, kind, root, git_dir, git_common_dir,
+                                       database_path, reservation_nonce, bound_at, legacy_adopted, adoption_json)
+         VALUES(1,?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(singleton) DO UPDATE SET
+           workspace_id=excluded.workspace_id, kind=excluded.kind, root=excluded.root,
+           git_dir=excluded.git_dir, git_common_dir=excluded.git_common_dir,
+           database_path=excluded.database_path, reservation_nonce=excluded.reservation_nonce,
+           bound_at=excluded.bound_at, legacy_adopted=excluded.legacy_adopted,
+           adoption_json=excluded.adoption_json`,
+      )
+      .run(
+        r.workspace_id,
+        r.kind,
+        r.root,
+        r.git_dir,
+        r.git_common_dir,
+        r.database_path,
+        r.reservation_nonce,
+        r.bound_at,
+        r.legacy_adopted,
+        r.adoption_json,
+      );
+  }
+
+  getManagerBinding(): ManagerBindingRecord | undefined {
+    let row: Row | undefined;
+    try {
+      row = this.db.prepare("SELECT * FROM manager_binding WHERE singleton = 1").get() as Row | undefined;
+    } catch {
+      return undefined;
+    }
+    if (!row) return undefined;
+    return {
+      epoch: Number(row["epoch"]),
+      native_thread_id: row["native_thread_id"] as string,
+      active_instance_id: (row["active_instance_id"] as string | null) ?? null,
+      instance_generation: Number(row["instance_generation"]),
+      active_feature_id: (row["active_feature_id"] as string | null) ?? null,
+      updated_at: Number(row["updated_at"]),
+    };
+  }
+
+  putManagerBinding(r: ManagerBindingRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO manager_binding(singleton, epoch, native_thread_id, active_instance_id,
+                                     instance_generation, active_feature_id, updated_at)
+         VALUES(1,?,?,?,?,?,?)
+         ON CONFLICT(singleton) DO UPDATE SET
+           epoch=excluded.epoch, native_thread_id=excluded.native_thread_id,
+           active_instance_id=excluded.active_instance_id,
+           instance_generation=excluded.instance_generation,
+           active_feature_id=excluded.active_feature_id, updated_at=excluded.updated_at`,
+      )
+      .run(
+        r.epoch,
+        r.native_thread_id,
+        r.active_instance_id,
+        r.instance_generation,
+        r.active_feature_id,
+        r.updated_at,
+      );
+  }
+
+  insertManagerEpoch(r: ManagerEpochRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO manager_epochs(epoch, native_thread_id, workspace_id, role, adapter_id,
+                                    native_corroboration, codex_version, thread_source, bound_at,
+                                    bound_by_kind, ended_at, end_kind, takeover_reason, predecessor_epoch)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        r.epoch,
+        r.native_thread_id,
+        r.workspace_id,
+        r.role,
+        r.adapter_id,
+        r.native_corroboration,
+        r.codex_version,
+        r.thread_source,
+        r.bound_at,
+        r.bound_by_kind,
+        r.ended_at,
+        r.end_kind,
+        r.takeover_reason,
+        r.predecessor_epoch,
+      );
+  }
+
+  updateManagerEpoch(r: ManagerEpochRecord): void {
+    this.db
+      .prepare("UPDATE manager_epochs SET ended_at=?, end_kind=?, takeover_reason=? WHERE epoch=?")
+      .run(r.ended_at, r.end_kind, r.takeover_reason, r.epoch);
+  }
+
+  listManagerEpochs(limit = 20): ManagerEpochRecord[] {
+    const rows = this.db
+      .prepare("SELECT * FROM manager_epochs ORDER BY epoch DESC LIMIT ?")
+      .all(limit) as Row[];
+    return rows.map((row) => ({
+      epoch: Number(row["epoch"]),
+      native_thread_id: row["native_thread_id"] as string,
+      workspace_id: (row["workspace_id"] as string | null) ?? null,
+      role: row["role"] as AgentId,
+      adapter_id: row["adapter_id"] as string,
+      native_corroboration: row["native_corroboration"] as string,
+      codex_version: row["codex_version"] as string,
+      thread_source: (row["thread_source"] as string | null) ?? null,
+      bound_at: Number(row["bound_at"]),
+      bound_by_kind: row["bound_by_kind"] as string,
+      ended_at: row["ended_at"] == null ? null : Number(row["ended_at"]),
+      end_kind: (row["end_kind"] as string | null) ?? null,
+      takeover_reason: (row["takeover_reason"] as string | null) ?? null,
+      predecessor_epoch: row["predecessor_epoch"] == null ? null : Number(row["predecessor_epoch"]),
+    }));
+  }
+
+  insertManagerInstance(r: ManagerInstanceRecord): void {
+    this.db
+      .prepare(
+        `INSERT INTO manager_instances(epoch, instance_generation, instance_id, activated_at,
+                                       activated_by_kind, ended_at, end_kind)
+         VALUES(?,?,?,?,?,?,?)`,
+      )
+      .run(
+        r.epoch,
+        r.instance_generation,
+        r.instance_id,
+        r.activated_at,
+        r.activated_by_kind,
+        r.ended_at,
+        r.end_kind,
+      );
+  }
+
+  endManagerInstance(epoch: number, generation: number, ended_at: number, end_kind: string): void {
+    this.db
+      .prepare(
+        "UPDATE manager_instances SET ended_at=?, end_kind=? WHERE epoch=? AND instance_generation=? AND ended_at IS NULL",
+      )
+      .run(ended_at, end_kind, epoch, generation);
+  }
+
+  /** Adoption eligibility is an EXISTS test over history, never a uniqueness constraint. */
+  instanceSeenInEpoch(epoch: number, instance_id: string): boolean {
+    const row = this.db
+      .prepare("SELECT EXISTS(SELECT 1 FROM manager_instances WHERE epoch=? AND instance_id=?) AS seen")
+      .get(epoch, instance_id) as Row;
+    return Number(row["seen"]) === 1;
+  }
+
+  listManagerInstances(epoch: number): ManagerInstanceRecord[] {
+    const rows = this.db
+      .prepare("SELECT * FROM manager_instances WHERE epoch=? ORDER BY instance_generation ASC")
+      .all(epoch) as Row[];
+    return rows.map((row) => ({
+      epoch: Number(row["epoch"]),
+      instance_generation: Number(row["instance_generation"]),
+      instance_id: row["instance_id"] as string,
+      activated_at: Number(row["activated_at"]),
+      activated_by_kind: row["activated_by_kind"] as string,
+      ended_at: row["ended_at"] == null ? null : Number(row["ended_at"]),
+      end_kind: (row["end_kind"] as string | null) ?? null,
+    }));
   }
 
   close(): void {

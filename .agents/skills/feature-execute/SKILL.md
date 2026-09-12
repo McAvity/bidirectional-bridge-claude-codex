@@ -69,7 +69,11 @@ from there within the same contract instead of restarting the work.
    stop and report that as the blocker. Never push or merge.
 4. When the contract is complete, export and check the round package:
    `python3 .agents/skills/feature-exchange/scripts/feature_exchange.py export --feature
-   <feature> --purpose <purpose> --base <base> --output <path>` with the contract's values
+   <feature> --purpose <purpose> --base <base> --name <file>.zip` with the contract's values.
+   `--name` places the archive in this worktree's exchange namespace
+   (`~/tmp/bridge-exchange/ws_<16 hex>/packages/`, printed by the `namespace` subcommand), so two
+   worktrees using the same feature, purpose and round name do not collide. A contract that gives
+   an explicit `--output` path is followed literally
    (head defaults to your final commit), then `... verify --archive <path>`.
 5. End with the bridge JSON. `summary` starts with
    `PACKAGE=<path> SHA256=<hash> PURPOSE=<purpose> RANGE=<base>..<head> LEDGER=<path>`,

@@ -121,6 +121,33 @@ rounds makes them bounded exchanges, not the continuous conversation excluded ab
 In a repository with the `feature-*` workflow, drive the loop with its `feature-execute`
 reference `bridge-loop.md`; otherwise follow `docs/feature-workflow.md` of the bridge.
 
+## Worktree and manager identity
+
+One worktree is owned by one native Codex session. The bridge takes that identity from the
+per-request MCP metadata of each call, never from arguments, environment or session files, and
+there are no tokens to store.
+
+- Starting the server and every read claim nothing. `bridge_manager_status` reports whether this
+  worktree is bound, which epoch and instance are active, and whether an interrupted bootstrap
+  needs recovery.
+- The first authorized mutating call takes ownership of the worktree and creates its state.
+- `MANAGER_FOREIGN_THREAD` means another session owns this worktree: continue there, or take over
+  explicitly only on the user's instruction.
+- `MANAGER_INSTANCE_FENCED` means your session owns it but this connection is not active. After a
+  crash or restart call `bridge_manager_resume_instance` with `expected_epoch` and
+  `expected_generation` from `bridge_manager_status`.
+- `bridge_manager_takeover` needs the previous thread id, the current epoch and a reason. It never
+  cancels a running round, and the superseded session can only return through another takeover.
+- Never copy `.bridge/` between worktrees and give each worktree its own database; the bridge
+  refuses shared or copied state instead of merging it.
+- Exchange artifacts follow the same split: packages, returns and staging live in this worktree's
+  `~/tmp/bridge-exchange/ws_<16 hex>/` namespace (`feature_exchange.py namespace` prints it), so a
+  second worktree reusing the same package name cannot overwrite yours.
+- A worktree holds one active feature: `FEATURE_CONFLICT` means finish or accept the current one
+  first. Rounds are attributed to the manager epoch that launched them.
+- A takeover never stops a round that is already running: its worker finishes and records its
+  result; only the *next* round is refused for the fenced session.
+
 ## Respect ownership and leases
 
 - Mutate only tasks owned by the bound caller.

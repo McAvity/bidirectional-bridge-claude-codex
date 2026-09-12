@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import re
 from pathlib import Path, PurePosixPath
 import stat
@@ -45,12 +46,72 @@ def local_path(root, name):
     return path
 
 
+# Inherited Git variables that redirect which repository, worktree, index or objects a child
+# `git` process uses. They must not survive into an exchange subprocess: `--repo` names the
+# worktree to act on, and an inherited override would otherwise pick a different one — choosing
+# the wrong export source, not just the wrong output directory. This mirrors the neutralisation
+# the product's workspace-identity resolution already performs.
+GIT_SELECTION_ENV = (
+    'GIT_DIR',
+    'GIT_WORK_TREE',
+    'GIT_COMMON_DIR',
+    'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
+    'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+    'GIT_NAMESPACE',
+)
+
+
+def git_env():
+    """Environment for every exchange Git subprocess, without repository-selection overrides."""
+    env = {k: v for k, v in os.environ.items() if k not in GIT_SELECTION_ENV}
+    return env
+
+
 def git(root, *args):
-    return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.PIPE)
+    return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.PIPE,
+                                   env=git_env())
 
 
 def repo_root(value):
     return Path(git(Path(value), 'rev-parse', '--show-toplevel').decode().strip()).resolve()
+
+
+EXCHANGE_HOME = '~/tmp/bridge-exchange'
+
+
+def workspace_namespace(value):
+    """Deterministic exchange namespace of the worktree that contains `value`.
+
+    The key is `ws_` plus the first 16 hex characters of
+    SHA-256(canonical worktree root + NUL + canonical per-worktree git dir), the same identity
+    the bridge uses for workspace state. It is never the branch, the shared git-common-dir, the
+    feature id or a session id, so two worktrees of one repository get different namespaces while
+    a symlinked alias or a subdirectory invocation resolves to the same one.
+
+    Selection is read-only: it resolves paths and creates nothing. It isolates accidental
+    collisions between concurrent worktrees; it is not an authorization boundary.
+    """
+    root = Path(git(Path(value), 'rev-parse', '--path-format=absolute', '--show-toplevel').decode().strip()).resolve()
+    git_dir = Path(git(Path(value), 'rev-parse', '--path-format=absolute', '--git-dir').decode().strip()).resolve()
+    key = 'ws_' + hashlib.sha256((str(root) + '\0' + str(git_dir)).encode('utf-8')).hexdigest()[:16]
+    base = Path(EXCHANGE_HOME).expanduser() / key
+    return {'workspace_key': key, 'root': str(root), 'git_dir': str(git_dir),
+            'namespace': str(base), 'packages': str(base / 'packages'),
+            'incoming': str(base / 'incoming'), 'staging': str(base / 'staging')}
+
+
+def namespace_command(args):
+    print(json.dumps(workspace_namespace(args.repo), indent=2))
+
+
+def namespace_target(repo, kind, name, repo_root_path):
+    """Resolve a namespace-relative `--name`/`--stage-name` to an absolute path."""
+    safe_path(name)
+    target = Path(workspace_namespace(repo)[kind]) / name
+    if target.resolve().is_relative_to(repo_root_path):
+        fail('Namespace resolves inside the repository; exchange artifacts must stay outside it')
+    return target
 
 
 def commit_id(value):
@@ -183,7 +244,10 @@ def export(args):
                         'Uncommitted product changes are not in the committed code diff.'],
         'files': records,
     }
-    output = Path(args.output).expanduser().resolve()
+    if bool(args.output) == bool(args.name):
+        fail('Provide exactly one of --output (literal path) or --name (namespace packages/)')
+    output = (Path(args.output).expanduser().resolve() if args.output
+              else namespace_target(args.repo, 'packages', args.name, root).resolve())
     if output.is_relative_to(directory.resolve()):
         fail('Output ZIP must be outside the feature directory')
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -238,6 +302,7 @@ def verify(args):
         base, head = commit_id(code_range.get('base')), commit_id(code_range.get('head'))
         for commit in (base, head):
             if subprocess.run(['git', '-C', str(root), 'cat-file', '-e', commit + '^{commit}'],
+                              env=git_env(),
                               capture_output=True).returncode:
                 fail('Commit from code_range is absent in this repository: ' + commit)
         if entries.get('exchange/code.diff') != git(root, 'diff', '--binary', '--full-index', base, head, '--'):
@@ -282,7 +347,10 @@ def inspect_return(args):
     manifest = checked_manifest(original, 'Original')
     feature = manifest['feature']
     tasks = set(manifest['tasks'])
-    stage = Path(args.staging).expanduser().resolve()
+    if bool(args.staging) == bool(getattr(args, 'stage_name', None)):
+        fail('Provide exactly one of --staging (literal path) or --stage-name (namespace staging/)')
+    stage = (Path(args.staging).expanduser().resolve() if args.staging
+             else namespace_target(args.repo, 'staging', args.stage_name, root).resolve())
     if stage.is_relative_to(root) or stage.exists():
         fail('Staging must be a new directory outside the repository')
     report, pending = [], []
@@ -321,7 +389,8 @@ def main():
     exp.add_argument('--repo', default='.')
     exp.add_argument('--feature', required=True)
     exp.add_argument('--purpose', required=True, choices=['plan-review', 'contract-review', 'implementation-review', 'decision', 'corrections-review'])
-    exp.add_argument('--output', required=True, help='New ZIP path under ~/tmp; ~ is expanded')
+    exp.add_argument('--output', help='Explicit new ZIP path, used literally; ~ is expanded')
+    exp.add_argument('--name', help='Archive file name placed in this worktree\'s namespace packages/ directory')
     exp.add_argument('--base')
     exp.add_argument('--head')
     exp.set_defaults(run=export)
@@ -333,11 +402,16 @@ def main():
     ver.add_argument('--expect-head', help='Commit the code_range head must resolve to')
     ver.add_argument('--expect-base', help='Commit the code_range base must resolve to')
     ver.set_defaults(run=verify)
+    ns = sub.add_parser('namespace', help='Print this worktree\'s deterministic exchange namespace (read-only)')
+    ns.add_argument('--repo', default='.')
+    ns.set_defaults(run=namespace_command)
+
     imp = sub.add_parser('inspect-return', help='Compare original/return/local and stage documents without applying')
     imp.add_argument('--repo', default='.')
     imp.add_argument('--original', required=True, help='Preserved original ZIP under ~/tmp; ~ is expanded')
     imp.add_argument('--incoming', required=True, help='Returned ZIP under ~/tmp; ~ is expanded')
-    imp.add_argument('--staging', required=True, help='New staging directory under ~/tmp, outside repo; ~ is expanded')
+    imp.add_argument('--staging', help='Explicit new staging directory, used literally; ~ is expanded')
+    imp.add_argument('--stage-name', help='Staging directory name inside this worktree\'s namespace staging/')
     imp.set_defaults(run=inspect_return)
     args = parser.parse_args()
     try:

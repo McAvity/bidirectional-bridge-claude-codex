@@ -15,7 +15,8 @@ explicit call from you.
 2. Require an authorized execution scope (`decisions/NN.md` or a recorded user instruction),
    authorization to delegate it to Claude through the bridge, and authorization for local
    commits (round packages are commit ranges). Without them, prepare the decision instead of
-   starting rounds. Rounds run `git commit` and `python3` and write the package outside the
+   starting rounds. Rounds run `git commit` and `python3` and write the package into the
+  worktree's exchange namespace outside the
    repository; the project's Claude permissions must allow that.
 3. Call `bridge_feature_get({feature_id: <feature-id>})`. If the feature exists, continue
    from its state and make sure `feature.json` records its `bridge` block. Never create a
@@ -39,7 +40,10 @@ on it alone:
   for corrections the review path and required finding IDs; the user decisions that apply
   to this round, quoted with their question id; "Follow `.agents/skills/feature-execute/SKILL.md`,
   section Bridge round executor"; the ledger directory `execution/<TASK-ID>/`; the package
-  export (purpose, `--base` = current HEAD before the round, output path).
+  export (purpose, `--base` = current HEAD before the round, and the archive file name for
+  `--name`, which resolves inside this worktree's exchange namespace
+  `~/tmp/bridge-exchange/ws_<16 hex>/packages/` — run `feature_exchange.py namespace` to read it;
+  give an explicit `--output` path only when a literal location is genuinely required).
 - `scope.paths`: code/test globs of the task plus `docs/features/<id>/execution/**`.
   Exclude `feature.json`, `reviews/`, `decisions/` and other features.
 - `expected_deliverable`: package path, SHA-256, purpose, `base..head`, ledger path, outcome.

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W7-manager-isolation",
+  "phase": "accepted",
+  "brief": "docs/features/F-W7-manager-isolation/brief.md",
+  "design": "docs/features/F-W7-manager-isolation/design.md",
+  "tasks": [
+    "work-items/W7-ID-01.md",
+    "work-items/W7-ID-02.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave7.md",
+    "docs/tasks/wave7-identity-01.md",
+    "docs/tasks/wave7-identity-02.md",
+    "docs/HANDOFF.md",
+    "docs/manager-identity.md",
+    "docs/feature-workflow.md"
+  ],
+  "latest_review": "docs/features/F-W7-manager-isolation/reviews/16-coordinator-exchange.md",
+  "latest_decision": "docs/features/F-W7-manager-isolation/decisions/09.md",
+  "next_action": "None for this feature: user accepted delivered checkpoint404bb4d; bridge_feature_accept returned accepted. Work stopped. Wave9 integration and pilot of two agent pairs remain separate tasks; no merge/push/runtime deployment.",
+  "bridge": {
+    "feature_id": "F-W7-manager-isolation",
+    "parent_task_id": "task_<historical-1>"
+  }
+}

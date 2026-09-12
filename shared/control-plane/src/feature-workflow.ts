@@ -4,9 +4,23 @@ import type { Orchestrator } from "./orchestrator.js";
 import type { FeatureRecord } from "./store/state-store.js";
 import { hashRequest } from "./idempotency.js";
 
+export interface RoundAttribution {
+  readonly native_thread_id: string;
+  readonly epoch: number;
+}
+
 interface RoundRequest {
   feature_id: string;
   manager: string;
+  /** Authority check executed inside the round reservation transaction (contract 6.3). */
+  authorize?: () => void;
+  /**
+   * Resolves the manager identity to attribute the round to. It is called inside the reservation
+   * transaction, after the authority guard, so attribution can never come from a stale preflight.
+   */
+  attribution?: () => RoundAttribution | null;
+  /** Called after the reservation commits, before the worker runs. */
+  onReserved?: () => void;
   idempotency_key: string;
   spec: TaskSpec;
   input_artifacts: readonly string[];
@@ -39,6 +53,36 @@ export class FeatureWorkflow {
     return f;
   }
 
+  /**
+   * Pure derivation of the feature state (contract §6.1): reads task/attempt/lease rows and
+   * returns what the state would reconcile to, without writing anything. Class R uses this.
+   */
+  derive(f: FeatureRecord): FeatureRecord {
+    const copy: FeatureRecord = { ...f, task_ids: [...f.task_ids] };
+    if (!copy.latest_task_id || copy.state === "waiting_user" || copy.state === "accepted") return copy;
+    const task = this.cp.tasks.get(copy.latest_task_id);
+    const attempt = this.cp.attempts.list(task.task_id).at(-1);
+    const held = this.cp.store.listHeldLeases().some(l => l.task_id === task.task_id);
+    if (!attempt || attempt.ended_at == null || held) {
+      if (attempt && copy.state === "blocked") {
+        copy.state = "running";
+        copy.active_task_id = task.task_id;
+      }
+      return copy;
+    }
+    copy.state = task.state === TaskState.DONE ? "awaiting_review" : "blocked";
+    copy.active_task_id = null;
+    return copy;
+  }
+
+  /** Read-only view for Class R tools: never persists, never appends an event. */
+  view(id: string, manager: string): FeatureRecord {
+    const f = this.cp.store.getFeature(id);
+    if (!f) throw new BridgeError(ErrorCode.NOT_FOUND, "feature not found");
+    if (f.manager !== manager) this.fail("feature belongs to another manager");
+    return this.derive(f);
+  }
+
   /** Do not infer process termination from expired leases. An ended attempt is required. */
   private refresh(f: FeatureRecord): FeatureRecord {
     if (!f.latest_task_id || f.state === "waiting_user" || f.state === "accepted") return f;
@@ -67,7 +111,12 @@ export class FeatureWorkflow {
     return this.cp.store.transaction(() => this.refresh(this.owned(id, manager)));
   }
 
-  create(id: string, manager: string, parent_task_id: string): FeatureRecord {
+  create(
+    id: string,
+    manager: string,
+    parent_task_id: string,
+    attribution?: { workspace_id: string | null; epoch: number },
+  ): FeatureRecord {
     return this.cp.store.transaction(() => {
       if (!id.trim() || id.length > 200 || manager !== "codex") this.fail("feature requires a Codex manager and a nonempty id (max 200)");
       const existing = this.cp.store.getFeature(id);
@@ -80,7 +129,8 @@ export class FeatureWorkflow {
       if (parent.owner !== manager) this.fail("manager must own the parent task");
       this.cp.tasks.assertDelegationTargetNotInAncestors(parent_task_id, "claude");
       return this.save({ feature_id: id, manager, parent_task_id, latest_task_id: null,
-        active_task_id: null, task_ids: [], state: "ready", question: null, updated_at: 0 });
+        active_task_id: null, task_ids: [], state: "ready", question: null, updated_at: 0,
+        ...(attribution ? { workspace_id: attribution.workspace_id, manager_epoch: attribution.epoch, round_launches: [] } : {}) });
     });
   }
 
@@ -92,8 +142,17 @@ export class FeatureWorkflow {
     return JSON.parse(saved.response_json) as string;
   }
 
+  /**
+   * Build a round response from a **pure** derivation (contract §6.1, review R11-01).
+   *
+   * A response is produced in two situations that are outside any reservation: replaying an
+   * idempotent round, and returning after a long-running worker — possibly after a takeover.
+   * Reconciling there would write the feature row and an event without an authority guard, so
+   * the response only derives; persistence stays in the guarded reservations that already call
+   * `refresh` (`run`'s reservation, `waitUser`, `answerUser`, `accept`).
+   */
   private result(id: string, manager: string, task_id: string, replayed: boolean) {
-    return { feature: this.get(id, manager), task: this.cp.tasks.get(task_id),
+    return { feature: this.view(id, manager), task: this.cp.tasks.get(task_id),
       deliverable: this.cp.store.getDeliverable(task_id) ?? null, replayed };
   }
 
@@ -102,7 +161,9 @@ export class FeatureWorkflow {
     if (!idempotency_key.trim()) this.fail("round requires an idempotency key");
     const key = `feature.round:${JSON.stringify([feature_id, idempotency_key])}`;
     const requestHash = hashRequest(request);
-    const feature = this.get(feature_id, manager);
+    // Pure preflight: a request that is about to be refused must not reconcile state or append
+    // events on behalf of a caller whose authority has not been checked yet (review R09-01).
+    const feature = this.view(feature_id, manager);
     const replay = this.replay(key, requestHash);
     if (replay) return this.result(feature_id, manager, replay, true);
     if (feature.active_task_id || !["ready", "awaiting_review"].includes(feature.state))
@@ -120,6 +181,8 @@ export class FeatureWorkflow {
         parent_task_id: feature.parent_task_id, input_artifacts: request.input_artifacts,
         deadline_ms: request.deadline_ms, max_attempts: 0 }, {
         ...(predecessor ? { resumeFromTaskId: predecessor } : {}),
+        ...(request.authorize ? { authorize: request.authorize } : {}),
+        ...(request.onReserved ? { onReserved: request.onReserved } : {}),
         onTaskCreated: task => {
           if (this.replay(key, requestHash)) throw new RoundReplay();
           const current = this.refresh(this.owned(feature_id, manager));
@@ -133,16 +196,48 @@ export class FeatureWorkflow {
           current.latest_task_id = task.task_id;
           current.active_task_id = task.task_id;
           current.task_ids.push(task.task_id);
+          const attribution = request.attribution?.() ?? null;
+          if (attribution) {
+            current.round_launches = [...(current.round_launches ?? []), {
+              task_id: task.task_id,
+              native_thread_id: attribution.native_thread_id,
+              epoch: attribution.epoch,
+              launched_at: this.cp.clock.now(),
+            }];
+            current.manager_epoch = attribution.epoch;
+          }
           current.state = "running";
           this.save(current);
           this.cp.store.putIdempotency({ key, operation: "feature.round", request_hash: requestHash,
             response_json: JSON.stringify(task.task_id), created_at: this.cp.clock.now() });
         },
       });
+      // Trusted worker-completion path (contract §6.1, review R11-01): the worker this request
+      // launched has finished, so reconciling here is part of the same authorized operation —
+      // but only while the request still holds authority. After a takeover the fenced session
+      // writes nothing and the next authorized call reconciles instead.
+      this.reconcileAfterWorker(feature_id, manager, request.authorize);
       return { ...this.result(feature_id, manager, outcome.task_id, false), error: outcome.error };
     } catch (error) {
       if (error instanceof RoundReplay) return this.result(feature_id, manager, this.replay(key, requestHash)!, true);
       throw error;
+    }
+  }
+
+  /**
+   * Persist the reconciled state after the round's worker returned. Reconciliation is a write,
+   * so it is skipped when the caller's authority no longer holds; responses themselves always
+   * derive (`result`).
+   */
+  private reconcileAfterWorker(id: string, manager: string, authorize?: () => void): void {
+    try {
+      this.cp.store.transaction(() => {
+        authorize?.();
+        this.refresh(this.owned(id, manager));
+      });
+    } catch {
+      // Fenced, taken over, or otherwise no longer authorized: leave the stored record for the
+      // next authorized call, which reconciles inside its own guard.
     }
   }
 

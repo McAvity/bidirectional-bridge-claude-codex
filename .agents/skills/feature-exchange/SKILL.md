@@ -9,7 +9,7 @@ Read [the shared workflow](../../../docs/features/README.md) first, then the rel
 
 Use [scripts/feature_exchange.py](scripts/feature_exchange.py), Python 3.9+ standard library. Run `--help` or subcommand help for arguments. Run from the repo root or set `--repo`. The tool performs byte selection and conflict classification; it cannot judge semantic completeness or grant approval.
 
-Use `~/tmp` for the entire exchange lifecycle: exported ZIPs, retained originals, incoming review ZIPs, and per-return staging directories. Create `~/tmp` as needed. Prefer unique feature/purpose/run names and keep each original unchanged. If a return was downloaded elsewhere, copy it into `~/tmp` before inspection. In shell commands use `"$HOME/tmp/..."`; the helper also expands a quoted `~/tmp/...` path. Staging must still be new and outside the repository. If the repository itself contains `~/tmp`, report the conflict and use an explicitly agreed external directory. Do not use `/tmp` or a repository-local exchange directory unless the user overrides this location.
+Use the worktree's own exchange namespace for the entire lifecycle. `python3 .agents/skills/feature-exchange/scripts/feature_exchange.py namespace --repo <path>` prints it: `~/tmp/bridge-exchange/ws_<16 hex>/` with `packages/`, `incoming/` and `staging/`. The key is the first 16 hex characters of SHA-256(canonical worktree root + NUL + canonical per-worktree git dir), so two worktrees of one repository never collide even when they use the same feature, purpose and round name; it is never the branch, the feature id or a session id. Resolution is read-only and claims nothing. Export with `--name <file>.zip` and stage with `--stage-name <return-name>` so the namespace is applied for you; `--output` and `--staging` remain literal when a caller supplies them explicitly. Keep each original unchanged, copy a return downloaded elsewhere into the namespace `incoming/` before inspection, and keep staging a new directory outside the repository. Exclusive creation still refuses an existing target. Earlier flat `~/tmp/<feature>-<purpose>-<n>.zip` examples in historical ledgers and reviews record what was done then; they are not the current convention and are never rewritten. If the namespace would resolve inside the repository, the helper fails and the location must be agreed explicitly.
 
 ## When to exchange
 
@@ -24,8 +24,13 @@ Example:
 ```bash
 python3 .agents/skills/feature-exchange/scripts/feature_exchange.py export \
   --feature docs/features/F-001-replayability --purpose plan-review \
-  --output "$HOME/tmp/F-001-plan-review-01.zip"
+  --name F-001-plan-review-01.zip
 ```
+
+`--name` writes into this worktree's namespace `packages/` directory and prints the absolute path
+it used; run the `namespace` subcommand first if you need that path in advance. Use `--output
+<path>` only as a deliberate override when a literal location is genuinely required — it is not
+the normal convention, and it gives up the collision protection the namespace provides.
 
 For implementation evidence, optionally add `--base <commit> --head <commit>` (head defaults to HEAD). The exporter includes a binary Git diff and changed file snapshots from those commits; it records deletions/renames. This does not include uncommitted product changes. If execution was uncommitted, either make a scoped checkpoint under existing authorization or explicitly supply the required files as context and disclose that committed diff is incomplete. Never imply a mixed bundle is a single commit. Ledgers must identify the code actually tested.
 
@@ -39,9 +44,16 @@ Return ZIP path, purpose, relevant limitations and the next role. Keep the origi
 
 ```bash
 python3 .agents/skills/feature-exchange/scripts/feature_exchange.py verify \
-  --archive "$HOME/tmp/F-001-r02.zip" --expect-feature docs/features/F-001-replayability \
+  --archive "$(python3 .agents/skills/feature-exchange/scripts/feature_exchange.py namespace \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"])')/F-001-r02.zip" \
+  --expect-feature docs/features/F-001-replayability \
   --expect-purpose corrections-review --expect-base <round-base> --expect-head HEAD
 ```
+
+The export command prints the archive path it wrote; pass that path back to `verify` rather than
+reconstructing it by hand. `verify` resolves the repository from `--repo` (default: the current
+directory) with inherited Git repository-selection variables neutralised, so it always checks the
+worktree you named.
 
 `verify` checks the archive against its manifest (file list, sizes, SHA-256), the declared
 purpose/feature/base/head, the code diff, change list and snapshots against this repository's
@@ -65,9 +77,15 @@ Require the original export plus the return ZIP. The return may contain only cha
 
 ```bash
 python3 .agents/skills/feature-exchange/scripts/feature_exchange.py inspect-return \
-  --original "$HOME/tmp/F-001-plan-review-01.zip" --incoming "$HOME/tmp/F-001-reviewed-01.zip" \
-  --staging "$HOME/tmp/F-001-return-staging-01"
+  --original <namespace>/packages/F-001-plan-review-01.zip \
+  --incoming <namespace>/incoming/F-001-reviewed-01.zip \
+  --stage-name F-001-return-staging-01
 ```
+
+Copy a return that arrived elsewhere into the namespace `incoming/` directory first.
+`--stage-name` creates the staging directory under the namespace `staging/`; `--staging <path>`
+remains available as a deliberate literal override and is still refused when it points inside the
+repository or at an existing directory.
 
 The script validates paths/manifests, stages only allowed changed/new feature documents and registered task Markdown, and compares local bytes with original/incoming. It never modifies the repo. Missing entries mean unchanged, not deleted. Code, scripts, task files not registered in the original and shared workflow changes are outside automatic staging; handle them separately if explicitly requested and reviewed. Rejected edits are reported as errors, not ignored.
 

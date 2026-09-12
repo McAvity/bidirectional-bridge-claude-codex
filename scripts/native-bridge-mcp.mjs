@@ -16,6 +16,8 @@ export const NATIVE_BRIDGE_HELP = `native-bridge-mcp — project-scoped neutral 
   --delegation      allow | deny (required; enforced server-side)
   --workspace       project root (default: current working directory)
   --db              shared SQLite path (default: <workspace>/.bridge/bridge.db)
+  --adopt-legacy-state  bind an existing pre-isolation database to this worktree (one-shot)
+  --adopt-reason    required with --adopt-legacy-state: recorded provenance (1..500 chars)
   --help            write this help to stderr and exit
 `;
 
@@ -32,6 +34,8 @@ export function parseNativeBridgeArgs(argv, cwd = process.cwd()) {
   let delegation;
   let workspaceRaw;
   let databaseRaw;
+  let adoptLegacy = false;
+  let adoptReason;
   let help = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -53,6 +57,13 @@ export function parseNativeBridgeArgs(argv, cwd = process.cwd()) {
         databaseRaw = valueAfter(argv, index, flag);
         index += 1;
         break;
+      case "--adopt-legacy-state":
+        adoptLegacy = true;
+        break;
+      case "--adopt-reason":
+        adoptReason = valueAfter(argv, index, flag);
+        index += 1;
+        break;
       case "--help":
       case "-h":
         help = true;
@@ -68,6 +79,13 @@ export function parseNativeBridgeArgs(argv, cwd = process.cwd()) {
   if (!help && !DELEGATION_POLICIES.has(delegation)) {
     throw new Error("--delegation must be allow or deny");
   }
+  if (!help && adoptLegacy && (!adoptReason || adoptReason.length > 500)) {
+    // Adoption is a deliberate, evidenced operation, never a side effect of starting.
+    throw new Error("--adopt-legacy-state requires --adopt-reason with 1..500 characters");
+  }
+  if (!help && !adoptLegacy && adoptReason) {
+    throw new Error("--adopt-reason is only valid with --adopt-legacy-state");
+  }
 
   const workspace = workspaceRaw ? resolve(cwd, workspaceRaw) : resolve(cwd);
   const databasePath = databaseRaw
@@ -81,6 +99,8 @@ export function parseNativeBridgeArgs(argv, cwd = process.cwd()) {
     delegation,
     workspace,
     databasePath,
+    databaseRaw,
+    ...(adoptLegacy ? { adoptLegacy: { reason: adoptReason } } : {}),
     help,
   };
 }
@@ -100,6 +120,15 @@ export async function runNativeBridge(args) {
   if (!statSync(args.workspace).isDirectory()) {
     throw new Error(`workspace is not a directory: ${args.workspace}`);
   }
+
+  const controlPlane = await import(new URL("../shared/control-plane/dist/index.js", import.meta.url).href);
+  // Canonical worktree identity. Resolution reads the filesystem and Git only: startup creates
+  // no directory, database, marker or lock (contract section 4.2).
+  const workspace = controlPlane.resolveWorkspaceIdentity(args.workspace);
+  const databasePath = controlPlane.resolveDatabasePath(
+    workspace,
+    args.databaseRaw ?? undefined,
+  );
 
   const [core, claudeSide, codexSide] = await Promise.all([
     import(new URL("../shared/mcp-server-core/dist/index.js", import.meta.url).href),
@@ -137,8 +166,10 @@ export async function runNativeBridge(args) {
 
   const adapters = [claudeAdapter, codexAdapter];
   const server = new core.BridgeMcpServer({
-    workspaceRoot: args.workspace,
-    databasePath: args.databasePath,
+    workspaceRoot: workspace.root,
+    workspace,
+    databasePath,
+    ...(args.adoptLegacy ? { adoptLegacy: args.adoptLegacy } : {}),
     agent: args.caller,
     delegationPolicy: args.delegation,
     adapters,
@@ -146,7 +177,10 @@ export async function runNativeBridge(args) {
     onWarning: (message) => log(`warning: ${message}`),
   });
 
-  log(`caller=${args.caller} delegation=${args.delegation} workspace=${args.workspace}`);
+  log(
+    `caller=${args.caller} delegation=${args.delegation} workspace=${workspace.root} ` +
+      `kind=${workspace.kind} db=${databasePath} instance=${server.identity?.instanceId ?? "n/a"}`,
+  );
   return core.serve({
     server,
     label: `bridge-native-${args.caller}`,
@@ -171,7 +205,15 @@ function canonicalPath(path) {
 const invokedPath = process.argv[1] ? canonicalPath(process.argv[1]) : "";
 if (invokedPath === canonicalPath(launcherPath)) {
   main().catch((error) => {
-    process.stderr.write(`[bridge-native] fatal: ${error instanceof Error ? error.stack : String(error)}\n`);
+    // A refused workspace is a normal, actionable outcome: print the code and remedy, not a stack.
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : null;
+    const details = error && typeof error === "object" && "details" in error ? error.details : undefined;
+    const reason = details && typeof details === "object" && "reason" in details ? String(details.reason) : null;
+    process.stderr.write(
+      code
+        ? `[bridge-native] fatal: ${code}${reason ? ` (${reason})` : ""}: ${error.message}\n`
+        : `[bridge-native] fatal: ${error instanceof Error ? error.stack : String(error)}\n`,
+    );
     process.exitCode = 1;
   });
 }

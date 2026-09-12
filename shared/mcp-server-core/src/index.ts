@@ -12,6 +12,9 @@ export type { BridgeServerOptions } from "./server.js";
 export { serve, stderrLog } from "./lifecycle.js";
 export type { LogSink, ServeHandle, ServeOptions } from "./lifecycle.js";
 
+export { IdentityRuntime } from "./identity-runtime.js";
+export type { AuthorizedSession, ToolClass } from "./identity-runtime.js";
+
 export { TOOLS, runTool } from "./tools.js";
 export type { DelegationPolicy, ToolContext, ToolDefinition } from "./tools.js";
 

@@ -28,6 +28,8 @@ import {
   type VerificationResult,
 } from "@bridge/protocol";
 import { FeatureWorkflow, type ControlPlane, type Orchestrator } from "@bridge/control-plane";
+import type { ManagerRegistry } from "@bridge/control-plane";
+import type { AuthorizedSession, IdentityRuntime, ToolClass } from "./identity-runtime.js";
 
 /* ------------------------------------------------------------------ *
  * Zod shapes (the MCP SDK builds JSON Schema from these)
@@ -81,12 +83,34 @@ export interface ToolContext {
   readonly defaultAgent: AgentId;
   /** Generic server-side delegation policy selected when the process starts. */
   readonly delegationPolicy: DelegationPolicy;
+  /**
+   * Worktree/manager identity runtime. Present only when the server was constructed with a
+   * canonical workspace (the product composition root); absent for embedders and unit tests,
+   * which keep the pre-isolation behaviour.
+   */
+  readonly identity?: IdentityRuntime;
+  /** Raw `_meta` of the request currently being served (contract section 5.1). */
+  readonly nativeMeta?: unknown;
+  /**
+   * Authority check for an asynchronous operation. The handler must hand it to the reservation
+   * (orchestrator/feature round) so it runs inside that transaction, before any durable write or
+   * worker launch (contract section 6.3).
+   */
+  readonly authorize?: () => void;
+  /** Reservation boundary: publish markers and release the worktree lock before the worker runs. */
+  readonly onReserved?: () => void;
+  /** Manager session established by the guard for this call, when identity is enforced. */
+  readonly managerSession?: AuthorizedSession;
+  /** Manager registry bound to the transaction of this call. */
+  readonly managerRegistry?: ManagerRegistry;
 }
 
 export type DelegationPolicy = "allow" | "deny";
 
 export interface ToolDefinition {
   readonly name: string;
+  /** Operation class of contract section 6.1; defaults to a guarded mutation. */
+  readonly klass?: ToolClass;
   readonly title: string;
   readonly description: string;
   readonly inputShape: z.ZodRawShape;
@@ -147,20 +171,87 @@ const who = (args: Record<string, unknown>, ctx: ToolContext): AgentId => {
   return ctx.defaultAgent;
 };
 
+async function executeTool(
+  tool: ToolDefinition,
+  args: Record<string, unknown>,
+  ctx: ToolContext,
+  nativeMeta: unknown,
+): Promise<unknown> {
+  const identity = ctx.identity;
+  if (!identity) return tool.handler(args, ctx);
+  const klass = tool.klass ?? "mutate";
+  // Startup policy is checked before the manager guard, so a server that forbids delegation
+  // answers with its policy rather than with an identity verdict (contract section 6.1).
+  if (
+    ctx.delegationPolicy === "deny" &&
+    (tool.name === "bridge_delegate" || tool.name === "bridge_feature_run")
+  ) {
+    throw new BridgeError(
+      ErrorCode.INVALID_ARGUMENT,
+      "delegation is denied by this server's startup policy",
+      { policy: "deny", caller: ctx.defaultAgent, target: args["to"] },
+    );
+  }
+  if (klass === "read") {
+    if (tool.name === "bridge_manager_status" || tool.name === "bridge_server_info") {
+      return tool.handler(args, ctx);
+    }
+    identity.requireReadableState();
+    return tool.handler(args, ctx);
+  }
+  if (tool.name === "bridge_manager_resume_instance" || tool.name === "bridge_manager_takeover") {
+    // These tools drive the guard themselves; the class is carried for documentation.
+    return tool.handler(args, ctx);
+  }
+  if (ASYNC_MUTATORS.has(tool.name)) {
+    return identity.runMutationAsync(nativeMeta, tool.name, async (authorize, onReserved) =>
+      tool.handler(args, { ...ctx, authorize, onReserved }),
+    );
+  }
+  return identity.runMutation(
+    nativeMeta,
+    "mutate",
+    (managerSession, managerRegistry) => tool.handler(args, { ...ctx, managerSession, managerRegistry }),
+    tool.name,
+  );
+}
+
 export const TOOLS: readonly ToolDefinition[] = [
   {
     name: "bridge_feature_create",
     title: "Create a feature workflow",
     description: "Pin future Claude rounds to one feature. Requires a parent task owned by the Codex manager. Does not launch Claude.",
     inputShape: { feature_id: z.string().min(1).max(200), parent_task_id: z.string(), ...agentArg },
-    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).create(a["feature_id"] as string, who(a, c), a["parent_task_id"] as string),
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      const flow = new FeatureWorkflow(c.cp, c.orchestrator);
+      const session = c.managerSession;
+      const created = flow.create(
+        feature_id,
+        who(a, c),
+        a["parent_task_id"] as string,
+        session
+          ? { workspace_id: c.identity?.workspaceId ?? null, epoch: session.binding.epoch }
+          : undefined,
+      );
+      // One active feature per worktree (contract section 11).
+      claimFeatureSlot(c, feature_id);
+      return created;
+    },
   },
   {
     name: "bridge_feature_get",
+    klass: "read",
     title: "Read a feature workflow",
     description: "Read durable routing state, latest task and pending user question. Inspect that task's deliverable/artifacts to retrieve feature-exchange packages.",
     inputShape: { feature_id: z.string(), ...agentArg },
-    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).get(a["feature_id"] as string, who(a, c)),
+    handler: (a, c) => {
+      const flow = new FeatureWorkflow(c.cp, c.orchestrator);
+      // Class R: derived state only. Reconciliation happens inside a guarded mutation.
+      return c.identity
+        ? { ...flow.view(a["feature_id"] as string, who(a, c)), reconciled: false }
+        : flow.get(a["feature_id"] as string, who(a, c));
+    },
   },
   {
     name: "bridge_feature_run",
@@ -172,7 +263,30 @@ export const TOOLS: readonly ToolDefinition[] = [
       if (c.delegationPolicy === "deny") throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "delegation is denied by this server's startup policy");
       return new FeatureWorkflow(c.cp, c.orchestrator).run({ feature_id: a["feature_id"] as string,
         manager: who(a, c), spec: a["spec"] as TaskSpec, input_artifacts: (a["input_artifacts"] as string[]) ?? [],
-        deadline_ms: a["deadline_ms"] as number, idempotency_key: a["idempotency_key"] as string });
+        deadline_ms: a["deadline_ms"] as number, idempotency_key: a["idempotency_key"] as string,
+        ...(c.authorize
+          ? {
+              authorize: () => {
+                c.authorize!();
+                const registry = c.cp.managers;
+                const binding = registry.read();
+                if (binding) registry.claimFeature(a["feature_id"] as string, binding);
+              },
+            }
+          : {}),
+        ...(c.onReserved ? { onReserved: c.onReserved } : {}),
+        ...(c.identity
+          ? {
+              // Attribution is resolved inside the reservation transaction, after the guard,
+              // so it can never be copied from a stale preflight (review R09-01).
+              attribution: () => {
+                const binding = c.cp.managers.read();
+                return binding
+                  ? { native_thread_id: binding.native_thread_id, epoch: binding.epoch }
+                  : null;
+              },
+            }
+          : {}) });
     },
   },
   {
@@ -180,25 +294,115 @@ export const TOOLS: readonly ToolDefinition[] = [
     title: "Pause a feature for user input",
     description: "Persist a blocking question addressed to the user. Never sends it to Claude. The manager must show the question to the user separately.",
     inputShape: { feature_id: z.string(), question_id: z.string().min(1), question: z.string().min(1).max(8000), ...agentArg },
-    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).waitUser(a["feature_id"] as string, who(a, c), a["question_id"] as string, a["question"] as string),
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      claimFeatureSlot(c, feature_id);
+      return new FeatureWorkflow(c.cp, c.orchestrator).waitUser(feature_id, who(a, c), a["question_id"] as string, a["question"] as string);
+    },
   },
   {
     name: "bridge_feature_answer_user",
     title: "Record the user answer",
     description: "Record an answer to the current question without launching Claude or forwarding it. To act on it, write the applicable decision into the next feature_run spec, or for a BLOCKED task into bridge_resume_delegated_task.message.",
     inputShape: { feature_id: z.string(), question_id: z.string().min(1), answer: z.string().min(1).max(8000), ...agentArg },
-    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).answerUser(a["feature_id"] as string, who(a, c), a["question_id"] as string, a["answer"] as string),
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      claimFeatureSlot(c, feature_id);
+      return new FeatureWorkflow(c.cp, c.orchestrator).answerUser(feature_id, who(a, c), a["question_id"] as string, a["answer"] as string);
+    },
   },
   {
     name: "bridge_feature_accept",
     title: "Accept a reviewed feature",
     description: "Manager explicitly accepts the completed feature after its review and the required acceptance decision. No rounds are possible afterwards. Worker COMPLETE alone never accepts the feature.",
     inputShape: { feature_id: z.string(), ...agentArg },
-    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).accept(a["feature_id"] as string, who(a, c)),
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      claimFeatureSlot(c, feature_id);
+      const accepted = new FeatureWorkflow(c.cp, c.orchestrator).accept(feature_id, who(a, c));
+      // Releasing frees only this feature's slot; another feature's slot is untouched.
+      c.managerRegistry?.releaseFeature(feature_id);
+      return accepted;
+    },
   },
 
   {
+    name: "bridge_manager_status",
+    klass: "read",
+    title: "Inspect worktree and manager identity",
+    description:
+      "Report the canonical worktree identity, this connection, the bound manager (native thread, " +
+      "epoch, active instance) and any interrupted bootstrap. Pure: it never claims, repairs or " +
+      "migrates anything.",
+    inputShape: {},
+    handler: (_args, ctx) => {
+      if (!ctx.identity) {
+        return { workspace: null, process: null, manager: null, identity_enforced: false };
+      }
+      return { ...ctx.identity.status(), identity_enforced: true };
+    },
+  },
+  {
+    name: "bridge_manager_resume_instance",
+    klass: "handoff",
+    title: "Resume manager ownership on this connection",
+    description:
+      "Make this MCP connection the active instance of the manager thread that already owns the " +
+      "worktree, after an MCP restart or crash. Requires the current epoch and generation; the " +
+      "native session identity comes from the request, never from arguments, and no token exists.",
+    inputShape: {
+      expected_epoch: z.number().int().min(1),
+      expected_generation: z.number().int().min(1),
+    },
+    handler: (args, ctx) => {
+      const identity = requireIdentity(ctx);
+      return identity.runMutation(ctx.nativeMeta, "handoff", (_session, registry) => {
+        const outcome = registry.resumeInstance({
+          native: identity.lastNative(ctx.nativeMeta),
+          instanceId: identity.instanceId,
+          expectedEpoch: args["expected_epoch"] as number,
+          expectedGeneration: args["expected_generation"] as number,
+        });
+        return {
+          epoch: outcome.binding.epoch,
+          instance_generation: outcome.binding.instance_generation,
+          changed: outcome.changed,
+        };
+      });
+    },
+  },
+  {
+    name: "bridge_manager_takeover",
+    klass: "takeover",
+    title: "Take over a worktree from another manager session",
+    description:
+      "Explicitly move ownership to the calling native session. Compare-and-swap on the previous " +
+      "thread and epoch, with a recorded reason. A running round is never cancelled; the previous " +
+      "session is fenced and can only return through another explicit takeover.",
+    inputShape: {
+      expected_thread_id: z.string().min(1),
+      expected_epoch: z.number().int().min(1),
+      reason: z.string().min(1).max(2000),
+    },
+    handler: (args, ctx) => {
+      const identity = requireIdentity(ctx);
+      return identity.runMutation(ctx.nativeMeta, "takeover", (_session, registry) => {
+        const binding = registry.takeover({
+          native: identity.lastNative(ctx.nativeMeta),
+          role: ctx.defaultAgent,
+          instanceId: identity.instanceId,
+          workspaceId: null,
+          expectedThreadId: args["expected_thread_id"] as string,
+          expectedEpoch: args["expected_epoch"] as number,
+          reason: args["reason"] as string,
+        });
+        return { epoch: binding.epoch, instance_generation: binding.instance_generation };
+      });
+    },
+  },
+  {
     name: "bridge_server_info",
+    klass: "read",
     title: "Inspect the bound bridge session",
     description:
       "Return the caller identity and delegation policy bound when this MCP server process " +
@@ -242,6 +446,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_list_tasks",
+    klass: "read",
     title: "List tasks",
     description:
       "List tasks, optionally filtered by state or owner. Call this before starting work to " +
@@ -279,6 +484,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_get_task",
+    klass: "read",
     title: "Get one task in full",
     description: "Full task record plus dependency status, artifacts, latest status and deliverable.",
     inputShape: { task_id: z.string() },
@@ -342,6 +548,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_get_execution_handle",
+    klass: "read",
     title: "Read a resumable execution handle",
     description:
       "Fetch the execution handle saved for an attempt, so a restarted agent can reconnect " +
@@ -378,14 +585,18 @@ export const TOOLS: readonly ToolDefinition[] = [
       ...idemArg,
     },
     handler: (args, ctx) =>
-      ctx.orchestrator.resumeTask({
-        task_id: args["task_id"] as string,
-        requested_by: ctx.defaultAgent,
-        ...(args["idempotency_key"]
-          ? { idempotency_key: args["idempotency_key"] as string }
-          : {}),
-        ...recoveryBudget(args),
-      }),
+      ctx.orchestrator.resumeTask(
+        {
+          task_id: args["task_id"] as string,
+          requested_by: ctx.defaultAgent,
+          ...recoveryBudget(args),
+          ...(args["idempotency_key"] ? { idempotency_key: args["idempotency_key"] as string } : {}),
+        },
+        {
+          ...(ctx.authorize ? { authorize: ctx.authorize } : {}),
+          ...(ctx.onReserved ? { onReserved: ctx.onReserved } : {}),
+        },
+      ),
   },
   {
     name: "bridge_resume_delegated_task",
@@ -408,18 +619,20 @@ export const TOOLS: readonly ToolDefinition[] = [
       ...idemArg,
     },
     handler: (args, ctx) =>
-      ctx.orchestrator.resumeDelegatedTask({
-        task_id: args["task_id"] as string,
-        requested_by: ctx.defaultAgent,
-        ...(args["message"] !== undefined ? { message: args["message"] as string } : {}),
-        ...(args["recover_timeout"] !== undefined
-          ? { recover_timeout: args["recover_timeout"] as boolean }
-          : {}),
-        ...(args["idempotency_key"]
-          ? { idempotency_key: args["idempotency_key"] as string }
-          : {}),
-        ...recoveryBudget(args),
-      }),
+      ctx.orchestrator.resumeDelegatedTask(
+        {
+          task_id: args["task_id"] as string,
+          requested_by: ctx.defaultAgent,
+          ...recoveryBudget(args),
+          ...(args["recover_timeout"] !== undefined ? { recover_timeout: args["recover_timeout"] as boolean } : {}),
+          ...(args["message"] !== undefined ? { message: args["message"] as string } : {}),
+          ...(args["idempotency_key"] ? { idempotency_key: args["idempotency_key"] as string } : {}),
+        },
+        {
+          ...(ctx.authorize ? { authorize: ctx.authorize } : {}),
+          ...(ctx.onReserved ? { onReserved: ctx.onReserved } : {}),
+        },
+      ),
   },
   {
     name: "bridge_claim_task",
@@ -466,6 +679,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_check_scope",
+    klass: "read",
     title: "Check whether a scope is free",
     description:
       "Non-mutating conflict check. Use before planning work to see whether the other agent is " +
@@ -588,6 +802,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_read_artifact",
+    klass: "read",
     title: "Read an artifact",
     description: "Fetch an artifact's content and metadata by id, with an integrity check.",
     inputShape: { artifact_id: z.string() },
@@ -729,7 +944,8 @@ export const TOOLS: readonly ToolDefinition[] = [
           { policy: "deny", caller: ctx.defaultAgent, target: args["to"] },
         );
       }
-      const outcome = await ctx.orchestrator.delegate({
+      const outcome = await ctx.orchestrator.delegate(
+        {
         from: who(args, ctx),
         to: args["to"] as string,
         spec: args["spec"] as TaskSpec,
@@ -744,12 +960,18 @@ export const TOOLS: readonly ToolDefinition[] = [
         deadline_ms: args["deadline_ms"] as number,
         max_attempts: (args["max_attempts"] as number) ?? 0,
         ...(args["idempotency_key"] ? { idempotency_key: args["idempotency_key"] as string } : {}),
-      });
+        },
+        {
+          ...(ctx.authorize ? { authorize: ctx.authorize } : {}),
+          ...(ctx.onReserved ? { onReserved: ctx.onReserved } : {}),
+        },
+      );
       return outcome;
     },
   },
   {
     name: "bridge_query_telemetry",
+    klass: "read",
     title: "Query normalized attempt telemetry",
     description:
       "Read final neutral telemetry records by run, task, agent, or attempt. Records never " +
@@ -776,6 +998,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_snapshot",
+    klass: "read",
     title: "Coordination snapshot",
     description:
       "One-shot view of the whole system: task counts by state, ready tasks, live leases and their " +
@@ -785,6 +1008,7 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_read_events",
+    klass: "read",
     title: "Tail the event log",
     description:
       "Read the append-only event log, optionally after a given event_id. This is the supervisor " +
@@ -805,23 +1029,56 @@ export const TOOLS: readonly ToolDefinition[] = [
   },
   {
     name: "bridge_recover",
+    klass: "read",
     title: "Run crash recovery",
     description:
       "Expire leases whose holder went away and report tasks left mid-flight. Does not auto-fail " +
       "or auto-retry anything — recovery decisions stay explicit.",
     inputShape: {},
-    handler: (_args, ctx) => ctx.cp.recover(),
+    handler: (_args, ctx) => (ctx.identity ? ctx.cp.inspectRecovery() : ctx.cp.recover()),
   },
 ];
+
+/**
+ * Every mutating touch of a feature takes (or confirms) the worktree's single active feature
+ * slot, inside the guarded transaction. Adopted historical features claim the empty slot on
+ * their first touch (contract section 11, review R09-04).
+ */
+function claimFeatureSlot(ctx: ToolContext, featureId: string): void {
+  const registry = ctx.managerRegistry;
+  const binding = ctx.managerSession?.binding ?? registry?.read();
+  if (!registry || !binding) return;
+  registry.claimFeature(featureId, binding);
+}
+
+function requireIdentity(ctx: ToolContext): IdentityRuntime {
+  if (!ctx.identity) {
+    throw new BridgeError(
+      ErrorCode.UNIMPLEMENTED,
+      "manager identity tools require a server started with a canonical workspace",
+    );
+  }
+  return ctx.identity;
+}
+
+/** Tools whose handler is asynchronous and therefore guarded before, not inside, the work. */
+const ASYNC_MUTATORS = new Set([
+  "bridge_delegate",
+  "bridge_feature_run",
+  "bridge_resume_task",
+  "bridge_resume_delegated_task",
+]);
 
 /** Wrap a handler result in the MCP content envelope, converting errors to structured JSON. */
 export async function runTool(
   tool: ToolDefinition,
   args: Record<string, unknown>,
   ctx: ToolContext,
+  nativeMeta?: unknown,
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   try {
-    const result = await tool.handler(args, ctx);
+    const scoped: ToolContext = ctx.identity ? { ...ctx, nativeMeta } : ctx;
+    const result = await executeTool(tool, args, scoped, nativeMeta);
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     const bridgeErr = BridgeError.from(err);
