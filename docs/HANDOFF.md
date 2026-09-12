@@ -13,7 +13,8 @@ Wave11 instructions are adopted; behavioral improvement is not yet empirically p
 No active/pinned runtime is rebuilt or deployed by this integration. Pilot synthetic
 features are not accepted on behalf of a real product user.
 
-Publication and CI are the remaining closure checks. Broader setup/diagnostics work,
+Accepted wave10/wave11 are integrated and published; CI result is recorded in their
+progress files. No runtime deployment is implied. Broader setup/diagnostics work,
 wave6 REWORK coverage and empirical long-duration limits remain separate work.
 
 

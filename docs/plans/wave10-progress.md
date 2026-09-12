@@ -415,3 +415,16 @@ No models, source fixes, merge, push or runtime rebuild performed in this review
 Joint validation (isolated worktree): npm ci --ignore-scripts, build, 425 JS,
 29 exchange and 140 pilot-tool tests PASS; documentation check 90 files PASS;
 git diff --check clean. No paid models. Publication/CI follows this checkpoint.
+
+
+## Closure — 2026-09-13
+
+Wave10 and wave11 accepted, integrated and published to feature-workflow as
+`840504749470869ae7ed384200e4d75e7aeb2b8e`.
+GitHub Actions [34722477307](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/34722477307)
+completed SUCCESS for that exact commit. Local joint checks: 425 JS, 29 exchange,
+140 pilot-tool tests and documentation PASS. This final entry only records the
+successful result; no code/skill change or runtime deployment follows it.
+Wave10 is closed for the accepted segmented scenarios, not the original uninterrupted
+v2. Wave11 adoption is complete; its behavioral effectiveness remains unmeasured.
+Older pending statuses are historical. Existing pinned runtimes remain untouched.
