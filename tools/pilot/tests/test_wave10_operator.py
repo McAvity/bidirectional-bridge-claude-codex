@@ -56,3 +56,60 @@ class Wave10OperatorTests(unittest.TestCase):
             (root / 'evidence/before').mkdir(parents=True)
             with self.assertRaises(FileExistsError):
                 OP.snapshot(SimpleNamespace(run=root, label='before'))
+
+    def test_schedule_leaves_time_for_work_after_gate(self):
+        budget = OP.BUDGET
+        self.assertLess(budget['operator_window_seconds'], budget['gate_seconds'])
+        self.assertLess(budget['gate_seconds'] * 1000, budget['gate_bash_timeout_ms'])
+        self.assertLess(120000 + budget['gate_seconds'] * 1000 + budget['round_deadline_ms'],
+                        budget['b_round2_deadline_ms'])
+        self.assertLess(budget['b_round2_deadline_ms'], budget['mcp_timeout_seconds'] * 1000)
+        # Latest B/r2 start at minute 30 leaves at least 10 minutes for final evidence.
+        self.assertLessEqual(30 * 60 + budget['b_round2_deadline_ms'] / 1000 + 10 * 60,
+                             budget['wall_minutes'] * 60)
+
+    def test_gate_announces_and_release_finishes_without_waiting_for_a_result(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            script = root / 'gate.py'
+            script.write_text(OP.gate_source())
+            result = subprocess.run([sys.executable, str(script), '--announce-only'], cwd=root,
+                                    capture_output=True, text=True, timeout=3)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((root / '.pilot/round2-started').exists())
+            self.assertFalse((root / '.pilot/gate-ready').exists())
+            (root / '.pilot/continue').touch()
+            result = subprocess.run([sys.executable, str(script)], cwd=root,
+                                    capture_output=True, text=True, timeout=3)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((root / '.pilot/gate-ready').exists())
+
+    def test_gate_expires_even_when_release_arrives_after_deadline(self):
+        import os
+        import runpy
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            script = root / 'gate.py'
+            script.write_text(OP.gate_source())
+            (root / '.pilot').mkdir()
+            (root / '.pilot/continue').touch()
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                with patch('time.monotonic', side_effect=[0, OP.BUDGET['gate_seconds']]), patch.object(sys, 'argv', [str(script)]):
+                    with self.assertRaisesRegex(SystemExit, 'operator gate expired'):
+                        runpy.run_path(str(script), run_name='__main__')
+            finally:
+                os.chdir(old_cwd)
+
+    def test_launcher_refuses_at_whole_pilot_deadline(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            approval = {'approved': True, 'scope': OP.SCOPE, 'runtime_sha': 'sha',
+                        'subscription_only_confirmed': True, 'budget': OP.BUDGET}
+            (root / 'approval.json').write_text(json.dumps(approval))
+            (root / 'started-at.txt').write_text('0')
+            with patch.object(OP, 'preflight', return_value={'runtime_sha': 'sha'}), patch.object(OP.time, 'time', return_value=3600), patch.object(OP.os, 'execvp') as launch:
+                with self.assertRaisesRegex(ValueError, '60 minute run budget exhausted'):
+                    OP.launch(SimpleNamespace(run=root, pair='a', mode='start'))
+                launch.assert_not_called()

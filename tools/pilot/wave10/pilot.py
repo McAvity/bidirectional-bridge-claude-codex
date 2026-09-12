@@ -15,9 +15,11 @@ import sys
 import time
 
 SOURCE = Path(__file__).resolve().parents[3]
-SCOPE = 'wave10-two-pairs-v1'
+SCOPE = 'wave10-two-pairs-v2'
 BUDGET = {'claude_rounds': 4, 'claude_turns_per_round': 12, 'round_deadline_ms': 480000,
-          'manager_turns_per_pair': 10, 'foreign_probe_turns': 2, 'wall_minutes': 40,
+          'b_round2_deadline_ms': 1200000, 'gate_seconds': 540, 'gate_bash_timeout_ms': 600000,
+          'operator_window_seconds': 480, 'mcp_timeout_seconds': 1320,
+          'manager_turns_per_pair': 10, 'foreign_probe_turns': 2, 'wall_minutes': 60,
           'automatic_retries': 0, 'paid_api_spend_usd': 0}
 
 
@@ -54,6 +56,22 @@ def build_hash(runtime):
     return h.hexdigest()
 
 
+
+def gate_source():
+    """Agent-visible r2 synchronization only; deadlines also live in the approved manifest."""
+    return ('from pathlib import Path\nimport sys\nimport time\n'
+            'state = Path(".pilot")\nstate.mkdir(exist_ok=True)\n'
+            'if "--announce-only" in sys.argv:\n'
+            '    (state / "round2-started").write_text(str(time.time()))\n'
+            '    raise SystemExit(0)\n'
+            f'end = time.monotonic() + {BUDGET["gate_seconds"]}\n'
+            '(state / "gate-ready").write_text(str(time.time()))\n'
+            'while True:\n'
+            '    if time.monotonic() >= end: raise SystemExit("operator gate expired")\n'
+            '    if (state / "continue").exists(): break\n'
+            '    time.sleep(1)\n')
+
+
 def prepare(args):
     dest = args.run.resolve()
     if dest.exists():
@@ -85,11 +103,7 @@ def prepare(args):
     write(seed / 'AGENTS.md', 'Read TASK.md. Work only in this worktree and its exchange namespace.\n'
           'One manager and one Claude feature session. No further delegation or operator-file reads.\n'
           'Never inspect sibling worktrees, the runtime source, or parent directories.\n')
-    write(seed / 'gate.py', 'from pathlib import Path\nimport time\n'
-          'end = time.monotonic() + 180\n'
-          'while not Path(".pilot/continue").exists():\n'
-          '    if time.monotonic() >= end: raise SystemExit("operator gate expired")\n'
-          '    time.sleep(1)\n')
+    write(seed / 'gate.py', gate_source())
     feature = seed / 'docs/features/F-W10-pair'
     write(feature / 'brief.md', '# F-W10-pair\nImplement render(label) returning PAIR + ":" + label.\n'
           'Round 2 adds a suffix selected explicitly by the user. Validate with Python unittest.\n')
@@ -103,9 +117,10 @@ def prepare(args):
         repo = dest / pair
         git(seed, 'worktree', 'add', '-q', '-b', 'pair-' + pair, str(repo))
         write(repo / 'TASK.md', f'PAIR={pair.upper()}\nFeature: F-W10-pair; round keys r1 and r2.\n'
-              + ('Before implementing round 1, worker runs `python3 gate.py` once; stop if it expires.\n' if pair == 'b' else '')
+              + ('At the start of round 2 only, worker runs `python3 gate.py` once with Bash timeout 600000 ms; wait for completion before implementing; stop if it expires.\n' if pair == 'b' else 'At the start of round 2 only, worker runs `python3 gate.py --announce-only`.\n')
               + 'Only edit render.py, test_render.py and docs/features/F-W10-pair/execution/**.\n'
-              'Round 1 implements render(label); round 2 adds the user-selected suffix.\n')
+              'Runtime markers under .pilot/** are allowed, ignored by Git and never committed.\n'
+              'Round 1 has no gate; round 2 adds the user-selected suffix.\n')
         git(repo, 'add', 'TASK.md')
         git(repo, 'commit', '-qm', 'Set synthetic pair requirement')
         exchange = runtime / '.agents/skills/feature-exchange/scripts/feature_exchange.py'
@@ -115,7 +130,8 @@ def prepare(args):
         package_dir = dest / 'exchange' / ns['workspace_key'] / 'packages'
         package_dir.mkdir(parents=True)
         prompt = f'''Read AGENTS.md and TASK.md. You are manager Astra of pair {pair.upper()}.
-User authorizes this pilot only: at most two Claude rounds, 12 turns and 480000 ms each,
+User authorizes this pilot only: at most two Claude rounds, 12 turns each.
+Round r1 deadline_ms=480000, without a gate. Round r2 deadline_ms={BUDGET["b_round2_deadline_ms"] if pair == "b" else BUDGET["round_deadline_ms"]},
 zero retries, no extra agents. Create/claim a manager root, set it WORKING, and create feature F-W10-pair using bridge.
 Read bridge_server_info and bridge_manager_status; report the exact native thread ID for resume.
 Round r1: implement TASK.md round 1 through bridge_feature_run (its retries are fixed at zero),
@@ -128,6 +144,16 @@ and question "Which suffix should round 2 use?". End your turn and wait for the 
 Do not accept the feature, run r2, read operator files, or exceed this scope.
 '''
         write(dest / f'START-{pair.upper()}.txt', prompt)
+        next_prompt = f'''User decision for q1: suffix -{pair.upper()}. Record through bridge_feature_answer_user.
+Run r2 in the existing feature F-W10-pair and the same Claude session. idempotency_key=r2,
+spec.max_turns=12, deadline_ms={BUDGET["b_round2_deadline_ms"] if pair == "b" else BUDGET["round_deadline_ms"]}; zero built-in retries.
+Follow TASK.md: at the very start of r2 Claude runs
+{ "`python3 gate.py` once with Bash timeout=600000 ms (wait up to 540 seconds for the operator)" if pair == "b" else "`python3 gate.py --announce-only`" }.
+Allow runtime markers in .pilot/** in the round scope; never commit them. Then implement suffix,
+test, commit and export/verify --feature docs/features/F-W10-pair --purpose implementation-review
+--output {package_dir}/r2.zip, --base equal to current HEAD before r2. Review the delivery and stop;
+no acceptance, extra round or timeout recovery.'''
+        write(dest / f'ROUND2-{pair.upper()}.txt', next_prompt)
     manifest = {'scope': SCOPE, 'budget': BUDGET, 'runtime_sha': sha,
                 'runtime_build_sha256': build_hash(runtime), 'namespaces': namespaces,
                 'fixture_heads': {p: git(dest / p, 'rev-parse', 'HEAD') for p in ['a', 'b']},
@@ -148,6 +174,8 @@ Do not accept the feature, run r2, read operator files, or exceed this scope.
 def preflight(root):
     m = json.loads((root / 'manifest.json').read_text())
     runtime = root / 'runtime'
+    if m['scope'] != SCOPE or m['budget'] != BUDGET:
+        raise ValueError('prepared schedule/budget differs; prepare a new run')
     if not json.loads((root / 'handshake.json').read_text()).get('ok'):
         raise ValueError('successful pinned runtime handshake required')
     if git(runtime, 'rev-parse', 'HEAD') != m['runtime_sha'] or git(runtime, 'status', '--porcelain'):
@@ -182,7 +210,7 @@ def launch(args):
     config = {'command': shutil.which('node'), 'args': [str(root / 'runtime/scripts/native-bridge-mcp.mjs'),
               '--caller', 'codex', '--delegation', 'deny' if args.mode == 'foreign' else 'allow',
               '--workspace', str(repo)], 'cwd': str(repo), 'startup_timeout_sec': 30,
-              'tool_timeout_sec': 600}
+              'tool_timeout_sec': BUDGET['mcp_timeout_seconds']}
     command = ['codex', '-m', 'gpt-6-astra', '-C', str(repo)]
     for key, value in config.items():
         command += ['-c', f'mcp_servers.bridge.{key}={json.dumps(value)}']
@@ -200,8 +228,8 @@ def launch(args):
     started = root / 'started-at.txt'
     if not started.exists():
         write(started, str(time.time()))
-    if time.time() - float(started.read_text()) > 40 * 60:
-        raise ValueError('40 minute run budget exhausted')
+    if time.time() - float(started.read_text()) >= BUDGET['wall_minutes'] * 60:
+        raise ValueError(f"{BUDGET['wall_minutes']} minute run budget exhausted")
     # In-session turns/rounds and elapsed time require operator supervision; no hard dollar meter.
     os.chdir(repo)
     os.execvp(command[0], command)
@@ -230,6 +258,10 @@ def snapshot(args):
                     shutil.copy2(file, dest)
             if Path(str(db) + '.owner').exists():
                 shutil.copy2(str(db) + '.owner', out / 'database.owner')
+        for marker in (repo / '.pilot').glob('*'):
+            if marker.is_file() and marker.name in {'gate-ready', 'round2-started', 'continue'}:
+                (out / 'pilot-markers').mkdir(exist_ok=True)
+                shutil.copy2(marker, out / 'pilot-markers' / marker.name)
         write(out / 'git.json', json.dumps({'head': git(repo, 'rev-parse', 'HEAD'),
               'status': git(repo, 'status', '--porcelain')}, indent=2))
     packages = {str(p.relative_to(root)): digest(p) for p in (root / 'exchange').rglob('*.zip')}

@@ -1,6 +1,6 @@
 # Wave10 — postęp
 
-Status: **GOTOWE DO REVIEW / PILOT PRZYGOTOWANY**. Cały wave10 nadal otwarty; modele nieuruchomione.
+Status: integracja po review koordynatora; korekta harmonogramu pilota w toku. Cały wave10 nadal otwarty; modele nieuruchomione.
 
 ## Scope / Inputs
 
@@ -22,6 +22,8 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | W10-05 | Nazwa operator.py przesłaniała moduł standardowy Python przy bezpośrednim starcie CLI. | Zamknięty: pilot.py i test subprocess --help PASS. Pierwsze prepare zatrzymane przed utworzeniem katalogu. |
 | W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Zamknięty: wbudowane zero retry i pełna ścieżka docs/features/F-W10-pair; finalne prepare oraz export/verify obu fixture PASS. |
 | W10-07 | Test przenośności odrzuca także wzmiankę wave6 w tools/pilot. | Zamknięty: neutralna wzmianka o wcześniejszym pilocie REWORK; 115/115 testów PASS. |
+
+| W10-08 | Bramka B/r1 180 s nie obejmowała rundy A 480 s oraz review/restartu. | Harmonogram v2: bramka wyłącznie B/r2, po r1/review obu par; 540 s bramki, 480 s operatora, B/r2 1200 s, MCP 1320 s, całość 60 min. 9 testów narzędzia + portability PASS; nowy pin/prepare w toku. |
 
 ## Validation / Handoff
 
@@ -87,3 +89,23 @@ Raport, mapa SHA, hashe dowodów, ograniczenia i dokładny skrypt terminali:
 [wave10-report.md](wave10-report.md). Ostatni commit jest dokumentacyjny; nie zmienia
 przypiętego runtime ani launchera. Następny krok: review integracji i zatwierdzenie przez
 użytkownika zakresu/budżetu pilota. To nie zamknięcie całego wave10.
+
+## Korekta harmonogramu po przeglądzie koordynatora
+
+Wejście: `b05624d9e93baef5c6f249a386429002b537ab19`, branch wave10, czysty worktree.
+Koordynator zgłosił brak nowych problemów integracji oraz niezależny PASS 36 testów
+izolacji/recovery/launchera i preflight. Nie powtarzamy review implementacji ani jej pełnych testów.
+Autoryzacja bieżąca obejmuje tylko harmonogram, instrukcję, budżet i nowe przygotowanie.
+
+W10-08: r1 obu par kończy się review i waiting_user. Foreign probe odbywa się wtedy,
+bez aktywnych workerów. Dopiero B/r2 rozpoczyna bramkę, w której operator restartuje A,
+przekazuje odpowiedź i uruchamia A/r2. Release B po markerze startu A, nie po wyniku A.
+Gate 540 s < Bash 600 s; start B do gate-ready 120 s + gate 540 s + praca 480 s
++ zapas 60 s = deadline B/r2 1200 s < MCP 1320 s. Pozostałe rundy 480 s.
+B/r2 start najpóźniej w 30. minucie; pilot 60 min. Okno operatora 480 s daje 60 s rezerwy.
+4 rundy / 12 tur każda; do 10 tur Astry na parę + 2 foreign probe; zero retries,
+zero dodatkowych płatnych wywołań API, wyłącznie potwierdzone subskrypcje. Budget/scope v2.
+
+Walidacja zmienionego narzędzia: 9/9 testów, portability 1/1, git diff --check PASS.
+Następnie nowy lokalny pin i nowy katalog przygotowania, build oraz 2 handshake/preflight.
+Żadnych modeli, bridge delegacji, push, merge ani zmian aktywnych runtime.

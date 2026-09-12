@@ -123,75 +123,42 @@ Pełne logi zachowane lokalnie w `$RUN/evidence/validation`; do Git trafiają ty
 | `wave10-pilot-tests.log` | `4defb6295e8147d5bed3731b8b3e75d5bd319dc9b16735672c881a7331b6f296` |
 | `wave10-native-tests.log` | `271c3350b3ee894478456d42837ae081459a37ef3b96a2d54f14cd6e5692fe17` |
 
-## Konkretnie przygotowany pilot i instrukcja startu
+## Harmonogram v2 po review koordynatora
 
-Finalny katalog: **`/tmp/wave10-pilot-88bccc7`**. Runtime:
-`/tmp/wave10-pilot-88bccc7/runtime`, detached `88bccc71d7e5e72ec1daeaf13922615aa28fab60`.
-Build SHA-256 (manifest: launcher, lockfile i wygenerowane JS):
-`744d000859f59d5d07c6af4986c3a640c4d8f78e566f618cc7885eda725d8da3`.
-Handshake JSON SHA-256:
-`dac169c1fe5eacc88f893d6229fa10d3a8693affed2cbad9c06f544406d66b35`.
-Worktree A/B to `$RUN/a` i `$RUN/b`, branche pair-a/pair-b w oddzielnym syntetycznym repo
-`$RUN/seed`. DB powstaną dopiero przy uprawnionej mutacji w odpowiednich `.bridge/bridge.db`.
-Paczki/logi/dowody mają odrębne katalogi. `manifest.json` zawiera rzeczywiste klucze i HEAD
-fixture; nie publikujemy lokalnych identyfikatorów. Katalog wcześniejszego przygotowania
-pozostawiono, ale **nie jest katalogiem do startu**. /tmp może być nietrwałe: po jego utracie
-odtwórz przez prepare do nowego katalogu, bez kopiowania baz.
+Koordynator zgłosił brak nowych problemów integracji i niezależny PASS 36 testów
+izolacji/recovery/launchera oraz preflight. Bieżąca korekta dotyczy wyłącznie W10-08
+w [jednej liście ustaleń](wave10-progress.md); nie wykonano ponownego review implementacji.
+Poprzedni pilot na 88bccc7 jest zachowany jako historyczne przygotowanie, **nie do startu**.
 
-**Zgoda wymagana przed startem modeli:** dwie pary, 4 rundy Claude’a łącznie, każda do
-12 tur / 480000 ms, do 10 tur każdej Astry i 2 tury osobnej Astry foreign-probe (bez Claude’a),
-40 minut całości, zero retry/recovery poza tym zakresem. Astra gpt-6-astra/high;
-Claude profil opus/high przypiętego runnera. Wyłącznie istniejące subskrypcje,
-0 USD dodatkowych płatnych wywołań API; operator potwierdza sposób rozliczania przed zgodą.
-Nie deklarujemy zerowego zużycia subskrypcji ani automatycznego pomiaru kosztów Astry.
+Po r1 i review obie pary czekają w waiting_user/q1. Najpierw foreign probe przy braku
+aktywnych rund; następnie B/r2 z bramką. Podczas tej aktywnej próby operator zamyka i
+wznawia dokładną Astrę A, potwierdza q1, przekazuje odpowiedź i uruchamia A/r2. Po markerze
+startu workera A niezwłocznie zwalnia B. Nie czeka na zakończenie ani review rundy A.
+Oba rzeczywiste workery mają udokumentowany overlap w r2; r1 nie wymaga synchronizacji.
 
-Dokładny protokół, prompty, kryteria P1–P7, zbierane dowody i STOP:
-[tools/pilot/wave10/OPERATOR.md](../../tools/pilot/wave10/OPERATOR.md).
+| Budżet do zatwierdzenia (scope wave10-two-pairs-v2) | Wartość |
+| --- | --- |
+| Rundy Claude’a | 4 łącznie, do 12 tur każda; zero retry i dodatkowego recovery. |
+| A/r1, A/r2, B/r1 | Każda do 480000 ms (8 min). |
+| B/r2 | Do 1200000 ms (20 min). |
+| Bramka wyłącznie B/r2 | 540 s, Bash timeout 600000 ms. |
+| Operator od gate-ready B do restartu/startu A i release B | 480 s, czyli 60 s rezerwy przed gate expiry. |
+| MCP | tool_timeout_sec=1320 (22 min), startup 30 s. |
+| Cały pilot | 60 min; start B/r2 najpóźniej w 30. minucie, min. 10 min na końcową ocenę/dowody. |
+| Astry | Do 10 tur na parę, plus 2 tury osobnej Astry foreign-probe (bez Claude’a). |
+| Modele/rozliczenie | Astra gpt-6-astra/high, Claude profil opus/high runnera; tylko potwierdzone subskrypcje, 0 USD dodatkowych wywołań API. |
 
-Krótki skrypt operatora — ustaw W10_SOURCE z worktree wave10 i RUN tak samo w terminalach:
+Spójność: start B 120 s + gate 540 s + praca 480 s + zapas 60 s = 1200 s rundy;
+MCP dodaje 120 s na zakończenie/transport. Operator liczy tury i pilnuje czasu także
+wewnątrz TUI; launcher nie zabija procesów po końcu budżetu. Gate-ready po 120 s,
+brak restartu/startu A/release w 480 s, koniec całego budżetu lub timeout => STOP,
+bez dodatkowej rundy/resetu/recovery. Niedostępne koszty Astry pozostają unknown.
 
-```bash
-# Terminal O, startując z worktree wave10; bez modeli:
-export W10_SOURCE="$(git rev-parse --show-toplevel)"
-export RUN=/tmp/wave10-pilot-88bccc7
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" preflight --run "$RUN"
-# Nie uruchamiaj prepare na istniejącym RUN.
-# Po jawnej zgodzie: approval.example.json -> approval.json,
-# approved=true i subscription_only_confirmed=true, bez zmiany scope/SHA/budżetu.
+Instrukcja terminali i dokładne kroki:
+[OPERATOR.md](../../tools/pilot/wave10/OPERATOR.md). Nowe prepare zapisuje START-A/B.txt
+(r1 bez bramki), ROUND2-A/B.txt (osobne deadline i kolejność), manifest oraz niezatwierdzony
+approval.example.json. Stary scope/budżet nie przechodzi preflight/approval.
 
-# Terminal A (dopiero po zgodzie), następnie wklej wyłącznie START-A.txt:
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode start
-# Terminal B (dopiero po zgodzie), następnie wklej wyłącznie START-B.txt:
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair b --mode start
-
-# Terminal O: A waiting_user/q1, B nadal WORKING; zapisz ID z manager_status
-# w session-a.txt/session-b.txt. Bez --last, newest i wyboru guardiana.
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label a-waiting-b-working
-# Zamknij TUI A po zakończonej rundzie. Terminal A:
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode resume
-# A potwierdza dokładny thread, waiting_user/q1 i ewentualnie wykonuje explicit resume_instance.
-# Terminal O, gdy B nadal aktywny, przed upływem 180s jego bramki:
-mkdir -p "$RUN/b/.pilot"
-touch "$RUN/b/.pilot/continue"
-
-# Gdy obie pary czekają na q1, Terminal O:
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label before-foreign
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode foreign
-# Oczekuj MANAGER_FOREIGN_THREAD, zakończ obcą TUI bez przejęcia i retry:
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label after-foreign
-# Porównaj logical.sql i markery A/B przed/po: identyczne.
-# W TUI A/B: odpowiednio suffix -A/-B przez answer_user(q1), następnie r2
-# w tej samej sesji Claude’a i paczka r2.zip. Bez accept/dodatkowych rund.
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label final
-```
-
-Operator sprawdza overlap rzeczywistych prób, dokładny restart A przy aktywnym B,
-różne sesje A/B i zachowanie własnej sesji między r1/r2, pełną niezmienność stanu przy
-foreign rejection, testy obu wyników, cztery ZIP verify oraz budżet. Brak dowodu = UNVERIFIED.
-Przy mieszaniu stanu, niejednoznacznym resume, auth/quota/host/timeout, dodatkowej rundzie,
-wygaśnięciu bramki lub końcu budżetu: STOP, snapshot, bez resetu i automatycznego recovery.
-Surowe sesje, bazy, zgody i odpowiedzi pozostają prywatnie, poza Gitem.
-
-Następny krok: ograniczone review konfliktów/wspólnych ścieżek i decyzja użytkownika
-co do powyższego pilota/budżetu. Nie wykonano push, merge do feature-workflow, podmiany
-aktywnego runtime ani deklaracji ukończenia całego wave10.
+Przygotowanie nowego pinu i dowody zostaną dopisane po build/preflight/handshake.
+Pilot modeli nadal NOT RUN. Następny krok po tej korekcie: zatwierdzenie powyższego
+zakresu/budżetu i uruchomienie według instrukcji, bez kolejnego pełnego review integracji.

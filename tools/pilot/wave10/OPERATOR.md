@@ -7,15 +7,17 @@ obcego managera (bez trzeciego Claude’a). Nie jest to wcześniejszy pilot REWO
 ## Zakres do zatwierdzenia
 
 - Astra `gpt-6-astra`, effort high; Claude: profil opus/high przypiętego runnera, bez override.
-- Dwie pary, po dwie rundy: łącznie najwyżej 4 uruchomienia Claude’a, każde maks. 12 tur,
-  deadline 480000 ms. Zero automatycznych retry i zero dodatkowego recovery timeout.
+- Dwie pary, po dwie rundy: łącznie najwyżej 4 uruchomienia Claude’a, każde maks. 12 tur.
+  A/r1, A/r2 i B/r1: deadline 480000 ms (8 min); B/r2: 1200000 ms (20 min).
+  Tylko B/r2 ma bramkę 540 s (9 min), Bash timeout 600000 ms (10 min).
+  MCP tool timeout 1320 s (22 min), startup MCP 30 s. Zero retry i dodatkowego recovery.
 - Najwyżej 10 tur każdej Astry oraz 2 tury dodatkowej sesji obcego managera. Wznowienie
-  dokładnej Astry A nie jest nową parą. Całość maks. 40 minut od pierwszego startu.
+  dokładnej Astry A nie jest nową parą. Całość maks. 60 minut od pierwszego startu.
 - Wyłącznie istniejące subskrypcje; budżet dodatkowych płatnych wywołań API = 0 USD.
   Operator przed zgodą sprawdza sposób rozliczania obu klientów. Brak takiego potwierdzenia
   blokuje start. Nie oznacza to zerowego zużycia limitów subskrypcji.
 - To budżety zakresu i czasu, nie twardy miernik kosztu Astry. Operator liczy tury i pilnuje
-  czasu; launcher blokuje nowe uruchomienie po 40 minutach, ale nie zabija działających sesji.
+  czasu; launcher blokuje nowe uruchomienie po 60 minutach, ale nie zabija działających sesji.
 - Kontrolowany timeout, legacy adoption, host mismatch i takeover są regresjami bez modeli.
   Real pilot sprawdza równoległość, waiting_user/restart, kontynuację sesji i foreign rejection.
 
@@ -60,83 +62,114 @@ Zapisz zgodę w prywatnym dzienniku operatora. Skopiuj `approval.example.json` d
 dokładny scope, runtime SHA i budżet. Sam plik nie zastępuje zgody użytkownika.
 Bez niego launcher odmawia uruchomienia. Nie commituj zgody, sesji ani odpowiedzi.
 
-## Start i restart — trzy terminale O, A, B
+## Harmonogram v2 — trzy terminale O, A, B
+
+Bramka jest wyłącznie na początku **B/r2**. Zanim ją uruchomisz, A ma już zakończone
+r1 i review oraz czeka w waiting_user/q1. W bramce mieszczą się tylko restart Astry A,
+sprawdzenie tożsamości, odpowiedź q1 i start A/r2 — nie cała runda A ani jej review.
+Rzeczywisty overlap workerów jest wymagany w r2; równoległość r1 jest opcjonalna.
+B jest rzeczywistym workerem z aktywną próbą i poleceniem oczekującym na operatora;
+nie twierdzimy, że dwa modele muszą równocześnie generować tokeny.
+
+| Odcinek | Limit / zapas |
+| --- | --- |
+| Od pierwszego startu do końca r1/review obu par | Cel: 20 min; obie pary waiting_user/q1. |
+| Foreign probe, gdy obie pary są nieaktywne | Cel: do 25. minuty; bez zmiany poprzednich kryteriów. |
+| Start B/r2 | Najpóźniej w 30. minucie pilota; inaczej STOP bez startu rundy. |
+| B/r2 do zapisania .pilot/gate-ready | Do 120 s od startu próby; inaczej STOP. |
+| Gate-ready → restart A, odpowiedź q1, start workera A/r2 i zwolnienie B | Do 480 s (8 min), z 60 s zapasu przed wygaśnięciem bramki. |
+| Bramka B / polecenie Bash | 540 s < 600 s; operator nie czeka do końca bramki. |
+| Runda B/r2 | 120 s startu + 540 s bramki + 480 s pracy + 60 s zapasu = 1200 s. |
+| MCP / cały pilot | 1320 s > 1200 s; całość 60 min, co pozostawia co najmniej 10 min po deadline B/r2 na ocenę i dowody. |
+
+Operator pilnuje terminów także wewnątrz otwartych TUI. Nie wydłuża bramki i nie zaczyna
+kolejnych rund po przekroczeniu harmonogramu. Brak gotowości do fazy r2 oznacza STOP,
+nie pośpieszny restart ani dodatkowy budżet. Zakończenie rundy wcześniej zwalnia zapas czasu.
 
 Ustaw `W10_SOURCE` i `RUN` na te same wartości w każdym terminalu (powłoki nie dzielą zmiennych).
 
-**Terminal A:**
+**Terminal A**, potem wklej tylko `$RUN/START-A.txt`:
 
 ```bash
 python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode start
 ```
 
-**Terminal B:**
+**Terminal B**, potem wklej tylko `$RUN/START-B.txt`:
 
 ```bash
 python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair b --mode start
 ```
 
-W obu TUI sprawdź `/mcp`. Wklej odpowiednio tylko `$RUN/START-A.txt` i `START-B.txt`.
-Wklej je blisko siebie: oba workery muszą mieć udokumentowany wspólny przedział aktywności.
-Worker B w rundzie 1 czeka maks. 180 sekund na jawną bramkę operatora; nie uruchamiaj go
-z dużym wyprzedzeniem. Jeśli nie uzyskano rzeczywistego overlap, oznacz kryterium UNVERIFIED,
-nie dorabiaj dowodu z samego otwarcia dwóch terminali.
+Sprawdź `/mcp` w obu TUI. Poczekaj na zakończenie r1 i review oraz waiting_user/q1
+**obu** par. Nie zamykaj jeszcze A i nie odpowiadaj na q1. Zapisz dokładne
+native_thread_id z manager_status w `$RUN/session-a.txt` i `session-b.txt`.
+Nie używaj newest, --last, pickera ani ID guardiana.
 
-Gdy Astra A zgłosi waiting_user/q1, zapisz jej dokładny `native_thread_id` z
-`bridge_manager_status` w `$RUN/session-a.txt`. Analogicznie zapisz B w `session-b.txt`.
-Nie używaj newest, --last, pickera ani ID guardiana. Zrób snapshot:
+## Odrzucenie obcego managera — przed bramką
 
-```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label a-waiting-b-working
-```
-
-Zamknij TUI A normalnie, gdy żadna runda A nie pracuje, następnie **w terminalu A**:
-
-```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode resume
-```
-
-Wznowionej Astrze A poleć: odczytaj manager_status i feature_get. Potwierdź ten sam
-native_thread_id, waiting_user oraz q1. Jeśli instancja jest fenced po EOF/crash, wywołaj
-`bridge_manager_resume_instance` z aktualnymi `expected_epoch` i `expected_generation`.
-Nie rób takeover i nie twórz nowego featura/tasku wokół istniejącej rundy.
-
-**Terminal O**, po potwierdzeniu resume A, gdy B nadal czeka:
-
-```bash
-mkdir -p "$RUN/b/.pilot"
-touch "$RUN/b/.pilot/continue"
-python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label a-resumed
-```
-
-Poczekaj na waiting_user także B. Zapisz natywne ID obu Claude’ów z prywatnych dowodów
-prób (nie wyświetlaj surowych uchwytów w publicznym raporcie). Tożsamości A/B mają być różne.
-
-## Odrzucenie obcego managera bez mutacji
-
-Obie pary muszą być teraz w waiting_user, bez aktywnych rund. W terminalu O:
+Obie pary czekają w waiting_user, bez aktywnych rund. W terminalu O:
 
 ```bash
 python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label before-foreign
 python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode foreign
 ```
 
-Krótka trzecia Astra ma tylko odczytać manager_status i spróbować create_task. Launcher
-ustawia delegation=deny. Oczekiwany `MANAGER_FOREIGN_THREAD`; bez takeover/resume/retry.
-Zapisz kod odmowy i zakończ tę TUI. Zrób snapshot `after-foreign` i porównaj oba `logical.sql`
-oraz pliki stanu i owner przed/po. Muszą być identyczne w A i B; SQLite WAL/SHM nie są
-porównaniem semantycznego stanu. `snapshot` używa SQLite backup API, nie kopiuje żywej bazy
-przez zwykłe cp. Nie rób tej próby podczas pracujących workerów, bo ich legalne zapisy
-uniemożliwią przypisanie różnic obcemu wywołaniu.
+Trzecia Astra tylko odczytuje manager_status i próbuje create_task; delegation=deny.
+Oczekiwany `MANAGER_FOREIGN_THREAD`, bez takeover/resume/retry. Zapisz odmowę i zakończ
+obcą TUI. Zrób snapshot `after-foreign`; porównaj `logical.sql`, markery i owner A/B
+przed/po: muszą być identyczne. SQLite WAL/SHM nie są stanem logicznym.
 
-## Druga runda i zebranie dowodów
+## Druga runda, restart A i równoległość
 
-W każdej właściwej TUI przekaż syntetyczną decyzję: suffix `-A` dla A, `-B` dla B.
-Poleć zapisać ją przez feature_answer_user(q1), uruchomić r2 z tym samym featurem,
-spec.max_turns=12, deadline_ms=480000, zerowym retry wbudowanym w feature_run, bieżącym HEAD jako base i paczką r2.zip
-obok r1.zip. Claude ma kontynuować swoją natywną sesję, dodać suffix, testy, ledger,
-commit i zweryfikowaną paczkę. Astra sprawdza dostawę, raportuje wynik i kończy; bez
-feature_accept, dodatkowych rund i kolejnego pełnego review.
+Przed 30. minutą pilota **w TUI B** wklej `$RUN/ROUND2-B.txt`: odpowiedź suffix `-B`,
+feature_answer_user(q1), następnie B/r2 w tej samej sesji Claude’a, deadline_ms=1200000.
+Pierwszą czynnością workera B jest `python3 gate.py` z Bash timeout=600000 ms.
+Musi zaczekać na jego zakończenie, zanim przejdzie do implementacji. Skrypt zapisuje
+`.pilot/gate-ready` i czeka do 540 s na `.pilot/continue`. R1 nie uruchamia tego skryptu.
+
+**Terminal O:** sprawdź obecność `$RUN/b/.pilot/gate-ready` i aktywną próbę B/r2
+w snapshotcie. Marker musi powstać w ciągu 120 s od startu B/r2. Zanotuj jego czas.
+Od niego masz 480 s na poniższe czynności (60 s pozostaje jako rezerwa):
+
+```bash
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label a-waiting-b-r2-working
+```
+
+Zamknij TUI A normalnie. **Terminal A:**
+
+```bash
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode resume
+```
+
+Poleć wznowionej Astrze A odczytać manager_status i feature_get. Potwierdź ten sam
+native_thread_id, waiting_user i q1. Jeśli instance jest fenced po EOF/crash,
+wykonaj bridge_manager_resume_instance z aktualnymi expected_epoch i expected_generation.
+Nie rób takeover ani zastępczego featura/tasku.
+
+Następnie **w tej samej TUI A** wklej `$RUN/ROUND2-A.txt`: odpowiedź suffix `-A`,
+feature_answer_user(q1), A/r2 deadline_ms=480000. Pierwsza czynność workera A to
+`python3 gate.py --announce-only`, która zapisuje tylko `$RUN/a/.pilot/round2-started`.
+Obaj workerzy używają swoich katalogów; żaden nie zapisuje markerów w obcym worktree.
+
+**Terminal O:** gdy marker A się pojawi, a B nadal czeka, zwolnij B niezwłocznie,
+nie czekając na wynik ani review A. Nie musisz zmieścić całej rundy A w bramce B.
+
+```bash
+test -f "$RUN/a/.pilot/round2-started"
+touch "$RUN/b/.pilot/continue"
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label r2-overlap
+```
+
+Potwierdź overlap z trwałych czasów prób i markerów, nie tylko z otwarcia terminali.
+Jeśli A zdąży zakończyć krótką rundę przed snapshotem, jej zapisany przedział musi
+nadal przecinać aktywną próbę B. Jeśli B przestał być aktywny przed startem A, kryterium
+nie przeszło. Przy braku markerów/restartu w oknie 480 s: STOP; nie przedłużaj bramki.
+
+## Zakończenie i dowody
+
+Obie rundy r2: spec.max_turns=12, wbudowane zero retry, bieżący HEAD jako base,
+paczki r2.zip obok r1.zip. Claude testuje, commituje i eksportuje; Astra sprawdza
+wyłącznie dostawę i kończy. Bez feature_accept, dodatkowych rund i pełnego review.
 
 ```bash
 python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label final
@@ -145,11 +178,11 @@ python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label 
 Operator uruchamia w każdym worktree `python3 -m unittest discover -v` oraz exporter
 `verify --repo "$RUN/a" --archive <dokładna-paczka> --expect-feature docs/features/F-W10-pair
 --expect-purpose implementation-review --expect-base <baza-rundy> --expect-head <head-rundy>`
-(analogicznie B, cztery paczki). Zachowuje logi, hashe, zakresy commitów i porównanie sesji
-w prywatnym katalogu evidence. Snapshot przechowuje SQLite, logiczny dump, markery,
-dowody zakończeń, HEAD/status oraz hashe ZIP. Operator dopisuje chronologię działań,
-wyniki testów/verify, wersje klientów i dostępne telemetryczne koszty/tury/czas.
-Brakujące koszty Astry oznacza `unknown`, nie zero. Surowe rollouty są opcjonalne i prywatne.
+(analogicznie B, cztery paczki). Zachowuje logi, hashe, zakresy commitów i porównanie sesji.
+Snapshot używa SQLite backup API i zachowuje logiczny dump, markery, evidence, HEAD/status
+oraz hashe ZIP. Dodatkowo zachowaj `.pilot/gate-ready` B, `.pilot/round2-started` A i czas
+zwolnienia B. Chronologia obejmuje restart, starty/końce prób, przekroczenia limitów i dostępne
+koszty/tury. Brakujące koszty Astry to unknown, nie zero. Surowe dane zostają prywatnie.
 
 ## Kryteria i warunki STOP
 
