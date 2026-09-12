@@ -1,6 +1,6 @@
 # Wave10 — postęp
 
-Status: W TOKU — integracja lokalna, pilot modeli nieuruchomiony.
+Status: **GOTOWE DO REVIEW / PILOT PRZYGOTOWANY**. Cały wave10 nadal otwarty; modele nieuruchomione.
 
 ## Scope / Inputs
 
@@ -16,11 +16,12 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | ID | Ustalenie | Status / sprawdzenie |
 | --- | --- | --- |
 | W10-01 | Historia wave7 zawiera prywatne ścieżki operatora i namespace rzeczywistego worktree oraz identyfikatory runtime. | Zamknięty: import oczyszczonego snapshotu bez przodków wave7; mapowanie wszystkich 32 commitów. Metadane author/committer mają publiczny noreply, brak wykrytych linków sesji/sekretów. |
-| W10-02 | Wave7 bazuje na kodzie sprzed timeout recovery; zastąpienie plików cofnęłoby opublikowane recovery. | Zamknięty: trzystronne połączenie; konflikty control-plane (lazy services + evidence) i tools (guard + budget) rozwiązane. Regresja FAILED/TIMEOUT przez dispatcher z restartem, takeover, foreign replay i no-mutation przechodzi. Pełne testy: 425 JS / 29 exchange / 114 pilot tooling PASS. |
+| W10-02 | Wave7 bazuje na kodzie sprzed timeout recovery; zastąpienie plików cofnęłoby opublikowane recovery. | Zamknięty: trzystronne połączenie; konflikty control-plane (lazy services + evidence) i tools (guard + budget) rozwiązane. Regresja FAILED/TIMEOUT przez dispatcher z restartem, takeover, foreign replay i no-mutation przechodzi. Pełne testy: 425 JS / 29 exchange / 115 pilot tooling PASS. |
+| W10-03 | Pilot wymaga dokładnie wspieranego hosta Codex 0.154.0 i prawdziwego kontekstu wywołań. | Przygotowanie zamknięte: host 0.154.0, preflight i dwa handshake PASS. Realne metadata/model path nadal NOT RUN; start wymaga zgody na konkretny budżet. |
 | W10-04 | Opublikowany test stdio timeout nie przekazywał nowego kontekstu native; create odrzucony przed mutacją. | Zamknięty: harness ma native metadata i jawne resume_instance po EOF; 8/8 stdio i pełne 425/425 JS PASS. |
-| W10-05 | Nazwa operator.py przesłaniała moduł standardowy Python przy bezpośrednim starcie CLI. | Poprawiono na pilot.py; dodany test subprocess --help. Pierwsze prepare zatrzymane przed utworzeniem katalogu. |
-| W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Poprawiono na wbudowane zero retry i pełną ścieżkę docs/features/F-W10-pair; finalne przygotowanie z nowego pinu. |
-| W10-03 | Pilot wymaga dokładnie wspieranego hosta Codex 0.154.0 i prawdziwego kontekstu wywołań. | Otwarty: preflight i jawne stop conditions; fake nie potwierdza modeli. |
+| W10-05 | Nazwa operator.py przesłaniała moduł standardowy Python przy bezpośrednim starcie CLI. | Zamknięty: pilot.py i test subprocess --help PASS. Pierwsze prepare zatrzymane przed utworzeniem katalogu. |
+| W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Zamknięty: wbudowane zero retry i pełna ścieżka docs/features/F-W10-pair; finalne prepare oraz export/verify obu fixture PASS. |
+| W10-07 | Test przenośności odrzuca także wzmiankę wave6 w tools/pilot. | Zamknięty: neutralna wzmianka o wcześniejszym pilocie REWORK; 115/115 testów PASS. |
 
 ## Validation / Handoff
 
@@ -65,3 +66,24 @@ dwa równoległe rzeczywiste handshake stdio PASS (35 narzędzi każdy), no-stat
 preflight PASS, snapshot prepared PASS. Modele nieuruchomione. Kontrola dokładnych
 argumentów protokołu operatora W10-06 wymaga nowego finalnego pinu; poprzedni katalog
 zostaje zachowany, nie jest używany do startu modeli.
+
+## Końcowy handoff
+
+Finalny runtime pilota: `88bccc71d7e5e72ec1daeaf13922615aa28fab60`, detached w
+`/tmp/wave10-pilot-88bccc7/runtime`; worktree `/tmp/wave10-pilot-88bccc7/a` i `b`.
+Przygotowany od zera w osobnym repo Git, bez modyfikacji metadata/worktree wave7.
+Dwa rzeczywiste równoległe handshake MCP PASS, 35 narzędzi każdy, caller codex,
+delegation allow, brak stanu/DB. Preflight, prepared snapshot i syntetyczny export/verify
+obu fixture PASS. Nie ma approval.json; nie uruchomiono modeli. Poprzednie katalogi
+przygotowania zachowane; do startu wskazany wyłącznie finalny katalog powyżej.
+
+Końcowe kontrole: 425 JS / 29 exchange / 115 pilot tooling PASS; git diff --check PASS.
+Wszystkie 32 źródłowe commity oraz kandydat 320ce47 nie są przodkami wyniku; branche
+wave7 i feature-workflow zachowały przypięte SHA. Brak push/merge/deploy/zmiany aktywnego runtime.
+Nie wykonywano niezależnego review ani pełnego ponownego review accepted featura.
+Żaden konkretny problem nie wrócił trzeci raz; poprawki kontrolowano wobec tabeli powyżej.
+
+Raport, mapa SHA, hashe dowodów, ograniczenia i dokładny skrypt terminali:
+[wave10-report.md](wave10-report.md). Ostatni commit jest dokumentacyjny; nie zmienia
+przypiętego runtime ani launchera. Następny krok: review integracji i zatwierdzenie przez
+użytkownika zakresu/budżetu pilota. To nie zamknięcie całego wave10.

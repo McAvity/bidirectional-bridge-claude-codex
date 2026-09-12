@@ -4,6 +4,18 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
+## Wave10 — local integration ready for review; pilot prepared
+
+Accepted isolation was imported as a sanitized snapshot on the current published recovery
+baseline: integration `2c9e9dd`, pilot tooling `e09ac17`, CLI fix `e099ca5`, schema alignment
+`88bccc7`. Original wave7 commits are not ancestors of this branch; the complete mapping is
+in [wave10 report](plans/wave10-report.md). Source branches and active runtimes are unchanged.
+Local validation: build, 425 JS / 29 exchange / 115 pilot-tooling tests PASS. A separately pinned
+runtime at `88bccc7` and two isolated worktrees passed two concurrent real MCP stdio handshakes
+without creating state or invoking models. The model pilot is NOT RUN and awaits approval of
+its concrete scope/budget. No push, integration-branch merge, deployment or whole-wave completion.
+See [progress](plans/wave10-progress.md) and [operator instructions](../tools/pilot/wave10/OPERATOR.md).
+
 ## Implemented and reviewed
 
 Persistent feature sessions, explicit manager-driven rounds, BLOCKED recovery, waiting_user,
@@ -28,8 +40,8 @@ Upstream certification manifests do not certify fork changes. CI uses no model c
 
 ## Next work
 
-New queued stages: [wave10](plans/wave10.md) integrates accepted manager isolation
-with published timeout/recovery, then validates two real agent pairs; [wave11](plans/wave11.md)
+Current stages: [wave10](plans/wave10.md) has a local integration and prepared pilot
+awaiting review and model-run approval; [wave11](plans/wave11.md)
 examines excessive review loops in wave7/wave9 and proposes evidence-based workflow simplification.
 The accepted wave7 delivery is reported at 66e524f; this does not complete the wider wave7 roadmap.
 Wave11 can run independently; its findings are not a prerequisite for preparing wave10.
@@ -41,8 +53,9 @@ status without touching the runtime or worktree used by active wave7.
 Wave8 directory cutover and resumed-session checks are complete (see plans/wave8.md). Continue
 plans/wave7.md: manager/workspace identity and two-worktree isolation, diagnostic export,
 versioned setup for normal codex startup, dependency maintenance and acceptance tests.
-The current role owner `codex` is not a unique manager session identity. Use one active
-manager/feature per worktree. No closed-manager wake-up, orphan supervisor or /goal support
+The role owner `codex` alone is not a unique manager session identity. The local wave10
+integration adds native thread/epoch and instance binding; the published baseline does not
+yet include that delivery. Continue using one active manager/feature per worktree. No closed-manager wake-up, orphan supervisor or /goal support
 is claimed. docs/tasks/review-integration-drift.md is a proposal, not active workflow policy.
 
 ## Timeout recovery — integrated and published

@@ -2,7 +2,7 @@
 
 Status: przygotowanie; modele NIEURUCHOMIONE. Plan i budżet wymagają jawnego zatwierdzenia
 użytkownika. To dwie rzeczywiste pary Astra–Claude oraz jedna krótka sesja Astry do próby
-obcego managera (bez trzeciego Claude’a). Nie jest to pilot REWORK wave6.
+obcego managera (bez trzeciego Claude’a). Nie jest to wcześniejszy pilot REWORK.
 
 ## Zakres do zatwierdzenia
 
