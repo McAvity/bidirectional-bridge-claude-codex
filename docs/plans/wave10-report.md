@@ -521,3 +521,72 @@ Brakujące: foreign probe, B/r2, zamknięcie/resume A podczas aktywnego B,
 A/r2, natychmiastowe release po starcie A, rzeczywiste review, verify4/testy.
 R1 nie powtarzać. Zgoda zakresu i billing pozostaje udokumentowana; zatrzymany
 segment nie jest aktywnym oknem ani nieprzerwanym pilotem. Bez push i merge.
+
+
+## Segment po naprawie relay4f32170 — wynik i punkt wznowienia
+
+User zatwierdził restart klientów, niewysłaną próbę foreign i nowe90minokno przy
+zachowanych większych limitach. Zgoda zapisana przy nowym manifeście. To osobny
+segment; wcześniejsze wyniki i ich zużycie pozostają niezmienione.
+
+Commit4f32170 usuwa zależność wysłania od etykiety wklejki. `prompt` tylko wkleja;
+`submit` wysyła Enter raz po inspekcji ekranu, z kontrolą jego SHA. `confirm` czyta
+nową część natywnego rolloutu: wymaga task_started i dokładnego tekstu użytkownika.
+Brak potwierdzenia blokuje dalszą wysyłkę; odczyt confirm nie ponawia modelu.
+30 testów ukierunkowanych PASS: krótkie/multiline, opóźniony prawdziwy PTY bez modeli,
+brak potwierdzenia, brak podwójnego Enter, niedopuszczenie historycznego dopasowania.
+Wszystkie140 testów narzędzi pilota PASS. Świeży pomocniczy build4f32170,
+2/2 MCP handshake i retained-state preflight PASS. Produkcyjny bridge9e8f060
+niezmieniony; nie zmieniono innych runtime/worktree ani globalnych limitów.
+
+### Rzeczywisty wynik
+
+Dokładne natywne sesje A/B wznowione; po1 BOOT, generation4→5, waiting_user/q1
+unanswered i historyczny R1 potwierdzone. Długie BOOT oraz krótki FOREIGN zostały
+jawnie zatwierdzone i potwierdzone w natywnych rolloutach. W10-09 zamknięte tymi
+dowodami; to nie wynik samej atrapy. Nie było niepewnego ponowienia promptu.
+
+Jedyna foreign tura wykonała dokładnie1 manager_status i1 create_task. Agent dobrał
+puste scope.paths do niedookreślonego „minimal no-write spec”. Schema wymaga co
+najmniej1 elementu, więc MCP zwrócił **-32602** przed kontrolą managera. Agent
+zakończył turę bez retry. To nowa uwaga W10-11, nie ponowny błąd sterowania TUI.
+
+Przed/po probe identyczne: bazy SQLite, logical.sql, owner, workspace.json, git.json
+i pakiety obu par. Brak mutacji udowodniony, ale nie pochodzi z guardu foreign:
+**P6 pozostaje UNVERIFIED**. Nie traktujemy odmowy schematu jako MANAGER_FOREIGN_THREAD.
+Zgodnie z warunkiem STOP przy błędzie i limitem1 próby zakończono przed B/r2;
+nie wykonano retry, task recovery ani dodatkowych rund.
+
+Wszystkie trzy klienty normalnie /quit. Finalnie epoch1/generation6, brak aktywnych
+instancji, quick_check obu baz OK, waiting_user/q1 unanswered, po1 historycznej
+Claude COMPLETE, R1 i jego paczki zachowane. Brak własnych procesów MCP.
+
+| Segment | Nowe tury A/B | Foreign | Nowe wykonania Claude | Czas |
+| --- | --- | --- | --- | --- |
+| Pierwotny realny R1 | Według historycznego raportu | Według historycznego raportu | 2 historyczne R1 | Historyczny zegar bez zmian |
+| Kontynuacja79f75e0 | 1/1 | 0 przyjętych tur | 0 | Około9min do auditu; osobny zapis |
+| Kontynuacja4f32170 | 1/1 | 1 przyjęta tura,1 próba create | 0 | 255.103s od nowego startu do STOP |
+
+Pozostały niewykorzystane **2 wykonaniaClaude po45min/max32**; autoryzowana pojedyncza
+próba foreign w tym segmencie została wykorzystana. Nie odnawiamy jej automatycznie.
+P1/P2 zachowują historyczne PASS. P3/P4/P5/P6/P7 całości nadal UNVERIFIED: brak R2,
+restartu A podczas aktywnego B, ciągłości Claude R1/R2 i verify4. Zwykłe exact resume
+A/B udowodnione; nie zastępuje P4. Nieprzerwany pierwotny v2 pozostaje nieudowodniony.
+
+### Lokalny checkpoint
+
+Zestaw /tmp/wave10-continuation-4f32170/continuation zawiera approval, manifest,
+operator/actions.jsonl, status, native notify, ekrany i PTY; evidence zawiera
+foreign-comparison.json i final-audit.json. Oryginalne evidence zawiera snapshoty
+cont3-before-foreign/cont3-after-foreign. Surowe identyfikatory, bazy i logi poza Git.
+
+Nie restartować zakończonego relay ani nadpisywać manifestu z generation4.
+W10-11 wymaga konkretnego poprawnego schematycznie specu w przygotowanym prompcie,
+sprawdzonego bez modeli; pusta lista paths nie jest dozwolonym „no-write”.
+Wywołanie create_task nie uruchamia workera, ale musi przejść walidację, żeby móc
+sprawdzić właściwy guard. Kolejny realny probe wymaga zgody na dodatkową próbę,
+której aktualny limit nie obejmuje. Nie jest potrzebna ponowna kontrola rozliczania.
+Po rozszerzeniu zakresu: świeży operator/baseline zachowanych sesji generation6,
+foreign, B/r2, normalny restart A podczas B, A/r2 i immediate release, review i verify4.
+R1 nie powtarzać, nie tworzyć zastępczych par. Status: **RELAY POPRAWIONY / PILOT
+ZATRZYMANY NA SCHEMACIE PROBE**; bez push, merge ani deklaracji ukończenia wave10.

@@ -1,6 +1,6 @@
 # Wave10 — postęp
 
-Status: **KONTYNUACJA ZATRZYMANA — BLOKADA OPERATORA TUI**. Resume obu Astr potwierdzone; R2 nieuruchomione. Cały wave10 nadal otwarty.
+Status: **RELAY POPRAWIONY / PILOT ZATRZYMANY NA SCHEMACIE FOREIGN PROBE**. R2 nieuruchomione; cały wave10 nadal otwarty.
 
 ## Scope / Inputs
 
@@ -24,8 +24,10 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | W10-07 | Test przenośności odrzuca także wzmiankę wave6 w tools/pilot. | Zamknięty: neutralna wzmianka o wcześniejszym pilocie REWORK; 115/115 testów PASS. |
 | W10-08 | Bramka B/r1 180 s nie obejmowała rundy A 480 s oraz review/restartu. | Harmonogram v2: bramka wyłącznie B/r2, po r1/review obu par; 540 s bramki, 480 s operatora, B/r2 1200 s, MCP 1320 s, całość 60 min. Zamknięty: 9 testów narzędzia + portability PASS; nowy pin 406f0e1, build, dwa handshake i preflight PASS. |
 
-| W10-09 | Transport wejścia TUI zależny od renderowania wklejki. | Ponownie otwarte: krótki wielowierszowy FOREIGN renderuje się literalnie; relay czeka na nieobecny `[Pasted Content]`. STOP bez foreign turn i R2. Rozważyć jawny submit operatora po odczycie ekranu. |
+| W10-09 | Transport wejścia TUI zależny od renderowania wklejki. | Zamknięte poprawką4f32170: jawne paste/submit/confirm, 30 regresji oraz140 wszystkich testów pilota PASS. Rzeczywiste długie BOOT i krótkie FOREIGN przyjęte z natywnym potwierdzeniem, bez resend. |
 | W10-10 | Sukcesowe num_turns nie jest licznikiem limitowanym przez max_turns. | Wyjaśnione; egzekwowanie pozostaje w runnerze. Exact resume A/B potwierdzone; reszta kontynuacji zatrzymana na W10-09. |
+
+| W10-11 | Niedookreślone „minimal no-write spec” pozwoliło foreign wybrać scope.paths=[], niezgodne ze schematem. | Otwarte: jedyna próba zwróciła -32602 przed guardem. Brak mutacji potwierdzony, P6 UNVERIFIED. STOP bez retry i R2; następna próba wymaga rozszerzenia wyczerpanego limitu foreign. |
 
 ## Validation / Handoff
 
@@ -299,3 +301,24 @@ przyjęcie blokuje resend; confirm to tylko odczyt. Manifest przypina też hash 
 30 testów bez modeli PASS, także opóźniony prawdziwy PTY, krótkie/wieloliniowe
 wejście, brak potwierdzenia i odrzucenie historycznego dopasowania. Następnie
 świeży przypięty pomocniczy build/handshake; bridge9e8f060 pozostaje niezmieniony.
+
+
+### Segment po poprawce4f32170 — relay PASS, probe schema STOP
+
+Świeży zestaw /tmp/wave10-continuation-4f32170: build,2/2 handshake, preflight PASS;
+bridge9e8f060 bez zmian. Zgoda na restart i nowe90min zapisana lokalnie. Zachowane
+A/B wznowione dokładnie; BOOT po1 turze, generation4→5. Jawny submit krótkiego
+FOREIGN i natywne task_started+prompt potwierdzone. To rzeczywisty dowód naprawy
+W10-09. Bez ponownego promptu, opóźnienie nie wywoływało retry.
+
+Foreign wykonał1 status i1 create_task, z pustym scope.paths. MCP zwrócił-32602
+(minimum1 element), guard tożsamości nieosiągnięty. Astra zakończyła bez retry.
+Snapshoty cont3-before-foreign/cont3-after-foreign identyczne: bazy, logical.sql,
+owner, workspace marker, git i paczki. P6 niezaliczone. STOP zgodnie z wcześniejszym
+warunkiem błędu i limitem1 próby; nie wykorzystano dwóch rund Claude’a.
+
+Klienty normalnie zamknięte; finalnie epoch1/generation6, detached, quick_check OK,
+po1 historycznej COMPLETE, waiting_user/q1 unanswered, brak własnych procesów MCP.
+Nowy segment255.103s: A1/B1/foreign1/Claude0. Poprzedni segment zachowany osobno:
+A1/B1/foreign0/Claude0. Historyczne R1 niezmienione. Wszystkie140 testów pilota PASS.
+Brakujące kroki nadal opisane w raporcie. Bez modeli/retry w ramach dalszego zapisu.

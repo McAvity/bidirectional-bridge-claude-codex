@@ -198,3 +198,15 @@ the exact prompt in the same native rollout tail. Missing confirmation locks fur
 input: inspect PTY/rollout/database before any decision, never resend an uncertain prompt.
 Repeated confirm reads are safe and issue no model request. Wait for notify/completion
 before the next product prompt. All remaining scenario steps and guards stay unchanged.
+
+
+## Result of authorized restart4f32170
+
+Explicit submit and native confirmation worked for both BOOTs and short FOREIGN.
+The one foreign attempt returned schema-32602 (empty scope.paths), not the identity
+guard. Run stopped without retry/R2; all clients normally closed, retained baseline
+now detached generation6. W10-09 fixed, W10-11 open. Do not restart this segment or
+reuse its consumed foreign allowance. A future probe needs an exact schema-valid spec
+and authorization for another foreign attempt. No new billing check is needed.
+Two Claude executions remain unused; see final report for independent segment usage,
+remaining steps and evidence. No original runtime or historical output was changed.

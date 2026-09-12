@@ -4,6 +4,20 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
+## Wave10 — relay fixed; continuation stopped at foreign input schema
+
+Current fix4f32170 separates paste, explicit one-shot Enter and native rollout
+confirmation.30 focused/140 total pilot tests PASS; fresh pinned build,2 handshakes
+and preflight PASS. Real BOOT A/B and short FOREIGN all confirmed without resend.
+Production bridge9e8f060 unchanged. Foreign selected empty scope.paths, causing
+MCP-32602 before identity guard. One authorized probe consumed; no retry or R2.
+No-mutation snapshot comparison passed, but P6 remains UNVERIFIED. Segment255.103s:
+A1/B1/foreign1/Claude0, separate from previous segments. All clients normally closed;
+original databases intact, waiting_user/q1, detached epoch1/generation6, R1 unchanged.
+W10-09 closed; W10-11 open. Next probe needs schema-valid prepared arguments and
+explicit authorization for an additional foreign attempt; do not silently reuse the
+consumed allowance. Two Claude rounds remain unexecuted. See final report/checkpoint.
+
 ## Wave10 — approved continuation stopped at TUI input blocker
 
 Tooling commits34bd367/79f75e0 aligned approved limits: Claude2x45min/max32,
