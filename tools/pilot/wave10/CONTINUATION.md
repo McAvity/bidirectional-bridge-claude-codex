@@ -210,3 +210,23 @@ reuse its consumed foreign allowance. A future probe needs an exact schema-valid
 and authorization for another foreign attempt. No new billing check is needed.
 Two Claude executions remain unused; see final report for independent segment usage,
 remaining steps and evidence. No original runtime or historical output was changed.
+
+
+## Authorized main-first segment (supersedes foreign prerequisite)
+
+New90min window, same two remaining Claude rounds45min/max32, MCP55min,
+operator20min/gate25min/Bash30min. Needed Astra coordination/review turns allowed.
+Order: exact BOOT A/B; B/r2 gate; normal close/exact restart A while B active;
+confirm waiting_user/q1; A/r2; release immediately on actual A worker marker;
+real reviews, packages/tests; then independent foreign probe with no active workers.
+Do not repeat R1. Operator/schema failure in an independent scenario requires impact
+assessment, not automatic abandonment of the other scenario. Uncertain execution,
+mutation or unexpected takeover still means STOP with no repetition.
+
+FOREIGN.txt supplies exact schema-valid JSON (nonempty .pilot scope), no spec design.
+Run validate-foreign.mjs against the original pinned runtime and foreign-arguments.json
+before models. It imports the real MCP Zod shape, tests valid arguments and the empty
+paths negative control, invokes zero handlers. Up to2 new foreign attempts authorized;
+a second is allowed only in the same client after evidence of rejection before
+execution and unchanged before/after state. Operator controls this condition; never
+reuse an uncertain submission. Scope/billing approval recorded locally, no new check.

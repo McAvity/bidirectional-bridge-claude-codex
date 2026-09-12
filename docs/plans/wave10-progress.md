@@ -322,3 +322,14 @@ po1 historycznej COMPLETE, waiting_user/q1 unanswered, brak własnych procesów 
 Nowy segment255.103s: A1/B1/foreign1/Claude0. Poprzedni segment zachowany osobno:
 A1/B1/foreign0/Claude0. Historyczne R1 niezmienione. Wszystkie140 testów pilota PASS.
 Brakujące kroki nadal opisane w raporcie. Bez modeli/retry w ramach dalszego zapisu.
+
+
+### Main-first — autoryzowana zmiana kolejności i dwóch prób foreign
+
+Wejście1edd024. Główny scenariusz R2/restart przed niezależnym foreign; nowe90min,
+2 Claude45min/max32 bez powtarzania R1, do2 foreign. Przygotowano dokładne argumenty
+create_task z niepustym scope.paths oraz bezmodelowy walidator realnego Zod schema
+z bridge9e8f060: valid PASS, empty_paths rejected,0 handlerów.30 regresji PASS.
+Brak zmian ogólnego relay; zachowujemy jawny submit/confirm. Świeży pin i manifest
+odczytają generation6. Naprawialny błąd jednego scenariusza wymaga oceny wpływu;
+nie jest automatycznym zakazem pozostałych niezależnych kroków.

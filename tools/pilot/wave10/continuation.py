@@ -15,13 +15,21 @@ import pilot
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'common'))
 from codex_args import sessions, is_manager_meta
 
-SCOPE = 'wave10-retained-r1-continuation-v2'
+SCOPE = 'wave10-retained-r1-main-first-v3'
 BUDGET = {'claude_rounds': 2, 'claude_max_turns_per_invocation': 32,
           'a_r2_ms': 2700000, 'b_r2_ms': 2700000, 'mcp_seconds': 3300,
           'gate_seconds': 1500, 'operator_seconds': 1200, 'gate_bash_ms': 1800000,
-          'astra_a_turns': 3, 'astra_b_turns': 2, 'foreign_turns': 1,
+          'astra_a_turns': 3, 'astra_b_turns': 2, 'foreign_turns': 2,
           'wall_minutes': 90, 'latest_b_r2_start_minutes': 30, 'astra_turns_are_planning_only': True,
           'automatic_retries': 0, 'extra_recovery': 0, 'additional_api_spend_usd': 0}
+FOREIGN_ARGS = {'spec': {
+    'objective': 'Synthetic foreign identity probe; expect rejection before task creation.',
+    'scope': {'paths': ['.pilot/foreign-probe-never-write.txt'],
+              'note': 'Schema-valid scope only; no file writes or worker execution authorized.'},
+    'dependencies': [],
+    'expected_deliverable': 'Exact manager guard rejection code; no created task.',
+    'verification_criteria': ['MANAGER_FOREIGN_THREAD and no durable state or ownership mutation.']}}
+
 COUNTER_NOTICE = '''Approved continuation budget: use spec.max_turns=32 only for each remaining R2, enforced by the runner's
 --max-turns. Do not compare bridge turn_count / result num_turns with that ceiling.
 In successful Claude CLI 2.1.269 results num_turns counts initial/user-role messages,
@@ -115,8 +123,11 @@ new feature, new manager root, review of R1 or package rewrite. Stop on any mism
     for p in ('a','b'):
         prompts[f'STATUS-{p.upper()}.txt'] = COUNTER_NOTICE + 'Read bridge_manager_status and bridge_feature_get for F-W10-pair. Report current identity, question and round state. Finish any pending review of the existing R2 delivery if appropriate, but never launch or repeat a worker round, answer q1 again, take over or run task recovery. If only explicit resume of this exact manager instance is needed, use the observed epoch/generation. Stop on mismatch.\n'
     prompts['RESTART-A.txt'] = COUNTER_NOTICE + (root/'RESUME-A.txt').read_text()
-    # Prompt formatting is independent of explicit operator submission.
-    prompts['FOREIGN.txt'] = 'Foreign-manager probe only; no worker or takeover.\n' + (root/'FOREIGN.txt').read_text() + '\n'
+    prompts['FOREIGN.txt'] = ('Foreign-manager probe only; no worker, file reads/writes, shell, takeover, resume or retry.\n'
+        'Call bridge_manager_status once, then call bridge_create_task exactly once with the following exact JSON arguments. '
+        'Do not design, omit or modify the arguments. Report the actual error code and stop, even for a schema error.\n'
+        + json.dumps(FOREIGN_ARGS, indent=2) + '\n')
+    pilot.write(out/'foreign-arguments.json', json.dumps(FOREIGN_ARGS, indent=2)+'\n')
     for name, text in prompts.items(): pilot.write(out/name, text)
     gate = root/'b/.pilot/gate-continuation-v2.py'
     gate_text = pilot.gate_source().replace(' + 540', ' + 1500')
@@ -125,6 +136,7 @@ new feature, new manager root, review of R1 or package rewrite. Stop on any mism
     else:
         pilot.write(gate, gate_text)
     m = {'scope': SCOPE, 'budget': BUDGET, 'original_run': str(root),
+         'foreign_arguments_sha256': pilot.digest(out/'foreign-arguments.json'),
          'operator_sha': pilot.git(pilot.SOURCE, 'rev-parse', 'HEAD'),
          'operator_file_sha256': pilot.digest(Path(__file__)), 'relay_sha256': pilot.digest(Path(__file__).with_name('tui_operator.py')), 'gate_sha256': pilot.digest(gate), 'baseline': baseline,
          'prompt_sha256': {n: pilot.digest(out/n) for n in prompts}, 'original_v2_uninterrupted': False}
@@ -144,6 +156,7 @@ def preflight(out):
     for name, digest in m['prompt_sha256'].items():
         if pilot.digest(out/name) != digest: raise ValueError('prepared prompt changed')
     if pilot.digest(Path(m['original_run'])/'b/.pilot/gate-continuation-v2.py') != m['gate_sha256']: raise ValueError('continuation gate changed')
+    if pilot.digest(out/'foreign-arguments.json') != m['foreign_arguments_sha256']: raise ValueError('foreign arguments changed')
     if audit(Path(m['original_run'])) != m['baseline']: raise ValueError('retained baseline drifted')
     return m
 
@@ -214,14 +227,14 @@ def serve(out):
                 if kind=='start':
                     if role in clients: raise ValueError('no replacement clients')
                     if role=='a-restart' and ('a-initial' not in clients or not clients['a-initial'].exited): raise ValueError('A must close normally')
-                    clients[role]=Client(command(out,m,role),folder,role,turn_limit=1 if role=='foreign' else None)
+                    clients[role]=Client(command(out,m,role),folder,role,turn_limit=BUDGET['foreign_turns'] if role=='foreign' else None)
                 elif kind=='prompt':
                     allowed={'a-initial':['BOOT-A.txt','STATUS-A.txt'], 'b-initial':['BOOT-B.txt','ROUND2-B.txt','STATUS-B.txt'],
                              'a-restart':['RESTART-A.txt','ROUND2-A.txt','STATUS-A.txt'], 'foreign':['FOREIGN.txt']}
                     name=a['file']; key=(role,name)
-                    if name not in allowed[role] or (key in used and not name.startswith('STATUS-')): raise ValueError('unapproved/repeated prompt')
+                    if name not in allowed[role] or (key in used and role!='foreign' and not name.startswith('STATUS-')): raise ValueError('unapproved/repeated prompt')
                     who='foreign' if role=='foreign' else role[0]; limit={'a':3,'b':2,'foreign':1}[who]
-                    if who=='foreign' and count[who]>=1: raise ValueError('one foreign probe only')
+                    if who=='foreign' and count[who]>=BUDGET['foreign_turns']: raise ValueError('foreign probe allowance exhausted')
                     if name=='ROUND2-B.txt' and time.monotonic()-started>BUDGET['latest_b_r2_start_minutes']*60: raise ValueError('B/r2 latest start')
                     clients[role].send_prompt((out/name).read_text()); count[who]+=1; used.add(key)
                 elif kind=='submit': clients[role].submit(a['screen_sha256'])
