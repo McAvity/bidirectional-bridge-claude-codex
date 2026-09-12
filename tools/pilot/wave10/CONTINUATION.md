@@ -185,3 +185,16 @@ Scope/billing approval is recorded. Repair paste/submit without models, preferri
 explicit operator submit after screen inspection, then prepare a fresh pinned tool
 bundle/baseline. This is an operator blocker, not a request to recheck billing.
 See final wave10-report.md section for evidence and remaining criteria/steps.
+
+
+## Authorized restart after input repair
+
+The user authorized restarting the required clients and the previously unsent foreign
+probe. Preserve previous segment usage; start a new90min clock, same expanded budget.
+Relay actions now separate `prompt` (paste only), `submit` (one Enter with the inspected
+current screen_sha256), and `confirm` (read native rollout only). Inspect status/screen
+before submit; no `[Pasted Content]` dependency. Confirm requires new task_started and
+the exact prompt in the same native rollout tail. Missing confirmation locks further
+input: inspect PTY/rollout/database before any decision, never resend an uncertain prompt.
+Repeated confirm reads are safe and issue no model request. Wait for notify/completion
+before the next product prompt. All remaining scenario steps and guards stay unchanged.

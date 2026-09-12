@@ -115,7 +115,7 @@ new feature, new manager root, review of R1 or package rewrite. Stop on any mism
     for p in ('a','b'):
         prompts[f'STATUS-{p.upper()}.txt'] = COUNTER_NOTICE + 'Read bridge_manager_status and bridge_feature_get for F-W10-pair. Report current identity, question and round state. Finish any pending review of the existing R2 delivery if appropriate, but never launch or repeat a worker round, answer q1 again, take over or run task recovery. If only explicit resume of this exact manager instance is needed, use the observed epoch/generation. Stop on mismatch.\n'
     prompts['RESTART-A.txt'] = COUNTER_NOTICE + (root/'RESUME-A.txt').read_text()
-    # All prepared inputs use the same multiline PTY paste path verified in R1.
+    # Prompt formatting is independent of explicit operator submission.
     prompts['FOREIGN.txt'] = 'Foreign-manager probe only; no worker or takeover.\n' + (root/'FOREIGN.txt').read_text() + '\n'
     for name, text in prompts.items(): pilot.write(out/name, text)
     gate = root/'b/.pilot/gate-continuation-v2.py'
@@ -126,7 +126,7 @@ new feature, new manager root, review of R1 or package rewrite. Stop on any mism
         pilot.write(gate, gate_text)
     m = {'scope': SCOPE, 'budget': BUDGET, 'original_run': str(root),
          'operator_sha': pilot.git(pilot.SOURCE, 'rev-parse', 'HEAD'),
-         'operator_file_sha256': pilot.digest(Path(__file__)), 'gate_sha256': pilot.digest(gate), 'baseline': baseline,
+         'operator_file_sha256': pilot.digest(Path(__file__)), 'relay_sha256': pilot.digest(Path(__file__).with_name('tui_operator.py')), 'gate_sha256': pilot.digest(gate), 'baseline': baseline,
          'prompt_sha256': {n: pilot.digest(out/n) for n in prompts}, 'original_v2_uninterrupted': False}
     pilot.write(out/'manifest.json', json.dumps(m, indent=2)+'\n')
     pilot.write(out/'approval.example.json', json.dumps({'approved': False, 'scope': SCOPE,
@@ -140,6 +140,7 @@ def preflight(out):
     m = json.loads((out/'manifest.json').read_text())
     if m['scope'] != SCOPE or m['budget'] != BUDGET: raise ValueError('scope/budget mismatch')
     if m['operator_file_sha256'] != pilot.digest(Path(__file__)): raise ValueError('operator code changed')
+    if m['relay_sha256'] != pilot.digest(Path(__file__).with_name('tui_operator.py')): raise ValueError('relay changed')
     for name, digest in m['prompt_sha256'].items():
         if pilot.digest(out/name) != digest: raise ValueError('prepared prompt changed')
     if pilot.digest(Path(m['original_run'])/'b/.pilot/gate-continuation-v2.py') != m['gate_sha256']: raise ValueError('continuation gate changed')
@@ -223,6 +224,8 @@ def serve(out):
                     if who=='foreign' and count[who]>=1: raise ValueError('one foreign probe only')
                     if name=='ROUND2-B.txt' and time.monotonic()-started>BUDGET['latest_b_r2_start_minutes']*60: raise ValueError('B/r2 latest start')
                     clients[role].send_prompt((out/name).read_text()); count[who]+=1; used.add(key)
+                elif kind=='submit': clients[role].submit(a['screen_sha256'])
+                elif kind=='confirm': event('turn_confirmation', client=role, confirmed=clients[role].confirm_started(), evidence=clients[role].confirmation)
                 elif kind=='close': clients[role].close()
                 elif kind=='release':
                     gate=root/'b/.pilot/gate-ready'; marker=root/'a/.pilot/round2-started'
@@ -234,7 +237,7 @@ def serve(out):
                 elif kind=='stop': event('stopped', reason=a['reason']); return
                 else: raise ValueError('unsupported action')
                 event('completed', request=f.name)
-            pilot.write(folder/'status.json', json.dumps({'counts':count,'clients':{k:{'exited':c.exited,'closing':c.closing,'turns_sent':c.turns} for k,c in clients.items()}},indent=2))
+            pilot.write(folder/'status.json', json.dumps({'counts':count,'clients':{k:{'exited':c.exited,'closing':c.closing,'turns_sent':c.turns,'input_state':c.input_state,'screen_sha256':c.screen_hash(),'confirmation':c.confirmation} for k,c in clients.items()}},indent=2))
             time.sleep(.2)
     except Exception as e:
         event('blocked',reason=str(e));raise

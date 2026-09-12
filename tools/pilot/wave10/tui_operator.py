@@ -4,6 +4,7 @@ The supervising operator selects the next prepared prompt from observed evidence
 Requires pexpect and pyte; raw screens and actions stay in the private run directory.
 """
 import argparse
+import hashlib
 import json
 import os
 import sqlite3
@@ -48,6 +49,11 @@ class Client:
         self.pending = ''
         self.submit_when_visible = None
         self.pending_turn = False
+        self.input_state = 'idle'
+        self.prompt = None
+        self.offsets = {}
+        self.confirmation = None
+        self.command = command
 
     def poll(self):
         if self.exited:
@@ -67,26 +73,83 @@ class Client:
             self.exited = True
             self.log.close()
         (self.directory / f'{self.name}.screen.txt').write_text(self.text())
-        if self.submit_when_visible and self.submit_when_visible in self.text():
+        if self.closing and self.submit_when_visible and self.submit_when_visible in self.text():
             self.child.send('\r')
             self.submit_when_visible = None
-            if self.pending_turn:
-                self.turns += 1
-                self.pending_turn = False
+
+    def screen_hash(self):
+        return hashlib.sha256(self.text().encode()).hexdigest()
+
+    def rollout_paths(self):
+        # Read native evidence only; never inject or manufacture identity.
+        if '-C' not in self.command:
+            return []
+        repo = self.command[self.command.index('-C') + 1]
+        expected = self.command[-1] if 'resume' in self.command else None
+        found = []
+        for path in Path.home().glob('.codex/sessions/*/*/*/rollout-*.jsonl'):
+            try:
+                with path.open() as f: meta = json.loads(f.readline())['payload']
+                if (meta.get('cwd') == repo and meta.get('source') == 'cli'
+                        and meta.get('originator') == 'codex-tui'
+                        and (expected is None or meta.get('id') == expected)):
+                    found.append(path)
+            except (OSError, ValueError, KeyError):
+                continue
+        return found
+
+    def submit(self, screen_sha256):
+        if self.input_state != 'pasted' or screen_sha256 != self.screen_hash():
+            raise ValueError('submit requires pending paste and inspected current screen')
+        # Once Enter may have been sent, it must never be sent a second time.
+        self.input_state = 'submitted_unconfirmed'
+        self.child.send('\r')
+        self.turns += 1
+
+    def confirm_started(self):
+        if self.input_state != 'submitted_unconfirmed':
+            raise ValueError('no unconfirmed submission')
+        matches = []
+        for path in self.rollout_paths():
+            with path.open('rb') as f:
+                f.seek(self.offsets.get(str(path), 0))
+                lines = f.read().splitlines()
+            turn = None
+            for line in lines:
+                try: record = json.loads(line)
+                except ValueError: continue  # An incomplete last line is not evidence.
+                payload = record.get('payload', {})
+                if record.get('type') == 'event_msg' and payload.get('type') == 'task_started':
+                    turn = payload.get('turn_id')
+                if turn and record.get('type') == 'response_item' and payload.get('role') == 'user':
+                    text = ''.join(c.get('text', '') for c in payload.get('content', []))
+                    if text.strip() == self.prompt.strip():
+                        matches.append({'rollout': str(path), 'turn_id': turn})
+        if len(matches) != 1:
+            # Keep the submission locked. Operator must inspect logs/state; no resend.
+            return False
+        self.confirmation = matches[0]
+        self.input_state = 'confirmed'
+        return True
 
     def text(self):
         return '\n'.join(line.rstrip() for line in self.screen.display)
 
     def send_prompt(self, text):
-        if self.exited or self.closing or self.submit_when_visible:
-            raise ValueError('client closed')
+        if self.exited or self.closing or self.input_state not in ('idle', 'confirmed'):
+            raise ValueError('client closed or previous input unresolved; do not resend')
         if self.turn_limit is not None and self.turns >= self.turn_limit:
             raise ValueError('manager turn budget exhausted')
-        self.child.send(paste(text))
-        self.submit_when_visible = '[Pasted Content' if '\n' in text else text[:60]
-        self.pending_turn = True
+        data = paste(text)
+        self.offsets = {str(p): p.stat().st_size for p in self.rollout_paths()}
+        self.prompt = text
+        self.confirmation = None
+        self.input_state = 'pasted'
+        self.child.send(data)
 
     def close(self):
+        if self.input_state not in ('idle', 'confirmed'):
+            raise ValueError('unresolved input; preserve evidence before stop')
         self.child.send('/quit')
         self.submit_when_visible = '/quit'
         self.closing = True
@@ -157,6 +220,10 @@ def serve(root):
                         raise ValueError('prepared prompt already submitted; no retries')
                     clients[name].send_prompt((root/action['file']).read_text())
                     submitted.add(key)
+                elif kind == 'submit':
+                    clients[name].submit(action['screen_sha256'])
+                elif kind == 'confirm':
+                    event('turn_confirmation', client=name, confirmed=clients[name].confirm_started())
                 elif kind == 'trust':
                     # Only the known own-fixture onboarding screen, never a tool approval.
                     client = clients[name]

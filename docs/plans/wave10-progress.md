@@ -287,3 +287,15 @@ oddzielne paste i jawny submit operatora po odczycie ekranu, bez kolejnej
 heurystyki etykiet. Nie wdrożono poprawki w aktywnym zestawie ani retry.
 Nie restartować starego relay/manifestu. Najpierw poprawka bez modeli i świeży
 pin/baseline generation4; bez powtarzania R1. Szczegóły w końcu raportu.
+
+
+### W10-09 — jawny submit i autoryzowane wznowienie po blokadzie
+
+Wejście0004dee. User zatwierdził restart klientów i niewysłany foreign; nadal tylko
+2 wykonaniaClaude, większe limity, nowe90minokno. Rozdzielono paste/submit/confirm:
+Enter raz po inspekcji aktualnego ekranu, potwierdzenie przez nowy task_started
+oraz dokładny prompt w natywnym rolloucie. Nie używamy etykiety wklejki. Niepewne
+przyjęcie blokuje resend; confirm to tylko odczyt. Manifest przypina też hash relay.
+30 testów bez modeli PASS, także opóźniony prawdziwy PTY, krótkie/wieloliniowe
+wejście, brak potwierdzenia i odrzucenie historycznego dopasowania. Następnie
+świeży przypięty pomocniczy build/handshake; bridge9e8f060 pozostaje niezmieniony.
