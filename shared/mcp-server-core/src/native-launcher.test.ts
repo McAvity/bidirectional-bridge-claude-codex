@@ -495,13 +495,16 @@ describe("native project MCP launcher", () => {
     const db = join(workspace, ".bridge", "bridge.db");
     const first = new NativeHarness("codex", "allow", workspace, db, repoRoot, env("hang"));
     let second: NativeHarness | undefined;
+    // Wave10: the published recovery scenario must carry the accepted call-time identity.
+    const call = (client: NativeHarness, name: string, args: Record<string, unknown> = {}) =>
+      client.callTool(name, args, nativeMeta("thread-timeout-e2e"));
     try {
       await first.initialize();
-      const root = await first.callTool("bridge_create_task", { spec: taskSpec() });
-      await first.callTool("bridge_claim_task", { task_id: root.data.task_id });
-      await first.callTool("bridge_set_state", { task_id: root.data.task_id, to: "WORKING" });
-      await first.callTool("bridge_feature_create", { feature_id: "F-e2e", parent_task_id: root.data.task_id });
-      const round = await first.callTool("bridge_feature_run", {
+      const root = await call(first, "bridge_create_task", { spec: taskSpec() });
+      await call(first, "bridge_claim_task", { task_id: root.data.task_id });
+      await call(first, "bridge_set_state", { task_id: root.data.task_id, to: "WORKING" });
+      await call(first, "bridge_feature_create", { feature_id: "F-e2e", parent_task_id: root.data.task_id });
+      const round = await call(first, "bridge_feature_run", {
         feature_id: "F-e2e",
         spec: {
           objective: "write the contract",
@@ -519,7 +522,7 @@ describe("native project MCP launcher", () => {
       expect(round.data.error.code).toBe("TIMEOUT");
       const taskId = round.data.task.task_id as string;
 
-      const failed = await first.callTool("bridge_get_task", { task_id: taskId });
+      const failed = await call(first, "bridge_get_task", { task_id: taskId });
       expect(failed.data.attempts[0]).toMatchObject({ outcome: "TIMEOUT" });
       const [evidence] = failed.data.termination_evidence;
       expect(evidence).toMatchObject({ attempt: 0, termination_kind: "timeout", reason: "deadline" });
@@ -529,7 +532,13 @@ describe("native project MCP launcher", () => {
 
       second = new NativeHarness("codex", "allow", workspace, db, repoRoot, env("ok"));
       await second.initialize();
-      expect((await second.callTool("bridge_feature_get", { feature_id: "F-e2e" })).data.state).toBe("blocked");
+      // EOF may leave the durable instance active: follow the explicit restart protocol.
+      const manager = (await call(second, "bridge_manager_status")).data.manager;
+      const rebound = await call(second, "bridge_manager_resume_instance", {
+        expected_epoch: manager.epoch, expected_generation: manager.instance_generation,
+      });
+      expect(rebound.isError, JSON.stringify(rebound.data)).toBe(false);
+      expect((await call(second, "bridge_feature_get", { feature_id: "F-e2e" })).data.state).toBe("blocked");
       const request = {
         task_id: taskId,
         recover_timeout: true,
@@ -537,7 +546,7 @@ describe("native project MCP launcher", () => {
         max_turns: 120,
         idempotency_key: "F-e2e:timeout-1",
       };
-      const resumed = await second.callTool("bridge_resume_delegated_task", request);
+      const resumed = await call(second, "bridge_resume_delegated_task", request);
       expect(resumed.isError, JSON.stringify(resumed.data)).toBe(false);
       expect(resumed.data).toMatchObject({
         task_id: taskId,
@@ -552,11 +561,11 @@ describe("native project MCP launcher", () => {
       expect(argv[argv.indexOf("--resume") + 1]).toBe("11111111-2222-4333-8444-555555555555");
       expect(argv[argv.indexOf("--max-turns") + 1]).toBe("120");
 
-      const replay = await second.callTool("bridge_resume_delegated_task", request);
+      const replay = await call(second, "bridge_resume_delegated_task", request);
       expect(replay.data.recovered_attempt).toBe(1);
-      expect((await second.callTool("bridge_feature_get", { feature_id: "F-e2e" })).data)
+      expect((await call(second, "bridge_feature_get", { feature_id: "F-e2e" })).data)
         .toMatchObject({ state: "awaiting_review", task_ids: [taskId] });
-      expect((await second.callTool("bridge_get_task", { task_id: taskId })).data.attempts).toHaveLength(2);
+      expect((await call(second, "bridge_get_task", { task_id: taskId })).data.attempts).toHaveLength(2);
 
       for (const line of [...first.stdoutLines, ...second.stdoutLines]) {
         expect(JSON.parse(line)).toMatchObject({ jsonrpc: "2.0" });

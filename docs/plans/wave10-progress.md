@@ -15,8 +15,9 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 
 | ID | Ustalenie | Status / sprawdzenie |
 | --- | --- | --- |
-| W10-01 | Historia wave7 zawiera prywatne ścieżki operatora i namespace rzeczywistego worktree. | Zamknięty: import oczyszczonego snapshotu bez przodków wave7; mapowanie wszystkich 32 commitów. Metadane author/committer mają publiczny noreply, brak wykrytych linków sesji/sekretów. |
-| W10-02 | Wave7 bazuje na kodzie sprzed timeout recovery; zastąpienie plików cofnęłoby opublikowane recovery. | Zamknięty: trzystronne połączenie; konflikty control-plane (lazy services + evidence) i tools (guard + budget) rozwiązane. Regresja FAILED/TIMEOUT przez dispatcher z restartem, takeover, foreign replay i no-mutation przechodzi. Pełne testy w toku. |
+| W10-01 | Historia wave7 zawiera prywatne ścieżki operatora i namespace rzeczywistego worktree oraz identyfikatory runtime. | Zamknięty: import oczyszczonego snapshotu bez przodków wave7; mapowanie wszystkich 32 commitów. Metadane author/committer mają publiczny noreply, brak wykrytych linków sesji/sekretów. |
+| W10-02 | Wave7 bazuje na kodzie sprzed timeout recovery; zastąpienie plików cofnęłoby opublikowane recovery. | Zamknięty: trzystronne połączenie; konflikty control-plane (lazy services + evidence) i tools (guard + budget) rozwiązane. Regresja FAILED/TIMEOUT przez dispatcher z restartem, takeover, foreign replay i no-mutation przechodzi. Pełne testy: 425 JS / 29 exchange / 114 pilot tooling PASS. |
+| W10-04 | Opublikowany test stdio timeout nie przekazywał nowego kontekstu native; create odrzucony przed mutacją. | Zamknięty: harness ma native metadata i jawne resume_instance po EOF; 8/8 stdio i pełne 425/425 JS PASS. |
 | W10-03 | Pilot wymaga dokładnie wspieranego hosta Codex 0.154.0 i prawdziwego kontekstu wywołań. | Otwarty: preflight i jawne stop conditions; fake nie potwierdza modeli. |
 
 ## Validation / Handoff
@@ -41,3 +42,18 @@ nie do oczyszczonych bajtów; oryginalny branch zachowany.
 Nowa regresja timeout przez MCP: PASS. Pierwsza wersja atrapy rzucała INTERNAL po
 abort; dostosowana do zwrotu PARTIAL przez runner po deadline. To korekta fixture,
 nie stwierdzona usterka produkcyjna. Wymagane pełne zestawy testów uruchomione.
+
+## Checkpoint 2 — pilot i pełna walidacja
+
+Integracja: `2c9e9ddbb909b3db9f065466d60152a79316b31f`.
+Lokalny kandydat `320ce4700ca9048565710535093515d98993a300` zastąpiony tym SHA
+przez amend po redakcji 11 identyfikatorów historycznych runtime. Nie jest przodkiem
+wyniku; źródłowe branche nienaruszone. Finalny przegląd prywatności obejmuje również
+te identyfikatory, a nie tylko ścieżki/linki/sekrety.
+
+Pełne testy: build PASS; JS 425/425; Python exchange 29/29; pilot tooling 114/114
+(w tym 4 nowe testy odmowy przekroczenia budżetu, brakującej sesji i nadpisania dowodów).
+Środowisko: Node 24.15.0, Python 3.12.3 (nie 3.11). Dane wyłącznie syntetyczne.
+Przygotowano tools/pilot/wave10: operator.py, handshake.mjs, OPERATOR.md.
+Następnie osobny detached runtime i dwa worktree w nowym /tmp, rzeczywisty start/handshake
+MCP bez modeli. Nie naprawiać startowego MCP tej sesji — jawna instrukcja użytkownika.
