@@ -28,6 +28,10 @@ Upstream certification manifests do not certify fork changes. CI uses no model c
 
 ## Next work
 
+Parallel integration task: [wave9](plans/wave9.md), with its own
+[progress](plans/wave9-progress.md). It integrates timeout/recovery and reconciles
+status without touching the runtime or worktree used by active wave7.
+
 Wave8 directory cutover and resumed-session checks are complete (see plans/wave8.md). Continue
 plans/wave7.md: manager/workspace identity and two-worktree isolation, diagnostic export,
 versioned setup for normal codex startup, dependency maintenance and acceptance tests.
