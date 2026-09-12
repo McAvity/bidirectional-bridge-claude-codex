@@ -172,3 +172,16 @@ BASH_MAX_TIMEOUT_MS=1800000, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1. Usuwa to do
 sprawdzono też ich odczyt w lokalnym CLI 2.1.269. Native runner dziedziczy env procesu,
 a jego timer pochodzi z invocation.deadline_at. Bridge 9e8f060 pozostaje niezmieniony:
 obsługuje zadany deadline i max_turns=32 bez nowego builda produkcyjnego.
+
+
+## Execution checkpoint: operator input STOP
+
+Approved expanded segment used tooling79f75e0/original bridge9e8f060. Both exact
+native BOOT resumes passed. Short multiline FOREIGN remained in the TUI editor:
+Client awaited `[Pasted Content]`, absent for literal text. Foreign actual turns0,
+new Claude executions0. A/B closed normally; waiting_user/q1 and R1 retained,
+now detached generation4. Do not restart stopped relay or edit its manifest.
+Scope/billing approval is recorded. Repair paste/submit without models, preferring
+explicit operator submit after screen inspection, then prepare a fresh pinned tool
+bundle/baseline. This is an operator blocker, not a request to recheck billing.
+See final wave10-report.md section for evidence and remaining criteria/steps.

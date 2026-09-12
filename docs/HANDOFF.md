@@ -4,6 +4,22 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
+## Wave10 — approved continuation stopped at TUI input blocker
+
+Tooling commits34bd367/79f75e0 aligned approved limits: Claude2x45min/max32,
+MCP55min, operator20min, gate25min, Bash30min, segment90min. Astra turns are
+planning only. Billing confirmed. Build, handshake2/2, preflight,26 tests PASS.
+Production bridge stays9e8f060. Two real BOOT turns proved exact native resume
+and waiting_user/q1. No R2 or foreign model turn: short multiline foreign paste
+rendered literally, but relay waited for `[Pasted Content]`. W10-09 reopened.
+A/B closed normally; databases intact, detached epoch1/generation4, R1 unchanged.
+No owned MCP processes. P4–P7 remain UNVERIFIED; see final report section.
+
+Next: repair paste/submit without models; prefer explicit operator submit after
+screen inspection over another display-label assumption. Fresh pinned tooling and
+baseline required before further execution. Do not restart stopped relay or repeat
+R1. Historical pending-approval sections below are superseded by this checkpoint.
+
 ## Wave10 — retained-session continuation prepared, approval pending
 
 Current preparation commits `c136c7d` and final pin `51c358a` adds a separately budgeted operator segment;

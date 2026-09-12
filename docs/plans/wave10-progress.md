@@ -1,6 +1,6 @@
 # Wave10 — postęp
 
-Status: **KOREKTA HARMONOGRAMU GOTOWA / PILOT PRZYGOTOWANY (v2)**. Cały wave10 nadal otwarty; modele nieuruchomione.
+Status: **KONTYNUACJA ZATRZYMANA — BLOKADA OPERATORA TUI**. Resume obu Astr potwierdzone; R2 nieuruchomione. Cały wave10 nadal otwarty.
 
 ## Scope / Inputs
 
@@ -23,6 +23,9 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Zamknięty: wbudowane zero retry i pełna ścieżka docs/features/F-W10-pair; finalne prepare oraz export/verify obu fixture PASS. |
 | W10-07 | Test przenośności odrzuca także wzmiankę wave6 w tools/pilot. | Zamknięty: neutralna wzmianka o wcześniejszym pilocie REWORK; 115/115 testów PASS. |
 | W10-08 | Bramka B/r1 180 s nie obejmowała rundy A 480 s oraz review/restartu. | Harmonogram v2: bramka wyłącznie B/r2, po r1/review obu par; 540 s bramki, 480 s operatora, B/r2 1200 s, MCP 1320 s, całość 60 min. Zamknięty: 9 testów narzędzia + portability PASS; nowy pin 406f0e1, build, dwa handshake i preflight PASS. |
+
+| W10-09 | Transport wejścia TUI zależny od renderowania wklejki. | Ponownie otwarte: krótki wielowierszowy FOREIGN renderuje się literalnie; relay czeka na nieobecny `[Pasted Content]`. STOP bez foreign turn i R2. Rozważyć jawny submit operatora po odczycie ekranu. |
+| W10-10 | Sukcesowe num_turns nie jest licznikiem limitowanym przez max_turns. | Wyjaśnione; egzekwowanie pozostaje w runnerze. Exact resume A/B potwierdzone; reszta kontynuacji zatrzymana na W10-09. |
 
 ## Validation / Handoff
 
@@ -256,3 +259,31 @@ gate-ready120 s, PTYlimit10tur, close20 s. Runtime9e8f060 i globalne limity runn
 niezmienione. Nowy ignorowany skrypt bramki B; aktualne prompty zastępują stare czasy.
 MCP env lokalnie podnosi BASH_MAX_TIMEOUT_MS i wyłącza auto-backgrounding; timeout
 runnera bierze invocation.deadline_at. Scope continuation-v2, nowe90minokno i approval.
+
+
+### Wynik zatwierdzonej kontynuacji v2 — STOP na W10-09
+
+Przygotowanie: 34bd367 (timeouty), 79f75e0 (TOML overrides MCP env). Build79f75e0,
+2/2 handshake, preflight i26 testów operatora PASS. Oryginalny bridge9e8f060
+niezmieniony. Rzeczywiste MCP miały Bash max1800000 i background disabled.
+Zgoda zapisana lokalnie: Claude2x45min/max32, MCP55min, operator20min, gate25min,
+Bash30min, segment90min; tury Astr tylko planem.
+
+Dwie prawdziwe Astry wykonały po1 BOOT: exact native resume, manager resume
+z epoch1/generation2 do3, waiting_user/q1 unanswered. Foreign TUI uruchomiony,
+ale literalny krótki prompt nie wyzwolił Enter. Requested foreign=1, faktyczne
+tury foreign=0. Claude R2=0. Automatyczna kontrola dopuściła próbę po sprawdzeniu
+kontraktu testu w katalogu A; bieżąca blokada dotyczy wyłącznie transportu TUI.
+
+Zgodnie z warunkiem błędu STOP bez retry. A/B normalnie zamknięte, foreign
+z niewysłanym wejściem zakończony wraz z relay. Końcowo epoch1/generation4,
+active_instance_id=null, quick_check obu baz OK, waiting_user/q1 unanswered,
+po1 historycznej COMPLETE, paczki R1 identyczne, brak własnych procesów MCP.
+Nowe tury A1/B1, Claude0, foreign0; segment około9min. Surowe dowody lokalnie
+w /tmp/wave10-continuation-79f75e0/continuation/evidence i operator/.
+
+W10-09 powróciło mimo wymuszenia wielowierszowości. Prostszy następny krok:
+oddzielne paste i jawny submit operatora po odczycie ekranu, bez kolejnej
+heurystyki etykiet. Nie wdrożono poprawki w aktywnym zestawie ani retry.
+Nie restartować starego relay/manifestu. Najpierw poprawka bez modeli i świeży
+pin/baseline generation4; bez powtarzania R1. Szczegóły w końcu raportu.

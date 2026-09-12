@@ -457,3 +457,67 @@ Końcowy pin 51c358a: build oraz 2/2 handshake PASS, odczytowy preflight PASS.
 Zachowany baseline jest identyczny także z wcześniejszym przygotowaniem c136c7d.
 Poprzedni pomocniczy katalog zachowano, ale nie jest punktem startu. 5 testów
 przenośności i git diff --check PASS. W tym etapie zero modeli i zero mutujących MCP.
+
+
+## Zatwierdzona kontynuacja v2 — BLOCKED na operatorze TUI
+
+Ten zapis zastępuje wcześniejszy status oczekiwania na zgodę; historyczne wyniki
+pozostają bez zmian. Zgoda użytkownika: dwie pozostałe rundy45min/max_turns32,
+MCP55min, operator20min, B gate25min/Bash30min, segment90min; tury Astr planem.
+Rozliczanie potwierdzone; bez dodatkowych rund/retry/recovery.
+
+Przygotowanie: 34bd367 uzgodnił timeouty, 79f75e0 poprawił spłaszczone TOML
+overrides lokalnego MCP env. Świeży pomocniczy build79f75e0, handshake2/2,
+preflight i26 testów operatora PASS. Produkcyjny bridge9e8f060 niezmieniony.
+Rzeczywiste procesy MCP potwierdziły Bash max1800000 i background disabled.
+Nie zmieniono globalnych limitów ani nie powtarzano review integracji.
+
+Obie prawdziwe Astry TUI wznowiły dokładnie zachowane sesje; po jednej turze
+BOOT potwierdziły manager resume epoch1/generation2→3, waiting_user/q1
+unanswered i historyczny R1. Dowody: rzeczywiste wywołania MCP, bazy, notify.
+
+Foreign klient wystartował w A, zgodnie z negatywnym testem obcej tożsamości
+w tym samym worktree. Automatyczna kontrola początkowo odmówiła z powodu
+tego katalogu; po odczycie promptu i guardu dopuściła akcję. Nie obchodzono
+zabezpieczeń. Następnie krótki wielowierszowy prompt wyświetlił się literalnie,
+bez `[Pasted Content]`, na który czeka Client. Enter nie został wysłany.
+Requested foreign=1 nie oznacza tury: rzeczywiste turns_sent=0, brak notify.
+Nie ma wykonanego probe ani podstawy do zaliczenia odmowy bez mutacji.
+
+STOP zgodnie z instrukcją przy błędzie: A/B normalnie /quit; foreign z niewysłanym
+tekstem zakończony przez relay. Finalnie quick_check obu baz OK, epoch1/generation4,
+brak aktywnych instancji, waiting_user/q1 unanswered, po1 historycznej Claude
+COMPLETE. R1 paczki identyczne, brak własnych procesów MCP. Zużycie segmentu:
+**Astra A1/B1, Claude0/2, foreign0/1 faktycznych tur**. Około9min do auditu;
+zero retry/recovery, zero R2 i nowych paczek. Nie zaliczamy całego wave10.
+
+| Kryterium | Wynik |
+| --- | --- |
+| P1 | PASS z historycznego R1; nie powtarzano. |
+| P2 | PASS z historycznego R1; nie powtarzano. |
+| P3 | UNVERIFIED całości: izolowane bazy/R1 zachowane, brak R2. |
+| P4 | UNVERIFIED: exact resume działa, lecz nie podczas aktywnego B/r2. |
+| P5 | UNVERIFIED: handles zachowane, brak drugiego wykonania Claude. |
+| P6 | UNVERIFIED: prompt foreign nie opuścił edytora. |
+| P7 | UNVERIFIED: brak verify4/finalnych testów i nieprzerwanego v2. |
+
+### Punkt wznowienia po STOP
+
+Dowody poza Git: /tmp/wave10-continuation-79f75e0/continuation/operator/ oraz
+evidence/foreign-paste-block i evidence/final-audit.json. W starym katalogu
+pilota snapshoty cont2-before-foreign i cont2-stopped. Identyfikatory i logi
+pozostają prywatne. Stare runtime, wyniki, approval i zegary zachowane.
+
+Nie uruchamiać ponownie starego serve ani nie zmieniać manifestu w miejscu:
+resume/close prawidłowo zmieniło generation2→4. W10-09 ponownie otwarte
+w jednej liście ustaleń. To kolejny nawrót renderowania wklejki; prostsze
+podejście: oddzielić paste od jawnego submit operatora po sprawdzeniu ekranu,
+z jednokrotnym Enter i licznikiem faktycznych tur. Nie zastępuje decyzji Astr.
+Najpierw sprawdzić bez modeli krótkie/długie wejście w prawdziwym TUI, potem
+nowy pin operatora, świeży katalog i odczytowy baseline zachowanych sesji.
+Nie wdrożono zmiany w działającym zestawie ani nie wykonano ponownej próby.
+
+Brakujące: foreign probe, B/r2, zamknięcie/resume A podczas aktywnego B,
+A/r2, natychmiastowe release po starcie A, rzeczywiste review, verify4/testy.
+R1 nie powtarzać. Zgoda zakresu i billing pozostaje udokumentowana; zatrzymany
+segment nie jest aktywnym oknem ani nieprzerwanym pilotem. Bez push i merge.
