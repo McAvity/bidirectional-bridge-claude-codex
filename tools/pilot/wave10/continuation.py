@@ -155,7 +155,11 @@ def command(out, m, role):
         'cwd': str(repo), 'startup_timeout_sec': 1200, 'tool_timeout_sec': BUDGET['mcp_seconds'],
         'env': {'BASH_MAX_TIMEOUT_MS': str(BUDGET['gate_bash_ms']), 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '1'}}
     args = ['codex', '--no-alt-screen', '-m', 'gpt-6-astra', '-C', str(repo), '-c', 'model_reasoning_effort="high"']
-    for key,value in config.items(): args += ['-c', 'mcp_servers.bridge.'+key+'='+json.dumps(value)]
+    for key,value in config.items():
+        if isinstance(value,dict):
+            for name,item in value.items(): args += ['-c','mcp_servers.bridge.'+key+'.'+name+'='+json.dumps(item)]
+        else:
+            args += ['-c', 'mcp_servers.bridge.'+key+'='+json.dumps(value)]
     args += ['-c', 'notify='+json.dumps(['env', 'PILOT_NOTIFY_DRY=1',
         'PILOT_NOTIFY_LOG='+str(out/'operator/notify.jsonl'), 'bash', str(root/'runtime/tools/pilot/common/notify.sh')])]
     if role != 'foreign': args += ['resume', m['baseline']['pairs'][pair]['binding']['native_thread_id']]

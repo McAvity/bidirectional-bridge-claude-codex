@@ -26,9 +26,11 @@ class ContinuationTests(unittest.TestCase):
         cmd=C.command(Path('/tmp/synthetic-cont'),self.manifest(),'a-initial')
         self.assertIn('mcp_servers.bridge.tool_timeout_sec=3300',cmd)
         self.assertIn('mcp_servers.bridge.startup_timeout_sec=1200',cmd)
-        env=json.loads(next(x.split('=',1)[1] for x in cmd if x.startswith('mcp_servers.bridge.env=')))
-        self.assertEqual(env['BASH_MAX_TIMEOUT_MS'],'1800000')
-        self.assertEqual(env['CLAUDE_CODE_DISABLE_BACKGROUND_TASKS'],'1')
+        self.assertIn('mcp_servers.bridge.env.BASH_MAX_TIMEOUT_MS="1800000"',cmd)
+        self.assertIn('mcp_servers.bridge.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS="1"',cmd)
+        import tomllib
+        for i,arg in enumerate(cmd):
+            if arg=='-c': tomllib.loads(cmd[i+1])
         self.assertEqual(C.BUDGET['a_r2_ms'],2700000)
         self.assertEqual(C.BUDGET['b_r2_ms'],2700000)
         self.assertEqual(C.BUDGET['wall_minutes'],90)
