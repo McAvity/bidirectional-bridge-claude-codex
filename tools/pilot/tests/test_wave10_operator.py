@@ -3,16 +3,23 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-SPEC = importlib.util.spec_from_file_location('wave10_operator', Path(__file__).parents[1] / 'wave10/operator.py')
+SPEC = importlib.util.spec_from_file_location('wave10_operator', Path(__file__).parents[1] / 'wave10/pilot.py')
 OP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(OP)
 
 
 class Wave10OperatorTests(unittest.TestCase):
+    def test_cli_starts_without_import_shadowing(self):
+        result = subprocess.run([sys.executable, str(SPEC.origin), '--help'], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('prepare', result.stdout)
+
     def test_existing_run_is_preserved(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

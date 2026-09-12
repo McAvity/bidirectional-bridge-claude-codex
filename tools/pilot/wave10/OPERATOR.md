@@ -28,8 +28,8 @@ runtime aktywnego wave7. Przypięte SHA i przygotowany katalog są podane w wave
 export W10_SOURCE=/absolute/path/to/wave10
 export RUN=/tmp/wave10-pilot-new
 export W10_SHA=<runtime-commit-from-wave10-report>
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" prepare --run "$RUN" --runtime-sha "$W10_SHA"
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" preflight --run "$RUN"
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" prepare --run "$RUN" --runtime-sha "$W10_SHA"
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" preflight --run "$RUN"
 ```
 
 `prepare` odmawia istniejącego katalogu. Klonuje wyłącznie branch wave10 do osobnej bazy Git,
@@ -67,13 +67,13 @@ Ustaw `W10_SOURCE` i `RUN` na te same wartości w każdym terminalu (powłoki ni
 **Terminal A:**
 
 ```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" launch --run "$RUN" --pair a --mode start
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode start
 ```
 
 **Terminal B:**
 
 ```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" launch --run "$RUN" --pair b --mode start
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair b --mode start
 ```
 
 W obu TUI sprawdź `/mcp`. Wklej odpowiednio tylko `$RUN/START-A.txt` i `START-B.txt`.
@@ -87,13 +87,13 @@ Gdy Astra A zgłosi waiting_user/q1, zapisz jej dokładny `native_thread_id` z
 Nie używaj newest, --last, pickera ani ID guardiana. Zrób snapshot:
 
 ```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" snapshot --run "$RUN" --label a-waiting-b-working
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label a-waiting-b-working
 ```
 
 Zamknij TUI A normalnie, gdy żadna runda A nie pracuje, następnie **w terminalu A**:
 
 ```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" launch --run "$RUN" --pair a --mode resume
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode resume
 ```
 
 Wznowionej Astrze A poleć: odczytaj manager_status i feature_get. Potwierdź ten sam
@@ -106,7 +106,7 @@ Nie rób takeover i nie twórz nowego featura/tasku wokół istniejącej rundy.
 ```bash
 mkdir -p "$RUN/b/.pilot"
 touch "$RUN/b/.pilot/continue"
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" snapshot --run "$RUN" --label a-resumed
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label a-resumed
 ```
 
 Poczekaj na waiting_user także B. Zapisz natywne ID obu Claude’ów z prywatnych dowodów
@@ -117,8 +117,8 @@ prób (nie wyświetlaj surowych uchwytów w publicznym raporcie). Tożsamości A
 Obie pary muszą być teraz w waiting_user, bez aktywnych rund. W terminalu O:
 
 ```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" snapshot --run "$RUN" --label before-foreign
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" launch --run "$RUN" --pair a --mode foreign
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label before-foreign
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" launch --run "$RUN" --pair a --mode foreign
 ```
 
 Krótka trzecia Astra ma tylko odczytać manager_status i spróbować create_task. Launcher
@@ -139,7 +139,7 @@ commit i zweryfikowaną paczkę. Astra sprawdza dostawę, raportuje wynik i koń
 feature_accept, dodatkowych rund i kolejnego pełnego review.
 
 ```bash
-python3 "$W10_SOURCE/tools/pilot/wave10/operator.py" snapshot --run "$RUN" --label final
+python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label final
 ```
 
 Operator uruchamia w każdym worktree `python3 -m unittest discover -v` oraz exporter
