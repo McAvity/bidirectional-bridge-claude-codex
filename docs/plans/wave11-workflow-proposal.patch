@@ -1,0 +1,133 @@
+--- a/docs/features/README.md
++++ b/docs/features/README.md
+@@ -35,5 +35,5 @@
+ Review planu albo decyzję można zrobić w rozmowie z mocniejszym modelem. Nie trzeba powtarzać identycznego review lokalnie: zachowaj otrzymany dokument wraz z zakresem i ograniczeniami. Rekomendacja nie jest zatwierdzeniem. Jawna zgoda z rozmowy jest wystarczająca — agent zapisuje ją, nie prosi drugi raz. Domyślnie lokalne agenty nie zatwierdzają nowych decyzji produktowych w imieniu użytkownika.
+
+-Przy delegowaniu domyślnie proponuj cały pozostały uzgodniony zakres featura wraz z integracją, lokalnym review i poprawkami. Jawnie węższe zlecenie (task, grupa, fala) nadal obowiązuje. Dobieraj model do trudności, nie na stałe do roli. Task projektujący kontrakty może wymagać mocniejszego modelu niż późniejsza implementacja. Review wykonuje osobna sesja, najlepiej inny model; reviewer bada kod niezależnie od deklaracji wykonawcy.
++Przy delegowaniu domyślnie proponuj cały pozostały uzgodniony zakres featura wraz z integracją, lokalnym review i poprawkami. Jawnie węższe zlecenie (task, grupa, fala) nadal obowiązuje. Dobieraj model do trudności, nie na stałe do roli. Task projektujący kontrakty może wymagać mocniejszego modelu niż późniejsza implementacja. Review wykonuje sesja niezależna od wykonawcy; koordynator, który nie implementował zmiany, może pełnić tę rolę, ujawniając udział w koordynacji. Własna implementacja wymaga innego reviewera do niezależnego review. Dodatkowa osoba lub model potrzebuje konkretnego celu: nowego ryzyka, brakującej kompetencji, luki dowodowej albo jawnie wymaganej niezależności; samo zakończenie kolejnej rundy nie wystarcza.
+
+ ## Domyślna autonomia i bramki
+@@ -41,7 +41,7 @@
+ Po zleceniu implementacji uzgodnionego zakresu koordynator prowadzi gotowe taski, integrację, niezależne lokalne review i poprawki przywracające uzgodnione zachowanie. Zakończenie taska, nowy ledger ani techniczne `PASS` nie wymagają nowej zgody czy ZIP-a. Bramki zależności i lokalnego review nadal obowiązują; ich przejście pozwala kontynuować w ramach istniejącej zgody. Nie twórz osobnej decyzji użytkownika dla każdej zwykłej poprawki.
+
+-Wcześniejsze przekazanie zewnętrzne jest potrzebne przy istotnym wyborze poza autoryzacją (np. zmiana zachowania, wspólnego kontraktu poza przyjętymi granicami lub budżetu), jawnie wymaganej bramce zewnętrznej albo rzeczywistym impasie. Wskaż konkretną nierozstrzygniętą decyzję, dowody, rekomendację i powód, dla którego nie można jej rozwiązać lokalnie. Sama chęć dodatkowego review nie wystarcza. Wstrzymaj tylko zależne prace.
++Wcześniejsze przekazanie zewnętrzne jest potrzebne przy istotnym wyborze poza autoryzacją (np. zmiana zachowania, wspólnego kontraktu poza przyjętymi granicami lub budżetu), jawnie wymaganej bramce zewnętrznej albo rzeczywistym impasie. Najpierw sprawdź istniejącą zgodę i zbierz dostępny lokalnie dowód potrzebny do wyboru; nie pytaj, czy zachować obowiązujące wymaganie, zanim zbadasz możliwość jego spełnienia. Wskaż konkretną nierozstrzygniętą decyzję, dowody, rekomendację i powód, dla którego nie można jej rozwiązać lokalnie. Sama chęć dodatkowego review nie wystarcza. Wstrzymaj tylko zależne prace.
+
+-Review wykonuje niezależna lokalna sesja/agent w granicach dostępnych możliwości i zgód. Samokontrola wykonawcy nie zastępuje niezależnego review. Jeśli reviewer jest niedostępny, zapisz ograniczenie i lokalne przekazanie, kontynuując pozostałe dozwolone prace; nie żądaj przez to zewnętrznego ZIP-a po każdym tasku. Koniec sesji lub limit kontekstu wymaga zapisu stanu i instrukcji wznowienia, a nie ponownego zatwierdzania zakresu.
++Review wykonuje lokalna sesja/agent niezależna od wykonawcy w granicach dostępnych możliwości i zgód; nie wymaga to dodatkowego reviewera poza koordynatorem, który spełnia ten warunek. Samokontrola wykonawcy nie zastępuje niezależnego review. Jeśli reviewer jest niedostępny, zapisz ograniczenie i lokalne przekazanie, kontynuując pozostałe dozwolone prace; nie żądaj przez to zewnętrznego ZIP-a po każdym tasku. Koniec sesji lub limit kontekstu wymaga zapisu stanu i instrukcji wznowienia, a nie ponownego zatwierdzania zakresu.
+
+ Zatwierdzenie projektu samo w sobie nie jest zleceniem implementacji. Aktualizacja workflow nie rozszerza wcześniejszej zgody ograniczonej do konkretnego taska. Po uzgodnieniu projektu i wymaganych kontraktów można zlecić:
+@@ -125,9 +125,11 @@
+ Review zaczyna się od executive summary (zwykle do 10 linijek): werdykt, najważniejszy wpływ, decyzje potrzebne od użytkownika i zalecany następny krok. Werdykty: `PASS`, `REWORK`, `BLOCKED`. Brak dostępu do kodu lub niejasny zakres może blokować ocenę implementacji, ale nie blokuje użytecznej oceny dostarczonej rekomendacji. Wyraźnie nazwij tę różnicę.
+
+-Dla ustaleń używaj stabilnych ID w ramach review, np. `R03-01`. Zapisz wymaganie, obserwację, dowód, wpływ, znaczenie dla odbioru oraz rekomendację: kod / specyfikacja / oba / brakujące dowody. Oddziel obowiązkowe poprawki od obserwacji na przyszłość. Nie zamieniaj preferencji stylistycznej w blocker. Pokrycie kryteriów: met / unmet / unverified z dowodem; wykorzystaj istniejącą macierz odbioru, jeśli jest.
++Dla ustaleń używaj stabilnych ID w ramach review, np. `R03-01`. Zapisz wymaganie, obserwację, dowód, wpływ, znaczenie dla odbioru oraz rekomendację: kod / specyfikacja / oba / brakujące dowody. Każdemu ustaleniu nadaj jedną dyspozycję: blocker odbioru (wykazane naruszenie wymagania lub brak dowodu koniecznego do odbioru), uwaga nieblokująca albo osobne zadanie poza zakresem. Blocker musi wskazywać wymaganie, dowód i skutek dla celu użytkownika. Hipotetyczne ryzyko uzasadnia ograniczenie twierdzenia lub konkretne sprawdzenie, nie samoistną nową bramkę. Nie zamieniaj preferencji stylistycznej w blocker ani niespełnionego kryterium odbioru w osobne zadanie bez uprawnionej zmiany zakresu. Pokrycie kryteriów: met / unmet / unverified z dowodem; wykorzystaj istniejącą macierz odbioru, jeśli jest.
++
++Jedna faza może prowadzić jeden rejestr ustaleń w istniejącym pliku review. Kolejne korekty dopisują datowany wpis z wersją wejścia, otwartymi ID, wynikiem sprawdzenia i nowymi istotnymi findingami; nie nadpisują poprzednich ocen. Zamknięte ID sprawdzaj ponownie tylko przy konkretnej regresji lub zmianie unieważniającej dowód. Nowa faza lub istotnie inny zakres uzasadnia nowy plik, sama następna runda nie.
+
+ Decyzja wskazuje review i jego wersję, przyjęte/odrzucone ustalenia z krótkim powodem, zmiany dokumentów/kodu, wykonawcze taski lub instrukcje oraz warunki ponownego sprawdzenia. Jest jednocześnie planem poprawek — nie twórz jeszcze jednego dokumentu powtarzającego jej treść. Zapisz kto i na jakiej podstawie zatwierdził decyzję. Nie przedstawiaj własnej rekomendacji jako zgody użytkownika.
+
+-Poprawki przywracające uzgodnione zachowanie mieszczą się w zleceniu implementacji całego featura, chyba że użytkownik zawęził zakres. Wykonuj je lokalnie, odwołując się do ustaleń review i istniejącej zgody, a następnie sprawdzaj zmieniony zakres i związane regresje. Przy dwóch kolejnych rundach bez postępu nad tym samym istotnym problemem pokaż przyczynę impasu i konkretną decyzję potrzebną do kontynuacji; użytkownik może ustalić inny budżet. To nie jest automatyczny limit dwóch review całego featura ani powód do zatrzymania skutecznych poprawek. Zachowaj jawne limity prób/kosztów. Nowe wybory produktowe eskaluj, kontynuując niezależną, dozwoloną pracę.
++Poprawki przywracające uzgodnione zachowanie mieszczą się w zleceniu implementacji całego featura, chyba że użytkownik zawęził zakres. Wykonuj je lokalnie, odwołując się do ustaleń review i istniejącej zgody, a następnie sprawdzaj zmieniony zakres i związane regresje. Przy dwóch kolejnych rundach bez postępu nad tym samym istotnym problemem pokaż przyczynę impasu i konkretną decyzję potrzebną do kontynuacji; użytkownik może ustalić inny budżet. To nie jest automatyczny limit dwóch review całego featura ani powód do zatrzymania skutecznych poprawek. Niezależnie od postępu, przy trzecim sprawdzaniu tego samego problemu w danej fazie zrób krótki krok wstecz: jakie istotne wymaganie pozostaje niespełnione, jaki jest dowód i czy prostsze podejście usunie klasę problemów? Powiązane ID mogą opisywać ten sam problem; zmiana fazy lub nowy defekt nie jest automatycznie powtórzeniem. Rozważ uproszczenie wcześniej, gdy jest oczywiste. Ten krok nie wymaga nowego dokumentu ani pytania, nie ogranicza liczby napraw i nie pozwala zaakceptować błędu. Zwykły wybór techniczny podejmij w istniejącej zgodzie; materialną zmianę wymagań uzgodnij. Odnotuj tylko istotny wynik w bieżącym review lub ledgerze. Zachowaj jawne limity prób/kosztów. Nowe wybory produktowe eskaluj, kontynuując niezależną, dozwoloną pracę.
+
+ ## Feature z eksperymentami i kolejnymi falami
+--- a/.agents/skills/feature-review/SKILL.md
++++ b/.agents/skills/feature-review/SKILL.md
+@@ -8,5 +8,5 @@
+ # Feature Review
+
+-Choose the mode from the request: `plan`, `contracts`, `implementation`, or `corrections`. Prefer a separate session from execution; disclose if independence is limited. Read the actual source material before the executor's interpretations drive the verdict.
++Choose the mode from the request: `plan`, `contracts`, `implementation`, or `corrections`. Require independence from the executor for an independent verdict; disclose if independence is limited. A coordinating session that did not implement the change can provide it. Add another reviewer only for a named risk, missing expertise/evidence or an explicitly required independent gate; preserve existing delegation restrictions. Read the actual source material before the executor's interpretations drive the verdict.
+
+ ## Establish evidence
+@@ -20,5 +20,5 @@
+ - Implementation: Inspect actual Git changes and relevant current code, not only ledgers. Check observed behavior, acceptance, integration, regression risks, declared/undeclared deviations and evidence accuracy. Re-run focused checks when feasible and material. Distinguish retained claims from independently verified results.
+ - Experiment scope within plan/contracts/implementation: Apply the shared wave guidance. For a plan, check the comparison, controls, budget, stop rule, data separation and usable outputs. For execution, inspect actual configuration, data coverage, failures/exclusions, analysis and relevant harness/model code; assess effect size, uncertainty, selection bias and whether conclusions exceed the evidence. A valid negative or inconclusive result may PASS. State separately whether execution is sound, what the hypothesis result is and whether product acceptance is evidenced. Missing raw data/code limits the verdict; a report alone does not establish reproducibility.
+-- Corrections: Trace finding IDs through the decision, code/spec changes and new evidence. Close each material finding explicitly; check related regressions. Broaden review only for a concrete new risk.
++- Corrections: Trace open finding IDs through the governing authorization, code/spec changes and new evidence. Close each material finding explicitly; check related regressions. Retain closed findings unless a concrete change invalidates their evidence. Give new defects their own findings even when they resemble a previous issue. Broaden review only for a concrete new risk. Apply the shared step-back rule when the same problem recurs, including rounds that made progress.
+
+ ## Bridge round packages
+@@ -37,7 +37,7 @@
+ ## Output
+
+-Write the next `reviews/NN-<mode>.md`, preserving prior records. Start with executive summary (verdict, impact, decisions, next action). Record input references/hashes, inspected code range and limitations. Use `PASS`, `REWORK` or `BLOCKED`; missing essential evidence blocks a reliable verdict, while a demonstrated defect usually means rework.
++For a new phase or materially different scope, write `reviews/NN-<mode>.md`. For corrections in the same phase, prefer a dated append-only entry in the existing review register, recording the reviewed revision/task, finding dispositions, checks and limitations without overwriting earlier verdicts. A further round alone does not require a new file. Start with executive summary (verdict, impact, decisions, next action). Record input references/hashes, inspected code range and limitations. Use `PASS`, `REWORK` or `BLOCKED`; missing essential evidence blocks a reliable verdict, while a demonstrated defect usually means rework.
+
+-Use stable finding IDs such as R03-01 with requirement, observation, precise evidence, impact, required/advisory classification and recommended resolution (code/spec/both/evidence). Include acceptance coverage where meaningful, using existing acceptance evidence instead of copying a second matrix. Tests passing is not proof all requirements are met. Do not manufacture stylistic or speculative blockers.
++Use stable finding IDs such as R03-01 with requirement, observation, precise evidence, impact, disposition (acceptance blocker, nonblocking note or separate out-of-scope task) and recommended resolution (code/spec/both/evidence). Only acceptance blockers are required corrections: tie them to a demonstrated requirement violation or essential missing evidence. Do not defer an unmet acceptance criterion without an authorized scope change. Include acceptance coverage where meaningful, using existing acceptance evidence instead of copying a second matrix. Tests passing is not proof all requirements are met. Do not manufacture stylistic or speculative blockers.
+
+ Do not edit code, contracts, brief, design or tasks to fix findings. You may write your review and update the index when acting as coordinator. A PASS is a reviewer recommendation, not a user decision. Route the result according to existing authority: a local PASS releases eligible downstream work; in-scope REWORK goes to `$feature-execute` and focused local re-review. Neither requires a new user decision. For BLOCKED, first obtain available missing evidence locally and continue unaffected authorized work. Use `$feature-decide` for actual unresolved choices or final acceptance, and `$feature-exchange` only at a genuine external handoff or explicit request. The integrated final review produces the external executive recommendation; it does not require external reviews of each completed task. Do not invent an external gate for extra certainty. If the user asked for review and fixes together, finish the review first and proceed only with already authorized corrections in the appropriate role; keep records separate.
+--- a/.agents/skills/feature-execute/SKILL.md
++++ b/.agents/skills/feature-execute/SKILL.md
+@@ -12,5 +12,5 @@
+ Read the selected task(s), `feature.json`, brief, design, relevant contracts and governing decision. Respect the user's requested scope (one task, an accepted wave, integration, or corrections). Check dependencies and the actual Yumi lifecycle. A recorded user instruction already approving these inputs is sufficient; record it rather than asking again. If no approved scope exists, prepare the concrete blocker/decision needed and do not silently approve your own design.
+
+-Inspect Git state, protect unrelated changes, record input hashes and starting revision. If work is uncommitted or mixed, keep a precise changed-file/snapshot record; do not claim HEAD identifies those bytes. Create `execution/<TASK-ID>/<next-number>.md` and update it at meaningful checkpoints. A contract/design task can be authorized to produce proposed contracts even while downstream implementation remains gated.
++Inspect Git state, protect unrelated changes, record input hashes and starting revision. If work is uncommitted or mixed, keep a precise changed-file/snapshot record; do not claim HEAD identifies those bytes. Create `execution/<TASK-ID>/<next-number>.md` and update it at meaningful checkpoints. A contract/design task can be authorized to produce proposed contracts even while downstream implementation remains gated. Record round-local write scope separately from authorization for the remaining feature; a technical dependency passing releases already authorized downstream work, but does not expand a task-only instruction.
+
+ When the user authorizes implementation of the feature, default to its entire remaining agreed scope, including integration, independent local review and corrections restoring agreed behavior. Preserve explicitly narrower authorization and experiment budgets. Approval of a plan alone is not an instruction to execute. Installing this workflow does not expand an earlier task-only decision.
+@@ -36,7 +36,7 @@
+ A completed task or ledger is not an external approval gate. Continue ready tasks within the authorized scope, observing dependencies and required local contract checks. Route technical findings to local corrections and focused re-review; reference finding IDs and the existing authorization without creating a new user decision for every fix. Do not change product requirements to make a review pass.
+
+-The coordinator arranges independent local review using available, authorized sessions or agents; do not claim executor self-review is independent. If no independent reviewer is available, record the limitation and a local handoff, continue other eligible work, and do not turn this into a request for an external ZIP after every task. Context/session limits require a resumable ledger and next action, not renewed approval.
++The coordinator arranges local review independent of the executor using available, authorized sessions or agents; the coordinator may provide it when they did not implement the change. Do not claim executor self-review is independent. Before adding another reviewer, state the concrete value using the shared review guidance; completion of a round is not sufficient. If no independent reviewer is available, record the limitation and a local handoff, continue other eligible work, and do not turn this into a request for an external ZIP after every task. Context/session limits require a resumable ledger and next action, not renewed approval.
+
+-Escalate early only for a concrete decision outside existing authority, an explicit external gate, or a genuine impasse under the shared retry rule. State the unresolved choice, evidence, recommendation and why it cannot be resolved locally. Continue unaffected authorized work. Never add an external review merely for extra certainty.
++Apply the shared step-back rule to recurring problems even while corrections make progress; prefer a simpler in-scope approach when it preserves requirements. Check existing authorization and obtain available local evidence before escalating. Escalate early only for a concrete decision outside existing authority, an explicit external gate, or a genuine impasse under the shared retry rule. State the unresolved choice, evidence, recommendation and why it cannot be resolved locally. Continue unaffected authorized work. Never add an external review merely for extra certainty.
+
+ ## Bridge mode
+--- a/.agents/skills/feature-execute/references/bridge-loop.md
++++ b/.agents/skills/feature-execute/references/bridge-loop.md
+@@ -97,8 +97,10 @@
+    `git status --porcelain` must stay within `scope.paths`, and `feature.json`, `reviews/`,
+    `decisions/` and task files must be untouched by the executor.
+-4. Use `$feature-review` (implementation or corrections mode): inspect `git diff base..head`
+-   and the new ledger, rerun the decisive checks yourself, and write `reviews/NN-<mode>.md`
+-   naming the reviewed task id. For every required finding carried from the previous review,
+-   record `resolved`, `progress` or `no progress`.
++4. Use `$feature-review` in the appropriate mode: inspect the changed scope and new ledger,
++   rerun decisive checks, and record the reviewed task id and exact revision. For corrections,
++   append a dated entry to the existing review register and recheck open findings and concrete
++   related regressions; a new round alone does not require a new review file or another reviewer.
++   For every carried required finding, record `resolved`, `progress` or `no progress`.
++   Keep new material defects visible and retain earlier evidence whose scope is unchanged.
+ 5. A missing, failing or stale package, an empty `code_changes` range, uncommitted in-scope
+    work or any change outside the scope is a required finding for the next round, not a user
+@@ -115,6 +117,8 @@
+      consecutive recoveries of one task ending blocked on the same blocker → stop and ask
+      the user with the cause of the impasse and the concrete decision needed. This is not a
+-     limit on the number of rounds: keep going while rounds make progress, within any
+-     explicit budget.
++     limit on the number of rounds: continue authorized corrections within the explicit budget.
++     Progress alone does not justify preserving an increasingly complex approach: at the third
++     review of the same problem in a phase, apply the shared step-back rule. This requires no
++     extra document or automatic user question and never permits accepting a material defect.
+
+ Update `feature.json` (`phase`, `latest_review`, `latest_decision`, `next_action`) and task
+@@ -125,5 +129,7 @@
+
+ `bridge_feature_wait_user` freezes every round and recovery of this feature until the answer
+-is recorded. Before asking, finish the rounds that do not depend on the answer.
++is recorded. Before asking, check existing authorization, gather locally available essential
++evidence and finish the rounds that do not depend on the answer. Do not use a missing local
++investigation as a reason to ask whether an existing requirement should still apply.
+
+ 1. `bridge_feature_wait_user({feature_id, question_id: "q-NN", question})`, NN = the next
+--- a/.codex/skills/using-bridge/SKILL.md
++++ b/.codex/skills/using-bridge/SKILL.md
+@@ -74,5 +74,5 @@
+ 6. **Let the orchestrator manage the child.** Do not manually create, claim, lease, finalize, or save handles for the child.
+ 7. **Consume the structured result.** Check that it answers the actual user request. Preserve `PARTIAL` or `FAILED` honestly.
+-8. **Verify proportionately as manager.** Use real evidence appropriate to the task. Do not treat the worker’s claim as sufficient by itself.
++8. **Verify proportionately as manager.** Use real evidence appropriate to the task. Do not treat the worker’s claim as sufficient by itself. Distinguish acceptance blockers, nonblocking notes and separate tasks. Recheck open findings and concrete related regressions; another reviewer needs a named risk, evidence gap or required independence. In feature rounds apply the shared step-back rule at the third review of the same problem, even with progress; it is not a repair limit, extra document or automatic user question.
+ 9. **Finish the root.** Submit the manager deliverable with `bridge_submit_deliverable`; `COMPLETE` requires at least one real passing check and no failing check.
+ 10. **Release manager leases.** Release any lease acquired manually for the root.
+--- a/.claude/skills/using-bridge/SKILL.md
++++ b/.claude/skills/using-bridge/SKILL.md
+@@ -74,5 +74,5 @@
+ 6. **Let the orchestrator manage the child.** Do not manually create, claim, lease, finalize, or save handles for the child.
+ 7. **Consume the structured result.** Check that it answers the actual user request. Preserve `PARTIAL` or `FAILED` honestly.
+-8. **Verify proportionately as manager.** Use real evidence appropriate to the task. Do not treat the worker’s claim as sufficient by itself.
++8. **Verify proportionately as manager.** Use real evidence appropriate to the task. Do not treat the worker’s claim as sufficient by itself. Distinguish acceptance blockers, nonblocking notes and separate tasks. Recheck open findings and concrete related regressions; another reviewer needs a named risk, evidence gap or required independence. In feature rounds apply the shared step-back rule at the third review of the same problem, even with progress; it is not a repair limit, extra document or automatic user question.
+ 9. **Finish the root.** Submit the manager deliverable with `bridge_submit_deliverable`; `COMPLETE` requires at least one real passing check and no failing check.
+ 10. **Release manager leases.** Release any lease acquired manually for the root.
