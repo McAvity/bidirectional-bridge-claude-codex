@@ -196,3 +196,27 @@ jawnie SKIP zamiast błędu importu w bazowym CI; z bibliotekami wszystkie 5 tes
 wykonane. Zmieniono tylko discovery testu i dokumentację po zatrzymaniu; runtime
 realnego przebiegu nadal pin 9e8f060, bez zmian narzędzi przygotowania/builda.
 Przegląd nowych linii: brak natywnych UUID, adresów kont i prywatnych ścieżek domowych.
+
+## W10-10 — przygotowanie kontynuacji po zachowanym R1
+
+Wejście `1c6e635`, własny branch/worktree wave10; bez modeli i bez ponownego review integracji.
+Sprawdzono dokładny binarny CLI 2.1.269: sukcesowy num_turns liczy 1 + komunikaty user
+(17 tool_result w każdej sesji), limit pętli jest osobny i emituje max_turns_reached /
+error_max_turns. Gałąź błędu może raportować inny licznik. Nie zamieniamy 18 na 11;
+11 to grupy odpowiedzi zawierające tool_use, 12 to wszystkie różne odpowiedzi.
+Błędny STOP był oceną koordynatora, nie if-em starego relay. Nowe prompty wycofują tę
+regułę; nowy kontroler pozostawia limit runnerowi i przerywa na faktycznym FAILED.
+
+Bazy quick_check OK, waiting_user/q1 bez odpowiedzi, po 1 COMPLETE; manager detached,
+epoch 1/generation 2, brak aktywnej instancji. Pliki session zgadzają się z bindingami,
+po jednym dokładnym rolloucie TUI i transkrypcie Claude’a; oba worktree czyste.
+Resume nadal UNVERIFIED — nie uruchomiono klientów ani manager_resume_instance.
+
+Dodano continuation.py: odczytowy audit/manifest, osobny approval i zegar, dokładne
+resume A/B, drugi resume A podczas B, tylko dwa prompty ROUND2 i jeden foreign.
+Oryginalne zegar, approval, bazy, build i pakiety zachowane. 23 testy operatora PASS,
+w tym regresja braku fałszywego STOP dla success 18/max12 i STOP dla FAILED/zmiany sesji.
+Scenariusz, semantyka i budżet: tools/pilot/wave10/CONTINUATION.md. Do zatwierdzenia:
+2 rundy Claude max12 (A 8 min/B 20 min), A 3 tury, B 2, foreign 1; segment 45 min.
+P1–P6 można oceniać przy zachowaniu wymaganych dowodów; P4 musi zajść na nowo w czasie
+B/r2. P7 oryginalnego nieprzerwanego v2 nie może stać się PASS przez sklejenie segmentów.
