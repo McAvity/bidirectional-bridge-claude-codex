@@ -15,14 +15,14 @@ import pilot
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'common'))
 from codex_args import sessions, is_manager_meta
 
-SCOPE = 'wave10-retained-r1-continuation-v1'
-BUDGET = {'claude_rounds': 2, 'claude_max_turns_per_invocation': 12,
-          'a_r2_ms': 480000, 'b_r2_ms': 1200000, 'mcp_seconds': 1320,
-          'gate_seconds': 540, 'operator_seconds': 480, 'gate_bash_ms': 600000,
+SCOPE = 'wave10-retained-r1-continuation-v2'
+BUDGET = {'claude_rounds': 2, 'claude_max_turns_per_invocation': 32,
+          'a_r2_ms': 2700000, 'b_r2_ms': 2700000, 'mcp_seconds': 3300,
+          'gate_seconds': 1500, 'operator_seconds': 1200, 'gate_bash_ms': 1800000,
           'astra_a_turns': 3, 'astra_b_turns': 2, 'foreign_turns': 1,
-          'wall_minutes': 45, 'latest_b_r2_start_minutes': 20,
+          'wall_minutes': 90, 'latest_b_r2_start_minutes': 30, 'astra_turns_are_planning_only': True,
           'automatic_retries': 0, 'extra_recovery': 0, 'additional_api_spend_usd': 0}
-COUNTER_NOTICE = '''Budget clarification: preserve spec.max_turns=12, enforced by the runner's
+COUNTER_NOTICE = '''Approved continuation budget: use spec.max_turns=32 only for each remaining R2, enforced by the runner's
 --max-turns. Do not compare bridge turn_count / result num_turns with that ceiling.
 In successful Claude CLI 2.1.269 results num_turns counts initial/user-role messages,
 including separate tool results; streamed blocks may share one assistant message.id.
@@ -108,14 +108,25 @@ Read feature F-W10-pair and confirm retained waiting_user/q1 unanswered, prior R
 and Claude session. Report the exact native thread ID and stop. No user answer, round,
 new feature, new manager root, review of R1 or package rewrite. Stop on any mismatch.
 '''
-        prompts[f'ROUND2-{p.upper()}.txt'] = COUNTER_NOTICE + (root/f'ROUND2-{p.upper()}.txt').read_text()
+        round_prompt = (root/f'ROUND2-{p.upper()}.txt').read_text().replace('spec.max_turns=12','spec.max_turns=32').replace('deadline_ms=480000','deadline_ms=2700000').replace('deadline_ms=1200000','deadline_ms=2700000').replace('timeout=600000','timeout=1800000').replace('540 seconds','1500 seconds')
+        if p=='b':
+            round_prompt = round_prompt.replace('`python3 gate.py`','`python3 .pilot/gate-continuation-v2.py`')
+        prompts[f'ROUND2-{p.upper()}.txt'] = COUNTER_NOTICE + 'This approved instruction supersedes old timing/max_turns and B gate.py instructions in TASK.md and previous prompts. Do not use the old 540-second B gate. Runtime environment supplies BASH_MAX_TIMEOUT_MS=1800000 and disables auto-backgrounding; wait for the gate command to complete. Release is immediate when A starts, not a required delay.\n' + round_prompt
+    for p in ('a','b'):
+        prompts[f'STATUS-{p.upper()}.txt'] = COUNTER_NOTICE + 'Read bridge_manager_status and bridge_feature_get for F-W10-pair. Report current identity, question and round state. Finish any pending review of the existing R2 delivery if appropriate, but never launch or repeat a worker round, answer q1 again, take over or run task recovery. If only explicit resume of this exact manager instance is needed, use the observed epoch/generation. Stop on mismatch.\n'
     prompts['RESTART-A.txt'] = COUNTER_NOTICE + (root/'RESUME-A.txt').read_text()
     # All prepared inputs use the same multiline PTY paste path verified in R1.
     prompts['FOREIGN.txt'] = 'Foreign-manager probe only; no worker or takeover.\n' + (root/'FOREIGN.txt').read_text() + '\n'
     for name, text in prompts.items(): pilot.write(out/name, text)
+    gate = root/'b/.pilot/gate-continuation-v2.py'
+    gate_text = pilot.gate_source().replace(' + 540', ' + 1500')
+    if gate.exists():
+        if gate.read_text() != gate_text: raise ValueError('continuation gate already differs')
+    else:
+        pilot.write(gate, gate_text)
     m = {'scope': SCOPE, 'budget': BUDGET, 'original_run': str(root),
          'operator_sha': pilot.git(pilot.SOURCE, 'rev-parse', 'HEAD'),
-         'operator_file_sha256': pilot.digest(Path(__file__)), 'baseline': baseline,
+         'operator_file_sha256': pilot.digest(Path(__file__)), 'gate_sha256': pilot.digest(gate), 'baseline': baseline,
          'prompt_sha256': {n: pilot.digest(out/n) for n in prompts}, 'original_v2_uninterrupted': False}
     pilot.write(out/'manifest.json', json.dumps(m, indent=2)+'\n')
     pilot.write(out/'approval.example.json', json.dumps({'approved': False, 'scope': SCOPE,
@@ -131,6 +142,7 @@ def preflight(out):
     if m['operator_file_sha256'] != pilot.digest(Path(__file__)): raise ValueError('operator code changed')
     for name, digest in m['prompt_sha256'].items():
         if pilot.digest(out/name) != digest: raise ValueError('prepared prompt changed')
+    if pilot.digest(Path(m['original_run'])/'b/.pilot/gate-continuation-v2.py') != m['gate_sha256']: raise ValueError('continuation gate changed')
     if audit(Path(m['original_run'])) != m['baseline']: raise ValueError('retained baseline drifted')
     return m
 
@@ -140,7 +152,8 @@ def command(out, m, role):
     root = Path(m['original_run']); pair = 'b' if role == 'b-initial' else 'a'; repo = root/pair
     config = {'command': 'node', 'args': [str(root/'runtime/scripts/native-bridge-mcp.mjs'),
         '--caller', 'codex', '--delegation', 'deny' if role == 'foreign' else 'allow', '--workspace', str(repo)],
-        'cwd': str(repo), 'startup_timeout_sec': 30, 'tool_timeout_sec': 1320}
+        'cwd': str(repo), 'startup_timeout_sec': 1200, 'tool_timeout_sec': BUDGET['mcp_seconds'],
+        'env': {'BASH_MAX_TIMEOUT_MS': str(BUDGET['gate_bash_ms']), 'CLAUDE_CODE_DISABLE_BACKGROUND_TASKS': '1'}}
     args = ['codex', '--no-alt-screen', '-m', 'gpt-6-astra', '-C', str(repo), '-c', 'model_reasoning_effort="high"']
     for key,value in config.items(): args += ['-c', 'mcp_servers.bridge.'+key+'='+json.dumps(value)]
     args += ['-c', 'notify='+json.dumps(['env', 'PILOT_NOTIFY_DRY=1',
@@ -177,19 +190,18 @@ def serve(out):
     def event(kind, **data): log.write(json.dumps({'at':time.time(),'kind':kind,**data})+'\n')
     try:
         while True:
-            if time.monotonic()-started >= 2700: raise ValueError('continuation 45 minute deadline')
+            if time.monotonic()-started >= BUDGET['wall_minutes']*60: raise ValueError('continuation 90 minute deadline')
             for c in clients.values():
                 c.poll()
                 if c.exited and not c.closing: raise ValueError('unexpected TUI exit')
-                if c.closing and not c.exited and time.monotonic()-c.close_started>20: raise ValueError('close deadline')
+                if c.closing and not c.exited and time.monotonic()-c.close_started>BUDGET['operator_seconds']: raise ValueError('close deadline')
             for p in ('a','b'):
                 s=read_db(root/p)
                 check_worker_state(s,m['baseline']['pairs'][p])
                 if p=='b' and len(s['attempts'])==2:
                     worker_start=s['attempts'][-1]['started_at']/1000
                     gate=root/'b/.pilot/gate-ready'
-                    if not gate.exists() and time.time()-worker_start>120: raise ValueError('B gate-ready deadline')
-                    if gate.exists() and not (root/'b/.pilot/continue').exists() and time.time()-float(gate.read_text())>480:
+                    if gate.exists() and not (root/'b/.pilot/continue').exists() and time.time()-float(gate.read_text())>BUDGET['operator_seconds']:
                         raise ValueError('operator gate window expired')
             for f in sorted((folder/'inbox').glob('*.json')):
                 if f.name in seen: continue
@@ -197,21 +209,21 @@ def serve(out):
                 if kind=='start':
                     if role in clients: raise ValueError('no replacement clients')
                     if role=='a-restart' and ('a-initial' not in clients or not clients['a-initial'].exited): raise ValueError('A must close normally')
-                    clients[role]=Client(command(out,m,role),folder,role)
+                    clients[role]=Client(command(out,m,role),folder,role,turn_limit=1 if role=='foreign' else None)
                 elif kind=='prompt':
-                    allowed={'a-initial':['BOOT-A.txt'], 'b-initial':['BOOT-B.txt','ROUND2-B.txt'],
-                             'a-restart':['RESTART-A.txt','ROUND2-A.txt'], 'foreign':['FOREIGN.txt']}
+                    allowed={'a-initial':['BOOT-A.txt','STATUS-A.txt'], 'b-initial':['BOOT-B.txt','ROUND2-B.txt','STATUS-B.txt'],
+                             'a-restart':['RESTART-A.txt','ROUND2-A.txt','STATUS-A.txt'], 'foreign':['FOREIGN.txt']}
                     name=a['file']; key=(role,name)
-                    if name not in allowed[role] or key in used: raise ValueError('unapproved/repeated prompt')
+                    if name not in allowed[role] or (key in used and not name.startswith('STATUS-')): raise ValueError('unapproved/repeated prompt')
                     who='foreign' if role=='foreign' else role[0]; limit={'a':3,'b':2,'foreign':1}[who]
-                    if count[who]>=limit: raise ValueError('Astra turn ceiling')
-                    if name=='ROUND2-B.txt' and time.monotonic()-started>1200: raise ValueError('B/r2 latest start')
+                    if who=='foreign' and count[who]>=1: raise ValueError('one foreign probe only')
+                    if name=='ROUND2-B.txt' and time.monotonic()-started>BUDGET['latest_b_r2_start_minutes']*60: raise ValueError('B/r2 latest start')
                     clients[role].send_prompt((out/name).read_text()); count[who]+=1; used.add(key)
                 elif kind=='close': clients[role].close()
                 elif kind=='release':
                     gate=root/'b/.pilot/gate-ready'; marker=root/'a/.pilot/round2-started'
                     b=read_db(root/'b')
-                    if not marker.exists() or not gate.exists() or time.time()-float(gate.read_text())>480:
+                    if not marker.exists() or not gate.exists() or time.time()-float(gate.read_text())>BUDGET['operator_seconds']:
                         raise ValueError('release markers/window invalid')
                     if len(b['attempts'])!=2 or b['attempts'][-1]['ended_at'] is not None: raise ValueError('B not active')
                     with (root/'b/.pilot/continue').open('x') as h:h.write(str(time.time()))

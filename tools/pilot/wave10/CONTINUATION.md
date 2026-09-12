@@ -143,3 +143,32 @@ Raport ma oddzielić wynik przerwanego v2, wyniki brakujących ścieżek i rozli
 nowego 45-minutowego segmentu. Tylko nowy pełny, nieprzerwany przebieg mógłby
 potwierdzić oryginalny harmonogram end-to-end; powtarzanie R1 jest poza tym zleceniem.
 Nie zmieniamy definicji P7 na „sumę aktywnego czasu” ani nie usuwamy przerwy z osi czasu.
+
+## Zatwierdzona korekta zapasu — continuation-v2 (obowiązująca)
+
+Użytkownik zatwierdził wykonanie i następujące maksima; zastępują powyższy budżet v1,
+nie zmieniają historycznych wyników. Dwie pozostałe rundy mają każda deadline_ms=2700000
+(45 min) i spec.max_turns=32. MCP tool_timeout_sec=3300 (55 min); startup MCP=1200 s.
+Bramka B=1500 s (25 min), okno operatora po gate-ready=1200 s (20 min), Bash=1800000 ms
+(30 min), cały nowy segment=5400 s (90 min). Wynik/gotowość natychmiast zwalniają krok;
+limity nie są czasami oczekiwania. B/r2 zlecić najpóźniej w 30. minucie: 45 min rundy,
+10 min zapasu transportu i 5 min na dowody mieszczą się w segmencie. Nie zakładamy,
+że jednoczesne wykorzystanie wszystkich maksimów gwarantuje ukończenie pracy.
+
+Zniesiono 120-sekundowy deadline na gate-ready: przed markerem chroni deadline rundy.
+PTY używa nieblokującego odczytu (timeout=0), bez ukrytego 30-sekundowego oczekiwania
+na wynik modelu. Normalne zamknięcie ma maksymalnie okno operatora 1200 s, ograniczone
+końcem segmentu. Limity tur Astr 3/2 pozostają planem, nie STOP; dodatkowe odczyty stanu,
+resume i dokończenie review są dozwolone w czasie segmentu (prompty STATUS-A/B).
+Nadal najwyżej dwa wykonania Claude’a i jedna próba foreign, bez nowych rund/retry.
+
+Stary gate.py (540 s) i TASK.md są zachowane jako historia. Dla B przygotowywany jest
+ignorowany `.pilot/gate-continuation-v2.py`, z hashem w nowym manifeście. Aktualny prompt
+jawnie zastępuje stare instrukcje czasu i poleca ten skrypt z timeout=1800000.
+A nadal używa natychmiastowego announce-only. W konfiguracji MCP tylko tych klientów:
+BASH_MAX_TIMEOUT_MS=1800000, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1. Usuwa to domyślny
+10-minutowy pułap Bash i auto-backgrounding, bez zmiany globalnych ustawień lub guardów.
+[Zmienne Claude Code](https://code.claude.com/docs/en/env-vars) dokumentują te opcje;
+sprawdzono też ich odczyt w lokalnym CLI 2.1.269. Native runner dziedziczy env procesu,
+a jego timer pochodzi z invocation.deadline_at. Bridge 9e8f060 pozostaje niezmieniony:
+obsługuje zadany deadline i max_turns=32 bez nowego builda produkcyjnego.

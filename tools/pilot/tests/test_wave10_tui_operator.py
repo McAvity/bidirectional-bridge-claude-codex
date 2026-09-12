@@ -57,9 +57,17 @@ class TuiOperatorTests(unittest.TestCase):
             self.assertIsNone(c.submit_when_visible)
             c.stop()
 
+    def test_planned_astra_turns_do_not_block_needed_state_read(self):
+        from unittest.mock import Mock
+        c=object.__new__(op.Client)
+        c.exited=False; c.closing=False; c.submit_when_visible=None
+        c.turn_limit=None; c.turns=20; c.child=Mock()
+        c.send_prompt('Read status only')
+        c.child.send.assert_called_once()
+
     def test_turn_budget_blocks_before_send(self):
         c = object.__new__(op.Client)
-        c.exited=False; c.closing=False; c.submit_when_visible=None; c.name='foreign'; c.turns=2
+        c.exited=False; c.closing=False; c.submit_when_visible=None; c.name='foreign'; c.turns=2; c.turn_limit=2
         with self.assertRaises(ValueError): c.send_prompt('must not send')
 
 if __name__ == '__main__': unittest.main()

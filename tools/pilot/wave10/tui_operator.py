@@ -30,7 +30,7 @@ def paste(text):
 
 
 class Client:
-    def __init__(self, command, directory, name):
+    def __init__(self, command, directory, name, turn_limit="default"):
         self.directory = directory
         self.name = name
         self.screen = pyte.Screen(160, 48)
@@ -42,6 +42,7 @@ class Client:
         self.child.logfile_read = self.log
         self.started = time.monotonic()
         self.turns = 0
+        self.turn_limit = (2 if name == "foreign" else 10) if turn_limit == "default" else turn_limit
         self.closing = False
         self.exited = False
         self.pending = ''
@@ -79,7 +80,7 @@ class Client:
     def send_prompt(self, text):
         if self.exited or self.closing or self.submit_when_visible:
             raise ValueError('client closed')
-        if self.turns >= (2 if self.name == 'foreign' else 10):
+        if self.turn_limit is not None and self.turns >= self.turn_limit:
             raise ValueError('manager turn budget exhausted')
         self.child.send(paste(text))
         self.submit_when_visible = '[Pasted Content' if '\n' in text else text[:60]

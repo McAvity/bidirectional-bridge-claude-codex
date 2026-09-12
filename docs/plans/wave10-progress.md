@@ -245,3 +245,14 @@ z poprzednim odczytem c136c7d. 24 testy operatora, 5 runnera i 5 przenośności 
 Zestaw c136c7d zachowany jako historyczne przygotowanie; nie używać go do startu.
 Approval i operator nowego segmentu nie istnieją. Stan: KONTYNUACJA PRZYGOTOWANA
 DO ZATWIERDZENIA; resume/modelowy segment pozostają UNVERIFIED.
+
+## Kontynuacja v2 — zatwierdzony większy zapas i wykonanie
+
+Wejście 319b49f. Użytkownik zatwierdził autonomiczne wykonanie bez kolejnej zgody:
+2 rundy Claude po 45 min / max_turns32, MCP55 min, operator20 min, gate25 min,
+Bash30 min, segment90 min. Tury Astr są planem; nadal tylko2 wykonaniaClaude i1foreign.
+Zidentyfikowano i usunięto krótsze ograniczenia przygotowania: gate540 s, Bash10 min,
+gate-ready120 s, PTYlimit10tur, close20 s. Runtime9e8f060 i globalne limity runnera
+niezmienione. Nowy ignorowany skrypt bramki B; aktualne prompty zastępują stare czasy.
+MCP env lokalnie podnosi BASH_MAX_TIMEOUT_MS i wyłącza auto-backgrounding; timeout
+runnera bierze invocation.deadline_at. Scope continuation-v2, nowe90minokno i approval.

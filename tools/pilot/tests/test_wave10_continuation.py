@@ -22,6 +22,17 @@ class ContinuationTests(unittest.TestCase):
             self.assertIn('/tmp/synthetic-retained-pilot/'+pair,cmd)
             self.assertIn('--no-alt-screen',cmd)
 
+    def test_all_timeout_layers_are_scoped_to_continuation(self):
+        cmd=C.command(Path('/tmp/synthetic-cont'),self.manifest(),'a-initial')
+        self.assertIn('mcp_servers.bridge.tool_timeout_sec=3300',cmd)
+        self.assertIn('mcp_servers.bridge.startup_timeout_sec=1200',cmd)
+        env=json.loads(next(x.split('=',1)[1] for x in cmd if x.startswith('mcp_servers.bridge.env=')))
+        self.assertEqual(env['BASH_MAX_TIMEOUT_MS'],'1800000')
+        self.assertEqual(env['CLAUDE_CODE_DISABLE_BACKGROUND_TASKS'],'1')
+        self.assertEqual(C.BUDGET['a_r2_ms'],2700000)
+        self.assertEqual(C.BUDGET['b_r2_ms'],2700000)
+        self.assertEqual(C.BUDGET['wall_minutes'],90)
+
     def test_foreign_is_new_denied_delegate_and_has_no_impersonation(self):
         cmd=C.command(Path('/tmp/synthetic-continuation'),self.manifest(),'foreign')
         self.assertNotIn('resume',cmd)
@@ -47,7 +58,9 @@ class ContinuationTests(unittest.TestCase):
         b=C.BUDGET
         self.assertLess(b['operator_seconds'],b['gate_seconds'])
         self.assertLess(b['gate_seconds']*1000,b['gate_bash_ms'])
-        self.assertLess(120000+b['gate_seconds']*1000+b['a_r2_ms'],b['b_r2_ms'])
+        self.assertLess(b['gate_bash_ms'],b['b_r2_ms'])
+        self.assertEqual(b['claude_max_turns_per_invocation'],32)
+        self.assertTrue(b['astra_turns_are_planning_only'])
         self.assertLess(b['b_r2_ms'],b['mcp_seconds']*1000)
         self.assertLessEqual(b['latest_b_r2_start_minutes']*60+b['b_r2_ms']/1000+300,b['wall_minutes']*60)
         self.assertEqual(b['claude_rounds'],2)
@@ -76,6 +89,7 @@ class ContinuationTests(unittest.TestCase):
             for name in json.loads((out/'manifest.json').read_text())['prompt_sha256']:
                 self.assertIn('\n',(out/name).read_text(),name)
             self.assertFalse((out/'approval.json').exists())
+            self.assertIn(' + 1500',(root/'b/.pilot/gate-continuation-v2.py').read_text())
 
     def test_old_approval_cannot_authorize_continuation(self):
         with tempfile.TemporaryDirectory() as d:
