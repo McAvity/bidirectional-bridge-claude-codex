@@ -1,6 +1,6 @@
 # Wave10 — raport integracji i przygotowania pilota
 
-Status: **GOTOWE DO REVIEW / PILOT PRZYGOTOWANY**. Cały wave10 pozostaje otwarty:
+Status: **PILOT PRZYGOTOWANY — BUDŻET v2 DO ZATWIERDZENIA**. Cały wave10 pozostaje otwarty:
 nie wykonano real-model pilota, publikacji ani CI. Modele/delegacja nieuruchomione.
 Data: 2026-09-12. Jedyna lista ustaleń i zamknięć: [wave10-progress.md](wave10-progress.md).
 
@@ -17,7 +17,7 @@ Aktualne opublikowane timeout/recovery: `feature-workflow @ b040ca1ab5e9a2252567
 | `2c9e9ddbb909b3db9f065466d60152a79316b31f` | Oczyszczony snapshot odebranej izolacji, integracja z timeout/recovery i regresja przez native dispatcher. |
 | `e09ac17b44108135696f45d2926e8674a2d6eda6` | Protokół pilota, przygotowanie/handshake/snapshot oraz dostosowany test stdio timeout/restart. |
 | `e099ca5414bdedb0fa7143ecca986a93f2d95361` | Nazwa pilot.py bez przesłaniania standardowego modułu Python, regresja bezpośredniego CLI. |
-| `88bccc71d7e5e72ec1daeaf13922615aa28fab60` | Dokładne argumenty feature_run i eksportera w instrukcji. **Pin runtime pilota.** |
+| `88bccc71d7e5e72ec1daeaf13922615aa28fab60` | Dokładne argumenty feature_run i eksportera w instrukcji. Historyczny pin runtime, zastąpiony harmonogramem v2. |
 
 Końcowy commit dokumentacyjny zawiera ten raport, handoff/progress oraz usunięcie historycznej
 nazwy z instrukcji operatora wymagane przez test przenośności. Nie zmienia kodu/builda runtime
@@ -90,7 +90,10 @@ odrzucone jako przodkowie wyniku. Nie przenoszono prywatnej historii przez merge
 Końcowe rev-parse potwierdza niezmienione wave7 i feature-workflow. Nie było push ani merge
 do feature-workflow. Nie dotykano worktree/bazy/runtime wave7 i nie budowano głównego checkoutu.
 
-## Walidacja i ograniczenia
+## Walidacja pierwotnej integracji i ograniczenia
+
+Poniższe pełne wyniki zachowano z integracji; dla korekty harmonogramu wykonano tylko
+sprawdzenia zmienionych narzędzi i nowego przygotowania opisane na końcu raportu.
 
 | Sprawdzenie | Wynik i zakres |
 | --- | --- |
@@ -159,6 +162,45 @@ Instrukcja terminali i dokładne kroki:
 (r1 bez bramki), ROUND2-A/B.txt (osobne deadline i kolejność), manifest oraz niezatwierdzony
 approval.example.json. Stary scope/budżet nie przechodzi preflight/approval.
 
-Przygotowanie nowego pinu i dowody zostaną dopisane po build/preflight/handshake.
+Commit korekty i nowy pin runtime: **`406f0e1eb9e0ed494207589a82665bfd83741b1d`**.
+Przygotowany katalog: **`/tmp/wave10-pilot-406f0e1`**, worktree `a` i `b`, runtime
+w osobnym detached checkout `runtime`. Poprzednich katalogów nie używać do startu.
+
+Weryfikacja korekty: 9/9 testów narzędzia, portability 1/1, npm ci/build nowego runtime
+PASS, 2/2 równoległe rzeczywiste handshake MCP PASS (35 narzędzi, no-state), preflight
+oraz prepared snapshot PASS. Sprawdzono wygenerowane START/ROUND2, limity manifestu,
+brak approval.json, brak .bridge/.pilot. Nie uruchamiano modeli. Hash builda:
+`744d000859f59d5d07c6af4986c3a640c4d8f78e566f618cc7885eda725d8da3` (bez zmiany bridge’a).
+Handshake JSON SHA-256:
+`16de637746dad05e0f74059b57bffe864b95c390bc1935b9ce6ff15bc05447c2`.
+Lokalne dowody: `$RUN/build.log`, `handshake.json`, `manifest.json`, `evidence/prepared`.
+
+Krótka instrukcja wznowienia (zmienne ustaw w każdym terminalu):
+
+```bash
+export RUN=/tmp/wave10-pilot-406f0e1
+export W10_CLI="$RUN/runtime/tools/pilot/wave10/pilot.py"
+python3 "$W10_CLI" preflight --run "$RUN"   # bez modeli
+# DOPIERO PO zgodzie użytkownika: approval.example.json -> approval.json;
+# approved=true, subscription_only_confirmed=true, dokładny budżet v2 i SHA.
+
+# Terminal A, potem wklej START-A.txt:
+python3 "$W10_CLI" launch --run "$RUN" --pair a --mode start
+# Terminal B, potem wklej START-B.txt:
+python3 "$W10_CLI" launch --run "$RUN" --pair b --mode start
+# Obie pary kończą r1/review/waiting_user; wykonaj foreign probe wg OPERATOR.md.
+# Zapisz native_thread_id A z manager_status w session-a.txt.
+# W TUI B wklej ROUND2-B.txt, czekaj na b/.pilot/gate-ready (do 120s od startu B/r2).
+# Zamknij A; terminal A:
+python3 "$W10_CLI" launch --run "$RUN" --pair a --mode resume
+# Potwierdź thread i waiting_user/q1; gdy potrzeba, explicit resume_instance.
+# W TUI A wklej ROUND2-A.txt. Terminal O, przed upływem 480s od gate-ready B:
+test -f "$RUN/a/.pilot/round2-started"
+touch "$RUN/b/.pilot/continue"
+python3 "$W10_CLI" snapshot --run "$RUN" --label r2-overlap
+# Nie czekaj na zakończenie A/r2 przed release B. Zakończ ocenę/dowody do 60 min.
+```
+
+Ostatni commit dokumentacyjny zapisuje wyniki i ten punkt wznowienia bez zmiany pinu.
 Pilot modeli nadal NOT RUN. Następny krok po tej korekcie: zatwierdzenie powyższego
 zakresu/budżetu i uruchomienie według instrukcji, bez kolejnego pełnego review integracji.

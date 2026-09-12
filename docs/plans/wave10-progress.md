@@ -1,6 +1,6 @@
 # Wave10 — postęp
 
-Status: integracja po review koordynatora; korekta harmonogramu pilota w toku. Cały wave10 nadal otwarty; modele nieuruchomione.
+Status: **KOREKTA HARMONOGRAMU GOTOWA / PILOT PRZYGOTOWANY (v2)**. Cały wave10 nadal otwarty; modele nieuruchomione.
 
 ## Scope / Inputs
 
@@ -22,8 +22,7 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | W10-05 | Nazwa operator.py przesłaniała moduł standardowy Python przy bezpośrednim starcie CLI. | Zamknięty: pilot.py i test subprocess --help PASS. Pierwsze prepare zatrzymane przed utworzeniem katalogu. |
 | W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Zamknięty: wbudowane zero retry i pełna ścieżka docs/features/F-W10-pair; finalne prepare oraz export/verify obu fixture PASS. |
 | W10-07 | Test przenośności odrzuca także wzmiankę wave6 w tools/pilot. | Zamknięty: neutralna wzmianka o wcześniejszym pilocie REWORK; 115/115 testów PASS. |
-
-| W10-08 | Bramka B/r1 180 s nie obejmowała rundy A 480 s oraz review/restartu. | Harmonogram v2: bramka wyłącznie B/r2, po r1/review obu par; 540 s bramki, 480 s operatora, B/r2 1200 s, MCP 1320 s, całość 60 min. 9 testów narzędzia + portability PASS; nowy pin/prepare w toku. |
+| W10-08 | Bramka B/r1 180 s nie obejmowała rundy A 480 s oraz review/restartu. | Harmonogram v2: bramka wyłącznie B/r2, po r1/review obu par; 540 s bramki, 480 s operatora, B/r2 1200 s, MCP 1320 s, całość 60 min. Zamknięty: 9 testów narzędzia + portability PASS; nowy pin 406f0e1, build, dwa handshake i preflight PASS. |
 
 ## Validation / Handoff
 
@@ -69,7 +68,7 @@ preflight PASS, snapshot prepared PASS. Modele nieuruchomione. Kontrola dokładn
 argumentów protokołu operatora W10-06 wymaga nowego finalnego pinu; poprzedni katalog
 zostaje zachowany, nie jest używany do startu modeli.
 
-## Końcowy handoff
+## Historyczny handoff przed korektą harmonogramu — nie do startu
 
 Finalny runtime pilota: `88bccc71d7e5e72ec1daeaf13922615aa28fab60`, detached w
 `/tmp/wave10-pilot-88bccc7/runtime`; worktree `/tmp/wave10-pilot-88bccc7/a` i `b`.
@@ -109,3 +108,25 @@ zero dodatkowych płatnych wywołań API, wyłącznie potwierdzone subskrypcje. 
 Walidacja zmienionego narzędzia: 9/9 testów, portability 1/1, git diff --check PASS.
 Następnie nowy lokalny pin i nowy katalog przygotowania, build oraz 2 handshake/preflight.
 Żadnych modeli, bridge delegacji, push, merge ani zmian aktywnych runtime.
+
+## Punkt wznowienia — harmonogram v2
+
+Commit korekty i pin nowego runtime: `406f0e1eb9e0ed494207589a82665bfd83741b1d`.
+Nowy katalog **`/tmp/wave10-pilot-406f0e1`**, detached runtime w `runtime`, osobne worktree
+`a` i `b`. Poprzednie katalogi zachowane i nieużywane do startu. Build npm ci/build PASS;
+2/2 rzeczywiste równoległe handshake MCP PASS, po 35 narzędzi, no-state PASS;
+preflight i prepared snapshot PASS. Prompty START-A/B nie mają bramki r1,
+ROUND2-A/B mają właściwe deadline i markery. Manifest scope/budget v2 zgodny.
+9 testów zmienionego narzędzia i 1 test przenośności PASS; git diff --check PASS.
+Kod bridge’a niezmieniony (ten sam hash builda 744d0008…725d8da3), bez ponownego
+pełnego review/testów zaakceptowanej implementacji. Wyniki 36 testów koordynatora
+są informacją z jego przeglądu, nie nowymi uruchomieniami tej sesji.
+
+**Następna czynność:** użytkownik zatwierdza konkretny budżet v2 z raportu, potem operator
+zapisuje approval.json i uruchamia pilot według OPERATOR.md. Jeszcze nie ma zgody,
+modeli ani baz pilota. Start r1 obu par → review/waiting_user obu → foreign probe →
+B/r2 gate-ready → zamknięcie/resume A → A/r2 started → release B → wyniki/dowody.
+Nie czekać na wynik A/r2 przed release. B/r2 start do 30. minuty; 480 s na działania
+operatora, 540 s gate, 600 s Bash, 1200 s B/r2, 1320 s MCP, 60 min całości.
+Ostatni commit dokumentuje ten punkt wznowienia; nie zmienia pinu. Bez modeli, push,
+merge ani zmian aktywnych runtime. Cały wave10 pozostaje otwarty.

@@ -4,17 +4,22 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
-## Wave10 — local integration ready for review; pilot prepared
+## Wave10 — coordinator review passed; schedule v2 prepared for approval
 
-Accepted isolation was imported as a sanitized snapshot on the current published recovery
-baseline: integration `2c9e9dd`, pilot tooling `e09ac17`, CLI fix `e099ca5`, schema alignment
-`88bccc7`. Original wave7 commits are not ancestors of this branch; the complete mapping is
-in [wave10 report](plans/wave10-report.md). Source branches and active runtimes are unchanged.
-Local validation: build, 425 JS / 29 exchange / 115 pilot-tooling tests PASS. A separately pinned
-runtime at `88bccc7` and two isolated worktrees passed two concurrent real MCP stdio handshakes
-without creating state or invoking models. The model pilot is NOT RUN and awaits approval of
-its concrete scope/budget. No push, integration-branch merge, deployment or whole-wave completion.
-See [progress](plans/wave10-progress.md) and [operator instructions](../tools/pilot/wave10/OPERATOR.md).
+Accepted isolation/recovery integration remains at `2c9e9dd`; original source branches and
+active runtimes are unchanged. Full integration validation was 425 JS / 29 exchange / 115
+pilot-tooling tests PASS. The coordinator reports no new integration findings and independent
+PASS of 36 isolation/recovery/launcher tests plus preflight. No full implementation review repeated.
+
+Schedule correction `406f0e1` moves the gate to B/r2, after both r1 reviews/waiting_user.
+The operator restarts A, launches A/r2 and releases B without waiting for A's result.
+Gate 540s, operator window 480s, Bash 600s, B/r2 1200s, MCP 1320s, whole pilot 60min;
+other rounds remain 480s. Four rounds, 12 turns each; scope/budget v2 awaits user approval.
+A new separate runtime pinned at `406f0e1` and two new worktrees passed build, two concurrent
+real MCP handshakes and preflight without state/models. Changed-tool tests: 9 PASS plus
+1 portability check. See [resume checkpoint](plans/wave10-progress.md),
+[report/budget](plans/wave10-report.md) and [operator instructions](../tools/pilot/wave10/OPERATOR.md).
+No models, push, merge, runtime replacement or whole-wave completion. Next: approve and run pilot.
 
 ## Implemented and reviewed
 
@@ -41,7 +46,7 @@ Upstream certification manifests do not certify fork changes. CI uses no model c
 ## Next work
 
 Current stages: [wave10](plans/wave10.md) has a local integration and prepared pilot
-awaiting review and model-run approval; [wave11](plans/wave11.md)
+awaiting approval of the corrected pilot scope/budget; [wave11](plans/wave11.md)
 examines excessive review loops in wave7/wave9 and proposes evidence-based workflow simplification.
 The accepted wave7 delivery is reported at 66e524f; this does not complete the wider wave7 roadmap.
 Wave11 can run independently; its findings are not a prerequisite for preparing wave10.
