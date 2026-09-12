@@ -28,6 +28,12 @@ Upstream certification manifests do not certify fork changes. CI uses no model c
 
 ## Next work
 
+New queued stages: [wave10](plans/wave10.md) integrates accepted manager isolation
+with published timeout/recovery, then validates two real agent pairs; [wave11](plans/wave11.md)
+examines excessive review loops in wave7/wave9 and proposes evidence-based workflow simplification.
+The accepted wave7 delivery is reported at 66e524f; this does not complete the wider wave7 roadmap.
+Wave11 can run independently; its findings are not a prerequisite for preparing wave10.
+
 Parallel integration task: [wave9](plans/wave9.md), with its own
 [progress](plans/wave9-progress.md). It integrates timeout/recovery and reconciles
 status without touching the runtime or worktree used by active wave7.
