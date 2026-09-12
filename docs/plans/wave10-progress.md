@@ -19,6 +19,7 @@ Wspólna baza: `aeb92c2f35670b73aa9e204f68f3734d2ad2cc37`.
 | W10-02 | Wave7 bazuje na kodzie sprzed timeout recovery; zastąpienie plików cofnęłoby opublikowane recovery. | Zamknięty: trzystronne połączenie; konflikty control-plane (lazy services + evidence) i tools (guard + budget) rozwiązane. Regresja FAILED/TIMEOUT przez dispatcher z restartem, takeover, foreign replay i no-mutation przechodzi. Pełne testy: 425 JS / 29 exchange / 114 pilot tooling PASS. |
 | W10-04 | Opublikowany test stdio timeout nie przekazywał nowego kontekstu native; create odrzucony przed mutacją. | Zamknięty: harness ma native metadata i jawne resume_instance po EOF; 8/8 stdio i pełne 425/425 JS PASS. |
 | W10-05 | Nazwa operator.py przesłaniała moduł standardowy Python przy bezpośrednim starcie CLI. | Poprawiono na pilot.py; dodany test subprocess --help. Pierwsze prepare zatrzymane przed utworzeniem katalogu. |
+| W10-06 | Kontrola instrukcji ujawniła max_attempts spoza schematu feature_run oraz skrócone expect-feature eksportera. | Poprawiono na wbudowane zero retry i pełną ścieżkę docs/features/F-W10-pair; finalne przygotowanie z nowego pinu. |
 | W10-03 | Pilot wymaga dokładnie wspieranego hosta Codex 0.154.0 i prawdziwego kontekstu wywołań. | Otwarty: preflight i jawne stop conditions; fake nie potwierdza modeli. |
 
 ## Validation / Handoff
@@ -58,3 +59,9 @@ Pełne testy: build PASS; JS 425/425; Python exchange 29/29; pilot tooling 114/1
 Przygotowano tools/pilot/wave10: pilot.py, handshake.mjs, OPERATOR.md.
 Następnie osobny detached runtime i dwa worktree w nowym /tmp, rzeczywisty start/handshake
 MCP bez modeli. Nie naprawiać startowego MCP tej sesji — jawna instrukcja użytkownika.
+
+Przygotowanie na `e099ca5414bdedb0fa7143ecca986a93f2d95361`: osobny build PASS,
+dwa równoległe rzeczywiste handshake stdio PASS (35 narzędzi każdy), no-state PASS,
+preflight PASS, snapshot prepared PASS. Modele nieuruchomione. Kontrola dokładnych
+argumentów protokołu operatora W10-06 wymaga nowego finalnego pinu; poprzedni katalog
+zostaje zachowany, nie jest używany do startu modeli.

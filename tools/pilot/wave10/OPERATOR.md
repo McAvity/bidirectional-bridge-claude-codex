@@ -133,7 +133,7 @@ uniemożliwią przypisanie różnic obcemu wywołaniu.
 
 W każdej właściwej TUI przekaż syntetyczną decyzję: suffix `-A` dla A, `-B` dla B.
 Poleć zapisać ją przez feature_answer_user(q1), uruchomić r2 z tym samym featurem,
-max_attempts=0, max_turns=12, deadline_ms=480000, bieżącym HEAD jako base i paczką r2.zip
+spec.max_turns=12, deadline_ms=480000, zerowym retry wbudowanym w feature_run, bieżącym HEAD jako base i paczką r2.zip
 obok r1.zip. Claude ma kontynuować swoją natywną sesję, dodać suffix, testy, ledger,
 commit i zweryfikowaną paczkę. Astra sprawdza dostawę, raportuje wynik i kończy; bez
 feature_accept, dodatkowych rund i kolejnego pełnego review.
@@ -143,7 +143,7 @@ python3 "$W10_SOURCE/tools/pilot/wave10/pilot.py" snapshot --run "$RUN" --label 
 ```
 
 Operator uruchamia w każdym worktree `python3 -m unittest discover -v` oraz exporter
-`verify --repo "$RUN/a" --archive <dokładna-paczka> --expect-feature F-W10-pair
+`verify --repo "$RUN/a" --archive <dokładna-paczka> --expect-feature docs/features/F-W10-pair
 --expect-purpose implementation-review --expect-base <baza-rundy> --expect-head <head-rundy>`
 (analogicznie B, cztery paczki). Zachowuje logi, hashe, zakresy commitów i porównanie sesji
 w prywatnym katalogu evidence. Snapshot przechowuje SQLite, logiczny dump, markery,

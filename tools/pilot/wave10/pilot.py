@@ -116,11 +116,12 @@ def prepare(args):
         package_dir.mkdir(parents=True)
         prompt = f'''Read AGENTS.md and TASK.md. You are manager Astra of pair {pair.upper()}.
 User authorizes this pilot only: at most two Claude rounds, 12 turns and 480000 ms each,
-zero retries, no extra agents. Create/claim a manager root and feature F-W10-pair using bridge.
+zero retries, no extra agents. Create/claim a manager root, set it WORKING, and create feature F-W10-pair using bridge.
 Read bridge_server_info and bridge_manager_status; report the exact native thread ID for resume.
-Round r1: implement TASK.md round 1 through bridge_feature_run, max_attempts=0,
-spec.max_turns=12. Have Claude test, commit and export a verified implementation-review ZIP
-using --output {package_dir}/r1.zip, --base equal to HEAD just before that round.
+Round r1: implement TASK.md round 1 through bridge_feature_run (its retries are fixed at zero),
+spec.max_turns=12. Do not pass max_attempts: it is not a feature_run argument. Have Claude test, commit and export a verified implementation-review ZIP
+using --feature docs/features/F-W10-pair --output {package_dir}/r1.zip,
+--base equal to HEAD just before that round.
 Use the same feature's Claude session for r2; never replace or recover a DONE task.
 After r1, review only the delivered scope, then call bridge_feature_wait_user with question_id q1
 and question "Which suffix should round 2 use?". End your turn and wait for the operator.
