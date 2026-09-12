@@ -4,22 +4,30 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
-## Wave10 — coordinator review passed; schedule v2 prepared for approval
+## Wave10 — partial real pilot; stopped after R1
 
-Accepted isolation/recovery integration remains at `2c9e9dd`; original source branches and
-active runtimes are unchanged. Full integration validation was 425 JS / 29 exchange / 115
-pilot-tooling tests PASS. The coordinator reports no new integration findings and independent
-PASS of 36 isolation/recovery/launcher tests plus preflight. No full implementation review repeated.
+The accepted integration remains unchanged; no full implementation review was repeated.
+The user authorized autonomous native TUI operation, the v2 model budget and existing
+subscription billing. Operator commits: `19ad974` and `9e8f060`; real-run runtime is
+pinned to `9e8f060`, in a separate local pilot directory. Build, two real MCP handshakes,
+preflight and 14 operator tests passed. No active runtime or other wave worktree changed.
 
-Schedule correction `406f0e1` moves the gate to B/r2, after both r1 reviews/waiting_user.
-The operator restarts A, launches A/r2 and releases B without waiting for A's result.
-Gate 540s, operator window 480s, Bash 600s, B/r2 1200s, MCP 1320s, whole pilot 60min;
-other rounds remain 480s. Four rounds, 12 turns each; scope/budget v2 awaits user approval.
-A new separate runtime pinned at `406f0e1` and two new worktrees passed build, two concurrent
-real MCP handshakes and preflight without state/models. Changed-tool tests: 9 PASS plus
-1 portability check. See [resume checkpoint](plans/wave10-progress.md),
-[report/budget](plans/wave10-report.md) and [operator instructions](../tools/pilot/wave10/OPERATOR.md).
-No models, push, merge, runtime replacement or whole-wave completion. Next: approve and run pilot.
+Two actual Codex TUI Astras and two actual bridge Claude workers completed R1 with
+74.394 seconds of worker overlap. Both managers independently reviewed delivery and
+reached waiting_user/q1. Both R1 archives verify; A tests 5/5 and B tests 3/3 pass.
+The operator prematurely stopped and closed both clients on reported num_turns=18 versus
+max_turns=12. Subsequent evidence establishes different counters: 12 distinct assistant
+responses, 11 tool-use round trips and 17 tool results in each worker. This does not show
+an integration defect or a turn-budget overrun. The premature operator STOP is the cause
+of the incomplete scenario; no retry, recovery or replacement session followed.
+
+P1/P2 PASS; P3–P7 UNVERIFIED (R1 isolation is evidenced, R2 is absent). Foreign probe,
+A restart during B/r2 and both R2 deliveries were not performed. All owned pilot processes
+are stopped; raw evidence and native identifiers remain outside Git. Next: resolve the
+pilot continuation boundary after the unplanned close of B; do not automatically replay
+or add a B restart under the original scenario. See [progress](plans/wave10-progress.md),
+[final report](plans/wave10-report.md) and [operator protocol](../tools/pilot/wave10/OPERATOR.md).
+No push, merge or whole-wave completion.
 
 ## Implemented and reviewed
 
@@ -45,8 +53,8 @@ Upstream certification manifests do not certify fork changes. CI uses no model c
 
 ## Next work
 
-Current stages: [wave10](plans/wave10.md) has a local integration and prepared pilot
-awaiting approval of the corrected pilot scope/budget; [wave11](plans/wave11.md)
+Current stages: [wave10](plans/wave10.md) has a local integration and partial real pilot
+stopped after R1; the full scenario remains unverified; [wave11](plans/wave11.md)
 examines excessive review loops in wave7/wave9 and proposes evidence-based workflow simplification.
 The accepted wave7 delivery is reported at 66e524f; this does not complete the wider wave7 roadmap.
 Wave11 can run independently; its findings are not a prerequisite for preparing wave10.

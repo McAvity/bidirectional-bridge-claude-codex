@@ -9,7 +9,12 @@ from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parents[1] / 'wave10'
 sys.path.insert(0, str(HERE))
-import tui_operator as op
+try:
+    import tui_operator as op
+except ModuleNotFoundError as exc:
+    if exc.name not in {"pexpect", "pyte"}:
+        raise
+    raise unittest.SkipTest("optional real-TUI operator requires pexpect and pyte") from exc
 
 
 class TuiOperatorTests(unittest.TestCase):

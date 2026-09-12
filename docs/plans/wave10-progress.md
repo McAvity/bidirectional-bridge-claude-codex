@@ -156,3 +156,43 @@ Nie powstały sesje managerów ani Claude’a, więc korekta przygotowania nie z
 istniejącej sesji ani nie ponawia modelowej rundy. Test regresji rzeczywistego PTY
 potwierdza Enter dopiero po markerze oraz licznik dopiero po wysłaniu (14 testów PASS).
 Następny świeży pin nie używa zatrzymanego katalogu przygotowania.
+
+## Wynik autonomicznego przebiegu — STOP po R1, nie zaliczony pilot
+
+Runtime `9e8f060c606f88ebf55f8a4cb1e63740691221fd`, osobny katalog
+`/tmp/wave10-pilot-9e8f060-auto`. Build, dwa handshake MCP i preflight PASS;
+14 testów narzędzi PASS. Dwie prawdziwe Astry TUI i dwóch Claude’ów wykonały R1.
+Oba bindingi potwierdzone native turn-metadata hosta 0.154.0; workerzy mieli
+74.394 s rzeczywistego overlap. Obie Astry wykonały własne review i zakończyły
+po jednej turze w waiting_user/q1. Obie paczki r1 verify PASS; testy A 5/5, B 3/3.
+
+W10-09: poprawka transportu sprawdzona; rzeczywiste wysłanie promptów i odbiór
+notify działały. Natywnego resume ani automatyzacji faz r2 nie zaliczono.
+W10-10 (otwarte — błąd oceny operatora): obie Astry zgłosiły num_turns=18 przy
+max_turns=12. Koordynator przedwcześnie uznał to za warunek STOP i zamknął obie
+Astry przez /quit, zanim sprawdził semantykę licznika.
+Dalszy odczyt dowodów: każda sesja ma 12 różnych message.id odpowiedzi modelu,
+11 obiegów tool-use i 17 tool_result. Dokumentacja Claude rozróżnia obiegi od
+komunikatów; `num_turns > max_turns` nie dowodzi tu przekroczenia budżetu.
+Nie wykazano błędu integracji ani przekroczenia limitu. Przyczyną nieukończenia
+jest przedwczesny STOP operatora, nie odmowa konta ani guard bridge’a.
+
+P1 PASS; P2 PASS; P3 UNVERIFIED (izolacja r1 potwierdzona, r2 brak);
+P4–P7 UNVERIFIED. Brak foreign probe, restartu A podczas B/r2, r2 i dwóch paczek.
+Nie uruchomiono ponownie klientów: dodatkowy restart B zmieniałby scenariusz.
+Dwie rundy Claude’a z czterech, po jednej turze Astry, zero foreign/retry/recovery;
+381.31 s od startu klientów do końca operatora. Procesy własnego runtime zakończone.
+
+Punkt wznowienia: czytać końcową sekcję wave10-report.md. Zachować oba katalogi
+przygotowania i wszystkie dowody. Nie kontynuować automatycznie pozostałych kroków
+w zatrzymanym katalogu. Najpierw rozstrzygnąć sposób dalszego pilota po nieplanowanym
+zamknięciu B; w tej sesji nie wydajemy pozostałego budżetu ani nie tworzymy zastępczych
+sesji. Instrukcja operatora wyjaśnia już semantykę tur. Cały wave10 pozostaje otwarty;
+bez push, merge i zmian runtime/worktree innych fal.
+
+Końcowa walidacja: 14 testów operatora PASS, 5 testów przenośności PASS,
+git diff --check PASS. Bez bibliotek opcjonalnych pexpect/pyte moduł testów TUI
+jawnie SKIP zamiast błędu importu w bazowym CI; z bibliotekami wszystkie 5 testów TUI
+wykonane. Zmieniono tylko discovery testu i dokumentację po zatrzymaniu; runtime
+realnego przebiegu nadal pin 9e8f060, bez zmian narzędzi przygotowania/builda.
+Przegląd nowych linii: brak natywnych UUID, adresów kont i prywatnych ścieżek domowych.

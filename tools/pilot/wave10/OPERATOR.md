@@ -1,7 +1,9 @@
 # Wave10 — instrukcja operatora (nie przekazywać agentom)
 
-Status: przygotowanie; modele NIEURUCHOMIONE. Plan i budżet wymagają jawnego zatwierdzenia
-użytkownika. To dwie rzeczywiste pary Astra–Claude oraz jedna krótka sesja Astry do próby
+Status bieżącego przebiegu: STOP po rzeczywistym R1 obu par; pilot niezaliczony.
+Szczegóły i ograniczenia: docs/plans/wave10-report.md. Poniższy scenariusz nie jest
+poleceniem automatycznego ponowienia zatrzymanego pilota. Nowy przebieg wymaga
+ustalonego zakresu; istniejącej zgody i potwierdzenia rozliczeń nie należy ponawiać bez powodu. To dwie rzeczywiste pary Astra–Claude oraz jedna krótka sesja Astry do próby
 obcego managera (bez trzeciego Claude’a). Nie jest to wcześniejszy pilot REWORK.
 
 ## Zakres do zatwierdzenia
@@ -229,3 +231,19 @@ Przed modelami sprawdzić prawdziwe puste TUI: gotowy model/katalog, `/mcp` poka
 nie jest do tego potrzebny. Ostrzeżenie bubblewrap nie jest potwierdzeniem działającej
 powłoki; faktyczna odmowa narzędzia pozostaje warunkiem STOP, bez obchodzenia.
 Surowe logi PTY, ekrany, powiadomienia, zgody i UUID są tylko w prywatnym katalogu.
+
+
+## Semantyka limitu tur — ustalenie z rzeczywistego R1
+
+Nie porównuj bezpośrednio `ResultMessage.num_turns` (bridge `turn_count`) z
+`--max-turns`. Limit Claude dotyczy obiegów z użyciem narzędzi, a jedna odpowiedź
+może zawierać kilka wywołań i kilka komunikatów wynikowych. Strumieniowane bloki
+tej samej odpowiedzi trzeba grupować po `message.id`, zachowując sesję i zakres rundy.
+Nie licz ponownie bloków tekstu/thinking/tool_use o tym samym ID.
+
+W tym przebiegu każda sesja miała 12 odrębnych odpowiedzi modelu, 11 obiegów tool-use,
+17 tool_result i raportowane num_turns=18. Samo 18 > 12 było fałszywym alarmem,
+nie dowodem naruszenia limitu. Sprawdź semantykę i zapis źródłowy przed nieodwracalnym
+przerwaniem prawidłowej sekwencji; rzeczywisty error_max_turns, odmowa, timeout lub
+udowodnione przekroczenie nadal wymagają STOP. Przy braku dowodów: UNVERIFIED.
+Źródło: [Claude Code — turns and messages](https://code.claude.com/docs/en/agent-sdk/agent-loop#turns-and-messages).

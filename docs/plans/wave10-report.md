@@ -1,7 +1,9 @@
 # Wave10 — raport integracji i przygotowania pilota
 
-Status: **PILOT PRZYGOTOWANY — BUDŻET v2 DO ZATWIERDZENIA**. Cały wave10 pozostaje otwarty:
-nie wykonano real-model pilota, publikacji ani CI. Modele/delegacja nieuruchomione.
+Status: **STOP — CZĘŚCIOWY WYNIK PRAWDZIWEGO PILOTA**. R1 obu par wykonane;
+pełny scenariusz niezaliczony po przedwczesnym zatrzymaniu przez operatora.
+Cały wave10 pozostaje otwarty. Historyczne sekcje przygotowania poniżej zachowują
+poprzednie dowody; aktualny wynik i punkt wznowienia są w końcowej sekcji raportu.
 Data: 2026-09-12. Jedyna lista ustaleń i zamknięć: [wave10-progress.md](wave10-progress.md).
 
 ## Wejścia i dostarczone commity
@@ -204,3 +206,122 @@ python3 "$W10_CLI" snapshot --run "$RUN" --label r2-overlap
 Ostatni commit dokumentacyjny zapisuje wyniki i ten punkt wznowienia bez zmiany pinu.
 Pilot modeli nadal NOT RUN. Następny krok po tej korekcie: zatwierdzenie powyższego
 zakresu/budżetu i uruchomienie według instrukcji, bez kolejnego pełnego review integracji.
+
+## Autonomiczny pilot v2 — rzeczywisty wynik i STOP
+
+Użytkownik zatwierdził samodzielne sterowanie TUI, modele i budżet v2 oraz rozliczanie
+na istniejących kontach. Nie ponawiano kontroli paneli opłat ani nie zmieniano ustawień
+rozliczeń. Odpowiedzi produktowe oznaczono jako syntetyczne; q1 pozostało bez odpowiedzi.
+
+### Commity, runtime i przygotowanie
+
+- `19ad974a9e8f0a996425407a5178f536fb97f50c`: operatorowy relay PTY, lokalne ekrany,
+  dziennik, powiadomienia końca tur, skończone limity, natywne klienty i dokładny resume.
+- `9e8f060c606f88ebf55f8a4cb1e63740691221fd`: rozpoznawanie faktycznego markera
+  `Pasted Content`; licznik tur zwiększany dopiero po wysłaniu, nie po wklejeniu.
+- Dokumentacyjny commit końcowy zawiera ten wynik i punkt wznowienia; nie zmienia builda.
+  Mapowanie historii integracji powyżej pozostaje bez zmian; nie importowano nowych przodków.
+
+Osobny runtime realnego przebiegu: `/tmp/wave10-pilot-9e8f060-auto/runtime`, detached
+`9e8f060`. Hash builda `744d000859f59d5d07c6af4986c3a640c4d8f78e566f618cc7885eda725d8da3`
+pozostał zgodny z manifestem. npm ci --ignore-scripts/build PASS, 2/2 handshake MCP,
+preflight PASS; 14/14 zmienionych testów operatora PASS. Bez przebudowy podczas pracy.
+Nie powtarzano pełnego review ani całego zestawu zaakceptowanej integracji.
+
+Wcześniejszy katalog `/tmp/wave10-pilot-19ad974-auto` zachowano po zatrzymaniu samego
+przygotowania: prompty zostały w edytorach, bez wysłania, rolloutów i baz bridge’a.
+Błąd harnessu poprawiono przed realnym przebiegiem, z nowym commitem/katalogiem/buildem.
+Bezmodelowa próba rzeczywistego TUI potwierdziła `/mcp` (bridge connected, 35 tools)
+i `/quit` z exit 0. Atrapy testowały transport/limity, nie zastępowały modeli.
+
+### Przebieg i zakres dowodów
+
+Realne Astry to Codex 0.154.0, gpt-6-astra/high, `source=cli`, `originator=codex-tui`.
+Bridge utrwalił `native_corroboration=turn-metadata`, właściwy host oraz odrębne bindingi.
+Relay usuwał odziedziczony identyfikator rodzica; nie wytwarzał tożsamości ani metadanych
+MCP i nie podejmował decyzji review. Każda Astra wykonała jedną turę operatorową.
+
+Każdy Claude (CLI 2.1.269, żądanie opus/high, runtime raportował claude-opus-5)
+wykonał jedną rundę R1, z `spec.max_turns=12`, deadline 480000 ms i jedną próbą.
+Czasy runtime: A 94.699 s, B 73.089 s; trwałe przedziały prób przecinają się przez
+74.394 s. Odrębne execution handles i bazy są w prywatnych snapshotach.
+
+R1 zakończyło się COMPLETE w obu parach. Astry samodzielnie sprawdziły diff, zakres,
+wykonały testy i verify paczek, zapisały review inline w bridge i przeszły do
+waiting_user/q1. Ich zakończone tury potwierdzają dwa notify i właściwe rollouty.
+Nie użyto mechanicznego review zamiast Astr.
+
+| Dostawa syntetyczna | Commit | Niezależna kontrola operatora |
+| --- | --- | --- |
+| A/r1 | `db72419e7676d07dbd8df40a92d4bd238ec627a0` | verify z oczekiwanym feature/purpose/base/head PASS; 5 testów PASS |
+| B/r1 | `5d06b1244e1eaf7dbc573aac978209be730b5b2f` | verify z oczekiwanym feature/purpose/base/head PASS; 3 testy PASS |
+
+Dostawy i ich commity są w izolowanych worktree; nie importowano ich do brancha wave10.
+
+### Przyczyna zatrzymania — błąd operatora, nie wykazana wada integracji
+
+Obie Astry zgłosiły rozbieżność: telemetryczne `turn_count=18` przy zadanym
+`max_turns=12`. Koordynator potraktował to jako warunek STOP, zachował snapshot i
+normalnie zamknął obie Astry przez `/quit` przed foreign probe i R2. To było przedwczesne:
+semantykę licznika należało ustalić przed przerwaniem prawidłowej sekwencji.
+
+Kod przypiętego runnera przekazuje `spec.max_turns` do `--max-turns`, a `turn_count`
+kopiuje z `ResultMessage.num_turns`. Nie wykazano utraty argumentu ani zmiany limitu.
+Surowe zapisy każdej sesji: **12 różnych message.id odpowiedzi modelu, 11 obiegów
+z tool_use, 17 tool_result i num_turns=18**. Bloki tekstu/thinking/tool_use o tym samym
+message.id nie są kolejnymi obiegami. Wyniki runtime to completed/exit 0, nie max_turns.
+
+Dokumentacja Claude definiuje limit jako obiegi z użyciem narzędzi, a strumień może
+zawierać wiele bloków jednej odpowiedzi. Zapis wspiera zgodność wykonanych R1 z limitem;
+nie wspiera tezy, że porównanie 18 > 12 dowodzi jego naruszenia.
+Źródło: [Claude Code — turns and messages](https://code.claude.com/docs/en/agent-sdk/agent-loop#turns-and-messages).
+Zbieżny raport o porównywaniu różnych liczników znajduje się w
+[zgłoszeniu Claude Code Action #1795](https://github.com/anthropics/claude-code-action/issues/1795);
+nie zastępuje on lokalnych dowodów ani nie dowodzi konkretnej wady bridge’a.
+
+Po zamknięciu obu klientów nie wykonano zastępczych sesji, retry ani dodatkowego
+recovery. Dodatkowe wznowienie B zmieniałoby zatwierdzoną sekwencję, w której B ma
+pozostać aktywne podczas restartu A. Ten przebieg kończy się częściowym wynikiem.
+
+### P1–P7 i wykorzystany budżet
+
+| Kryterium | Wynik | Dowód / brak |
+| --- | --- | --- |
+| P1 | PASS | Osobny pin/build, dwa handshake bez stanu i preflight. |
+| P2 | PASS | Dwie prawdziwe Astry TUI, dwa różne Claude’y, 74.394 s overlap prób R1. |
+| P3 | UNVERIFIED | R1: osobne bazy, bindingi, worktree, namespace, paczki i treść A/B. Pełne dwurundowe kryterium nieprzetestowane. |
+| P4 | UNVERIFIED | Waiting_user/q1 obu potwierdzone; brak restartu A podczas B/r2. |
+| P5 | UNVERIFIED | Tylko jedna runda w każdej sesji; brak kontynuacji R2. |
+| P6 | UNVERIFIED | Obcego managera nie uruchomiono; brak porównania przed/po próbą. |
+| P7 | UNVERIFIED | Dwie paczki verify PASS i 8 testów PASS; dwóch paczek R2 brak. |
+
+Wykorzystano 2/4 rund Claude’a, po 11 obiegów tool-use i 12 odrębnych odpowiedzi;
+po 1/10 tur operatorowych każdej Astry, 0/2 tur foreign. Czas od startu klientów do
+zatrzymania operatora: 381.31 s (<60 min). Zero retry, recovery, dodatkowych rund lub
+zastępczych sesji. Koszt raportowany przez runtime Claude’a jest ekwiwalentem użycia,
+nie dowodem faktury API; tryb rozliczeń potwierdził użytkownik. Nie przypisujemy kwoty
+0 faktycznemu zużyciu subskrypcji ani nie zmieniamy jej ustawień.
+
+### Dowody lokalne i punkt wznowienia
+
+Katalog: `/tmp/wave10-pilot-9e8f060-auto`. Surowe logi PTY, notify, działania operatora,
+UUID, rollouty Astr, transkrypty Claude’a i bazy pozostają poza Git. Snapshoty:
+`evidence/r1-workers-active`, `evidence/stop-turn-budget`, `evidence/final-stopped`.
+`operator/assessment` zawiera verify/test logs, kopie właściwych sesji, dane licznika
+oraz assessment.json. `evidence-index.json` wiąże je hashami; SHA-256 indeksu:
+`19d88d9630ed37b0e2e848d4c907b567c4242aedcbdf11e5294a3745a83d9fc1`.
+Żaden proces tego runtime/launchera/operatora nie pozostał aktywny.
+
+**Punkt wznowienia:** nie uruchamiać automatycznie ROUND2 ani ponownie używać katalogu.
+Instrukcja OPERATOR.md zawiera korektę semantyki tur. Otwarte ustalenie W10-10 opisuje
+przedwczesny STOP operatora; następne wykonanie musi najpierw mieć rozstrzygniętą
+sekwencję po nieplanowanym zamknięciu B. Nie deklarujemy gotowości całego scenariusza
+na podstawie częściowego wyniku. Oryginalny scenariusz i budżet pozostają w OPERATOR.md;
+nie wydano jego pozostałej części i nie poproszono ponownie o potwierdzenie kont/opłat.
+Integracja pozostaje lokalnie gotowa do review; **realny pilot niezaliczony, wave10 otwarte**.
+Bez push, merge, zmian aktywnych runtime i worktree innych fal.
+
+Końcowy check dokumentacji/test discovery: 14 testów operatora i 5 testów przenośności
+PASS; git diff --check PASS. Opcjonalny moduł PTY jawnie SKIP przy braku pexpect/pyte
+(test izolacji `python3 -S`), a przy dostępnych bibliotekach jego 5 testów PASS.
+Ta korekta test discovery nie zmienia narzędzi przygotowania ani runtime 9e8f060.
