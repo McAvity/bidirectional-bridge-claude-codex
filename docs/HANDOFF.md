@@ -39,7 +39,7 @@ The current role owner `codex` is not a unique manager session identity. Use one
 manager/feature per worktree. No closed-manager wake-up, orphan supervisor or /goal support
 is claimed. docs/tasks/review-integration-drift.md is a proposal, not active workflow policy.
 
-## Timeout recovery — local integration prepared
+## Timeout recovery — integrated and published
 
 Wave9 imports explicit deadline recovery, per-attempt budgets, bounded termination evidence,
 and the finite 256-turn ceiling; defaults remain 12 turns. Configuration allows a 75-minute
@@ -57,8 +57,8 @@ evidence. This is neither feature acceptance nor empirical validation of 75/90 m
 200 turns. Wave6 remains 13/15, controlled REWORK and M-01…M-07 remain open.
 
 Local validation passed: build, 379 JS tests, 19 exchange tests, 110 pilot-tooling tests,
-documentation and whitespace checks. Status: GOTOWE DO REVIEW.
-The integration is local and awaits coordinator review, merge, publication and CI.
+documentation and whitespace checks. Coordinator review accepted the integration; merge fb9c843 is published on feature-workflow.
+GitHub CI run 34676235601 passed build and 379 JS / 19 exchange / 110 pilot tests.
 Wave9 does not change any active runtime or deploy a replacement. Original source commits
 remain on timeout-recovery; sanitized import mapping is in wave9 progress.
 
