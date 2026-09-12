@@ -237,3 +237,11 @@ jak sprawdzona rzeczywista ścieżka wklejania R1. Nie dodajemy kolejnej heuryst
 24 testy PASS, w tym przygotowanie wszystkich promptów tą samą ścieżką. To poprawka
 przed modelami; zestaw c136c7d zachowany jako wcześniejsze przygotowanie, następny pin
 narzędzi i manifest zastąpią go do startu. Oryginalny pilot/runtime pozostają bez zmian.
+
+Ostateczny punkt startu przygotowania: pin 51c358a02304b7fcbbfbe93978878bd4923fec2f,
+/tmp/wave10-continuation-51c358a/continuation. Manifest SHA-256 dbaa515e61f4c1dde90fb677a2d3b8e60bb8db72407771c53d2d45b7347771ec.
+Build, 2/2 handshake i odczytowy preflight PASS. Baseline starego pilota identyczny
+z poprzednim odczytem c136c7d. 24 testy operatora, 5 runnera i 5 przenośności PASS.
+Zestaw c136c7d zachowany jako historyczne przygotowanie; nie używać go do startu.
+Approval i operator nowego segmentu nie istnieją. Stan: KONTYNUACJA PRZYGOTOWANA
+DO ZATWIERDZENIA; resume/modelowy segment pozostają UNVERIFIED.

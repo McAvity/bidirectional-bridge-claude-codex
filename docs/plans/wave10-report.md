@@ -1,6 +1,7 @@
 # Wave10 — raport integracji i przygotowania pilota
 
-Status: **STOP — CZĘŚCIOWY WYNIK PRAWDZIWEGO PILOTA**. R1 obu par wykonane;
+Status: **KONTYNUACJA ZACHOWANEGO R1 PRZYGOTOWANA DO ZATWIERDZENIA**.
+Oryginalny przebieg: STOP, częściowy wynik rzeczywistego pilota. R1 obu par wykonane;
 pełny scenariusz niezaliczony po przedwczesnym zatrzymaniu przez operatora.
 Cały wave10 pozostaje otwarty. Historyczne sekcje przygotowania poniżej zachowują
 poprzednie dowody; aktualny wynik i punkt wznowienia są w końcowej sekcji raportu.
@@ -325,3 +326,134 @@ Końcowy check dokumentacji/test discovery: 14 testów operatora i 5 testów prz
 PASS; git diff --check PASS. Opcjonalny moduł PTY jawnie SKIP przy braku pexpect/pyte
 (test izolacji `python3 -S`), a przy dostępnych bibliotekach jego 5 testów PASS.
 Ta korekta test discovery nie zmienia narzędzi przygotowania ani runtime 9e8f060.
+
+## Kontynuacja istniejących sesji — przygotowanie bez modeli
+
+Aktualne zlecenie obejmuje sprawdzenie i przygotowanie, nie wykonanie dalszych modeli.
+Własny worktree/branch wave10, wejście `1c6e635`. Poprawka:
+`c136c7d73d22cf898c5156034b4b8873bec280ed`, następnie
+`51c358a02304b7fcbbfbe93978878bd4923fec2f` (jednolita wielowierszowa ścieżka wklejania
+wszystkich promptów, w tym foreign). Oryginalne branche i mapa historii
+pozostają bez zmian. Końcowy commit tego punktu wznowienia jest dokumentacyjny.
+
+**Możliwość dokończenia:** dane do dokładnego resume obu Astr i kontynuacji obu
+Claude’ów zachowały się. Nie ma potrzeby ponawiania R1. Nie jest to jeszcze dowód
+udanego natywnego resume — ten musi powstać po zatwierdzeniu nowych wywołań.
+
+Odczytowy audit sprawdził obie bazy: quick_check OK, waiting_user, pytanie q1 bez
+odpowiedzi, po jednej COMPLETE próbie R1, epoch 1/generation 2, aktywna instancja null,
+zakończenie starej instancji detached. UUID session-a/b zgadzają się z bindingami;
+po jednym dokładnym rolloucie source=cli/originator=codex-tui i po jednym transkrypcie
+pod zachowanym execution_handle Claude’a. Worktree/namespace/database_path zgadzają się
+z zapisanym workspace bindingiem. Oba HEAD czyste, obie paczki R1 nadal verify PASS.
+Manifest wiąże stan, HEAD, hashe paczek i plików sesji. Audit przed/po przygotowaniu
+oraz ponowny preflight dały identyczny wynik. Bazy nie były kopiowane ani mutowane.
+
+### Znaczenie liczb — ustalone z implementacji i dowodów
+
+Badano dokładnie CLI 2.1.269 użyte w R1, binarny SHA-256
+`25e44883f54419569a3d739f38cbbdaebe83b09895da0f343e1b003710a4775b`.
+Osadzona implementacja zwykłego, niedeferowanego success inicjuje licznik raportu
+wartością 1 i zwiększa go dla każdego komunikatu user silnika. W obu zachowanych
+transkryptach: początkowy prompt oraz 17 komunikatów tool_result, więc wynik 18 ma
+konkretne wyjaśnienie. To nie liczba różnych wywołań modelu.
+
+12 różnych message.id to odrębne odpowiedzi modelu po złożeniu ich bloków;
+11 z nich zawiera tool_use. Te dwa odtworzone pomiary nie zastępują pola num_turns
+ani nie stają się nowym egzekutorem budżetu. Implementacja silnika ma oddzielny
+licznik iteracji i porównanie następnej iteracji z opcją maxTurns. Po przekroczeniu
+emituje max_turns_reached, a warstwa wyniku error_max_turns używa licznika przekroczenia.
+Zatem nawet semantyka num_turns zależy od gałęzi wyniku; nie stosujemy wzoru 1+17
+jako uniwersalnej definicji wszystkich wyników/wersji/resume.
+
+Runner bridge’a nadal przekazuje zwalidowane spec.max_turns=12 jako `--max-turns 12`,
+chroni tę flagę przed override, zapisuje surowe frame.num_turns i mapuje rzeczywiste
+zakończenie limitu na FAILED. Kod produkcyjny niezmieniony. Bezmodelowe buildArgs
+potwierdziło jednocześnie wartość 12 i exact --resume dla syntetycznego handle.
+Pięć istniejących regresji runnera (flag protection, finite default, invalid budget,
+raw telemetry, max-turns failure) PASS; użyto atrap w nowym pomocniczym buildzie.
+To nie test granicy realnego modelu ani dodatkowe wywołanie Claude’a.
+
+Błędny warunek STOP był decyzją koordynatora w poprzednim przebiegu; nie istniał jako
+if w starym relay. Wycofano go z protokołu decyzji, a nowy operator i prompty wyraźnie
+zakazują porównania success num_turns z limitem. Dodano regresję success 18/spec12
+bez STOP oraz rzeczywistego FAILED ze STOP. Telemetrii historycznej nie poprawiano.
+Szczegółowa semantyka, kodowe miejsca odpowiedzialności i źródło dokumentacji są w
+[CONTINUATION.md](../../tools/pilot/wave10/CONTINUATION.md); lokalne minimalne wycinki
+implementacji z offsetami/hashami pozostają poza Git.
+
+### Konkretny zestaw przygotowania
+
+- Końcowy pin narzędzi: `51c358a`, katalog `/tmp/wave10-continuation-51c358a/runtime`.
+  Osobny npm ci/build PASS, 2/2 handshake MCP i preflight PASS. Pomocnicze `a`/`b`
+  tego katalogu służyły tylko handshake, nie będą parami modelowymi.
+- **Bridge używany przy kontynuacji pozostaje oryginalny `9e8f060`**, w
+  `/tmp/wave10-pilot-9e8f060-auto/runtime`, z niezmienionym hashem builda 744d0008…725d8da3.
+- Nowy manifest i prompty: `/tmp/wave10-continuation-51c358a/continuation`.
+  Manifest SHA-256: `dbaa515e61f4c1dde90fb677a2d3b8e60bb8db72407771c53d2d45b7347771ec`.
+  `launch-commands.json` przechowuje prywatne, dokładne komendy resume dla obu starych
+  UUID oraz ponownego restartu A. Foreign jest jedyną nową sesją managera.
+- `approval.example.json` ma approved=false; właściwy approval.json nie istnieje.
+  Nie powstał nowy operator/started-at. Stare approval, zegar i dowody są zachowane.
+- 24 testy operatora PASS (w tym 10 nowych); 5 wybranych regresji runnera PASS.
+  Nie powtarzano pełnego review integracji. Nie uruchomiono modeli ani mutujących MCP.
+
+### Najmniejszy brakujący przebieg i budżet do zatwierdzenia
+
+1. BOOT obu zachowanych Astr: exact native resume, explicit manager_resume_instance
+   z odczytanym epoch/generation, potwierdzenie waiting_user/q1 i starego R1. Bez
+   answer_user, ponowienia review R1, nowego roota/feature ani delegacji.
+2. Foreign probe przy nieaktywnych workerach, wynik narzędzia MANAGER_FOREIGN_THREAD
+   oraz identyczne pełne logiczne snapshoty A/B, ownerów, markerów i paczek przed/po.
+3. B/r2 z zachowanym Claude’em i bramką. Dopiero po active attempt + gate-ready
+   zamknięcie A i dokładne ponowne resume A w czasie aktywnego B.
+4. Potwierdzenie tej samej tożsamości, waiting_user/q1; A/r2. Release B po markerze
+   prawdziwego startu A i dowodzie aktywności B, bez oczekiwania na wynik A.
+5. Koniec obu rund, autentyczne review Astr, verify wszystkich 4 paczek względem
+   właściwych base/head, testy obu końcowych drzew, porównanie obu handles i finalny raport.
+
+Budżet **tylko nowych wywołań**: 2 rundy Claude max_turns=12 każda; A/r2 8 min,
+B/r2 20 min. 3 tury Astry A (BOOT/restart/R2+review), 2 B (BOOT/R2+review), 1 foreign.
+Nowe okno 45 min od startu operatora, B/r2 start najpóźniej w 20. minucie; gate-ready
+w 120 s, operator 480 s, gate 540 s, Bash 600 s, MCP 1320 s. Przy najpóźniejszym
+starcie B zostaje co najmniej 5 min na finalne dowody. Bez tur zapasowych, retry,
+dodatkowego task recovery ani dodatkowych wywołań API; potwierdzenie kont/subskrypcji
+pozostaje ważne i nie wymaga ponownej kontroli paneli. Po błędzie STOP bez resetu zegara.
+
+### Granice oceny łącznej
+
+P1 i P2 mają już dowody z pierwszego segmentu. P3 (izolacja przez obie rundy) i P5
+(te same sesje Claude’a) można ocenić z połączonych dowodów R1/R2, pod warunkiem pełnej
+zgodności zachowanych tożsamości, baz, namespace i provenance. P4 musi zostać wykonane
+w całości na nowo w kontynuacji: poprzednie zamknięcie obu klientów nie odbyło się
+podczas aktywnego B/r2. P6 wymaga całkowicie nowego realnego foreign probe i porównania
+stanu; regresja z atrapą nie zastępuje tego dowodu.
+
+P7 rozbijamy opisowo na poddowody, **nie zmieniamy jego definicji**. Cztery verify,
+końcowe testy i ograniczenia rund można rozliczyć łącznie. Oryginalnego warunku jednej
+nieprzerwanej godziny v2 nie da się uzyskać przez sumowanie aktywnego czasu dwóch
+segmentów. P7 oryginalnego v2 oraz status pełnego nieprzerwanego v2 nie będą oznaczone
+PASS. Jedynie nowy pełny przebieg mógłby udowodnić pierwotny harmonogram end-to-end;
+powtarzanie R1 nie jest częścią tej propozycji ani obecnego zlecenia.
+
+### Punkt wznowienia
+
+Najpierw zatwierdzenie powyższego nowego scope/budżetu; nie ponawiamy zgody dotyczącej
+opłat. Po zgodzie koordynator powtarza read-only preflight z przypiętego narzędzia:
+
+```bash
+python3 /tmp/wave10-continuation-51c358a/runtime/tools/pilot/wave10/continuation.py preflight \
+  --out /tmp/wave10-continuation-51c358a/continuation
+```
+
+Następnie zapisuje lokalny approval dla dokładnego hash manifestu i uruchamia `serve`
+z tym samym --out. Pełne kroki automatycznego operatora, nazwy promptów i warunki
+przejścia są w CONTINUATION.md. Nie używać starego launchera v2, --last ani kopiowanych
+baz; nie uruchamiać nowych helperowych a/b. Drift od przygotowania wymaga STOP,
+nie aktualizacji manifestu „w locie”. Bieżący etap jest ukończonym przygotowaniem
+kontynuacji do zatwierdzenia, nie zaliczonym resume ani końcem wave10.
+
+Końcowy pin 51c358a: build oraz 2/2 handshake PASS, odczytowy preflight PASS.
+Zachowany baseline jest identyczny także z wcześniejszym przygotowaniem c136c7d.
+Poprzedni pomocniczy katalog zachowano, ale nie jest punktem startu. 5 testów
+przenośności i git diff --check PASS. W tym etapie zero modeli i zero mutujących MCP.

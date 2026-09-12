@@ -6,6 +6,9 @@ poleceniem automatycznego ponowienia zatrzymanego pilota. Nowy przebieg wymaga
 ustalonego zakresu; istniejącej zgody i potwierdzenia rozliczeń nie należy ponawiać bez powodu. To dwie rzeczywiste pary Astra–Claude oraz jedna krótka sesja Astry do próby
 obcego managera (bez trzeciego Claude’a). Nie jest to wcześniejszy pilot REWORK.
 
+Bieżąca propozycja dokończenia zachowanych sesji: [CONTINUATION.md](CONTINUATION.md).
+Ma osobny scope, zegar i budżet; nie używa ponownie startów R1 z tej instrukcji.
+
 ## Zakres do zatwierdzenia
 
 - Astra `gpt-6-astra`, effort high; Claude: profil opus/high przypiętego runnera, bez override.

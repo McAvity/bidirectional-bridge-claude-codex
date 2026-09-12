@@ -4,6 +4,30 @@ Canonical repository: McAvity/bidirectional-bridge-claude-codex, branch feature-
 The fork preserves grizzly2005 upstream history and MIT notices. This repository contains
 all development inputs; the historical experiments workspace is an optional private archive.
 
+## Wave10 — retained-session continuation prepared, approval pending
+
+Current preparation commits `c136c7d` and final pin `51c358a` adds a separately budgeted operator segment;
+no models ran in this follow-up. Read-only audit confirms both original databases,
+waiting_user/q1, exact native TUI rollouts and Claude handles; resume itself remains
+UNVERIFIED until an authorized real turn. The old bridge stays pinned at `9e8f060`.
+A fresh auxiliary tooling build passed two MCP handshakes; 24 operator tests and
+5 focused runner regressions passed. No full integration review repeated.
+
+The num_turns discrepancy is resolved from the exact 2.1.269 binary and retained
+transcripts: success counts user-role messages (1+17=18), while the executor limits
+loop iterations separately. There are 12 distinct assistant responses, 11 using tools.
+The max-turns error branch can report its own loop counter. Raw telemetry is unchanged;
+operator comparisons against max_turns are withdrawn, executor enforcement remains.
+
+Proposed continuation: resume both existing Astras, foreign probe, B/r2, close and
+resume A during active B, A/r2 and final verification. Budget: two Claude rounds with
+max_turns=12 (A 8min/B 20min), 3 new A turns, 2 B turns, 1 foreign turn, 45min segment,
+no retries or additional task recovery. This is not uninterrupted v2: P1–P6 can be
+assessed using the required combined/new evidence, but original P7's continuous
+60min condition cannot be retroactively proved. See [continuation protocol](../tools/pilot/wave10/CONTINUATION.md)
+and the latest [report/checkpoint](plans/wave10-report.md). Approval applies to this
+new segment; the existing subscription confirmation remains valid.
+
 ## Wave10 — partial real pilot; stopped after R1
 
 The accepted integration remains unchanged; no full implementation review was repeated.
