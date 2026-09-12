@@ -46,6 +46,7 @@ class Client:
         self.exited = False
         self.pending = ''
         self.submit_when_visible = None
+        self.pending_turn = False
 
     def poll(self):
         if self.exited:
@@ -68,18 +69,21 @@ class Client:
         if self.submit_when_visible and self.submit_when_visible in self.text():
             self.child.send('\r')
             self.submit_when_visible = None
+            if self.pending_turn:
+                self.turns += 1
+                self.pending_turn = False
 
     def text(self):
         return '\n'.join(line.rstrip() for line in self.screen.display)
 
     def send_prompt(self, text):
-        if self.exited or self.closing:
+        if self.exited or self.closing or self.submit_when_visible:
             raise ValueError('client closed')
         if self.turns >= (2 if self.name == 'foreign' else 10):
             raise ValueError('manager turn budget exhausted')
         self.child.send(paste(text))
-        self.submit_when_visible = '[Pasted text' if '\n' in text else text[:60]
-        self.turns += 1
+        self.submit_when_visible = '[Pasted Content' if '\n' in text else text[:60]
+        self.pending_turn = True
 
     def close(self):
         self.child.send('/quit')

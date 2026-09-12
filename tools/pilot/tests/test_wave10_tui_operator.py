@@ -38,9 +38,23 @@ class TuiOperatorTests(unittest.TestCase):
             self.assertIn('synthetic', c.text())
             c.stop()
 
+    def test_enter_waits_for_host_paste_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            c = op.Client([sys.executable, '-c', 'print("[Pasted Content 100 chars]",flush=True); input(); print("SUBMITTED",flush=True)'], Path(directory), 'a')
+            c.submit_when_visible = '[Pasted Content'
+            c.pending_turn = True
+            self.assertEqual(c.turns, 0)
+            import time
+            end = time.monotonic()+5
+            while not c.exited and time.monotonic()<end: c.poll()
+            self.assertIn('SUBMITTED', c.text())
+            self.assertEqual(c.turns, 1)
+            self.assertIsNone(c.submit_when_visible)
+            c.stop()
+
     def test_turn_budget_blocks_before_send(self):
         c = object.__new__(op.Client)
-        c.exited=False; c.closing=False; c.name='foreign'; c.turns=2
+        c.exited=False; c.closing=False; c.submit_when_visible=None; c.name='foreign'; c.turns=2
         with self.assertRaises(ValueError): c.send_prompt('must not send')
 
 if __name__ == '__main__': unittest.main()

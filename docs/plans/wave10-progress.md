@@ -142,3 +142,17 @@ Bezmodelowe próby harnessu wykazały, że początkowy znak zachęty nie oznacza
 a Enter musi następować po wyrenderowaniu tekstu. Używamy obserwacji ekranu,
 nie czasowych założeń. Kod bridge’a i aktywne runtime nie zostały zmienione.
 Po commicie operatora obowiązuje świeży katalog i osobny przypięty build.
+
+W10-09: pin operatora `19ad974` zbudowany w świeżym katalogu, 2 handshake i preflight
+PASS. Prawdziwe TUI uruchomione, lecz przygotowane prompty pozostały w edytorach:
+Codex 0.154.0 renderuje `Pasted Content`, a relay oczekiwał `Pasted text`.
+Zatrzymano przed wysłaniem do modeli (brak workerów/rounds). Upraszczamy warunek
+renderowania do faktycznego markera przypiętego hosta i sprawdzamy samo wklejenie
+bez wysyłania przed kolejnym świeżym pinem. Nie jest to retry modelu ani pilot PASS.
+
+Dowód granicy przygotowania: oba ekrany zachowały niewysłany `Pasted Content`, brak
+rolloutów dla obu cwd i brak `.bridge` w obu worktree; snapshot zachowany lokalnie.
+Nie powstały sesje managerów ani Claude’a, więc korekta przygotowania nie zastępuje
+istniejącej sesji ani nie ponawia modelowej rundy. Test regresji rzeczywistego PTY
+potwierdza Enter dopiero po markerze oraz licznik dopiero po wysłaniu (14 testów PASS).
+Następny świeży pin nie używa zatrzymanego katalogu przygotowania.
