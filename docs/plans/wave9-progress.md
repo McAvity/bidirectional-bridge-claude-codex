@@ -39,7 +39,7 @@ Wave7, jego baza oraz przypięty runtime pozostają nietknięte.
 Node 24.15.0, Python 3.12.3 (nie powtarzano na Python 3.11).
 `npm ci --ignore-scripts` i `npm run build`: PASS.
 `npm test`: 379/379, 25 plików. Exchange: 19/19. Pilot tooling: 110/110.
-Kontrola dokumentacji: PASS, 29 plików. `git diff --check`: PASS.
+Kontrola dokumentacji: PASS, 30 plików. `git diff --check`: PASS.
 Kopie using-bridge obu ról identyczne; kod/testy/konfiguracje/skille zgodne ze źródłem.
 Audyt każdego pośredniego drzewa oraz metadanych importu: PASS po redakcji.
 MIT i historia upstream zachowane; źródłowe commity nie są przodkami importu.
@@ -49,5 +49,7 @@ Testy używają atrap: brak nowego dowodu real-agent, 75/90 minut lub 200 tur.
 Następny krok: koordynator przegląda `354c051..wave9-integration`, rozlicza ewentualny
 równoległy drift dokumentów, po akceptacji integruje ten oczyszczony branch, publikuje
 i sprawdza CI. Nie scalać oryginalnego timeout-recovery z prywatnymi metadanymi.
-Raport końcowy zostanie zapisany obok planu jako `wave9-report.md`.
-
+Raport: [wave9-report.md](wave9-report.md).
+Commit integracji/statusów: `1459786b0f53ac47adb5a1ac3315853b2ce18f47`.
+Końcowy commit raportu jest tipem `wave9-integration` (SHA odczytać przez
+`git rev-parse wave9-integration`; raport nie zawiera własnego rekurencyjnego hasha).
