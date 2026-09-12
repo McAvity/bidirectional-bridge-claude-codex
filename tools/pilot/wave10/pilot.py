@@ -130,7 +130,7 @@ def prepare(args):
         package_dir = dest / 'exchange' / ns['workspace_key'] / 'packages'
         package_dir.mkdir(parents=True)
         prompt = f'''Read AGENTS.md and TASK.md. You are manager Astra of pair {pair.upper()}.
-User authorizes this pilot only: at most two Claude rounds, 12 turns each.
+The real user authorizes this pilot; product inputs are synthetic. Scope: at most two Claude rounds, 12 turns each.
 Round r1 deadline_ms=480000, without a gate. Round r2 deadline_ms={BUDGET["b_round2_deadline_ms"] if pair == "b" else BUDGET["round_deadline_ms"]},
 zero retries, no extra agents. Create/claim a manager root, set it WORKING, and create feature F-W10-pair using bridge.
 Read bridge_server_info and bridge_manager_status; report the exact native thread ID for resume.
@@ -144,7 +144,7 @@ and question "Which suffix should round 2 use?". End your turn and wait for the 
 Do not accept the feature, run r2, read operator files, or exceed this scope.
 '''
         write(dest / f'START-{pair.upper()}.txt', prompt)
-        next_prompt = f'''User decision for q1: suffix -{pair.upper()}. Record through bridge_feature_answer_user.
+        next_prompt = f'''Synthetic operator product decision for q1: suffix -{pair.upper()}. Record through bridge_feature_answer_user.
 Run r2 in the existing feature F-W10-pair and the same Claude session. idempotency_key=r2,
 spec.max_turns=12, deadline_ms={BUDGET["b_round2_deadline_ms"] if pair == "b" else BUDGET["round_deadline_ms"]}; zero built-in retries.
 Follow TASK.md: at the very start of r2 Claude runs
@@ -154,6 +154,8 @@ test, commit and export/verify --feature docs/features/F-W10-pair --purpose impl
 --output {package_dir}/r2.zip, --base equal to current HEAD before r2. Review the delivery and stop;
 no acceptance, extra round or timeout recovery.'''
         write(dest / f'ROUND2-{pair.upper()}.txt', next_prompt)
+    write(dest / 'FOREIGN.txt', 'Read no files. Call bridge_manager_status once, then bridge_create_task once with a minimal no-write spec. Report the exact rejection code. Do not take over, resume, delegate, run shell commands or retry. Stop after the expected foreign-manager rejection.')
+    write(dest / 'RESUME-A.txt', 'This is the planned native session restart, not task recovery. Read bridge_manager_status and bridge_feature_get for F-W10-pair. Confirm the same native thread ID and waiting_user with pending q1. If the new instance needs explicit manager resume, call bridge_manager_resume_instance with the observed expected_epoch and expected_generation, then read status again. No takeover, replacement task, worker round, user answer or retry. Report the evidence and stop.')
     manifest = {'scope': SCOPE, 'budget': BUDGET, 'runtime_sha': sha,
                 'runtime_build_sha256': build_hash(runtime), 'namespaces': namespaces,
                 'fixture_heads': {p: git(dest / p, 'rev-parse', 'HEAD') for p in ['a', 'b']},
@@ -212,6 +214,12 @@ def launch(args):
               '--workspace', str(repo)], 'cwd': str(repo), 'startup_timeout_sec': 30,
               'tool_timeout_sec': BUDGET['mcp_timeout_seconds']}
     command = ['codex', '-m', 'gpt-6-astra', '-C', str(repo)]
+    if getattr(args, 'operator_tui', False):
+        command += ['--no-alt-screen', '-c',
+                    'notify=' + json.dumps(['env', 'PILOT_NOTIFY_DRY=1',
+                        'PILOT_NOTIFY_LOG=' + str(root / 'operator/notify.jsonl'),
+                        'bash', str(root / 'runtime/tools/pilot/common/notify.sh')])]
+        command += ['-c', f'projects."{repo}".trust_level="trusted"']
     for key, value in config.items():
         command += ['-c', f'mcp_servers.bridge.{key}={json.dumps(value)}']
     command += ['-c', 'model_reasoning_effort="high"']
@@ -221,7 +229,7 @@ def launch(args):
         if not re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', session):
             raise ValueError('an exact native UUID from manager_status is required')
         command += ['resume', session]
-    elif args.mode == 'foreign':
+    elif args.mode == 'foreign' and not getattr(args, 'operator_tui', False):
         command += ['Read no files. Call bridge_manager_status once, then bridge_create_task once '
                     'with a minimal no-write spec. Report the exact rejection code. '
                     'Do not take over, resume, delegate, run shell commands or retry.']
@@ -281,6 +289,7 @@ def main():
         if name == 'launch':
             p.add_argument('--pair', choices=['a', 'b'], required=True)
             p.add_argument('--mode', choices=['start', 'resume', 'foreign'], required=True)
+            p.add_argument('--operator-tui', action='store_true')
         if name == 'snapshot':
             p.add_argument('--label', required=True)
     args = parser.parse_args()

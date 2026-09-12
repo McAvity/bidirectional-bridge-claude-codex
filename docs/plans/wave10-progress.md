@@ -130,3 +130,15 @@ Nie czekać na wynik A/r2 przed release. B/r2 start do 30. minuty; 480 s na dzia
 operatora, 540 s gate, 600 s Bash, 1200 s B/r2, 1320 s MCP, 60 min całości.
 Ostatni commit dokumentuje ten punkt wznowienia; nie zmienia pinu. Bez modeli, push,
 merge ani zmian aktywnych runtime. Cały wave10 pozostaje otwarty.
+
+## Autonomiczny pilot — przygotowanie operatora
+
+Aktualne zlecenie użytkownika zatwierdza modele, budżet v2 i rozliczanie na jego
+kontach oraz automatyczną obsługę operatora. Nie wymaga kolejnych kontroli opłat.
+W10-09 (otwarte, dowody wykonania): operator TUI w PTY, bez zastępowania decyzji Astr,
+z lokalnym dziennikiem, usunięciem odziedziczonego ID rodzica, ograniczeniem promptów,
+normalnym quit/resume i limitem całości. 13 testów narzędzi bez modeli PASS.
+Bezmodelowe próby harnessu wykazały, że początkowy znak zachęty nie oznacza gotowości,
+a Enter musi następować po wyrenderowaniu tekstu. Używamy obserwacji ekranu,
+nie czasowych założeń. Kod bridge’a i aktywne runtime nie zostały zmienione.
+Po commicie operatora obowiązuje świeży katalog i osobny przypięty build.

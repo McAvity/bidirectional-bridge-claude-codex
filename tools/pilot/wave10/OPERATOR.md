@@ -204,3 +204,28 @@ sesje w ich terminalach; ponowienie wymaga nowego zakresu/budżetu użytkownika.
 Przy braku overlap/restartu podczas aktywnego B wynik jest częściowy. Jeżeli usterka wraca
 trzeci raz, oceń prostszy scenariusz względem wymagania, zamiast kolejnej pełnej pętli review.
 Publikuj wyłącznie zanonimizowane podsumowanie PASS/FAIL/UNVERIFIED z hashami dowodów.
+
+## Autonomiczny operator TUI
+
+Użytkownik może zlecić koordynatorowi całe wykonanie bez ręcznych terminali. Po takim
+zleceniu nie ponawia się zatwierdzonej zgody ani kontroli paneli rozliczeń. Zgoda nadal
+musi zostać zapisana lokalnie w approval.json; odpowiedzi q1 są syntetyczne.
+
+`tui_operator.py --run "$RUN"` obsługuje prawdziwe procesy TUI przez PTY (pexpect,
+pyte), a nie app-server/exec. Koordynator zapisuje atomowo numerowane JSON w
+`$RUN/operator/inbox`. Dostępne czynności: start (a, b, foreign, a-resumed), prompt
+(tylko przygotowany plik), trust (wyłącznie ekran własnego fixture), close, release,
+stop z przyczyną. Przykład: `{"action":"start","client":"a"}`, następnie po gotowości
+`{"action":"prompt","client":"a","file":"START-A.txt"}`. Koordynator autonomicznie
+wybiera następny krok według powyższego harmonogramu, screen.txt, notify.jsonl i
+odczytów SQLite; użytkownik nie obsługuje terminali. Relay nie podejmuje review,
+nie wywołuje MCP, nie generuje tożsamości i nie odpowiada na prośby o uprawnienia.
+Zwykły `/quit` czeka na wyrenderowanie polecenia przed Enter. Restart wymaga
+zakończenia A i dokładnego UUID w session-a.txt. Nie ma ponownych promptów/rund.
+Powiadomienia końca tury służą synchronizacji; sam koniec tury nie dowodzi review.
+
+Przed modelami sprawdzić prawdziwe puste TUI: gotowy model/katalog, `/mcp` pokazuje
+`bridge: connected (35 tools)`, `/quit` kończy proces kodem 0. Żaden prompt modelu
+nie jest do tego potrzebny. Ostrzeżenie bubblewrap nie jest potwierdzeniem działającej
+powłoki; faktyczna odmowa narzędzia pozostaje warunkiem STOP, bez obchodzenia.
+Surowe logi PTY, ekrany, powiadomienia, zgody i UUID są tylko w prywatnym katalogu.
