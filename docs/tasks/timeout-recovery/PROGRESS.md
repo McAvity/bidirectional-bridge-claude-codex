@@ -1,12 +1,19 @@
 # PROGRESS — timeout recovery
 
-Status: W TOKU. Plan: [PLAN.md](PLAN.md), AC: [ACCEPTANCE.md](ACCEPTANCE.md).
+Status: IMPLEMENTACJA DOSTARCZONA; integracja wave9 GOTOWA DO REVIEW. Plan: [PLAN.md](PLAN.md), AC: [ACCEPTANCE.md](ACCEPTANCE.md).
 
 - Branch `timeout-recovery`, osobny worktree tego brancha
   (`<local-workspace>/bridge-timeout-recovery`), baza `aeb92c2`. Aktywny runtime: główny
   checkout (`node scripts/native-bridge-mcp.mjs`, Codex manager) oraz worktree wave7
   (`.bridge/bridge.db` featura) — nie ruszać.
 - Baseline w worktree: `npm ci --ignore-scripts`, `npm run build`, `npm test` → 342/342.
+
+## Aktualizacja wave9
+
+Zapisy poniżej opisują historyczny zakres wykonawcy timeout-recovery. Późniejsze review,
+lokalne wdrożenie przypiętego runtime i zgłoszone recovery rozlicza
+[postęp wave9](../../plans/wave9-progress.md). Dawne wskazanie głównego checkoutu jako runtime
+nie jest aktualną instrukcją: aktywny wave7 używa osobnego przypiętego buildu.
 
 ## Kroki
 
@@ -38,7 +45,7 @@ Status: W TOKU. Plan: [PLAN.md](PLAN.md), AC: [ACCEPTANCE.md](ACCEPTANCE.md).
 
 ## Punkt wznowienia
 
-Zakres zadania wykonany; raport: [REPORT.md](REPORT.md). Następny krok należy do review:
-przegląd diffu `feature-workflow..timeout-recovery`, decyzja o wdrożeniu runtime i dopiero
-potem jednorazowe wznowienie `<task-id>` wg DEPLOY-AND-RESUME.md. Nie budować w głównym
-checkoutcie ani w worktree wave7. Commity lokalne, bez push.
+Implementacja i procedura zostały dostarczone oraz według koordynatora przejrzane.
+Koordynator raportuje późniejsze wdrożenie `956b171` i recovery; nie powtarzać historycznej
+procedury na aktywnym wave7. Obecny zakres: review lokalnej integracji wave9, potem decyzja
+koordynatora o merge/publikacji i kontrola CI. Patrz [wave9](../../plans/wave9.md).

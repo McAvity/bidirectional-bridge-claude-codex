@@ -5,6 +5,10 @@ baza `aeb92c2` (feature-workflow). Aktywny runtime (główny checkout i worktree
 nie jest edytowany, budowany ani restartowany. Kryteria odbioru: [ACCEPTANCE.md](ACCEPTANCE.md).
 Postęp: [PROGRESS.md](PROGRESS.md). Procedura wdrożenia: [DEPLOY-AND-RESUME.md](DEPLOY-AND-RESUME.md).
 
+Zapisy o aktywnym runtime i weryfikacji klientów opisują moment przygotowania planu
+źródłowego, nie bieżące środowisko wave7. Aktualny status integracji i ograniczenia dowodów:
+[wave9 progress](../../plans/wave9-progress.md). Nie wykonywać historycznych kroków ponownie.
+
 ## Przyczyna błędu (stan na aeb92c2)
 
 Runda W7-ID-01 (`<task-id>`) dostała `deadline_ms = 900000`. Po 15 minutach:

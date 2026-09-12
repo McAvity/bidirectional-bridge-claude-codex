@@ -39,18 +39,28 @@ The current role owner `codex` is not a unique manager session identity. Use one
 manager/feature per worktree. No closed-manager wake-up, orphan supervisor or /goal support
 is claimed. docs/tasks/review-integration-drift.md is a proposal, not active workflow policy.
 
-## Timeout recovery branch (proposed, not deployed)
+## Timeout recovery — local integration prepared
 
-Branch `timeout-recovery` adds explicit recovery of a round the bridge stopped at its deadline
-(`bridge_resume_delegated_task` with `recover_timeout`, a required new `deadline_ms` and an
-optional per-attempt `max_turns`), bounded redacted termination evidence next to the database,
-a finite turn ceiling of 256, and the 75-minute round / 5400 s client-timeout configuration.
-Every other `FAILED` stays terminal and no path falls back to a fresh session. Scope, criteria,
-evidence limits and the deployment/resume procedure are in
-[docs/tasks/timeout-recovery/](tasks/timeout-recovery/REPORT.md). Validation on that branch:
-build, 379 JS tests, 19 + 110 Python tests, documentation check. Nothing was deployed, no
-database was touched, and `<task-id>` has not been resumed; that needs review, an
-explicit decision and the pinned-runtime procedure.
+Wave9 imports explicit deadline recovery, per-attempt budgets, bounded termination evidence,
+and the finite 256-turn ceiling; defaults remain 12 turns. Configuration allows a 75-minute
+round and 5400-second client wait. Other FAILED tasks remain terminal; no fresh-session fallback.
+See [wave9 progress](plans/wave9-progress.md) and [source report](tasks/timeout-recovery/REPORT.md).
+
+The source implementation was independently reviewed according to the coordinator's input.
+The coordinator reports a separately pinned runtime at `956b171` was deployed for wave7:
+initial timeout recovery preserved the task/session and returned BLOCKED/PARTIAL after about
+6.5 minutes with a contract and an export blocker. A subsequent correction reached DONE;
+contract review still required changes. Pinned wave7 document snapshot `88d1707`
+(`docs/features/F-W7-manager-isolation/PROGRESS.md`, `reviews/03-corrections.md`) confirms
+that reported DONE/REWORK distinction. Wave9 inspected those documents, not private runtime
+evidence. This is neither feature acceptance nor empirical validation of 75/90 minutes or
+200 turns. Wave6 remains 13/15, controlled REWORK and M-01…M-07 remain open.
+
+Local validation passed: build, 379 JS tests, 19 exchange tests, 110 pilot-tooling tests,
+documentation and whitespace checks. Status: GOTOWE DO REVIEW.
+The integration is local and awaits coordinator review, merge, publication and CI.
+Wave9 does not change any active runtime or deploy a replacement. Original source commits
+remain on timeout-recovery; sanitized import mapping is in wave9 progress.
 
 ## Source migration map
 

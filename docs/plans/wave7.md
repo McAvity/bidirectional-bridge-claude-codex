@@ -6,6 +6,12 @@ Status: W TOKU. Fork i import narzędzi ukończone; izolacja, diagnostyka i setu
 Zlecenie: zapisać plan. Pierwszy etap wykonania: przygotować i opublikować fork
 bridge’a na GitHubie jako samowystarczalne repo projektu.
 
+Aktualizacja integracyjna wave9: poprawka timeout/recovery została dostarczona i według
+koordynatora przejrzana oraz wdrożona w osobnym przypiętym runtime. Zgłoszone recovery
+zachowało task/sesję; późniejsze DONE dostawy nie zamknęło REWORK kontraktu.
+To nie implementacja izolacji ani odbiór wave7. Dowody i ograniczenia:
+[wave9 progress](wave9-progress.md). Aktywny worktree wave7 nie jest tu modyfikowany.
+
 ## Cel
 
 Użytkownik instaluje sprawdzoną wersję w realnym projekcie, uruchamia zwykłe `codex`

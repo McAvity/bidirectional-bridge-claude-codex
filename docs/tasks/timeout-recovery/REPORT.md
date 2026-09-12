@@ -4,6 +4,13 @@ Branch `timeout-recovery` (worktree osobny od aktywnych sesji), baza `aeb92c2`.
 Plan: [PLAN.md](PLAN.md) · Kryteria: [ACCEPTANCE.md](ACCEPTANCE.md) ·
 Procedura wdrożenia: [DEPLOY-AND-RESUME.md](DEPLOY-AND-RESUME.md) · Postęp: [PROGRESS.md](PROGRESS.md).
 
+## Aktualność raportu
+
+Poniższe wyniki i brak wdrożenia dotyczą historycznego zadania źródłowego.
+Później koordynator zgłosił review, wdrożenie przypiętego `956b171` i recovery tej samej sesji.
+Stan integracji, dowody i mapowanie oczyszczonych commitów: [wave9 progress](../../plans/wave9-progress.md).
+Nie traktować dawnego „nie wykonano” jako obecnego statusu wave7.
+
 ## Przyczyna i zmiana zachowania
 
 Runda W7-ID-01 została przerwana przez bridge po `deadline_ms = 900000`. Orchestrator kończył
@@ -27,7 +34,9 @@ widoczne są tylko metadane.
 | --- | --- |
 | `9c18d52` | plan, kryteria odbioru, PROGRESS |
 | `569c48e` | recovery po timeout, budżety próby, dowody zakończenia, limit tur 256, testy |
-| kolejny | konfiguracja 75/90, instrukcje obu ról, dokumentacja, procedura, raport |
+| `4db266c` | konfiguracja 75/90, instrukcje obu ról, dokumentacja, procedura, raport |
+
+| `956b171` | poprawiona procedura po review |
 
 ## Wyniki walidacji (w worktree zadania)
 

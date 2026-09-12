@@ -1,6 +1,11 @@
 # Procedura: wdrożenie sprawdzonego runtime i wznowienie rundy wave7
 
-Gotowa do review. **Nie wykonano jej** w ramach tego zadania: nic nie wdrożono, nie
+Procedura referencyjna, nie polecenie ponownego recovery aktywnego wave7.
+Wszystkie `<task-id>`, identyfikatory pytań i oczekiwane numery prób należy ustalić
+z konkretnego autoryzowanego przypadku. Przykład wiadomości poniżej jest syntetyczny,
+nie jest zapisem odpowiedzi użytkownika. Aktualny stan: [wave9 progress](../../plans/wave9-progress.md).
+
+Historycznie **nie wykonano jej** w ramach zadania źródłowego: nic nie wdrożono, nie
 restartowano, nie zmieniono baz ani nie uruchomiono zachowanego taska. Wykonanie wymaga
 osobnej, jawnej zgody użytkownika.
 
@@ -32,7 +37,7 @@ Nie przebudowuj i nie podmieniaj runtime, który w danej chwili nadzoruje żyweg
 
 ```sh
 # <bridge-checkout> = katalog forka, <runtime-dir> = nowy katalog na przypięty build
-SHA=$(git -C <bridge-checkout> rev-parse timeout-recovery)
+SHA=<reviewed-integration-sha>
 git -C <bridge-checkout> worktree add <runtime-dir>-$SHA "$SHA"
 cd <runtime-dir>-$SHA && npm ci --ignore-scripts && npm run build && npm test
 ```
@@ -78,7 +83,7 @@ manager nadal działałby wg reguły „terminalny `FAILED` jest nieodzyskiwalny
 Zakres — dokładnie te ścieżki, nic więcej:
 
 ```sh
-git -C <wave7-worktree> checkout timeout-recovery -- \
+git -C <wave7-worktree> checkout <reviewed-integration-sha> -- \
   .agents/skills/feature-execute/SKILL.md \
   .agents/skills/feature-execute/references/bridge-loop.md \
   .codex/skills/using-bridge/SKILL.md \
@@ -97,10 +102,10 @@ Nie dostarczaj `docs/HANDOFF.md` (wave7 ma tam własne zapisy) ani niczego z
 `.codex/config.toml` należy do kroku 3: dostarcz go tylko w wariancie z plikiem konfiguracji,
 nie przy `codex -c`.
 
-Zachowanie istniejących zmian: na dziś branch `wave7` nie modyfikował żadnego z powyższych
-plików względem `feature-workflow` (zmieniał wyłącznie `docs/features/**`, `docs/plans/wave7.md`,
-`docs/tasks/wave7-identity-*` i `docs/HANDOFF.md`), więc dostarczenie ich niczego lokalnego nie
-nadpisuje. Sprawdź to ponownie przed wykonaniem:
+Zachowanie istniejących zmian: sprawdź osobno working tree, index i zmiany commitowane
+w docelowym worktree. Nie zakładaj, że historycznie rozłączne zmiany nadal są rozłączne.
+`git status --short` oraz `git diff` i `git diff --cached` dla listy ścieżek muszą być puste.
+Dodatkowo sprawdź zmiany commitowane przed wykonaniem:
 `git -C <wave7-worktree> diff --stat feature-workflow wave7 -- <lista ścieżek>` musi być puste;
 jeśli nie jest, zatrzymaj się i uzgodnij scalenie zamiast nadpisywać.
 
