@@ -1,5 +1,8 @@
 # Current handoff
 
+Next planned work: [wave12 — setup, updates and doctor](plans/wave12.md).
+Planning only; implementation has not started. Progress: [wave12](plans/wave12-progress.md).
+
 ## Current status — wave10 and wave11 accepted, 2026-09-13
 
 The user authorized acceptance, integration, joint validation and publication.
