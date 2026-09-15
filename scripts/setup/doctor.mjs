@@ -21,6 +21,7 @@ import {
   readPending,
   readRecord,
   readSelection,
+  redirectedComponent,
   renderCodexBlock,
   resolveIdentity,
 } from "./workspace.mjs";
@@ -360,7 +361,12 @@ export async function runDoctor({ home, workspace, codexProfile, handshake: doHa
   const paths = localPaths(root);
   const record = identity ? readRecord(root, identity) : { kind: "absent" };
   const pending = readPending(root);
-  if (!existsSync(paths.dir)) {
+  const redirectedLocal = redirectedComponent(root, `${LOCAL_DIR}/install.json`);
+  if (redirectedLocal?.target) {
+    add("setup", "error", "PATH_REDIRECTED", `${redirectedLocal.path} is a symlink to ${redirectedLocal.target}; setup state must be a real directory in the worktree`, {
+      nextStep: `remove the symlink and run init; setup never writes through symlinks`,
+    });
+  } else if (!existsSync(paths.dir)) {
     add("setup", "error", "SETUP_NOT_INITIALIZED", `this worktree has no ${LOCAL_DIR}/`, { nextStep: "run init --workspace <worktree> --yes" });
   } else if (record.kind === "foreign") {
     add("setup", "error", "SETUP_RECORD_FOREIGN", `${paths.record} belongs to ${record.value.workspace.root}`, {
@@ -550,7 +556,8 @@ export async function runDoctor({ home, workspace, codexProfile, handshake: doHa
     };
     if (!writable(existsSync(join(root, ".bridge")) ? join(root, ".bridge") : root)) denied.push(existsSync(join(root, ".bridge")) ? ".bridge/" : "worktree root");
     let lock = null;
-    if (existsSync(paths.dir)) {
+    // The probe writes only into a real .bridge-runtime directory, never through a symlink.
+    if (existsSync(paths.dir) && !redirectedComponent(root, `${LOCAL_DIR}/probe`)) {
       lock = lockProbe(paths.dir, env);
       if (!lock.ok && lock.error) denied.push(`${LOCAL_DIR}/ (${lock.error.code ?? lock.error.message})`);
     }

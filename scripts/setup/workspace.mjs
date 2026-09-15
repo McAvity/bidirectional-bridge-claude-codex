@@ -469,6 +469,60 @@ function planGitignore(plan, env) {
   });
 }
 
+/**
+ * The first existing component of `rel` below `root` that is a symlink, or a non-directory where
+ * a directory is needed. Setup never writes through a symlink: a linked directory can lead out of
+ * the worktree, for example to instructions shared with another worktree.
+ */
+export function redirectedComponent(root, rel, { finalMayBeSymlink = false } = {}) {
+  const parts = rel.split("/");
+  let current = root;
+  for (let index = 0; index < parts.length; index += 1) {
+    current = join(current, parts[index]);
+    let stat;
+    try {
+      stat = lstatSync(current);
+    } catch (error) {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    }
+    const last = index === parts.length - 1;
+    const path = parts.slice(0, index + 1).join("/");
+    if (stat.isSymbolicLink()) return last && finalMayBeSymlink ? null : { path, target: readlinkSync(current) };
+    if (!last && !stat.isDirectory()) return { path, target: null };
+  }
+  return null;
+}
+
+function redirectionRefusal(found) {
+  return found.target === null
+    ? ["LOCAL_SETUP_CONFLICT", `${found.path} exists and is not a directory`, "move it aside and run again"]
+    : [
+        "PATH_REDIRECTED",
+        `${found.path} is a symlink to ${found.target}; setup never writes through symlinks, which could change files outside this worktree`,
+        "replace the symlink with a real directory or file, or keep those files unmanaged, then run again",
+      ];
+}
+
+/** Every path init, update and rollback may write: instructions, configuration and local setup state. */
+function managedDestinations(identity, target) {
+  return [
+    ...target.manifest.instructions.files.map((file) => ({ rel: file.path })),
+    { rel: CODEX_CONFIG },
+    ...(identity.kind === "git" ? [{ rel: GITIGNORE }] : []),
+    ...["install.json", "pending.json", "backup"].map((name) => ({ rel: `${LOCAL_DIR}/${name}` })),
+    { rel: `${LOCAL_DIR}/current`, finalMayBeSymlink: true },
+  ];
+}
+
+/** Re-check a destination immediately before writing it, in case it changed after planning. */
+function guardDestination(root, rel, options) {
+  const found = redirectedComponent(root, rel, options);
+  if (!found) return;
+  const [code, message, nextStep] = redirectionRefusal(found);
+  throw new SetupError(code, `${message} (changed after planning; stopped before writing it)`, { nextStep });
+}
+
 const comparableRecord = (record) =>
   record ? JSON.stringify({ workspace: record.workspace, runtime: record.runtime, managed: record.managed }) : null;
 
@@ -496,6 +550,17 @@ export function planChange({ action, home, identity, target, keepLocal = false, 
     notes: [],
   };
   const refuse = (code, message, nextStep) => plan.refusals.push({ code, message, nextStep });
+
+  // Every destination is checked before anything is planned or written (review W12-R1).
+  const redirected = new Map();
+  for (const destination of managedDestinations(identity, target)) {
+    const found = redirectedComponent(root, destination.rel, destination);
+    if (found) redirected.set(found.path, found);
+  }
+  if (redirected.size > 0) {
+    for (const found of redirected.values()) refuse(...redirectionRefusal(found));
+    return finish(plan);
+  }
 
   if (existsSync(paths.dir) && !lstatSync(paths.dir).isDirectory()) {
     refuse("LOCAL_SETUP_CONFLICT", `${LOCAL_DIR} exists and is not a directory`, "move it aside and run again");
@@ -604,6 +669,7 @@ export function applyPlan(plan, { env = process.env } = {}) {
   if (!plan.ok) throw new Error("a plan with conflicts or refusals is never applied");
   if (!plan.changed) return { applied: false };
   const paths = localPaths(plan.root);
+  guardDestination(plan.root, `${LOCAL_DIR}/pending.json`);
   mkdirSync(paths.dir, { recursive: true, mode: 0o700 });
   const tag = newTag();
   const crashAfter = Number.parseInt(env[CRASH_HOOK] ?? "", 10);
@@ -612,7 +678,14 @@ export function applyPlan(plan, { env = process.env } = {}) {
     writes += 1;
     if (writes === crashAfter) process.kill(process.pid, "SIGKILL");
   };
-  const previous = plan.pending && !plan.pending.invalid ? plan.pending : null;
+  // A journal is only trusted for its own temp names and for paths this plan manages.
+  const previous = plan.pending && /^[0-9a-f]{12}$/u.test(String(plan.pending.tag)) ? plan.pending : null;
+  const managedPaths = new Set([
+    ...Object.keys(plan.nextRecord.managed.files),
+    ...Object.keys(plan.nextRecord.managed.kept_local),
+    CODEX_CONFIG,
+    GITIGNORE,
+  ]);
   const fileOps = plan.ops.filter((op) => op.kind === "file");
   writeAtomic(
     paths.pending,
@@ -628,7 +701,9 @@ export function applyPlan(plan, { env = process.env } = {}) {
   );
   for (const op of fileOps) {
     const absolute = join(plan.root, op.path);
+    guardDestination(plan.root, op.path);
     if (op.userFile) {
+      guardDestination(plan.root, `${LOCAL_DIR}/backup`);
       const backup = join(paths.backup, tag, op.path);
       mkdirSync(dirname(backup), { recursive: true });
       copyFileSync(absolute, backup);
@@ -637,16 +712,20 @@ export function applyPlan(plan, { env = process.env } = {}) {
     wrote();
   }
   for (const op of plan.ops.filter((entry) => entry.kind === "select")) {
+    guardDestination(plan.root, `${LOCAL_DIR}/current`, { finalMayBeSymlink: true });
     const link = join(paths.dir, `.current-${tag}`);
     rmSync(link, { force: true });
     symlinkSync(op.toPath, link);
     renameSync(link, paths.selection);
     wrote();
   }
+  guardDestination(plan.root, `${LOCAL_DIR}/install.json`);
   writeAtomic(paths.record, `${JSON.stringify(plan.nextRecord, null, 2)}\n`, { mode: 0o600, tag });
   wrote();
   if (previous) {
-    for (const path of previous.paths ?? []) rmSync(tempSibling(join(plan.root, path), previous.tag), { force: true });
+    for (const path of previous.paths ?? []) {
+      if (managedPaths.has(path)) rmSync(tempSibling(join(plan.root, path), previous.tag), { force: true });
+    }
     rmSync(tempSibling(paths.record, previous.tag), { force: true });
     rmSync(tempSibling(paths.pending, previous.tag), { force: true });
     rmSync(join(paths.dir, `.current-${previous.tag}`), { force: true });

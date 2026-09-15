@@ -4,6 +4,7 @@ import {
   appendFileSync,
   chmodSync,
   copyFileSync,
+  cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -462,6 +463,79 @@ describe("bridge setup CLI", () => {
     const copied = bridgeJson(["init", "--workspace", copy, "--runtime", runtimeA.id, "--yes"]);
     expect(copied.json.refusals.map((refusal: { code: string }) => refusal.code)).toEqual(["SETUP_RECORD_FOREIGN"]);
     expect(check(bridgeJson(["doctor", "--workspace", copy, "--no-handshake"], {}, join(runtimeA.path, "scripts", "bridge.mjs")).json, "setup").code).toBe("SETUP_RECORD_FOREIGN");
+  });
+
+  it("refuses init, update and rollback through symlinks and leaves external directories unchanged", () => {
+    // W12-R1: an ordinary directory symlink must not let init write into a shared directory.
+    const shared = join(tmp, "shared agents");
+    mkdirSync(join(shared, "skills", "shared-skill"), { recursive: true });
+    writeFileSync(join(shared, "skills", "shared-skill", "SKILL.md"), "shared with other worktrees\n");
+    const linked = makeProject("linked agents project");
+    rmSync(join(linked, ".agents"), { recursive: true });
+    symlinkSync(shared, join(linked, ".agents"));
+    const sharedBefore = snapshot(shared);
+    const linkedBefore = snapshot(linked);
+    const initRefused = bridgeJson(["init", "--workspace", linked, "--runtime", runtimeA.id, "--yes"]);
+    expect(initRefused.status).toBe(1);
+    expect(initRefused.json).toMatchObject({ ok: false, applied: false, changes: [] });
+    expect(initRefused.json.refusals).toEqual([expect.objectContaining({ code: "PATH_REDIRECTED" })]);
+    expect(initRefused.json.refusals[0].message).toContain(".agents is a symlink");
+    expect(snapshot(shared)).toEqual(sharedBefore);
+    expect(snapshot(linked)).toEqual(linkedBefore);
+    expect(existsSync(join(linked, ".bridge-runtime"))).toBe(false);
+
+    // Local setup state: a symlinked backup directory would receive copies of user files.
+    const backups = join(tmp, "outside backups");
+    mkdirSync(backups);
+    const backupProject = makeProject("linked backup project");
+    mkdirSync(join(backupProject, ".bridge-runtime"));
+    symlinkSync(backups, join(backupProject, ".bridge-runtime", "backup"));
+    const backupsBefore = snapshot(backups);
+    const backupRefused = bridgeJson(["init", "--workspace", backupProject, "--runtime", runtimeA.id, "--yes"]);
+    expect(backupRefused.json.refusals.map((refusal: { code: string }) => refusal.code)).toEqual(["PATH_REDIRECTED"]);
+    expect(snapshot(backups)).toEqual(backupsBefore);
+    expect(readFileSync(join(backupProject, ".codex/config.toml"), "utf8")).not.toContain("mcp_servers.bridge");
+
+    // update: an instruction directory shared through a symlink after init.
+    const updated = makeProject("linked update project");
+    init(updated);
+    const sharedPlan = join(tmp, "shared feature-plan");
+    cpSync(join(updated, ".agents/skills/feature-plan"), sharedPlan, { recursive: true });
+    rmSync(join(updated, ".agents/skills/feature-plan"), { recursive: true });
+    symlinkSync(sharedPlan, join(updated, ".agents/skills/feature-plan"));
+    const planBefore = snapshot(sharedPlan);
+    const updateRefused = bridgeJson(["update", "--workspace", updated, "--runtime", runtimeB.id, "--yes"]);
+    expect(updateRefused.status).toBe(1);
+    expect(updateRefused.json.refusals.map((refusal: { code: string }) => refusal.code)).toEqual(["PATH_REDIRECTED"]);
+    expect(snapshot(sharedPlan)).toEqual(planBefore);
+    expect(readlinkSync(join(updated, ".bridge-runtime/current"))).toBe(runtimeA.path);
+
+    // rollback: the setup record itself redirected outside the worktree.
+    const rolled = makeProject("linked rollback project");
+    init(rolled);
+    expect(bridgeJson(["update", "--workspace", rolled, "--runtime", runtimeB.id, "--yes"]).json.applied).toBe(true);
+    const records = join(tmp, "outside record");
+    mkdirSync(records);
+    copyFileSync(join(rolled, ".bridge-runtime/install.json"), join(records, "install.json"));
+    rmSync(join(rolled, ".bridge-runtime/install.json"));
+    symlinkSync(join(records, "install.json"), join(rolled, ".bridge-runtime/install.json"));
+    const recordsBefore = snapshot(records);
+    const rollbackRefused = bridgeJson(["rollback", "--workspace", rolled, "--yes"]);
+    expect(rollbackRefused.status).toBe(1);
+    expect(rollbackRefused.json.refusals.map((refusal: { code: string }) => refusal.code)).toEqual(["PATH_REDIRECTED"]);
+    expect(snapshot(records)).toEqual(recordsBefore);
+    expect(readlinkSync(join(rolled, ".bridge-runtime/current"))).toBe(runtimeB.path);
+
+    // doctor: a symlinked setup directory is reported and its lock probe does not run there.
+    const probes = join(tmp, "outside setup");
+    mkdirSync(probes);
+    const doctored = makeProject("linked setup project");
+    symlinkSync(probes, join(doctored, ".bridge-runtime"));
+    const probesBefore = snapshot(probes);
+    const report = bridgeJson(["doctor", "--workspace", doctored, "--no-handshake"]).json;
+    expect(check(report, "setup").code).toBe("PATH_REDIRECTED");
+    expect(check(report, "access").status).not.toBe("ok");
+    expect(snapshot(probes)).toEqual(probesBefore);
   });
 
   it("completes an interrupted apply on the next run without deleting user files", () => {

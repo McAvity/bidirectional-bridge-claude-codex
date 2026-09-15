@@ -139,6 +139,7 @@ result `incomplete`, never `ok`.
 | `SETUP_NOT_INITIALIZED` | Run `init`. |
 | `SETUP_INTERRUPTED` | Re-run the interrupted command with `--yes`. |
 | `SETUP_RECORD_FOREIGN`, `SETUP_RECORD_INVALID`, `SETUP_RECORD_MISMATCH`, `LOCAL_SETUP_CONFLICT` | The local setup record is copied, unreadable or inconsistent. |
+| `PATH_REDIRECTED` | A managed path is a symlink; setup never writes through it. |
 | `RUNTIME_SELECTION_BROKEN`, `RUNTIME_INCOMPLETE`, `RUNTIME_NOT_SELECTED` | The selected runtime is missing or its files do not match its manifest. |
 | `INSTRUCTIONS_MISSING`, `INSTRUCTIONS_OUTDATED`, `INSTRUCTIONS_MODIFIED` | Instruction files are absent, from another version, or changed locally. |
 | `CODEX_CONFIG_MISSING`, `CODEX_CONFIG_CONFLICT`, `CODEX_CONFIG_MODIFIED`, `CODEX_CONFIG_INVALID`, `CODEX_CONFIG_MISMATCH` | The managed block is absent, contradicted, edited, unparsable, or overridden. |
@@ -152,7 +153,7 @@ result `incomplete`, never `ok`.
 | `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN` | The worktree is in use, or that cannot be determined (no `/proc`, sandbox). |
 | `HANDSHAKE_FAILED`, `HANDSHAKE_IDENTITY_MISMATCH`, `HANDSHAKE_TOOLS_MISSING`, `HANDSHAKE_NOT_POSSIBLE`, `HANDSHAKE_SKIPPED` | The MCP server did not start as configured, or was not tried. |
 
-`init`, `update` and `rollback` refuse with `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN`,
+`init`, `update` and `rollback` refuse with `PATH_REDIRECTED`, `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN`,
 `STATE_SCHEMA_NEWER`, `STATE_UNREADABLE`, `RUNTIME_COMPATIBILITY_UNKNOWN`, `RUNTIME_INCOMPLETE`,
 `CODEX_VERSION_UNSUPPORTED`, `SETUP_ALREADY_INITIALIZED`, `SETUP_NOT_INITIALIZED`,
 `ROLLBACK_SAME_RUNTIME` or `ROLLBACK_NO_PREVIOUS`, and report file conflicts as
@@ -162,6 +163,11 @@ result `incomplete`, never `ok`.
 ## Limits
 
 - Linux only, local filesystems only, one active manager and feature per worktree.
+- Setup never writes through a symlink. When a managed directory or file — for example
+  `.agents` shared with other projects, or anything below `.bridge-runtime/` except its
+  `current` link — is a symlink, `init`, `update` and `rollback` refuse before writing,
+  even if the link points inside the worktree. Replace it with a real directory, or keep those
+  files unmanaged.
 - Active use is read from `/proc` for the current user. Processes of other users are not
   inspected, and inside a Codex sandbox the answer is unknown, so `update` refuses there.
 - Codex resolves the relative launcher path from its own working directory: start it in the
