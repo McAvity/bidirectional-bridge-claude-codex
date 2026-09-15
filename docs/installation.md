@@ -3,6 +3,10 @@
 This project is experimental and pre-1.0. Installation steps, configuration files, and
 launcher arguments may change between revisions; see [release-policy.md](release-policy.md).
 
+For a project or worktree that should run the manager on a pinned runtime, use
+[setup.md](setup.md): `scripts/bridge.mjs install`, `init`, `update`, `rollback` and `doctor`.
+This page covers building and testing a checkout and the manual configuration alternative.
+
 ## Requirements
 
 - Node.js **>= 22.13.0** (`node:sqlite` is used without an experimental CLI flag); the same
@@ -41,7 +45,9 @@ Use `npm run links:fix` only when that check reports a broken local workspace li
 
 ## Link the executable for external projects
 
-After the deterministic install and build, expose the local launcher through npm:
+This manual alternative makes every project follow one linked checkout; it has no per-worktree
+runtime selection, update or rollback. After the deterministic install and build, expose the
+local launcher through npm:
 
 ```bash
 cd <bridge-repository>
@@ -98,9 +104,10 @@ The repository contains two portable, credential-free configuration files:
 - `.mcp.json` for Claude Code, bound to `caller=claude`;
 - `.codex/config.toml` for Codex, bound to `caller=codex`.
 
-Both launch `scripts/native-bridge-mcp.mjs` over stdio with delegation enabled. They use
-repository-relative paths and do not install a global MCP server. External projects instead
-use the locally linked `claude-codex-bridge` command described above.
+Both launch `.bridge-runtime/current/scripts/native-bridge-mcp.mjs` over stdio with delegation
+enabled: the runtime that `node scripts/bridge.mjs init` selected for this worktree, never the
+build being edited. They use worktree-relative paths and do not install a global MCP server.
+The Codex file is exactly the block `init` writes into other projects ([setup.md](setup.md)).
 
 The repository also carries the same `using-bridge` skill in the native project locations:
 

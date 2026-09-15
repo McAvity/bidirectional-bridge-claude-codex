@@ -57,16 +57,20 @@ the failure was in the npm wrapper, not in the repository.
 
 ### `bridge` does not appear in `claude mcp list` or `codex mcp list`
 
-1. Run the command from the intended **managed project root**. The Bridge checkout's configs
-   use its source launcher; external-project configs use the linked `claude-codex-bridge`
-   command. Neither registers a global MCP server with the clients.
-2. Confirm the project configuration exists and is unmodified: `.mcp.json` for Claude Code,
-   `.codex/config.toml` for Codex. For an external project, also run
+1. Run `node scripts/bridge.mjs doctor --workspace <worktree>` ([setup](setup.md)); it names
+   the missing piece with a stable code and a next step, without starting a model.
+2. Run the command from the intended **managed worktree root**. Configurations written by
+   `init`, and this repository's own, start `.bridge-runtime/current/scripts/native-bridge-mcp.mjs`,
+   the runtime selected for that worktree; run `init` in a worktree that has none. A manually
+   linked external project uses the `claude-codex-bridge` command. Neither registers a global
+   MCP server with the clients.
+3. Confirm the project configuration exists and is unmodified: `.mcp.json` for Claude Code,
+   `.codex/config.toml` for Codex. For a manually linked project, also run
    `claude-codex-bridge --help` to confirm npm's linked binary directory is on `PATH`.
-3. Codex loads `.codex/config.toml` only after the project is trusted. Claude Code prompts for
-   approval of a project-scoped MCP server; inside the client, `/mcp` shows current
-   connections and lets you approve `bridge`.
-4. Do not hand-edit client trust state to work around a missing prompt.
+4. Codex loads `.codex/config.toml` only after the project is trusted; a `-c` trust override
+   does not change that. Claude Code prompts for approval of a project-scoped MCP server;
+   inside the client, `/mcp` shows current connections and lets you approve `bridge`.
+5. Do not hand-edit client trust state to work around a missing prompt.
 
 If a linked command starts but imports fail, rebuild the Bridge checkout with `npm run build`
 and confirm the checkout still exists at the location registered by `npm link`. The external

@@ -10,16 +10,15 @@ npm test
 python3 -m unittest discover -s tests -v
 ```
 
-For another project, copy `.agents/skills/` and `docs/features/README.md`, preserving
-existing local modifications. These are plain source files; no historical ZIP or patch
-is needed. Copy the paired `using-bridge` skill directories when applicable.
-Configure the project's MCP server to run `node` with an absolute path to this
-checkout's `scripts/native-bridge-mcp.mjs`, followed by `--caller codex --delegation allow
---workspace <absolute-project-root>`. Set the client tool timeout above the longest round
-deadline plus a margin — this repository uses `tool_timeout_sec = 5400` for rounds up to
-`deadline_ms = 4500000` — and remember that the client timeout never stops a running round. Keep the build used by active workers stable while developing
-changes in another worktree. Authenticate the local Codex and Claude installations
-normally; no credentials belong in this repository.
+For another project, a new worktree, or a worktree of this repository, follow
+[setup.md](setup.md): install a pinned runtime of one commit, run `init` for the worktree and
+start plain `codex` there. `init` installs `.agents/skills/`, `docs/features/README.md`, both
+`using-bridge` skills and a managed MCP block, preserving existing local modifications; no
+historical ZIP or patch is needed. The managed block keeps `tool_timeout_sec = 5400` for
+rounds up to `deadline_ms = 4500000`; the client timeout never stops a running round. Keep the
+runtime used by active workers pinned while developing changes in another worktree.
+Authenticate the local Codex and Claude installations normally; no credentials belong in this
+repository.
 
 Read [the manager loop](../.agents/skills/feature-execute/references/bridge-loop.md)
 and [feature session API](feature-workflow.md) before starting. Runtime databases,
@@ -35,6 +34,6 @@ Private pilot transcripts and machine-specific fixtures are intentionally not in
 The reviewed correction-pilot tools are in `tools/pilot/`; the real-model correction run remains pending. See `docs/HANDOFF.md` for current status.
 
 No orphan-process supervisor, automatic wake-up of a closed manager or `/goal` is added.
-Simple setup, diagnostics exports and verified parallel feature isolation are planned
-next. Existing upstream certification manifests are historical and do not certify this
+Setup, updates and the doctor are described in [setup.md](setup.md); diagnostic exports are
+planned next. Existing upstream certification manifests are historical and do not certify this
 fork. CI does not launch paid agents or require provider credentials.

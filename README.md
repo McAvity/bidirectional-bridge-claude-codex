@@ -171,21 +171,29 @@ More detail: [docs/installation.md](docs/installation.md).
 
 1. Clone the repository and `cd` into it.
 2. Run `npm ci && npm run build && npm test`.
-3. Verify MCP discovery from the repository root:
+3. Install a pinned runtime of this commit and select it for this worktree (Linux; see
+   [docs/setup.md](docs/setup.md)):
+   ```bash
+   node scripts/bridge.mjs install
+   node scripts/bridge.mjs init --workspace . --yes
+   node scripts/bridge.mjs doctor --workspace .
+   ```
+4. Verify MCP discovery from the repository root:
    ```bash
    claude mcp list     # expect a "bridge" server, caller=claude
    codex mcp list      # expect a "bridge" server, caller=codex
    ```
-   On Windows without a global Codex on `PATH`, use `.\node_modules\.bin\codex.cmd mcp list`.
-4. Launch either client from the repository root and approve the project-scoped MCP server
+5. Launch either client from the repository root and approve the project-scoped MCP server
    when prompted. Inside Claude Code, `/mcp` shows the active connections.
-5. Ask the client to use the `using-bridge` skill for one bounded delegation, then read the
+6. Ask the client to use the `using-bridge` skill for one bounded delegation, then read the
    two worked examples in [Bounded delegation](#bounded-delegation).
 
 ## Project-scoped MCP configuration
 
-Both configuration files are committed, repository-relative, and contain no credentials.
-Neither creates a global MCP registration.
+Both configuration files are committed, worktree-relative, and contain no credentials.
+Neither creates a global MCP registration. Both start the runtime selected for this worktree in
+`.bridge-runtime/current` by `node scripts/bridge.mjs init` ([setup](docs/setup.md)), so a manager
+never runs the build that the same worktree is changing.
 
 **Claude Code — `.mcp.json`:**
 
@@ -196,24 +204,26 @@ Neither creates a global MCP registration.
       "type": "stdio",
       "command": "node",
       "args": [
-        "${CLAUDE_PROJECT_DIR:-.}/scripts/native-bridge-mcp.mjs",
+        "${CLAUDE_PROJECT_DIR:-.}/.bridge-runtime/current/scripts/native-bridge-mcp.mjs",
         "--caller", "claude",
         "--delegation", "allow",
         "--workspace", "${CLAUDE_PROJECT_DIR:-.}"
       ],
+      "timeout": 5400000,
       "env": {}
     }
   }
 }
 ```
 
-**Codex — `.codex/config.toml`:**
+**Codex — `.codex/config.toml`** (the managed block `init` writes; comments omitted):
 
 ```toml
 [mcp_servers.bridge]
 command = "node"
-args = ["scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
+args = [".bridge-runtime/current/scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
 cwd = "."
+required = true
 startup_timeout_sec = 30
 tool_timeout_sec = 5400
 ```
@@ -231,8 +241,14 @@ Review both files before granting project trust, and never hand-edit client trus
 
 ## Use from an external repository
 
-The Bridge installation and the managed project are separate. Build and locally link the
-Bridge checkout once:
+The recommended path is [docs/setup.md](docs/setup.md): install a pinned runtime, run `init`
+in the external worktree, and start plain `codex` there. Each worktree selects its own runtime,
+and `update` or `rollback` of one worktree never switches another. `doctor` explains what is
+missing without running a model.
+
+The manual alternative below makes every project follow one linked checkout. The Bridge
+installation and the managed project are separate. Build and locally link the Bridge checkout
+once:
 
 ```bash
 cd <bridge-repository>
@@ -431,6 +447,8 @@ because this release publishes source on GitHub, not packages to the npm registr
 
 - [Architecture](docs/architecture.md) — packages, data flow, invariants
 - [Installation](docs/installation.md) — requirements, deterministic setup, project MCP config
+- [Setup](docs/setup.md) — pinned runtimes, worktree init, update, rollback, doctor
+  ([layout](docs/setup-layout.md))
 - [Usage](docs/usage.md) — manager workflow, worked examples, writing tasks
 - [Telemetry](docs/telemetry.md) — recorded fields, sources, privacy boundary
 - [Recovery](docs/recovery.md) — persisted handles, strict same-task resume

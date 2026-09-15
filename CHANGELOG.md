@@ -11,6 +11,25 @@ explicitly.
 
 ## Unreleased
 
+### Added
+
+- Add `scripts/bridge.mjs` with `install`, `runtimes`, `init`, `update`, `rollback` and
+  `doctor`: read-only runtimes pinned to one commit, per-worktree runtime selection, a managed
+  Codex MCP block, instructions and ignores, completion of an interrupted apply, refusal while a
+  worktree is in use or its database schema is newer, and a model-free doctor with a versioned
+  JSON report and a real MCP handshake.
+
+### Changed
+
+- **Breaking for bridge checkouts:** the repository's `.codex/config.toml` and `.mcp.json` start
+  the runtime selected in `.bridge-runtime/current`; run `node scripts/bridge.mjs init` in each
+  bridge worktree before starting a client there.
+
+### Documentation
+
+- Add [docs/setup.md](docs/setup.md) and the layout shared with diagnostics,
+  [docs/setup-layout.md](docs/setup-layout.md).
+
 ## 0.2.0 — 2026-08-13
 
 ### Added
