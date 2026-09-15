@@ -93,3 +93,33 @@ odrębną od odbioru użytkownika. AC-08 pozostaje częściowe do sprawdzenia pr
 Bez modeli, merge, push i wdrożenia.
 
 Następny krok: ukierunkowane review `1f8ceb0..wave12` (W12-R1, regresja, korekta raportu).
+
+## 2026-09-15 — smoke AC-08 z modelami: pin, konfiguracja, kryteria
+
+Zgoda użytkownika z 21:52: jedna Astra w bieżącym profilu, jedna runda Claude'a (deadline do
+30 min, `max_turns` 32), przebieg z modelami do 45 min, wpis zaufania tylko dla projektu smoke.
+
+- Pin: runtime `0.2.0-e08724567c80` = commit `e087245` (poprawka W12-R1 `cb6cf1a` i zamknięcie
+  review), `tree_sha256` `3e015a1b…`, instalacja w osobnym `--home` pod
+  `~/tmp/wave12-smoke-20260915/home`, nie w domyślnym katalogu użytkownika.
+- Projekt: nowe repo `~/tmp/wave12-smoke-20260915/project` (AGENTS.md, CLAUDE.md, README),
+  `init --yes` z tego runtime, pliki setupu zatwierdzone w projekcie osobnym commitem.
+- Konfiguracja bez zmian względem `init`: blok `mcp_servers.bridge` (`required`, start 30 s,
+  `tool_timeout_sec` 5400 — powyżej deadline rundy); worker z runtime: `acceptEdits`,
+  narzędzia Read/Edit/Write/Bash.
+- Start: interaktywny zsh w PTY (tmux na osobnym gnieździe), `cd project && codex`; funkcja
+  powłoki użytkownika dodaje wyłącznie `--profile profile-ubuntu`, bez `-c`. Środowisko TUI bez
+  zmiennych `CLAUDE*`/`HERDR*` sesji operatora, żeby worker i hook Herdr nie dziedziczyły jej
+  tożsamości.
+- PASS AC-08: TUI pokazuje `bridge` bez flag MCP, launcher z `.bridge-runtime/current`;
+  `bridge_server_info` `codex`/`allow`; jeden feature i jedna runda `DONE` z commitem
+  wykonawcy (`add` i testy) oraz zweryfikowaną paczką; review Astry na rzeczywistym kodzie,
+  testach i paczce; ewentualne `bridge_feature_accept` oznaczone jako syntetyczne; normalne
+  zamknięcie, doctor bez błędów i bez `ACTIVE_SESSION`; runtime bez zmian; konfiguracja Codexa
+  różni się tylko wpisem zaufania projektu smoke.
+- Stop bez naprawy: brak MCP, `MANAGER_*`, runda `FAILED`/`BLOCKED`, koniec budżetu — zebrać
+  dowody. Bez dodatkowych rund, ponowień i recovery.
+- Dowody lokalnie poza Git: `~/tmp/wave12-smoke-20260915/{evidence,logs}`.
+
+Punkt wznowienia przy przerwaniu: nie uruchamiać nowej rundy; odczytać stan featura z istniejącej
+sesji albo doctorem, sprawdzić logi i procesy w katalogu przebiegu.
