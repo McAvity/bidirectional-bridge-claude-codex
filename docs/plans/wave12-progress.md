@@ -58,3 +58,11 @@ brak `IdentityRuntime.detach`) — osobne zadanie.
 
 Następny krok: review i odbiór wave12; decyzja o smoke z budżetem z raportu; po merge
 `node scripts/bridge.mjs init` w każdym worktree bridge przed startem klienta.
+
+
+## Coordinator review — 2026-09-15
+
+Delivery 0741ae9: REWORK for W12-R1 (external directory symlink write).
+See [wave12-review.md](wave12-review.md). Detach diagnosis requires factual correction;
+AC-08 remains partial. Next: targeted correction and regression, then focused review.
+No changes to implementation or executor worktree in this review.
