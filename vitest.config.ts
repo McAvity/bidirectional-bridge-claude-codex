@@ -25,7 +25,7 @@ export default defineConfig({
   },
   test: {
     // Each agent owns its own test tree; a single `npm test` at the root covers both sides.
-    include: ["shared/**/*.test.ts", "claude/**/*.test.ts", "codex/**/*.test.ts"],
+    include: ["shared/**/*.test.ts", "claude/**/*.test.ts", "codex/**/*.test.ts", "scripts/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
     environment: "node",
     // Deterministic: no parallel SQLite contention across files.
