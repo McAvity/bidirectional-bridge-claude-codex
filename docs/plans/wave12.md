@@ -1,6 +1,7 @@
 # Wave12 — instalacja, aktualizacje i doctor
 
-Status: WYKONANE LOKALNIE na branchu `wave12`, oczekuje review i odbioru. Plan: 2026-09-14.
+Status: WYKONANE LOKALNIE na branchu `wave12`; review W12-R1 zamknięte, smoke AC-08 PASS;
+oczekuje odbioru. Plan: 2026-09-14.
 Baza planowania: feature-workflow `1eae147`; wave10 i wave11 przyjęte oraz opublikowane.
 Postęp: [wave12-progress.md](wave12-progress.md). Raport: [wave12-report.md](wave12-report.md).
 

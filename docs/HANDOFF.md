@@ -1,26 +1,36 @@
 # Current handoff
 
-Next planned work: focused review of the W12-R1 correction, then acceptance of
-[wave12 — setup, updates and doctor](plans/wave12.md). Implemented locally on branch `wave12`; not
-merged or published. Report: [wave12](plans/wave12-report.md), review: [wave12](plans/wave12-review.md),
-progress: [wave12](plans/wave12-progress.md).
+Next planned work: user acceptance of [wave12 — setup, updates and doctor](plans/wave12.md) and
+the merge decision. Implemented locally on branch `wave12`; not merged or published. Report:
+[wave12](plans/wave12-report.md), review: [wave12](plans/wave12-review.md), progress:
+[wave12](plans/wave12-progress.md).
 
 ## Wave12 — setup, updates and doctor implemented locally, 2026-09-15
 
 `scripts/bridge.mjs` installs a read-only runtime per commit, sets up one worktree (managed Codex
 MCP block, instructions, ignores, `.bridge-runtime/current`), updates or rolls back only that
 worktree, and runs a model-free doctor with a real MCP handshake. Coordinator REWORK W12-R1
-(init wrote through a directory symlink) is fixed in `cb6cf1a`: managed paths that are symlinks
-are refused before any write. Validation after the fix: build, 434 JS,
-29 exchange and 140 pilot tests, documentation links; a fresh clone at `7bceb04` installed,
-initialized and started the bridge through a real Codex 0.154 app-server without a model turn.
-AC-08 literal TUI start and real delegation wait for the prepared smoke, which needs approval.
+(init wrote through a directory symlink) is fixed in `cb6cf1a` and closed by the focused review
+in `e087245`: managed paths that are symlinks are refused before any write. Validation after the
+fix: build, 434 JS, 29 exchange and 140 pilot tests, documentation links.
+
+Authorized AC-08 smoke, 2026-09-15: PASS. Runtime `e087245` was installed in a separate home and
+initialized in a new disposable project. After the trust prompt, plain `codex` TUI (the user's
+shell function adds only `--profile`) loaded the bridge from `.bridge-runtime/current`; `/mcp`
+listed 35 tools. Astra ran one Claude round through the bridge (DONE, 88 s, 14 turns) and reviewed
+the real code, tests and package (PASS). She recorded a synthetic acceptance, which is not user
+acceptance. `/quit` detached the instance and doctor reported `ok` 20/20. The runtime is unchanged;
+the only Codex config change is the smoke project's trust entry. Limits: one host and a trivial
+feature; the operator drove the TUI through a PTY; this host blocks the Codex sandbox (AppArmor
+user namespaces), so Astra's commands went through automatic escalation review. Evidence stays
+local in `~/tmp/wave12-smoke-20260915/` until acceptance.
 
 After merge the repository configs start `.bridge-runtime/current`: run
 `node scripts/bridge.mjs init` in each bridge worktree before a client starts there, and do not
 switch the active main-checkout session mid-work. Observed, cause unconfirmed: a launcher closed by
 stdin EOF leaves its instance active and the same thread is fenced on restart, while a SIGTERM close
-detaches; `detach()` exists. No runtime change without a confirmed cause and a real-client check.
+detaches; `detach()` exists. In the smoke, a real Codex `/quit` detached the instance normally; a
+restart was not tried. No runtime change without a confirmed cause.
 
 ## Current status — wave10 and wave11 accepted, 2026-09-13
 

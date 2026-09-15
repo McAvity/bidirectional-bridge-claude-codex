@@ -123,3 +123,32 @@ Zgoda użytkownika z 21:52: jedna Astra w bieżącym profilu, jedna runda Claude
 
 Punkt wznowienia przy przerwaniu: nie uruchamiać nowej rundy; odczytać stan featura z istniejącej
 sesji albo doctorem, sprawdzić logi i procesy w katalogu przebiegu.
+
+## 2026-09-15 — smoke AC-08 wykonany: PASS
+
+Runtime `0.2.0-e08724567c80` (`e087245`), projekt i konfiguracja jak w checkpoincie powyżej.
+Szczegóły i ograniczenia: [raport, sekcja smoke](wave12-report.md#smoke-ac-08-z-modelami--wykonany-2026-09-15).
+
+- Bez modeli: `init` 30 zmian, ponowny 0; `codex debug prompt-input` widzi AGENTS.md,
+  `using-bridge` i skille `feature-*`; doctor przed zaufaniem tylko `CODEX_PROJECT_UNTRUSTED`.
+- S1: zwykłe `codex` (funkcja użytkownika, `--profile profile-ubuntu`, bez `-c`) w PTY; prompt
+  zaufania zaakceptowany, dopisany wyłącznie wpis projektu smoke w profilu; launcher
+  z `.bridge-runtime/current`, `/mcp` `bridge: connected (35 tools)`.
+- S2: jedno zlecenie dla Astry, bez ponowienia. Epoka 1 związana przy pierwszym wywołaniu
+  mutującym; jedna runda Claude'a `DONE` (88,4 s, 14 tur, `max_turns` 32), commity `3c89e0d` i
+  `8a7c64d`, paczka zweryfikowana; review Astry PASS; `decisions/02.md` oznacza akceptację jako
+  syntetyczną; feature `accepted`, root `DONE`. Kontrola operatora tylko do odczytu zgodna.
+- S3: `/quit` → instancja `detached`, bez pozostałych procesów; doctor `ok` 20/20,
+  `active_instance: false`; runtime bez zmian; `~/.codex/config.toml` bez zmian.
+- Czas z modelami około 6 min 41 s; bez recovery, ponowień i dodatkowych rund; bez `MANAGER_*`.
+- Ograniczenia: sandbox Codexa niedostępny na hoście (AppArmor), polecenia Astry przez
+  automatyczne review eskalacji (21 × `allow`); PTY prowadzony przez operatora; jeden trywialny
+  feature; akceptacja syntetyczna nie jest odbiorem wave12.
+- Znalezisko 1: prawdziwe `/quit` odłączyło instancję; objaw syntetycznego EOF nie wystąpił,
+  restartu nie próbowano, przyczyna tamtej obserwacji nadal niepotwierdzona.
+
+Dowody pozostają lokalnie w `~/tmp/wave12-smoke-20260915/`, w rolloutach Codexa i w przestrzeni
+wymiany `ws_db4c662348c78b0b`; wpis zaufania zostaje do odbioru.
+
+Następny krok: odbiór wave12 przez użytkownika i decyzja o merge; po odbiorze sprzątanie dowodów
+smoke i wpisu zaufania.
