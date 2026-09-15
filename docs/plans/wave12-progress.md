@@ -35,3 +35,26 @@ tego worktree, otwarte pliki `.bridge/`, klient z cwd = worktree). Wspólny ukł
 [setup-layout.md](../setup-layout.md).
 
 Następny krok: implementacja CLI i testów bez modeli.
+
+## 2026-09-15 — implementacja i walidacja
+
+Commity: `e1126a2` (CLI `scripts/bridge.mjs` + testy), `85eb47f` (konfiguracje repo na
+`.bridge-runtime/current`), `7bceb04` (dokumentacja). Raport z pokryciem AC:
+[wave12-report.md](wave12-report.md).
+
+Wyniki bez modeli: build OK; `npm test` 433 OK (8 nowych testów setup); `tests` 29 OK;
+`tools/pilot/tests` 140 OK; linki dokumentacji OK. Świeży klon przy `7bceb04`: install,
+init klonu bridge (tylko wybór runtime), init dwóch worktree projektu, doctor z prawdziwym
+Codex 0.154 `ok`, `codex app-server thread/start` uruchamia bridge z bloku projektu.
+
+Poprawki w trakcie: odmowa `RUNTIME_INCOMPLETE` zamiast wyjątku dla niekompletnego runtime;
+doctor rozpoznaje zaufanie z plików Codexa (override `-c` nie działa w 0.154) i rozwiązuje
+worktree dowolnym kompletnym runtime, gdy nie ma wyboru.
+
+Ograniczenia: literalny start TUI i rzeczywista delegacja niezweryfikowane (smoke do zgody);
+`certification-manifest.mjs` nie przechodzi już na bazie. Znalezisko zastane: po normalnym
+zamknięciu launchera instancja nie jest odłączana (`MANAGER_INSTANCE_FENCED` po restarcie;
+brak `IdentityRuntime.detach`) — osobne zadanie.
+
+Następny krok: review i odbiór wave12; decyzja o smoke z budżetem z raportu; po merge
+`node scripts/bridge.mjs init` w każdym worktree bridge przed startem klienta.

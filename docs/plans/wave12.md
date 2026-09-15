@@ -1,8 +1,8 @@
 # Wave12 — instalacja, aktualizacje i doctor
 
-Status: ZAPLANOWANE, implementacja niezlecona. Data: 2026-09-14.
+Status: WYKONANE LOKALNIE na branchu `wave12`, oczekuje review i odbioru. Plan: 2026-09-14.
 Baza planowania: feature-workflow `1eae147`; wave10 i wave11 przyjęte oraz opublikowane.
-Postęp: [wave12-progress.md](wave12-progress.md).
+Postęp: [wave12-progress.md](wave12-progress.md). Raport: [wave12-report.md](wave12-report.md).
 
 ## Cel i granice
 

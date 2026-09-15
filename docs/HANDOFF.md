@@ -1,7 +1,22 @@
 # Current handoff
 
-Next planned work: [wave12 — setup, updates and doctor](plans/wave12.md).
-Planning only; implementation has not started. Progress: [wave12](plans/wave12-progress.md).
+Next planned work: review and acceptance of [wave12 — setup, updates and doctor](plans/wave12.md).
+Implemented locally on branch `wave12`; not merged or published. Report: [wave12](plans/wave12-report.md),
+progress: [wave12](plans/wave12-progress.md).
+
+## Wave12 — setup, updates and doctor implemented locally, 2026-09-15
+
+`scripts/bridge.mjs` installs a read-only runtime per commit, sets up one worktree (managed Codex
+MCP block, instructions, ignores, `.bridge-runtime/current`), updates or rolls back only that
+worktree, and runs a model-free doctor with a real MCP handshake. Validation: build, 433 JS,
+29 exchange and 140 pilot tests, documentation links; a fresh clone at `7bceb04` installed,
+initialized and started the bridge through a real Codex 0.154 app-server without a model turn.
+AC-08 literal TUI start and real delegation wait for the prepared smoke, which needs approval.
+
+After merge the repository configs start `.bridge-runtime/current`: run
+`node scripts/bridge.mjs init` in each bridge worktree before a client starts there, and do not
+switch the active main-checkout session mid-work. Pre-existing finding: a clean launcher close
+does not detach the instance, so the same thread is fenced after restart; separate task.
 
 ## Current status — wave10 and wave11 accepted, 2026-09-13
 
