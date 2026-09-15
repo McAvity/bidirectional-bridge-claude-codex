@@ -1,6 +1,7 @@
 # Wave12 — raport wykonania
 
-Status: WYKONANE LOKALNIE, oczekuje review i odbioru. Data: 2026-09-15.
+Status: WYKONANE LOKALNIE; REWORK W12-R1 z [review koordynatora](wave12-review.md) poprawiony
+w `cb6cf1a`, oczekuje ukierunkowanego review. Data: 2026-09-15.
 Branch `wave12` (worktree Herdr), baza `95f9ea1`. Plan: [wave12.md](wave12.md),
 postęp: [wave12-progress.md](wave12-progress.md). Bez push, merge, publikacji pakietu,
 wdrożenia do rzeczywistych projektów i bez wywołań modeli.
@@ -13,6 +14,7 @@ wdrożenia do rzeczywistych projektów i bez wywołań modeli.
 | `e1126a2` | `scripts/bridge.mjs` i `scripts/setup/`: `install`, `runtimes`, `init`, `update`, `rollback`, `doctor`; 8 testów bez modeli |
 | `85eb47f` | `.codex/config.toml` repo = blok zarządzany, `.mcp.json` → `.bridge-runtime/current`, `.gitignore` |
 | `7bceb04` | Instrukcja użytkownika [setup.md](../setup.md), README, installation, fork-setup, troubleshooting, CHANGELOG |
+| `cb6cf1a` | W12-R1: odmowa `PATH_REDIRECTED` przed zapisem przez symlink w zarządzanej ścieżce; regresja z prawdziwymi symlinkami |
 
 Dystrybucja: `git archive` wskazanego commita z lokalnego klonu, `npm ci --ignore-scripts`
 i `npm run build` w nowym katalogu `<home>/runtimes/<wersja>-<12 hex commita>`, potem tylko do
@@ -23,8 +25,8 @@ nie zawiera ścieżek użytkownika.
 
 ## Walidacja bez modeli
 
-- `npm ci --ignore-scripts`, `npm run build` — OK; `npm test` — 32 pliki, 433 testy OK
-  (w tym 8 testów setup, ~20 s); `python3 -m unittest discover -s tests` — 29 OK;
+- `npm ci --ignore-scripts`, `npm run build` — OK; `npm test` — 32 pliki, 434 testy OK
+  po `cb6cf1a` (w tym 9 testów setup, ~20 s); `python3 -m unittest discover -s tests` — 29 OK;
   `python3 -m unittest discover -s tools/pilot/tests` — 140 OK; kontrola linków dokumentacji OK.
   Lokalnie Node 24.15.0, Python 3.12.3, Codex 0.154.0, Claude Code 2.1.272.
 - Świeży klon brancha `wave12` przy `7bceb04`, poza repo: `install` 3,7 s; `init` samego klonu
@@ -39,6 +41,9 @@ nie zawiera ścieżek użytkownika.
   z nadpisaniem workera `mcp_servers.bridge.enabled=false` działa mimo `required = true`.
 - Aktywne runtime innych sesji (wave7 na osobnym przypiętym runtime, sesja w głównym checkout)
   tylko odczytane w `/proc`; nie przebudowano ani nie przełączono żadnego z nich.
+- W12-R1, scenariusz koordynatora z tym samym zainstalowanym runtime (projekt z `.agents` jako
+  symlinkiem do zewnętrznego katalogu): `0741ae9` — `init` zastosowany, 14 plików w katalogu
+  zewnętrznym; `cb6cf1a` — odmowa `PATH_REDIRECTED`, 0 plików, projekt bez `.bridge-runtime/`.
 - `node scripts/certification-manifest.mjs` — FAIL, identycznie na bazowym `e8dc4cc`
   (historyczny manifest upstream nie obejmuje plików forka). Nie należy do walidacji z AGENTS;
   bez zmian w tej fali.
@@ -49,8 +54,8 @@ nie zawiera ścieżek użytkownika.
 | --- | --- | --- | --- |
 | AC-01 | PASS | Test: repo syntetyczne z bieżących plików → `git clone --no-local` → dwie instalacje z manifestem; ręcznie: klon `wave12`@`7bceb04` → `install` → start MCP. | `npm ci` wymaga rejestru npm lub cache. Źródłem jest lokalny klon; dla URL najpierw `git clone`. |
 | AC-02 | PASS | Test „existing project”: plan bez `--yes` nic nie zapisuje, `--yes` dodaje skille obu ról, blok MCP, `.gitignore` i wybór; drugi `init` bez zmian (migawka z inode i mtime); doctor z handshake OK. Codex wykrywa `.agents/skills` i `.codex/skills`, Claude `.claude/skills`. | Walidacja TOML przez `python3` ≥ 3.11; bez niego tylko notatka. |
-| AC-03 | PASS | Test „conflicts”: `INSTRUCTION_MODIFIED` bez zapisu, `--keep-local`, obca definicja i tabela inline → `CODEX_CONFIG_CONFLICT` bez zapisu, skopiowany rekord → `SETUP_RECORD_FOREIGN`. Test „interrupted”: SIGKILL po 3 zapisach → `pending.json`, doctor `SETUP_INTERRUPTED`, ponowny `init` kończy zmianę, bez plików tymczasowych i kopii, pliki użytkownika zachowane. | Skan TOML jest konserwatywny: np. wieloliniowy string może dać fałszywy konflikt (nigdy cichy zapis). |
-| AC-04 | PASS | Test „two external worktrees”: ścieżki ze spacjami poza repo, stan związany w obu; `update` A nie zmienia migawki B (pliki, wybór, `.bridge`); różne przestrzenie wymiany; doctor na obu bez błędów i bez zmiany stanu. Ręcznie: dwa worktree świeżego klonu. | Nowy worktree wymaga jednego `init`. |
+| AC-03 | PASS | Test „conflicts”: `INSTRUCTION_MODIFIED` bez zapisu, `--keep-local`, obca definicja i tabela inline → `CODEX_CONFIG_CONFLICT` bez zapisu, skopiowany rekord → `SETUP_RECORD_FOREIGN`. Test „interrupted”: SIGKILL po 3 zapisach → `pending.json`, doctor `SETUP_INTERRUPTED`, ponowny `init` kończy zmianę, bez plików tymczasowych i kopii, pliki użytkownika zachowane. Test „symlinks” (od `cb6cf1a`, po W12-R1): symlink `.agents` i `.bridge-runtime/backup` przy `init`, katalogu skilla przy `update`, `install.json` przy `rollback` → `PATH_REDIRECTED`; katalogi zewnętrzne bez zmian. | Skan TOML jest konserwatywny: np. wieloliniowy string może dać fałszywy konflikt (nigdy cichy zapis). Symlink w zarządzanej ścieżce jest odrzucany także wtedy, gdy wskazuje wnętrze worktree. |
+| AC-04 | PASS | Test „two external worktrees”: ścieżki ze spacjami poza repo, stan związany w obu; `update` A nie zmienia migawki B (pliki, wybór, `.bridge`); różne przestrzenie wymiany; doctor na obu bez błędów i bez zmiany stanu. Ręcznie: dwa worktree świeżego klonu. Od `cb6cf1a` symlink nie przeniesie zapisu `init` A do katalogu współdzielonego z B. | Nowy worktree wymaga jednego `init`. |
 | AC-05 | PASS | Runtime tylko do odczytu; instalacja B nie zmienia migawki A; ponowna instalacja = no-op. Test „in use”: prawdziwy launcher → `ACTIVE_SESSION` z pid, wybór bez zmian; po normalnym zamknięciu `update` przechodzi. Nic nie jest zabijane. | Aktywne użycie z `/proc` dla procesów bieżącego użytkownika; w sandboxie Codexa odpowiedź nieznana i `update` odmawia. |
 | AC-06 | PASS | Test „rollback”: stan związany, `update` → `rollback`, `.bridge` identyczne (poza technicznymi `-wal`/`-shm`), historia i instrukcje A przywrócone. Schemat 99 → `update` i `rollback` odrzucone `STATE_SCHEMA_NEWER` bez zapisu; `CODEX_VERSION_UNSUPPORTED` odrzucony. | Zgodność = schemat SQLite i adaptery z manifestu; runtime bez tych eksportów → `RUNTIME_COMPATIBILITY_UNKNOWN`. Brak cofania migracji. |
 | AC-07 | PASS | Test „diagnoses”: brak i niekompletny runtime, nieobsługiwany host, brak zaufania, zepsuty wybór, obcy stan, brak `init`, podkatalog, `ACCESS_DENIED`, `SANDBOX_RESTRICTED`; tekst i JSON `claude-codex-bridge.doctor/v1`; prawdziwy handshake bez claimu, migawki przed/po. Ręcznie: doctor z prawdziwym Codex. | Sandbox rozpoznawany po `CODEX_SANDBOX*`; `codex mcp get` może zapisać własny cache Codexa; sesja Claude’a sprawdzana tylko przez `claude auth status`. |
@@ -71,13 +76,22 @@ nie zawiera ścieżek użytkownika.
 
 ## Znaleziska zastane (poza zakresem wave12)
 
-1. Normalne zamknięcie launchera nie odłącza instancji: po zamknięciu powiązanie ma nadal
-   `active_instance = true` (generacja 1), a nowy proces tego samego wątku dostaje
-   `MANAGER_INSTANCE_FENCED`. [manager-identity](../manager-identity.md) obiecuje kontynuację
-   bez przejęcia. `server.close()` woła `identity?.detach()`, lecz `IdentityRuntime` nie ma tej
-   metody (źródła i `dist` na `95f9ea1`); wywołanie weszło w integracji `2c9e9dd`. Dostępna
-   pozostaje ścieżka `bridge_manager_resume_instance`. Doctor nie zapisuje (migawki). Zalecane
-   osobne zadanie z testem regresji.
+1. Restart po zamknięciu serwera (skorygowane po W12-N1). Wcześniejsze stwierdzenie, że
+   `IdentityRuntime` nie ma `detach`, było błędne: metoda istnieje w źródle i w `dist`
+   (`typeof IdentityRuntime.prototype.detach === "function"`). Błędny wynik dało wyszukiwanie
+   przez funkcję powłoki `grep`, która pominęła plik.
+   - **Obserwacja** — launcher z builda worktree przy `1f8ceb0` (źródła runtime identyczne
+     z `95f9ea1`), syntetyczne `_meta` Codex 0.154.0, bez modeli. Po pierwszym wywołaniu
+     mutującym zamknięcie stdin kończy proces kodem 0 bez komunikatu o zamykaniu; powiązanie
+     zostaje aktywne (generacja 1), a nowy proces tego samego wątku dostaje
+     `MANAGER_INSTANCE_FENCED`. Po SIGTERM proces loguje „SIGTERM, shutting down”, instancja
+     zostaje odłączona (generacja 2), a nowy proces tego samego wątku jest przyjęty.
+   - **Hipoteza, niepotwierdzona:** przy EOF na stdin proces kończy się, zanim uporządkowane
+     zamykanie dojdzie do `detach()`. Nie ustalono, jak prawdziwy Codex zamyka serwer.
+   - Runtime nie był zmieniany. Ewentualne osobne zadanie powinno zacząć od tego reproduktora
+     (obie drogi zamknięcia) i od zamknięcia przez prawdziwy klient. Po
+     `MANAGER_INSTANCE_FENCED` dostępna jest `bridge_manager_resume_instance`. Doctor nie
+     zapisuje stanu (migawki w testach).
 2. `certification-manifest.mjs` nie przechodzi już na bazie (patrz walidacja).
 
 ## Przygotowany smoke z modelami — do zatwierdzenia, nieuruchomiony
@@ -102,7 +116,8 @@ Przebieg:
 - **S2.** Jedno zlecenie dla Astry: „Użyj $using-bridge. Utwórz feature F-SMOKE
   (`bridge_feature_create`) i uruchom jedną rundę `bridge_feature_run`: zaimplementuj
   `add(a, b)` w `calc.py` i uruchom `python3 -m unittest`; `deadline_ms` 600000,
-  `max_turns` 12. Zweryfikuj wynik i testy; przy PASS wywołaj `bridge_feature_accept`.
+  `max_turns` 12. Zweryfikuj wynik i testy (review techniczne Astry); przy PASS wywołaj `bridge_feature_accept`
+  jako syntetyczną akceptację testu smoke, nie odbiór użytkownika.
   Bez recovery, ponowień i kolejnych rund; potem zatrzymaj się.”
 - **S3.** Zamknąć Codex normalnie; `doctor --workspace <worktree> --json`.
 
@@ -112,7 +127,7 @@ istniejąca subskrypcja (do potwierdzenia przy zgodzie).
 
 PASS: S1 bridge dostępny bez flag i wrappera; S2 pierwsze wywołanie mutujące wiąże worktree
 (epoka 1), runda DONE z realną przechodzącą weryfikacją, commit wykonawcy w worktree,
-akceptacja przez Astrę; S3 doctor bez błędów, stan związany, brak `ACTIVE_SESSION`, runtime
+akceptacja oznaczona jako syntetyczna; S3 doctor bez błędów, stan związany, brak `ACTIVE_SESSION`, runtime
 i inne katalogi bez zmian.
 
 Stop bez naprawy w trakcie: brak MCP przy starcie, `MANAGER_*` lub `NATIVE_CONTEXT_INVALID`,
@@ -122,6 +137,6 @@ Sprzątanie: usunąć projekt i worktree smoke; ewentualny wpis zaufania usuwa u
 
 ## Punkt wznowienia
 
-Branch `wave12`, worktree czysty po commicie raportu. Następny krok: review i decyzja
-o odbiorze (`git diff 95f9ea1..wave12`), decyzja o smoke z budżetem powyżej, osobne zadanie
-dla znaleziska 1. Po merge: `init` w każdym worktree bridge przed startem klienta.
+Branch `wave12`, worktree czysty po commicie odpowiedzi na review. Następny krok:
+ukierunkowane review poprawki W12-R1, regresji i korekty raportu (`git diff 1f8ceb0..wave12`);
+potem decyzja o odbiorze i o smoke z budżetem powyżej. Znalezisko 1 tylko z reproduktorem. Po merge: `init` w każdym worktree bridge przed startem klienta.

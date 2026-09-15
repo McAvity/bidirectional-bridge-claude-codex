@@ -66,3 +66,30 @@ Delivery 0741ae9: REWORK for W12-R1 (external directory symlink write).
 See [wave12-review.md](wave12-review.md). Detach diagnosis requires factual correction;
 AC-08 remains partial. Next: targeted correction and regression, then focused review.
 No changes to implementation or executor worktree in this review.
+
+## 2026-09-15 — odpowiedź na review koordynatora
+
+W12-R1 (wymagane): poprawione w `cb6cf1a`. `init`, `update` i `rollback` przed planem sprawdzają
+wszystkie docelowe ścieżki — instrukcje, `.codex/config.toml`, `.gitignore`, `install.json`,
+`pending.json`, `backup/` i `current` — i odmawiają `PATH_REDIRECTED`, gdy istniejący składnik
+jest symlinkiem. To najprostsza poprawna odmowa: obejmuje też symlinki wskazujące wnętrze
+worktree. Kontrola jest powtarzana tuż przed każdym zapisem. Dokończenie przerwanego zapisu
+usuwa tylko nazwy tymczasowe ścieżek bieżącego planu, a sonda blokady doctora nie działa przez
+symlink `.bridge-runtime`. Regresja używa prawdziwych symlinków: `.agents` i
+`.bridge-runtime/backup` przy `init`, katalog skilla przy `update`, `install.json` przy
+`rollback`, `.bridge-runtime` w doctorze; migawki zewnętrznych katalogów przed i po odmowie są
+identyczne. Scenariusz koordynatora z tym samym runtime: `0741ae9` utworzył 14 plików
+w katalogu zewnętrznym, `cb6cf1a` odmawia i nie tworzy żadnego.
+
+W12-N1: opis w raporcie i HANDOFF skorygowany. `detach()` istnieje w źródle i `dist`; błędny
+wniosek wynikał z wyszukiwania przez funkcję powłoki `grep`. Obserwacja na buildzie `1f8ceb0`
+(źródła runtime jak `95f9ea1`, syntetyczne `_meta`): zamknięcie stdin zostawia aktywną instancję
+i restart tego samego wątku dostaje `MANAGER_INSTANCE_FENCED`; SIGTERM odłącza instancję i restart
+jest przyjęty. Przyczyna niepotwierdzona; runtime bez zmian.
+
+Wyniki: `npm test` 434 OK (9 testów setup), `tests` 29 OK, `tools/pilot/tests` 140 OK, linki
+dokumentacji i `git diff --check` OK. Smoke w raporcie oznacza akceptację jako syntetyczną,
+odrębną od odbioru użytkownika. AC-08 pozostaje częściowe do sprawdzenia prawdziwego TUI.
+Bez modeli, merge, push i wdrożenia.
+
+Następny krok: ukierunkowane review `1f8ceb0..wave12` (W12-R1, regresja, korekta raportu).
