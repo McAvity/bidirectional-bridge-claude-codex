@@ -43,3 +43,16 @@ by this review. Preserve user acceptance as distinct from Astra technical review
 the prepared smoke may simulate acceptance only if explicitly labelled synthetic.
 Review corrections narrowly: W12-R1, changed-path regressions and report correction.
 No repeated full review or new 75-minute pilot is requested.
+
+## Correction closure — 2026-09-15
+
+Input `8f5cbc5`, correction `cb6cf1a`. Focused verdict: PASS for corrections.
+W12-R1 resolved: independent reproduction using the corrected CLI with an explicitly
+selected original 0741ae9 runtime returns PATH_REDIRECTED, zero external entries and
+no local setup directory. The earlier reproduction created 14 external files.
+Inspected guards for managed destinations and doctor probe; 9/9 setup tests rerun
+independently and passed, including real symlink regressions. No full audit repeated.
+W12-N1 resolved: report now separates EOF/SIGTERM observations from the unproven
+shutdown hypothesis and acknowledges detach exists. No runtime repair implied.
+AC-08 remains partial; this closes the review findings, not final user acceptance
+or a real TUI/model smoke. No models, publication, merge to integration or deployment.
