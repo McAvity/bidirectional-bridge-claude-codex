@@ -1,9 +1,12 @@
+# >>> claude-codex-bridge managed block >>>
+# Written by the bridge setup CLI (scripts/bridge.mjs). This worktree selects its runtime with
+# .bridge-runtime/current; start `codex` in the worktree root. tool_timeout_sec is the client
+# wait for one MCP call and never stops a running round.
 [mcp_servers.bridge]
 command = "node"
-args = ["scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
+args = [".bridge-runtime/current/scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
 cwd = "."
+required = true
 startup_timeout_sec = 30
-# Client-side wait for one MCP call. It does not bound the worker: the bridge keeps running
-# a round after this expires. Keep it above the longest round deadline plus a margin —
-# 5400 s (90 min) carries a 4 500 000 ms (75 min) round deadline.
 tool_timeout_sec = 5400
+# <<< claude-codex-bridge managed block <<<

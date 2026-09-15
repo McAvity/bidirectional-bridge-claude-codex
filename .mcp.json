@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "node",
       "args": [
-        "${CLAUDE_PROJECT_DIR:-.}/scripts/native-bridge-mcp.mjs",
+        "${CLAUDE_PROJECT_DIR:-.}/.bridge-runtime/current/scripts/native-bridge-mcp.mjs",
         "--caller",
         "claude",
         "--delegation",

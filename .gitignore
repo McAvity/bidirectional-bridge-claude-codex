@@ -8,6 +8,7 @@ coverage/
 
 # Bridge and SQLite runtime state
 .bridge/
+.bridge-runtime/
 *.db
 *.db-journal
 *.db-wal
