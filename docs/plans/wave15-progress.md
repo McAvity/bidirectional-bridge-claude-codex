@@ -37,3 +37,12 @@ Pierwszy przebieg wykrył nieaktualne oczekiwanie konfiguracji repo w teście la
 38367c8 dostosował wyłącznie test do migracji dispatchera (lokalnie 16/16).
 Nie jest to implementacja wave15. Runtime ff225e5 pozostał bez zmian.
 Kontrola dokumentów i git diff --check: PASS. Następny krok: osobne zlecenie wykonania.
+
+## Wykonanie zlecone — 2026-09-16
+
+Baza 0e40d24b76b12bae35f141a449cc042772425260, czysty branch/worktree wave15.
+Zlecono cały plan z lokalnymi commitami, testami i poprawkami; historyczny status
+„niezlecona” nie obowiązuje implementacji. Smoke nadal poza zakresem.
+Feature F-W15-natural-workflow; root task_7zykhr76zt, run_shm6vat1q4.
+Runtime nadzorujący przypięty oddzielnie do ff225e550966, pozostaje niezmieniony.
+Następny krok: W15-01 przez Claude, jedna sesja dla kolejnych rund.

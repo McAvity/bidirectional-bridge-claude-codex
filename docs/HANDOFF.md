@@ -1,5 +1,11 @@
 # Current handoff
 
+## Wave15 — implementation authorized
+
+Whole wave15 authorized in worktree wave15: Claude implementation through bridge,
+Codex coordination/review. Local commits only, no push/merge/deploy or model smoke.
+See [progress](plans/wave15-progress.md). Earlier planning-only entries are historical.
+
 ## Runtime activated; wave15 planning only
 
 User completed the dispatcher update. Commit e721aa4 selects runtime ff225e5;

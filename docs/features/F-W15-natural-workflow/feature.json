@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W15-natural-workflow",
+  "phase": "execution",
+  "brief": "docs/features/F-W15-natural-workflow/brief.md",
+  "design": "docs/features/F-W15-natural-workflow/design.md",
+  "tasks": [
+    "work-items/W15-01.md",
+    "work-items/W15-02.md",
+    "work-items/W15-03.md",
+    "work-items/W15-04.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave15.md",
+    "docs/plans/wave15-progress.md"
+  ],
+  "latest_review": null,
+  "latest_decision": "docs/features/F-W15-natural-workflow/decisions/01.md",
+  "next_action": "W15-01: Claude design, następnie lokalne review koordynatora.",
+  "bridge": {
+    "feature_id": "F-W15-natural-workflow",
+    "parent_task_id": "task_7zykhr76zt"
+  }
+}
