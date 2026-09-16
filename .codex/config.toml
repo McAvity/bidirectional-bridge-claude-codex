@@ -1,12 +1,15 @@
 # >>> claude-codex-bridge managed block >>>
-# Written by the bridge setup CLI (scripts/bridge.mjs). This worktree selects its runtime with
-# .bridge-runtime/current; start `codex` in the worktree root. tool_timeout_sec is the client
-# wait for one MCP call and never stops a running round.
+# Written by the bridge. Portable on purpose: no home directory, no runtime id and no
+# machine path. `.bridge-project/entry.mjs` reads `.bridge-project/bridge.json` and loads the pinned
+# installed runtime in its own process, so a worktree created from this project later
+# needs no setup step. Codex starts an MCP server with a stripped environment, so the two
+# variables that can move the installation are forwarded by name, never by value.
 [mcp_servers.bridge]
 command = "node"
-args = [".bridge-runtime/current/scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
+args = ["./.bridge-project/entry.mjs", "--caller", "codex", "--delegation", "allow"]
 cwd = "."
-required = true
+env_vars = ["CLAUDE_CODEX_BRIDGE_HOME", "XDG_DATA_HOME"]
+required = false
 startup_timeout_sec = 30
 tool_timeout_sec = 5400
 # <<< claude-codex-bridge managed block <<<
