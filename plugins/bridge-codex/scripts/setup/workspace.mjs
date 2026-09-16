@@ -38,6 +38,7 @@ import {
   knownInstructionHashes,
   listRuntimes,
   loadRuntimeAt,
+  servesProjectEntryStatus,
   verifyRuntime,
 } from "./runtime.mjs";
 
@@ -984,6 +985,19 @@ export function planChange({
       "PREFERENCE_REQUIRES_DISPATCHER",
       `the collaboration preference names ${PROJECT_ENTRY}, which the ${profile} profile does not install`,
       "prepare this project with the bridge setup skill (dispatcher profile), then record the preference there",
+    );
+    return finish(plan);
+  }
+  // The same rule, one level deeper: the entry point this project would get comes from the
+  // *target runtime*, so a pin older than the read-only mode yields a preference that names a
+  // read which never answers — it starts the MCP server instead (review W15-I8). The capability
+  // is read off the target, not guessed from this code's own age, and a target that cannot serve
+  // it is refused here rather than repaired by moving the pin or installing something else.
+  if (preference && !servesProjectEntryStatus(target)) {
+    refuse(
+      "PREFERENCE_UNSUPPORTED_RUNTIME",
+      `runtime ${target.id} does not serve \`${PROJECT_ENTRY} --status\`, which the collaboration preference names`,
+      "move this project to a runtime that serves it, then record the preference; the pin is never moved for you",
     );
     return finish(plan);
   }

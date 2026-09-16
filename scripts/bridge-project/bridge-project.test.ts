@@ -952,6 +952,84 @@ describe("the project entry point reports without serving (W15-C1)", () => {
   }, 180_000);
 });
 
+/**
+ * W15-I8: the preference names an entry point that comes from the *target* runtime, so a project
+ * pinned to a runtime older than the read-only mode would be told to run a read that never
+ * answers. The refusal has to be decided from what that runtime actually ships, and it has to
+ * happen before anything is written.
+ *
+ * The historical runtime is built here from a real commit of this repository — the parent of the
+ * commit that introduced the mode — into the suite's own temporary home. The machine's installed
+ * runtimes are never touched.
+ */
+describe("the preference refuses a target runtime that cannot serve it (W15-I8)", () => {
+  let historicalId: string;
+
+  beforeAll(() => {
+    const introduced = git(REPO, "log", "--format=%H", "-S", '"--instructions"', "--", "scripts/bridge-project/entry-template.mjs")
+      .split("\n")
+      .filter(Boolean)
+      .at(-1);
+    if (!introduced) throw new Error("cannot locate the commit that introduced the read-only entry mode");
+    const before = git(REPO, "rev-parse", `${introduced}~1`);
+    const { runtime } = installRuntime({ source: REPO, ref: before, home: sharedHome, env: childEnv({}) });
+    historicalId = runtime.id;
+    // The precondition this case exists for, read off the target itself.
+    expect(existsSync(join(runtime.path, "scripts/bridge-project/entry-template.mjs"))).toBe(true);
+    expect(readFileSync(join(runtime.path, "scripts/bridge-project/entry-template.mjs"), "utf8")).not.toContain("--status");
+  }, 900_000);
+
+  it("refuses before any write, and that target really cannot answer the read", () => {
+    const before = listing(project);
+    const refused = plugin(project, ["setup", "--yes", "--json", "--to", historicalId, "--with-preference"], env);
+    expect(refused.code, refused.stdout + refused.stderr).toBe(1);
+    expect((refused.json as any).ok).toBe(false);
+    expect((refused.json as any).applied).toBe(false);
+    const refusal = ((refused.json as any).refusals as { code: string; message: string; nextStep: string }[])
+      .find((entry) => entry.code === "PREFERENCE_UNSUPPORTED_RUNTIME");
+    expect(refusal, JSON.stringify((refused.json as any).refusals)).toBeTruthy();
+    expect(refusal!.message).toContain(historicalId);
+    expect(refusal!.nextStep).toMatch(/pin is never moved for you/u);
+
+    // Zero project writes: no declaration, no entry point, no config block, no AGENTS.md.
+    expect(listing(project)).toEqual(before);
+    expect(existsSync(join(project, PROJECT_DECLARATION))).toBe(false);
+    expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+
+    // And the refusal is not theoretical. Prepare the same project on that same historical
+    // runtime *without* the preference — which stays allowed — and run the entry point the
+    // preference would have named: it answers with no status JSON at all.
+    expect(plugin(project, ["setup", "--yes", "--json", "--to", historicalId], env).code).toBe(0);
+    const asked = spawnSync(process.execPath, [join(project, PROJECT_ENTRY), "--status"], {
+      cwd: project,
+      encoding: "utf8",
+      env: childEnv(env),
+      input: "",
+      timeout: 60_000,
+    });
+    expect(() => JSON.parse(asked.stdout)).toThrow();
+    expect(asked.stdout).not.toContain("instructions");
+  }, 900_000);
+
+  it("still records the preference when the target does serve the read", () => {
+    expect(setup().code).toBe(0);
+    const applied = setup(project, ["--with-preference"]);
+    expect(applied.code, applied.stdout + applied.stderr).toBe(0);
+    const block = readFileSync(join(project, "AGENTS.md"), "utf8");
+    expect(block).toContain("entry.mjs --status");
+    // The named entry point answers here, which is the whole difference from the case above.
+    const asked = spawnSync(process.execPath, [join(project, PROJECT_ENTRY), "--status"], {
+      cwd: project,
+      encoding: "utf8",
+      env: childEnv(env),
+      input: "",
+      timeout: 60_000,
+    });
+    expect(asked.status, asked.stdout + asked.stderr).toBe(0);
+    expect(JSON.parse(asked.stdout).instructions.root).toBe(runtimePath);
+  }, 300_000);
+});
+
 describe("update and rollback while the worktree is in use", () => {
   it("refuses to move the pin while a bridge server is serving this worktree", async () => {
     setup();

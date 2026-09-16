@@ -82,11 +82,11 @@
     },
     {
       "path": "scripts/setup/runtime.mjs",
-      "sha256": "4e740542e4920439d3987a0f89d9a44b68d2f7f5d0e245ceba328ad280be5a03"
+      "sha256": "1f40d79a1792e30960b0cef152cd30a84f5c8b3c608f6176e2c95e6785e6ebbf"
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "2e2b8f5baad7ccf4eceddfaf84e29eb774630d5abf72b7b40b8a67117a864b0e"
+      "sha256": "f7734c4f0e60c6b4899cacd00c1c16aa260a56d9fb335c9389317dab0c5835a7"
     },
     {
       "path": "skills/bridge/SKILL.md",

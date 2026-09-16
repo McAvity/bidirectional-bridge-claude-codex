@@ -122,6 +122,37 @@ export function loadRuntimeAt(path, expectedId) {
   return { id: parsed.value.runtime_id, path, manifest: parsed.value };
 }
 
+/**
+ * Can this installed runtime serve the project entry point's read-only status mode?
+ *
+ * The collaboration preference tells a reader to run `node ./.bridge-project/entry.mjs --status`,
+ * and `setup` installs that entry point **from the target runtime**. A runtime built before the
+ * mode existed ships an entry template that ignores the flag and starts the MCP server instead,
+ * so a preference written against it names a read that never answers (review W15-I8).
+ *
+ * The capability therefore has to be read off the *target*, never inferred from the version of
+ * the plugin doing the writing: an old pin is the common case, including the current release pin.
+ * Both halves of the path must be present, because either one alone is not the mode:
+ *
+ *   - the entry template must route the flag, rather than pass it through to the launcher;
+ *   - the dispatcher it loads must export the pure `describe` the entry point calls.
+ *
+ * This reads the two files and executes nothing: a plan must not import a foreign runtime's code.
+ */
+export function servesProjectEntryStatus(runtime) {
+  const read = (relative) => {
+    try {
+      return readFileSync(join(runtime.path, relative), "utf8");
+    } catch {
+      return null;
+    }
+  };
+  const entry = read("scripts/bridge-project/entry-template.mjs");
+  const dispatch = read("scripts/bridge-project/dispatch.mjs");
+  if (entry === null || dispatch === null) return false;
+  return entry.includes("--status") && /export\s+function\s+describe\s*\(/u.test(dispatch);
+}
+
 export function loadRuntime(home, id) {
   if (typeof id !== "string" || !RUNTIME_ID.test(id)) {
     throw new SetupError("RUNTIME_NOT_INSTALLED", `not a runtime id: ${String(id)}`, {

@@ -67,7 +67,10 @@ change from what is on disk.
 `--with-preference` is **refused here**, by name. This CLI prepares the per-worktree (wave12)
 shape, and the preference block points at `.bridge-project/entry.mjs`, which only the dispatcher
 profile installs; writing it from `init` would leave an instruction naming a file this worktree
-will never have. The refusal is `PREFERENCE_REQUIRES_DISPATCHER` and nothing is written. Record the
+will never have. The refusal is `PREFERENCE_REQUIRES_DISPATCHER` and nothing is written. The same
+precondition has a second half that applies to the dispatcher profile too: a target runtime that
+does not serve `.bridge-project/entry.mjs --status` is refused with
+`PREFERENCE_UNSUPPORTED_RUNTIME`, again before any write and without moving the pin. Record the
 preference where the entry point actually exists — see
 [plugin-distribution.md](plugin-distribution.md). `init`, `update` and `rollback` never read or
 write `AGENTS.md` in any case, so no update can introduce a policy.

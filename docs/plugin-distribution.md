@@ -115,9 +115,16 @@ own `AGENTS.md`, between the bridge's managed markers: feature implementations r
 bridge unless the user asks otherwise, narrower instructions win, and a document's own text grants
 no authority. It names the portable read above and carries no user path, runtime id or pin.
 
-It is written only with that flag. Plain `setup`, `update` and `rollback` never read or write
-`AGENTS.md`, so delivering a new plugin version or moving a pin cannot introduce or change a
-project's policy. The plan shows the exact diff first — including for a project that has no
+It is written only with that flag, and only when the **runtime this project targets** actually
+serves that read. A project pinned to a runtime older than the mode would otherwise be told to run
+an entry point that ignores the flag and starts the MCP server instead, so `setup` refuses with
+`PREFERENCE_UNSUPPORTED_RUNTIME` before writing anything. The capability is read off the target
+runtime, never inferred from the plugin's own version, and the refusal never moves the pin or
+installs anything for you: move the project to a runtime that serves the read, then record the
+preference. Everything else about that setup run stays available — only the preference is refused.
+
+Plain `setup`, `update` and `rollback` never read or write `AGENTS.md`, so delivering a new plugin
+version or moving a pin cannot introduce or change a project's policy. The plan shows the exact diff first — including for a project that has no
 `AGENTS.md` yet, where the diff is the whole proposed block. Content outside the markers is
 preserved, a second run changes nothing, a block edited by hand is refused as
 `PREFERENCE_MODIFIED`, duplicated markers as `PREFERENCE_CONFLICT`, and a symlinked `AGENTS.md`
