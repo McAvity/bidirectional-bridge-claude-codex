@@ -52,7 +52,7 @@ fallback for environments without plugins.
 | `.bridge-runtime/current` | never | init, update, rollback | Symlink to `<home>/runtimes/<id>` — the runtime selection |
 | `.bridge-runtime/install.json` | never | init, update, rollback, first authorised mutation | Selection record, format `claude-codex-bridge.workspace-install/v1` |
 | `.bridge-runtime/pending.json`, `.bridge-runtime/backup/` | never | init, update, rollback, first authorised mutation | Journal and backups of an apply in progress; present only after an interruption. The journal records the worktree and runtime it belongs to, so a resume can prove it is finishing this worktree's own apply; a journal naming another worktree, another runtime, or none at all is refused and never resumed |
-| `.bridge/` | never | bridge runtime | Database, markers, lock and termination `evidence/` ([manager-identity](manager-identity.md), [recovery](recovery.md)). `workspace.json` names the worktree the state belongs to and is the read-only authority for whether a partially prepared worktree may finish its own preparation |
+| `.bridge/` | never | bridge runtime | Database, markers, lock and termination `evidence/` ([manager-identity](manager-identity.md), [recovery](recovery.md)). `workspace.json` names the worktree the state belongs to. Together with `.bridge-runtime/pending.json` it is the read-only evidence that a partially prepared worktree may finish its own preparation; the bare existence of `.bridge-runtime/` is neither evidence nor a contradiction |
 | `.bridge/logs/` | never | reserved for wave13 | Local runtime logs; already an explained entry of the state directory |
 
 `install.json` records the worktree `root` and `git_dir`, the selected runtime and its commit,

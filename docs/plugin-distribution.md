@@ -105,11 +105,14 @@ state is never inherited, a copied `.bridge-runtime/` is refused rather than ado
 removed local state is refused too instead of being silently re-created.
 
 Two clients opening the same worktree at once are fine: the bridge's own identity guard admits one
-of them and refuses the other as a foreign manager, and the loser writes nothing. If a first use is
-interrupted part-way — before any local file is written, mid-write, or after the record but before
-the journal is cleared — the next client serves reads as usual and the next authorised call finishes
-what that worktree started. There is nothing to run by hand. A half-finished setup that is *not*
-this worktree's own, for example a `.bridge-runtime/` copied from elsewhere, is refused instead.
+of them and refuses the other as a foreign manager, and the loser writes nothing. If a first use is interrupted
+at any point — before the local directory exists, right after it is created, mid-apply, or after the
+record but before the journal is cleared — the next client serves reads as usual and the next
+authorised call finishes what that worktree started. There is nothing to run by hand. A half-finished setup that is *not*
+this worktree's own is refused instead: the bridge finishes work only when its own journal or its
+own state marker explains that state and nothing contradicts them. A `.bridge-runtime/` copied from
+elsewhere, an unreadable one, or one with nothing explaining it is refused, and files it does not
+recognise are left exactly where they are.
 
 Codex's own per-path trust prompt still applies to the new path.
 

@@ -6,6 +6,44 @@ lives under a temporary root; the operator's own configuration is never read for
 written. **No test mutates a file of this repository** — generator drift is proven on a throwaway
 git worktree.
 
+## Round 6 — one rule for interrupted preparation (W14-R2-07, pre-journal boundary)
+
+**Reproduced** at `dabaf19…` against the shipped pin, in a temporary runtime home asserted by the
+script itself. The gate defined a recoverable reservation as `!existsSync(local.dir) && native own`,
+so an interruption immediately *after* the `.bridge-runtime` mkdir — an empty directory plus a valid
+own marker — was refused:
+
+```
+2_after_mkdir   dir=True pend=False rec=False marker=True | read=False recovered=False
+                SETUP_STATE_PARTIAL: ... has partial state that is not this worktree's own: unexplained
+```
+
+**Fixed** by replacing the accumulated per-boundary conditions with one rule: local state that is
+*explained* as this worktree's own — by its selection journal or by the runtime's own state marker
+— and *not contradicted* may finish through the existing guarded plan, whether or not the directory
+exists. A bare directory is neither evidence nor contradiction; unknown files in it are preserved.
+Foreign and unreadable journals and markers, a non-symlink `current`, foreign or invalid records,
+pin mismatches, symlinked managed paths and the native identity guard are all unchanged.
+
+Five interruption points against the refreshed pin `87cceed8…`:
+
+```
+1 before mkdir                     dir=False pend=False rec=False | read=True recovered=True pending_after=False
+2 after mkdir                      dir=True  pend=False rec=False | read=True recovered=True pending_after=False
+3 after journal, before selection  dir=True  pend=True  rec=False | read=True recovered=True pending_after=False
+4 after selection                  dir=True  pend=True  rec=False | read=True recovered=True pending_after=False
+5 after record                     dir=True  pend=True  rec=True  | read=True recovered=True pending_after=False
+```
+
+Every restart serves reads with a byte-identical tree and no setup command; every recovery happens
+at the next authorised mutation and leaves no journal behind. Regressions:
+`every interruption boundary recovers itself (W14-R2-07)`, five cases driven by the same helper,
+plus the refusal cases below.
+
+One defect of this round, found and fixed before the pin was refreshed: reading the selection inside
+the new rule put it in the temporal dead zone, so the first pinned build threw on every launch. The
+reproduction caught it because it runs the *installed* pin rather than the working tree.
+
 ## Round 5 — the remaining interruption boundaries and rollback (W14-R2-07, R2-09)
 
 Reproduced at `f3bba25…` with an explicit temporary runtime home asserted before every mutating

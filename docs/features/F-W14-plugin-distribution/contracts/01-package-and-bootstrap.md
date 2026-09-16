@@ -1,6 +1,6 @@
 # Contract: plugin packages, marketplace and worktree setup (W14-01…W14-03)
 
-Status: **revision 6 — implemented**. Revision 1 was proposed design; revision 2 described what
+Status: **revision 7 — implemented**. Revision 1 was proposed design; revision 2 described what
 W14-02 built, and `reviews/02-implementation.md` returned REWORK with W14-R2-01…05. This revision
 records the architecture those findings forced, which is *smaller* than revision 2's: the parallel
 setup implementation is gone and the wave12 machinery does the work.
@@ -13,10 +13,14 @@ Revision 5 resolves the **boundary between the native guard and the wave12 selec
 which is where W14-R2-06…08 landed. No new framework, lock protocol or facade: three narrow
 changes, described in §3b.
 
-Revision 6 completes that boundary at the two remaining interruption points and fixes rollback
+Revision 6 completes that boundary at two more interruption points and fixes rollback
 (W14-R2-07, W14-R2-09), still with no new protocol: the runtime's own state marker becomes the
 authority for an explained reservation, an own unfinished journal is completed even when the record
 already exists, and the plugin shares the wave12 CLI's history-based rollback resolver.
+
+Revision 7 replaces the accumulated per-boundary conditions with **one rule** (§3c). It is a
+simplification, not another special case: the third appearance of this finding was the existence of
+`.bridge-runtime/` being read as a contradiction.
 
 Evidence: [`evidence/W14-03/`](../evidence/W14-03/README.md). The superseded W14-02 matrix is
 corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host facts also come from
@@ -39,6 +43,7 @@ corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host f
 | W14-R2-08 | `setup` without `--yes` installed the runtime while reporting `applied=false` | acquisition and build happen only under `--yes`; the plan is honest about what it cannot compute yet (§3b) |
 | W14-R2-07 (remaining boundaries) | a crash before the first `.bridge-runtime` write refused forever; a crash after the record write left `pending.json` behind forever | `classifyNativeState` reads the runtime's own marker as the authority for an explained own reservation, and an own unfinished journal is completed even with a valid record (§3b) |
 | W14-R2-09 | the plugin's `rollback` resolved its target from the declared pin, i.e. the current runtime, and always refused `ROLLBACK_SAME_RUNTIME` | the wave12 CLI's history-based `rollbackTarget` is extracted and shared verbatim; explicit `--to`, compatibility and active-session guards unchanged (§7) |
+| W14-R2-07 (pre-journal boundary) | an interruption immediately after the `.bridge-runtime` mkdir refused forever: the gate required the directory *not* to exist before it would trust an own native reservation | one rule replaces the per-boundary conditions — explained own state, nothing contradicting it; a bare directory is neither (§3c) |
 
 ## 1. Host constraints this design obeys
 
@@ -144,6 +149,29 @@ one, one for a different runtime, or one written before the journal recorded its
 home; they now happen only under `--yes`. Without it, a worktree whose pinned runtime is not
 installed gets an honest plan naming the commit that would be installed and no invented file diff;
 when the runtime *is* installed the full reviewable per-file plan is produced as before.
+
+## 3c. One rule for finishing an interrupted preparation
+
+A worktree may finish preparing itself when its local state is **explained** as its own and nothing
+**contradicts** that explanation.
+
+- *Explained* = one of the two records this worktree writes about itself says so: the selection
+  journal (`classifyPending`) or the runtime's own state marker (`classifyNativeState`).
+- *Contradicted* = either of those names another worktree or cannot be read, or
+  `.bridge-runtime/current` exists as something other than a symlink.
+- The bare existence of `.bridge-runtime/` is **neither**. An interrupted apply creates that
+  directory before it writes anything into it, so treating it as a contradiction discarded valid
+  native evidence — the defect this revision fixes. Unknown files inside it are likewise neither
+  evidence nor contradiction, and the plan never removes them.
+- Nothing else is waived. A foreign or invalid record, a pin mismatch, a symlinked managed path,
+  the native identity guard and the ordinary conflict rules all still apply, above this rule and
+  inside `planChange`.
+
+Recovery still happens only at the next authorised mutation, through the existing guarded plan.
+Five interruption points are proven against a real installed runtime: before the directory exists,
+immediately after it is created, after the journal and before the selection, after the selection,
+and after the record. Each serves reads with a byte-identical tree, then completes and clears the
+journal.
 
 ## 3a. An inherited worktree serves as it is (AC-03)
 

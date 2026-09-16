@@ -794,68 +794,96 @@ describe("every interruption boundary recovers itself (W14-R2-07)", () => {
     return external;
   }
 
-  /** Kill the process at the first `.bridge-runtime` creation, i.e. after the native reservation. */
-  function crashBeforeSelection(): string {
-    const file = join(root, "crash-before-selection.mjs");
-    writeFileSync(
-      file,
-      [
-        'import fs from "node:fs";',
-        'import { syncBuiltinESMExports } from "node:module";',
-        "const original = fs.mkdirSync;",
-        'fs.mkdirSync = function (path, ...args) {',
-        '  if (String(path).endsWith("/.bridge-runtime")) process.kill(process.pid, "SIGKILL");',
-        "  return original.call(this, path, ...args);",
-        "};",
-        "syncBuiltinESMExports();",
-      ].join("\n"),
-    );
+  /**
+   * A one-shot preload that kills this process at a chosen point of the apply.
+   *
+   * `mkdir` fires at the first `.bridge-runtime` creation, either before it happens or immediately
+   * after it returns; `symlink` fires at the selection link, i.e. after the journal is published
+   * and before anything is selected. The later boundaries use the product's own
+   * `CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER` counter.
+   */
+  function killAt(where: "mkdir-before" | "mkdir-after" | "symlink"): string {
+    const file = join(root, `kill-${where}.mjs`);
+    const kill = 'process.kill(process.pid, "SIGKILL");';
+    const body =
+      where === "symlink"
+        ? [
+            'const original = fs.symlinkSync;',
+            `fs.symlinkSync = function (...args) { ${kill} return original.apply(this, args); };`,
+          ]
+        : [
+            "const original = fs.mkdirSync;",
+            'fs.mkdirSync = function (path, ...args) {',
+            '  if (String(path).endsWith("/.bridge-runtime")) {',
+            where === "mkdir-after"
+              ? `    const result = original.call(this, path, ...args); ${kill} return result;`
+              : `    ${kill}`,
+            "  }",
+            "  return original.call(this, path, ...args);",
+            "};",
+          ];
+    writeFileSync(file, ['import fs from "node:fs";', 'import { syncBuiltinESMExports } from "node:module";', ...body, "syncBuiltinESMExports();"].join("\n"));
     return `file://${file}`;
   }
 
-  it("recovers a native reservation made before the first selection write", async () => {
-    const external = inherit("a reserved worktree");
+  /** Crash at `where`, then prove a pure read and then an authorised mutation recover. */
+  async function recoversAfter(
+    name: string,
+    injection: { preload?: string; env?: NodeJS.ProcessEnv },
+    expected: { localDir: boolean; pending: boolean; record: boolean },
+  ) {
+    const external = inherit(name);
+    // The native envelope's thread id is validated by the guard: it admits no spaces.
+    const thread = name.replace(/\s+/gu, "-");
     const crashed = await launchEntry(external, {
-      frames: [...HANDSHAKE, mutationFrom("pre-selection", "k1")],
-      preload: crashBeforeSelection(),
+      frames: [...HANDSHAKE, mutationFrom(thread, "k1")],
       waitMs: 9000,
+      ...(injection.preload ? { preload: injection.preload } : {}),
+      ...(injection.env ? { env: injection.env } : {}),
     });
     crashed.child.kill("SIGKILL");
-    // The runtime reserved the worktree; the selection directory was never created.
-    expect(existsSync(join(external, ".bridge/workspace.json"))).toBe(true);
-    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+
+    // The interruption landed where this case says it did. The runtime's own marker is always
+    // there, because the reservation precedes every local write.
+    expect(existsSync(join(external, ".bridge/workspace.json")), name).toBe(true);
+    expect(existsSync(join(external, ".bridge-runtime")), `${name}: local directory`).toBe(expected.localDir);
+    expect(existsSync(join(external, ".bridge-runtime/pending.json")), `${name}: journal`).toBe(expected.pending);
+    expect(existsSync(join(external, ".bridge-runtime/install.json")), `${name}: record`).toBe(expected.record);
 
     // A restart serves reads and writes nothing.
     const before = listing(external);
     const readOnly = await launchEntry(external, { frames: HANDSHAKE });
     expect(readOnly.replies.find((f: any) => f.id === 1)?.result?.tools?.length, readOnly.stderr).toBeGreaterThan(10);
-    expect(listing(external)).toEqual(before);
+    expect(listing(external), `${name}: a read must write nothing`).toEqual(before);
     readOnly.child.kill("SIGKILL");
 
-    // The next authorised mutation completes the preparation.
-    const recovered = await launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("pre-selection", "k2")], waitMs: 9000 });
-    expect(recovered.replies.find((f: any) => f.id === 2)?.result?.isError, recovered.stderr.slice(-400)).toBeFalsy();
+    // The next authorised mutation finishes the preparation and leaves no journal behind.
+    const recovered = await launchEntry(external, { frames: [...HANDSHAKE, mutationFrom(`${thread}-2`, "k2")], waitMs: 9000 });
+    expect(recovered.replies.find((f: any) => f.id === 2)?.result?.isError, `${name}: ${recovered.stderr.slice(-400)}`).toBeFalsy();
     expect(JSON.parse(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8")).workspace.root).toBe(external);
-    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(false);
+    expect(existsSync(join(external, ".bridge-runtime/pending.json")), `${name}: journal left behind`).toBe(false);
     recovered.child.kill("SIGKILL");
+  }
+
+  it("recovers when the interruption came before the local directory existed", async () => {
+    await recoversAfter("before mkdir", { preload: killAt("mkdir-before") }, { localDir: false, pending: false, record: false });
   }, 300_000);
 
-  it("clears its own journal when the interruption came after the record was written", async () => {
-    const external = inherit("a late interrupted worktree");
-    const crashed = await launchEntry(external, {
-      frames: [...HANDSHAKE, mutationFrom("late", "k1")],
-      env: { CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER: "2" },
-      waitMs: 9000,
-    });
-    crashed.child.kill("SIGKILL");
-    expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(true);
-    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(true);
+  it("recovers when the interruption came right after the local directory was created", async () => {
+    // The boundary W14-R2-07 left open: an empty `.bridge-runtime/` plus an own native marker.
+    await recoversAfter("after mkdir", { preload: killAt("mkdir-after") }, { localDir: true, pending: false, record: false });
+  }, 300_000);
 
-    const recovered = await launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("late", "k2")], waitMs: 9000 });
-    expect(recovered.replies.find((f: any) => f.id === 2)?.result?.isError, recovered.stderr.slice(-400)).toBeFalsy();
-    // The apply is finished: the journal is gone, not left behind forever.
-    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(false);
-    recovered.child.kill("SIGKILL");
+  it("recovers when the interruption came after the journal and before the selection", async () => {
+    await recoversAfter("after journal", { preload: killAt("symlink") }, { localDir: true, pending: true, record: false });
+  }, 300_000);
+
+  it("recovers when the interruption came after the selection", async () => {
+    await recoversAfter("after selection", { env: { CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER: "1" } }, { localDir: true, pending: true, record: false });
+  }, 300_000);
+
+  it("recovers when the interruption came after the record", async () => {
+    await recoversAfter("after record", { env: { CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER: "2" } }, { localDir: true, pending: true, record: true });
   }, 300_000);
 
   it("refuses a state directory that is not this worktree's own", async () => {
@@ -868,6 +896,18 @@ describe("every interruption boundary recovers itself (W14-R2-07)", () => {
     expect(run.replies).toEqual([]);
     expect(readFileSync(join(external, ".bridge/workspace.json"), "utf8")).toBe(foreign);
     expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+  }, 180_000);
+
+  it("treats a bare local directory as neither evidence nor contradiction", async () => {
+    const external = inherit("a bare directory worktree");
+    mkdirSync(join(external, ".bridge-runtime"), { recursive: true });
+    writeFileSync(join(external, ".bridge-runtime/something-of-mine.txt"), "kept\n");
+    // No journal, no marker, nothing that explains it: still refused, and the unknown file stays.
+    const refused = await launchEntry(external, { frames: HANDSHAKE });
+    expect(refused.stderr).toContain("SETUP_STATE_PARTIAL");
+    expect(refused.replies).toEqual([]);
+    expect(readFileSync(join(external, ".bridge-runtime/something-of-mine.txt"), "utf8")).toBe("kept\n");
+    refused.child.kill("SIGKILL");
   }, 180_000);
 
   it("refuses a state directory with no readable marker", async () => {
