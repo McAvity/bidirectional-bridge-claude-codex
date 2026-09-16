@@ -48,7 +48,8 @@ a substitute for reviewing `git status`, the staged diff, and a secret scan.
 - telemetry schemas that omit raw prompts, responses, authentication, and handles;
 - a [diagnostics log](diagnostics.md) that is armed only by the identity guard, writes
   identifiers rather than content, and is bounded by finite rotation and retention;
-- an incident export (`bridge.mjs diagnose`) that projects an allowlist, aliases local paths,
+- an incident export (`bridge.mjs diagnose`) that projects an allowlist of typed fields, aliases
+  local paths, refuses to follow a link or to execute anything the diagnosed worktree selected,
   keeps the raw database and the runtime stderr behind explicit flags, and uploads nothing.
 
 These controls reduce coordination mistakes. They do not prove resistance to malicious

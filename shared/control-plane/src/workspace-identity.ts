@@ -10,7 +10,9 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { realpathSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { BridgeError, ErrorCode } from "@bridge/protocol";
 
@@ -132,6 +134,42 @@ export function resolveWorkspaceIdentity(
 /** `<root>/.bridge` — the worktree's own state directory. Not created by resolution. */
 export function stateDirectory(identity: WorkspaceIdentity): string {
   return join(identity.root, ".bridge");
+}
+
+/** Exchange namespace directories of one worktree. */
+export interface ExchangeNamespace {
+  readonly workspace_key: string;
+  readonly namespace: string;
+  readonly packages: string;
+  readonly incoming: string;
+  readonly staging: string;
+}
+
+/**
+ * Deterministic exchange namespace of a worktree: `~/tmp/bridge-exchange/ws_<16 hex>/`, the key
+ * being the first 16 hex of SHA-256(canonical root + NUL + canonical per-worktree git dir).
+ *
+ * This is the one implementation of that identity for JavaScript callers, matching
+ * `feature_exchange.py namespace` byte for byte, so the exporter and the exchange tooling never
+ * drift apart. Resolving it reads nothing and creates nothing, and it grants no authority.
+ */
+export function exchangeNamespace(
+  identity: WorkspaceIdentity,
+  env: NodeJS.ProcessEnv = process.env,
+): ExchangeNamespace {
+  const key = `ws_${createHash("sha256")
+    .update(`${identity.root}\0${identity.git_dir ?? ""}`, "utf8")
+    .digest("hex")
+    .slice(0, 16)}`;
+  const home = env["HOME"] && isAbsolute(env["HOME"]) ? env["HOME"] : homedir();
+  const base = join(home, "tmp", "bridge-exchange", key);
+  return {
+    workspace_key: key,
+    namespace: base,
+    packages: join(base, "packages"),
+    incoming: join(base, "incoming"),
+    staging: join(base, "staging"),
+  };
 }
 
 /**

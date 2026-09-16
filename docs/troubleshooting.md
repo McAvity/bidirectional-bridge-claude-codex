@@ -183,11 +183,11 @@ node scripts/bridge.mjs diagnose --workspace <worktree> --feature <id>  # the pa
 
 The package is written into this worktree's exchange namespace and contains identifiers,
 states, timings, machine codes, the two cutoffs and a readable timeline — no prompts, answers,
-transcripts, objectives or blockers. `--with-evidence` adds the termination evidence (a redacted
-stderr tail) and `--with-database` the raw snapshot; both are announced in the printed risk note.
-The command changes nothing in the worktree and does not stop a running worker, so it is safe
-while the incident is still open. Format, gaps and the reading instruction:
-[diagnostics.md](diagnostics.md).
+transcripts, objectives, blockers or error messages. `--with-evidence` adds the termination
+evidence (a redacted stderr tail) and `--with-database` the raw snapshot; both are announced in
+the printed risk note. The command changes nothing in the worktree, executes nothing the worktree
+selected, and does not stop a running worker, so it is safe while the incident is still open.
+Format, gaps and the reading instruction: [diagnostics.md](diagnostics.md).
 
 ### A custom `bridge_delegate` caller disconnects after about 60 seconds
 

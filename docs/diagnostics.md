@@ -214,10 +214,24 @@ node scripts/bridge.mjs diagnose --workspace <worktree> --since 2h         # an 
 
 Without a scope it prints the available identifiers and exports nothing — it never quietly packs
 the whole history. With a scope it writes one ZIP into this worktree's exchange namespace,
-`~/tmp/bridge-exchange/ws_<key>/packages/`, with a unique name and mode `0600`; an existing file
-is never overwritten. `--out <path>` is taken literally, and `--inspect <file.zip>` re-checks a
-package against its own manifest. The command is read-only for the worktree: it starts no client,
-stops no worker, and runs no migration, repair, claim, adoption, recovery or takeover.
+`~/tmp/bridge-exchange/ws_<key>/packages/` (the same namespace `feature_exchange.py` resolves,
+from the same identity), with a generated name and mode `0600`. There is no destination flag: the
+package is built in a private staging directory and then **linked** into the namespace, which is
+atomic and fails if that name already exists, so a package is never overwritten and a partly
+written one is never published. `--inspect <file.zip>` re-checks a package against its own
+manifest.
+
+The command is read-only for the worktree: it starts no client, stops no worker, and runs no
+migration, repair, claim, adoption, recovery or takeover. It also executes **nothing the diagnosed
+worktree chose**: the identity resolver, the doctor and every module it loads come from the CLI's
+own build, and `.bridge-runtime/current` of that worktree is read as data — its manifest is
+described in `versions.runtime`, and no file of it is imported.
+
+Every read goes through one boundary: no path component may be a symlink, only regular files are
+opened (with `O_NOFOLLOW`), and each read is bounded and described. A log directory, an evidence
+directory, a task directory or a database that is a link is refused and reported as a gap instead
+of being followed; `--db <path>` names a database outside the worktree deliberately, and the same
+rules then apply to it and to the evidence beside it.
 
 ## What a package contains
 
@@ -225,26 +239,40 @@ stops no worker, and runs no migration, repair, claim, adoption, recovery or tak
 | --- | --- |
 | `diagnostics-manifest.json` | Format, scope, both cutoffs, versions, counts, gaps, extensions, privacy statement and a SHA-256 for every other entry |
 | `timeline.md` | Readable chronology of the database and the log side by side, with their separate cutoffs |
-| `records/tasks.json`, `records/attempts.json`, `records/telemetry.json`, `records/events.json` | Machine records of the selected scope, allowlisted field by field |
+| `records/tasks.json`, `records/attempts.json`, `records/telemetry.json`, `records/events.json` | Machine records of the selected scope, allowlisted field by field and typed value by value |
 | `records/feature.json`, `records/workspace.json` | Feature routing state and worktree/manager identity, without the question or answer text |
 | `logs/<file>.jsonl` | The diagnostics records of the scope, projected again on the way in |
 | `evidence/index.json` | Termination-evidence metadata: attempt, file name, size, SHA-256, termination kind, whether the content is included |
 | `doctor.json` | Doctor's safe subset: ids, machine codes and aliased summaries. `handshake` and `codex_project` are skipped, so nothing is started and no project configuration is loaded |
 | `ANALYSIS.md` | The instruction below, travelling with the package |
 
+## One scope for every source
+
+A scope is resolved once and applied to every source: the tasks, their attempts, their telemetry,
+their events, their evidence files and the log records that mention them. `--attempt` narrows all
+of them, not only the attempt rows. A `--feature` or `--task` that does not exist is refused
+(`DIAGNOSE_SCOPE_NOT_FOUND`) rather than quietly widened into "whatever else happened around
+then", and `--since` on its own selects the tasks that window touched, up to a bound the manifest
+reports (`scope.window_task_limit_reached`). Process-level log records — the ones that carry no
+task and explain a launcher that never reached an attempt — are kept only inside the incident's
+own time span.
+
 ## Scope, cutoffs and what they do not prove
 
 The database snapshot is taken with SQLite's **backup API**, so a live WAL writer is included and
 the source is never copied file by file; the copy is checkpointed into one file and its
-`integrity_check` runs on the copy. The logs are read afterwards, per file, up to a bounded
-number of bytes. Those are **two cutoffs**, recorded separately in the manifest along with the
-bytes actually read, and the export says so rather than implying one consistent moment:
+`integrity_check` runs on the copy. The logs are read afterwards, per file, as a bounded prefix
+of one inode. Those are **two cutoffs**, recorded separately — `cutoffs.logs.files[]` names the
+file, its size, the offset the read started at, how many bytes it read, its inode, and whether it
+changed while the export ran — and the export says so rather than implying one consistent moment:
 
 - inside one process, the log's `seq`/`mono_ms` order records; inside the database, `event_id`
   does. Interleaving the two in `timeline.md` is an approximation;
 - processes are not inspected at all (`cutoffs.processes.observed` is `false`);
-- rotation or retention during the export can remove older records. Deletions the logger made are
-  in the log itself as `log.retention`; what a package does not contain is listed in `gaps`.
+- a file that is rotated, truncated or deleted while the export runs is detected by re-checking
+  its identity and reported as `logs:changed_during_export` or `logs:removed_during_export`;
+- a read that hit a record limit is reported (`cutoffs.records`, and a `record_limit` gap) rather
+  than silently cut; a bounded prefix that starts mid-record reports `logs:prefix_truncated`.
 
 A package is produced even from partially broken state: an absent, locked or corrupt database, a
 half-written log line, unreadable evidence or a missing runtime selection each become a gap, and
@@ -252,12 +280,28 @@ whatever is still readable is still collected.
 
 ## Privacy
 
-The default is an **allowlist**: each record type has a fixed set of fields, so a new column does
-not silently start travelling. Withheld by default: prompts, answers and transcripts; task
-objectives, write scopes, verification criteria and blockers; user questions and answers; process
-stderr; raw execution handles and native thread ids (short digests only). Absolute paths are
+The default is an **allowlist with typed values**, and there is only one path into a package:
+every record, the manifest, the gaps, the evidence metadata, the versions and the doctor subset
+pass the same projection.
+
+- each part declares which fields exist; a field outside that list cannot appear, and how many
+  were dropped is reported as a count (`dropped_fields`), never as a name or a value;
+- each field declares what it is — an identifier, a count, a flag, an instant, a digest, a
+  bounded file name, an aliased path, or a value from a **closed vocabulary** (task and feature
+  states, error codes, termination kinds, phases, agents, tools, event types). A value that does
+  not match is written as the constant `"invalid"`; the original never travels, not even
+  truncated. That is what stops arbitrary text from riding along inside a field that happens to
+  be allowed;
+- a parse failure is a code (`unparsable`), never the parser's message, because that message
+  quotes its input. Gaps carry only a part, a reason, an errno-style code, a bridge-generated
+  file name and a count.
+
+Withheld by default: prompts, answers and transcripts; task objectives, write scopes,
+verification criteria and blockers; user questions and answers; process stderr; raw execution
+handles and native thread ids (short digests only); and free text of any kind. Absolute paths are
 replaced by package-local aliases (`<workspace>`, `<home>`, `<path-N>`); the alias map is not
-written into the package. Known credential shapes are replaced as a guardrail.
+written into the package. Known credential shapes are replaced as a second guardrail — the type
+rules, not the patterns, are what the package relies on.
 
 Two extensions are explicit, recorded in `manifest.extensions` and announced in the risk note the
 command prints:

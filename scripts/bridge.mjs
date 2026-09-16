@@ -24,12 +24,13 @@ const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Co
   doctor    --workspace <worktree> [--codex-profile <name>] [--no-handshake]
             check tools, setup, configuration, state and a real MCP handshake; no models
   diagnose  --workspace <worktree> [--feature <id> | --task <id> [--attempt <n>] | --since <30m|6h|ISO>]
-            [--db <path>] [--with-evidence] [--with-database] [--out <file.zip>] [--inspect <file.zip>]
+            [--db <path>] [--with-evidence] [--with-database] [--inspect <file.zip>]
             collect one incident into a local package in this worktree's exchange namespace.
-            Without a scope it prints what can be selected and exports nothing. The default
-            package carries identifiers, states, timings and machine codes only; --with-evidence
-            adds termination evidence (redacted runtime stderr) and --with-database the raw
-            snapshot. Nothing is uploaded and the source worktree is not changed.
+            Without a scope it prints what can be selected and exports nothing. The package name
+            is generated and never overwrites an existing one. The default package carries
+            identifiers, states, timings and machine codes only; --with-evidence adds termination
+            evidence (redacted runtime stderr) and --with-database the raw snapshot. Nothing is
+            uploaded and the source worktree is not changed.
 
 Common options: --home <dir> (default $CLAUDE_CODEX_BRIDGE_HOME or
 ~/.local/share/claude-codex-bridge), --json. Exit status: 0 ok, 1 refused or problems, 2 usage.
@@ -37,7 +38,7 @@ Common options: --home <dir> (default $CLAUDE_CODEX_BRIDGE_HOME or
 
 const VALUE_FLAGS = new Set([
   "--source", "--ref", "--home", "--workspace", "--runtime", "--to", "--codex-profile",
-  "--feature", "--task", "--attempt", "--since", "--db", "--out", "--inspect",
+  "--feature", "--task", "--attempt", "--since", "--db", "--inspect",
 ]);
 const BOOLEAN_FLAGS = new Set([
   "--yes", "--json", "--keep-local", "--no-handshake", "--help", "--with-evidence", "--with-database",
@@ -255,7 +256,6 @@ async function main(argv) {
       attempt: options.attempt,
       since: options.since,
       db: options.db,
-      out: options.out,
       withEvidence: Boolean(options["with-evidence"]),
       withDatabase: Boolean(options["with-database"]),
       cliRuntime: ownRuntime(),

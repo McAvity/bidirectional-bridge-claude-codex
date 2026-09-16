@@ -177,24 +177,33 @@ node scripts/bridge.mjs diagnose --workspace <worktree> --since 2h
 ```
 
 Without a scope, `diagnose` prints what can be selected — features, recent tasks, log files and
-the database cutoff — and exports nothing. With a scope it writes one ZIP into this worktree's
-exchange namespace (`~/tmp/bridge-exchange/ws_<key>/packages/`), never overwriting an existing
-file; `--out <path>` places it somewhere else literally. `--inspect <file.zip>` re-checks a
-package against its own manifest.
+the database state — and exports nothing. With a scope it writes one ZIP into this worktree's
+exchange namespace (`~/tmp/bridge-exchange/ws_<key>/packages/`, the namespace
+`feature_exchange.py` also resolves), with a generated name. There is no destination flag: the
+package is built in a private staging directory and linked into the namespace, which is atomic
+and fails on a name that already exists, so nothing is ever overwritten and a partly written
+package is never published. `--inspect <file.zip>` re-checks a package against its own manifest.
 
-The command reads: it takes a private consistent snapshot of the database through SQLite's backup
-API (WAL included), reads the worktree's own diagnostics logs, reuses doctor's safe subset, and
-changes nothing in the worktree — no migration, no repair, no recovery, no claim, and no running
-worker is stopped. The default package carries identifiers, states, timings and machine codes
-only. `--with-evidence` adds the termination evidence files (a redacted runtime stderr tail) and
+The command only reads: it takes a private consistent snapshot of the database through SQLite's
+backup API (WAL included), reads the worktree's own diagnostics logs as bounded prefixes, reuses
+doctor's safe subset, and changes nothing in the worktree — no migration, no repair, no recovery,
+no claim, and no running worker is stopped. It executes nothing the diagnosed worktree selected:
+its runtime is described from its manifest, never imported. No path component it reads may be a
+symlink, and a redirected log, evidence or database path is refused and reported rather than
+followed. `--db <path>` names an external database deliberately.
+
+The default package carries identifiers, states, timings and machine codes only.
+`--with-evidence` adds the termination evidence files (a redacted runtime stderr tail) and
 `--with-database` the raw snapshot; both are named in the manifest and in the printed risk note.
 Nothing is uploaded. What a package contains, what it withholds and how to read it is described
 in [diagnostics.md](diagnostics.md).
 
-Refusals: `DIAGNOSE_SCOPE_INVALID` (unusable `--since` or `--attempt` without `--task`),
-`DIAGNOSE_STATE_REDIRECTED` (`.bridge` is a symlink), `DIAGNOSE_OUTPUT_UNSAFE` (the namespace
-resolves inside the worktree), `DIAGNOSE_OUTPUT_UNWRITABLE` (the destination cannot be written),
-`DIAGNOSE_PACKAGE_EXISTS` (a package of that name is already there) and
+Refusals: `DIAGNOSE_SCOPE_INVALID` (an unusable `--since`, `--attempt` without `--task`, or
+`--feature` together with `--task`), `DIAGNOSE_SCOPE_NOT_FOUND` (the named feature or task is not
+in this worktree), `DIAGNOSE_PATH_UNSAFE` (a state path is a link or not a regular file),
+`DIAGNOSE_OUTPUT_UNSAFE` (the namespace is redirected or resolves inside the worktree),
+`DIAGNOSE_OUTPUT_UNWRITABLE` (the destination cannot be written, including a disk that filled
+mid-package), `DIAGNOSE_PACKAGE_EXISTS` (that name is already taken) and
 `DIAGNOSE_PACKAGE_INVALID` (`--inspect` on something that is not a package).
 
 ## Limits
@@ -214,8 +223,11 @@ resolves inside the worktree), `DIAGNOSE_OUTPUT_UNWRITABLE` (the destination can
 - Removing a runtime is manual: check that no worktree links to it, then
   `chmod -R u+w <runtime> && rm -rf <runtime>`.
 - `diagnose` reports what it could not collect instead of failing: a missing, locked or corrupt
-  database, unreadable log lines, absent evidence and a missing runtime selection all appear as
-  gaps in the manifest. A package with gaps is still a package.
+  database, unreadable log lines, a redirected directory, absent evidence and a missing runtime
+  selection all appear as gaps in the manifest. A package with gaps is still a package.
+- A hard kill during an export publishes nothing, but can leave a private working directory under
+  `~/tmp/bridge-exchange/ws_<key>/staging/`. The next export neither reads nor needs it; remove it
+  when you want the space back.
 
 ## Developing the bridge
 

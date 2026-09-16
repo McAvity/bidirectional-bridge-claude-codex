@@ -8,6 +8,7 @@ This test writes a package with the Node writer and reads it back with Python's 
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -73,6 +74,47 @@ class DiagnosticsPackageFormat(unittest.TestCase):
                 self.assertEqual(result.returncode, 3, f"{name}: {result.stdout} {result.stderr}")
                 self.assertIn("unsafe", result.stdout)
                 self.assertFalse(archive.exists(), "a refused entry must not leave a package behind")
+
+
+class ExchangeNamespaceAgreement(unittest.TestCase):
+    """The exporter and the exchange tooling must resolve the same namespace.
+
+    `bridge.mjs diagnose` publishes into the worktree's exchange namespace, which
+    `feature_exchange.py` also owns. Review R2-02 asked for one canonical resolver rather than a
+    second implementation; this checks that the JavaScript one agrees with the Python one on a
+    real Git worktree — this repository.
+    """
+
+    def test_javascript_and_python_agree_on_this_worktree(self):
+        exchange = REPO / ".agents" / "skills" / "feature-exchange" / "scripts" / "feature_exchange.py"
+        expected = json.loads(
+            subprocess.run(
+                [sys.executable, str(exchange), "namespace", "--repo", str(REPO)],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=True,
+            ).stdout
+        )
+        script = (
+            "const { resolveWorkspaceIdentity, exchangeNamespace } = await import(process.argv[1]);"
+            "const identity = resolveWorkspaceIdentity(process.argv[2]);"
+            "process.stdout.write(JSON.stringify(exchangeNamespace(identity)));"
+        )
+        control_plane = REPO / "shared" / "control-plane" / "dist" / "index.js"
+        if not control_plane.exists():
+            self.skipTest("the control plane is not built; run npm run build first")
+        actual = subprocess.run(
+            ["node", "--input-type=module", "-e", script, str(control_plane), str(REPO)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env={**os.environ, "HOME": os.environ.get("HOME", "")},
+        )
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        resolved = json.loads(actual.stdout)
+        for key in ("workspace_key", "namespace", "packages", "incoming", "staging"):
+            self.assertEqual(resolved[key], expected[key], key)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import { accessSync, constants, existsSync, readFileSync, readdirSync, rmSync, s
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { LOCAL_DIR, SetupError, canonical, newTag, run, sha256 } from "./common.mjs";
 import { findActiveUse } from "./processes.mjs";
 import { TOOL_TIMEOUT_SEC, knownInstructionHashes, listRuntimes, verifyRuntime } from "./runtime.mjs";
@@ -417,9 +417,15 @@ export async function runDoctor({
   const selection = readSelection(requested);
   const runtime = selection.kind === "ok" ? selection.runtime : null;
   // Identity resolution is the same in every runtime and read-only; any complete one will do.
-  const resolver = runtime ?? cliRuntime ??
-    listRuntimes(home).find((candidate) => candidate.manifest && existsSync(join(candidate.path, "shared/control-plane/dist/index.js"))) ??
-    null;
+  //
+  // The safe subset is the exception: it must not import code the diagnosed worktree selected,
+  // so it resolves with this CLI's own build only and describes the selection as data (R2-04).
+  const own = cliRuntime ?? { path: resolve(dirname(fileURLToPath(import.meta.url)), "..", "..") };
+  const resolver = safeSubset
+    ? (existsSync(join(own.path, "shared/control-plane/dist/index.js")) ? own : null)
+    : runtime ?? cliRuntime ??
+      listRuntimes(home).find((candidate) => candidate.manifest && existsSync(join(candidate.path, "shared/control-plane/dist/index.js"))) ??
+      null;
   let identity = null;
   let controlPlane = null;
   if (!existsSync(requested)) {
@@ -649,8 +655,11 @@ export async function runDoctor({
       lock = lockProbe(paths.dir, env);
       if (!lock.ok && lock.error) denied.push(`${LOCAL_DIR}/ (${lock.error.code ?? lock.error.message})`);
     }
-    if (runtime) {
-      const namespace = run("python3", [join(runtime.path, ".agents/skills/feature-exchange/scripts/feature_exchange.py"), "namespace", "--repo", root], { env });
+    // This CLI's own copy of the exchange script, never the diagnosed worktree's selection, and
+    // not at all in the safe subset, which starts no subprocess of the project's choosing.
+    const ownScript = join(resolve(dirname(fileURLToPath(import.meta.url)), "..", ".."), ".agents/skills/feature-exchange/scripts/feature_exchange.py");
+    if (!safeSubset && existsSync(ownScript)) {
+      const namespace = run("python3", [ownScript, "namespace", "--repo", root], { env });
       if (namespace.status === 0) {
         let cursor = JSON.parse(namespace.stdout).namespace;
         while (!existsSync(cursor) && dirname(cursor) !== cursor) cursor = dirname(cursor);

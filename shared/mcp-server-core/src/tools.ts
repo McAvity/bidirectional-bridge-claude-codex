@@ -1101,7 +1101,7 @@ const ASYNC_MUTATORS = new Set([
  * answers, messages, reasons and every other free-text argument stay out of the log; a
  * manager-chosen idempotency key is referenced by digest so replays still correlate.
  */
-function callCorrelation(args: Record<string, unknown>): {
+function callCorrelation(tool: string, args: Record<string, unknown>): {
   feature_id: string | null;
   task_id: string | null;
   details: Record<string, unknown>;
@@ -1109,7 +1109,9 @@ function callCorrelation(args: Record<string, unknown>): {
   const details: Record<string, unknown> = {};
   const run = loggableId(args["run_id"]);
   const parent = loggableId(args["parent_task_id"]);
-  const target = loggableId(args["to"]);
+  // `to` is an agent only for a delegation; `bridge_set_state` uses the same argument name for
+  // the target state, and recording that as an agent would be a small, permanent lie.
+  const target = tool === "bridge_delegate" ? loggableId(args["to"]) : null;
   const key = digestRef(args["idempotency_key"]);
   if (run !== null) details["run_id"] = run;
   if (parent !== null) details["parent_task_id"] = parent;
@@ -1176,7 +1178,7 @@ export async function runTool(
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
   const logger = ctx.logger;
   const startedMs = logger?.monotonicMs() ?? 0;
-  const correlation = callCorrelation(args);
+  const correlation = callCorrelation(tool.name, args);
   // One permission object per request. The guard fills it in for the call it authorizes, so a
   // refused call, a read, and a call overlapping a running round each decide on their own
   // whether they may write to this worktree's state (review R1-01).

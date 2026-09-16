@@ -77,10 +77,11 @@ export type { IdempotentOptions } from "./idempotency.js";
 export {
   resolveWorkspaceIdentity,
   resolveDatabasePath,
+  exchangeNamespace,
   stateDirectory,
   canonicalizeWithoutCreating,
 } from "./workspace-identity.js";
-export type { WorkspaceIdentity, WorkspaceKind } from "./workspace-identity.js";
+export type { ExchangeNamespace, WorkspaceIdentity, WorkspaceKind } from "./workspace-identity.js";
 
 export {
   MARKER_NAME,
