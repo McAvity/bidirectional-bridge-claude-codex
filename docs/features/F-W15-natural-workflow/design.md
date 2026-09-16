@@ -256,10 +256,12 @@ wprost w evencie. To ograniczenie, nie blokada — **nie proponujemy tu zmiany p
 
 ## 6. Ograniczone syntetyczne przypadki przerwań
 
-> Korekta W15-C4: scenariusze poniżej poprawiono tak, by odpowiadały rzeczywistym przejściom
-> bridge'a. W15-03 ma je wykonać na prawdziwym harnessie; do tego czasu są projektem testów.
+> Korekta W15-C4: scenariusze poprawiono tak, by odpowiadały rzeczywistym przejściom bridge'a.
+> **W15-03 wykonał je na rzeczywistym stanie** — `shared/control-plane/src/wave15-continuation.test.ts`
+> (S-01…S-10, prawdziwe ControlPlane/Orchestrator/FeatureWorkflow na pliku SQLite, atrapą jest
+> wyłącznie runtime agenta) oraz suity z W15-02 dla S-11/S-12.
 
-Testy bez modeli, na istniejącym harnessie `shared/control-plane/src/feature-workflow.test.ts`:
+Testy bez modeli, wzorowane na harnessie `shared/control-plane/src/feature-workflow.test.ts`:
 atrapa adaptera z bramką (`behavior.gate`), sterowanym handle'em (`behavior.handle`) i funkcją
 `open()` ponownie otwierającą SQLite, co odtwarza restart procesu. Dla każdego przypadku raport
 podaje stan przed/po, liczbę uruchomień adaptera, klucz, kontrakt i wynik (plan, wiersze 178-181).
@@ -281,24 +283,36 @@ podaje stan przed/po, liczbę uruchomień adaptera, klucz, kontrakt i wynik (pla
 | S-11 | Wybór instrukcji: worktree `inherited-pristine` i `ready`, z pluginem i bez; brak runtime, nierozpoznana deklaracja, rozbieżny pin | Wskazana ścieżka wejścia odpowiada przypiętemu runtime; odmowy mają kod i następny krok; nic nie jest zapisywane | AC-01, AC-03, AC-08 |
 | S-12 | Opcjonalny zapis preferencji: brak `AGENTS.md`, `AGENTS.md` z cudzą treścią, ponowne uruchomienie, blok zmieniony ręcznie, zdublowane znaczniki, dowiązanie symboliczne, zwykły `init`/`update`/`rollback` | Utworzenie / dopisanie z zachowaniem cudzej treści / brak zmian / `PREFERENCE_MODIFIED` / `PREFERENCE_CONFLICT` / odmowa symlinku / `AGENTS.md` nietknięty | AC-03 |
 
-S-11 i S-12 są **wykonane w W15-02** (`scripts/bridge-project/bridge-project.test.ts`,
-`scripts/setup/setup.test.ts`). S-01…S-10 pozostają projektem testów dla W15-03.
-Sprawdzają wybór ścieżki instrukcji i zapis pliku, nie zachowanie modelu: lista scenariuszy
-oceny instrukcji nie jest dowodem zachowania modelu (plan, wiersz 181), a smoke z modelami
-pozostaje niezlecony.
+Wszystkie S-01…S-12 są wykonane: S-01…S-10 w `wave15-continuation.test.ts`, S-11/S-12 w
+`scripts/bridge-project/bridge-project.test.ts` i `scripts/setup/setup.test.ts`. Asercje dotyczą
+tego, co duplikat by naruszył: liczby tasków, liczby prób, liczby uruchomień workera, tożsamości,
+klucza, kontraktu, historii zdarzeń i budżetu.
+
+Jedna rzecz zmieniła się przez ten test: wiersz „Claim + WORKING" w §4 twierdził, że
+`WORKING→WORKING` kończy się `ILLEGAL_TRANSITION`. Regresja pokazała, że `transition` ma jawny
+no-op przed kontrolą legalności — twierdzenie było wywiedzione z `ALLOWED_TRANSITIONS`, nie
+z implementacji. Tabela jest poprawiona.
+
+Te testy sprawdzają zachowanie bridge'a i wybór ścieżki instrukcji, **nie zachowanie modelu**:
+lista scenariuszy oceny instrukcji nie jest dowodem zachowania modelu (plan, wiersz 181),
+a smoke z modelami pozostaje niezlecony.
 
 ## 7. Wpływ na dalsze zadania i otwarte kwestie
 
-- **W15-02**: opis wyzwalacza w `codex-entry-SKILL.md`, fragment preferencji, opcjonalny krok setupu
-  wzorowany na `planGitignore`, generator `plugins/**`, README. Pliki wspólne z W15-03: `bridge-loop.md`
-  — kolejność edycji: W15-02 przed W15-03 (plan, wiersz 152).
-- **W15-03**: reguły z §3 i §4 w `bridge-loop.md` i `.codex/skills/using-bridge`, regresje S-01…S-10.
-  Helpery tylko przy wykazanej potrzebie — z tej analizy **nie wynika potrzeba nowego helpera**:
-  wszystkie rozstrzygnięcia są osiągalne istniejącymi odczytami.
+- **W15-02** (wykonane, z korektami W15-I1…I5): wyzwalacz i granice zgody w `codex-entry-SKILL.md`
+  — sama klasyfikacja dokumentu została z niego **usunięta** i pozostaje kanonicznie w przypiętym
+  role skillu (I5); preferencja odmawiana dla profilu legacy, który nie instaluje wskazywanego
+  wejścia (I1); diff także dla projektu bez `AGENTS.md` (I2); jedna klasyfikacja pinu wspólna dla
+  `status` i entry pointu, z `pin-commit-mismatch` (I3); `preference.managed_block` zamiast
+  „declared", z `authoritative: false` — marker nie jest zgodą (I4).
+- **W15-03** (wykonane): reguły „kontynuuj" w `bridge-loop.md` i w `.codex/skills/using-bridge`,
+  plik intencji z §3, regresje S-01…S-10 na rzeczywistym stanie. **Żaden nowy helper nie był
+  potrzebny**: wszystkie rozstrzygnięcia są osiągalne istniejącymi odczytami i istniejącym
+  replayem, a plik intencji to jeden plik JSON w istniejącej przestrzeni wymiany.
 - **W15-04**: wspólna walidacja (build, testy JS/Python/pilot, `packages:check`, kontrola linków,
-  `git diff --check`), jedno niezależne review, raport.
-- **Otwarte**: G-2 wymaga rozstrzygnięcia użytkownika przed jakąkolwiek implementacją wariantu (b).
-  Do tego czasu zakres W15 opisuje stan faktyczny i nie obiecuje pełnej odporności w tym oknie.
-- **Ograniczenie tej analizy**: wszystko powyżej pochodzi z odczytu źródeł i jednego pomiaru
-  hasha na `dist/idempotency.js`. Nie uruchomiono bridge'a, nie wykonano rund ani recovery;
-  scenariusze §6 są projektem testów, nie wykonanym dowodem.
+  `git diff --check`), jedno niezależne review, raport i proponowany pin.
+- **Otwarte**: G-2 pozostaje granicą — bez utrwalonego handle'a strict resume nie ma czego wznowić
+  i manager zatrzymuje się z diagnozą. Żadna operacja porzucania nie jest implementowana ani
+  proponowana jako praca W15; wymagałaby zmiany publicznego protokołu i osobnego rozstrzygnięcia.
+- **Ograniczenie**: numery linii w §3–§5 odnoszą się do bazy pierwszej wersji (`895cc99`).
+  Twierdzenia, które W15-03 sprawdził testem, są oznaczone przy odpowiednich wierszach.
