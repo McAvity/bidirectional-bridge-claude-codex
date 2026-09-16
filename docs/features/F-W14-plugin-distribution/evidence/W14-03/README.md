@@ -188,7 +188,7 @@ declaration and a 54-line entry point, and a launch gate refuses before anything
 | --- | --- |
 | `npm ci --ignore-scripts` | exit 0 |
 | `npm run build` | exit 0 |
-| `npm test` | 33 files, 482 tests, exit 0 (48 of them the distribution suite) |
+| `npm test` | 33 files, 486 tests, exit 0 (52 of them the distribution suite) |
 | `npm run packages:check` | exit 0 |
 | `python3 -m unittest discover -s tests -v` | 43 tests, OK |
 | `python3 -m unittest discover -s tools/pilot/tests -v` | 140 tests, OK (1 skipped) |
