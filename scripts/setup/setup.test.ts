@@ -335,6 +335,28 @@ describe("bridge setup CLI", () => {
     rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
+  it.each([false, true])("doctor checks the dispatcher after setup (legacy migration=%s)", (migrate) => {
+    const project = makeProject(`dispatcher doctor ${migrate}`);
+    if (migrate) init(project);
+    const plugin = join(repoRoot, "scripts/plugin-packages/bridge-plugin.mjs");
+    const prepared = spawnSync(process.execPath, [plugin, "setup", "--to", runtimeA.id, "--home", home, "--yes", "--json"], {
+      cwd: project, encoding: "utf8", env,
+    });
+    expect(prepared.status, prepared.stdout + prepared.stderr).toBe(0);
+    const extra = { CLAUDE_CODEX_BRIDGE_HOME: home };
+    const before = snapshot(project);
+    const result = bridgeJson(["doctor", "--workspace", project], extra);
+    for (const key of ["instructions", "codex_config", "codex_project", "handshake"]) {
+      expect(check(result.json, key).status, JSON.stringify(result.json)).toBe("ok");
+    }
+    expect(result.json.distribution.integration_source).toBe("project-dispatcher");
+    expect(snapshot(project)).toEqual(before);
+    // A broken dispatcher must fail the actual handshake, not pass via the legacy launcher.
+    writeFileSync(join(project, ".bridge-project/entry.mjs"), 'throw new Error("DISPATCHER_SENTINEL");\n');
+    const broken = bridgeJson(["doctor", "--workspace", project], extra);
+    expect(check(broken.json, "handshake").code).toBe("HANDSHAKE_FAILED");
+  });
+
   it("installs immutable pinned runtimes beside each other from a fresh clone", () => {
     expect(runtimeA.id).not.toBe(runtimeB.id);
     expect(runtimeAUnchangedByB).toBe(true);
