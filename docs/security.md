@@ -28,7 +28,10 @@ Never publish or commit:
 - Claude or Codex trust state;
 - raw execution handles, prompts, transcripts, or runtime frames;
 - credentials, `.env` files, private keys, or authentication material;
-- logs, temporary task directories, `node_modules`, coverage, or build output.
+- logs, temporary task directories, `node_modules`, coverage, or build output;
+- diagnostics packages produced by `bridge.mjs diagnose`: they live outside the repository, in
+  the worktree's exchange namespace, and a package created with `--with-database` or
+  `--with-evidence` carries state the default package deliberately withholds.
 
 The repository `.gitignore` covers these common paths and formats, but ignore rules are not
 a substitute for reviewing `git status`, the staged diff, and a secret scan.
@@ -42,7 +45,11 @@ a substitute for reviewing `git status`, the staged diff, and a secret scan.
 - deadlines and bounded retry counts;
 - verification-gated `COMPLETE` deliverables;
 - capped, printable, credential-screened execution handles;
-- telemetry schemas that omit raw prompts, responses, authentication, and handles.
+- telemetry schemas that omit raw prompts, responses, authentication, and handles;
+- a [diagnostics log](diagnostics.md) that is armed only by the identity guard, writes
+  identifiers rather than content, and is bounded by finite rotation and retention;
+- an incident export (`bridge.mjs diagnose`) that projects an allowlist, aliases local paths,
+  keeps the raw database and the runtime stderr behind explicit flags, and uploads nothing.
 
 These controls reduce coordination mistakes. They do not prove resistance to malicious
 clients, compromised runtimes, dependency attacks, or hostile shell commands.

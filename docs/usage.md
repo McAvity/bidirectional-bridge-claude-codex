@@ -134,5 +134,20 @@ A task can submit `COMPLETE` only with at least one passing verification and no 
 verification. Use the exact command and real exit code. Return `PARTIAL` or `FAILED` when the
 evidence does not support completion.
 
+## When a round is stuck
+
+The runtime logs what each process did under `.bridge/logs/` without any manual command. One
+command collects an incident into a local package for someone else to read:
+
+```sh
+node scripts/bridge.mjs diagnose --workspace <worktree>                 # what can be selected
+node scripts/bridge.mjs diagnose --workspace <worktree> --feature <id>  # the package
+```
+
+It reads only: no migration, no recovery, no claim, and a running worker is not stopped. The
+default package carries identifiers, states, timings and machine codes; prompts, answers,
+transcripts, objectives and blockers stay out of it, and the raw database or the runtime stderr
+need an explicit flag. See [diagnostics.md](diagnostics.md).
+
 See [PROTOCOL.md](PROTOCOL.md) for the complete tool surface and lifecycle, and
 [troubleshooting.md](troubleshooting.md) when a call is rejected with a stable error code.

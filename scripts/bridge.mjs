@@ -23,14 +23,26 @@ const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Co
             selection of one worktree; without --yes nothing is written
   doctor    --workspace <worktree> [--codex-profile <name>] [--no-handshake]
             check tools, setup, configuration, state and a real MCP handshake; no models
+  diagnose  --workspace <worktree> [--feature <id> | --task <id> [--attempt <n>] | --since <30m|6h|ISO>]
+            [--db <path>] [--with-evidence] [--with-database] [--out <file.zip>] [--inspect <file.zip>]
+            collect one incident into a local package in this worktree's exchange namespace.
+            Without a scope it prints what can be selected and exports nothing. The default
+            package carries identifiers, states, timings and machine codes only; --with-evidence
+            adds termination evidence (redacted runtime stderr) and --with-database the raw
+            snapshot. Nothing is uploaded and the source worktree is not changed.
 
 Common options: --home <dir> (default $CLAUDE_CODEX_BRIDGE_HOME or
 ~/.local/share/claude-codex-bridge), --json. Exit status: 0 ok, 1 refused or problems, 2 usage.
 `;
 
-const VALUE_FLAGS = new Set(["--source", "--ref", "--home", "--workspace", "--runtime", "--to", "--codex-profile"]);
-const BOOLEAN_FLAGS = new Set(["--yes", "--json", "--keep-local", "--no-handshake", "--help"]);
-const COMMANDS = new Set(["install", "runtimes", "init", "update", "rollback", "doctor"]);
+const VALUE_FLAGS = new Set([
+  "--source", "--ref", "--home", "--workspace", "--runtime", "--to", "--codex-profile",
+  "--feature", "--task", "--attempt", "--since", "--db", "--out", "--inspect",
+]);
+const BOOLEAN_FLAGS = new Set([
+  "--yes", "--json", "--keep-local", "--no-handshake", "--help", "--with-evidence", "--with-database",
+]);
+const COMMANDS = new Set(["install", "runtimes", "init", "update", "rollback", "doctor", "diagnose"]);
 
 class UsageError extends Error {}
 
@@ -227,6 +239,30 @@ async function main(argv) {
     });
     process.stdout.write(options.json ? `${JSON.stringify(report, null, 2)}\n` : formatDoctor(report));
     return report.status === "ok" ? 0 : 1;
+  }
+  if (command === "diagnose") {
+    const { formatDiagnose, inspectPackage, runDiagnose } = await import("./diagnostics/collect.mjs");
+    if (options.inspect) {
+      const inspected = inspectPackage(resolve(options.inspect));
+      process.stdout.write(`${JSON.stringify(inspected, null, 2)}\n`);
+      return inspected.integrity === "ok" ? 0 : 1;
+    }
+    const report = await runDiagnose({
+      home,
+      workspace: requireWorkspace(options),
+      feature: options.feature,
+      task: options.task,
+      attempt: options.attempt,
+      since: options.since,
+      db: options.db,
+      out: options.out,
+      withEvidence: Boolean(options["with-evidence"]),
+      withDatabase: Boolean(options["with-database"]),
+      cliRuntime: ownRuntime(),
+    });
+    process.stdout.write(options.json ? `${JSON.stringify(report, null, 2)}\n` : formatDiagnose(report));
+    // A summary is a usable answer, not a failure; a package with gaps is still a package.
+    return 0;
   }
   return workspaceCommand(command, options, home);
 }

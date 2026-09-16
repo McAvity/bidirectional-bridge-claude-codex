@@ -2,7 +2,7 @@
 // The only write is a temporary lock probe inside the worktree's own .bridge-runtime/ directory.
 
 import { spawn } from "node:child_process";
-import { accessSync, constants, existsSync, readFileSync, rmSync } from "node:fs";
+import { accessSync, constants, existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -310,10 +310,96 @@ function codexProjectCheck(add, root, identity, manifest, env, profile) {
 }
 
 /**
+ * Diagnostics-log status (wave13 §1, deferred from W13-01).
+ *
+ * The logger reports its own trouble on stderr, which nobody keeps, and in its own records. This
+ * reads what is on disk — no log at all is normal, a redirected directory is not — and surfaces
+ * the counters the logger wrote itself, so a degraded log is visible before an incident needs it.
+ */
+function logsCheck(add, root) {
+  const directory = join(root, ".bridge", "logs");
+  const redirected = redirectedComponent(root, ".bridge/logs");
+  if (redirected?.target) {
+    return add("logs", "error", "LOGS_PATH_REDIRECTED", `${redirected.path} is a symlink to ${redirected.target}; the runtime refuses to log through it`, {
+      nextStep: "remove the link; diagnostics logs must be a real directory inside .bridge/",
+    });
+  }
+  let entries;
+  try {
+    entries = readdirSync(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return add("logs", "ok", "OK", "no diagnostics log yet; the runtime writes one after its first authorized call");
+    }
+    return add("logs", "unknown", "LOGS_UNREADABLE", `cannot read ${directory}: ${error.message}`);
+  }
+  const files = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"));
+  if (files.length === 0) {
+    return add("logs", "ok", "OK", "diagnostics log directory is present and empty");
+  }
+  let bytes = 0;
+  let newest = 0;
+  let newestPath = null;
+  for (const file of files) {
+    try {
+      const stat = statSync(join(directory, file.name));
+      bytes += stat.size;
+      if (stat.mtimeMs > newest) {
+        newest = stat.mtimeMs;
+        newestPath = join(directory, file.name);
+      }
+    } catch {
+      /* rotated away between readdir and stat */
+    }
+  }
+  // The logger's own bookkeeping: failures, deferred records and deletions it reported in-band.
+  let degraded = null;
+  let retention = 0;
+  try {
+    const text = readFileSync(newestPath, "utf8");
+    const lines = text.split("\n").filter((line) => line.length > 0).slice(-400);
+    for (const line of lines) {
+      let record;
+      try {
+        record = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (record.event === "retention") retention += Number(record.details?.deleted_files ?? 0);
+      if (record.event === "close" && Number(record.details?.failures ?? 0) > 0) {
+        degraded = `${record.details.failures} write failure(s) in the last closed log`;
+      }
+    }
+  } catch {
+    /* the newest file may rotate away while we read it */
+  }
+  const summary = `${files.length} log file(s), ${bytes} bytes, newest ${new Date(newest).toISOString()}`;
+  if (degraded) {
+    return add("logs", "warn", "LOGS_DEGRADED", `${summary}; ${degraded}`, {
+      nextStep: "check free space and permissions of .bridge/logs/; records of that process are incomplete",
+    });
+  }
+  add("logs", "ok", "OK", `${summary}${retention > 0 ? `, ${retention} file(s) deleted by retention` : ""}`);
+}
+
+/**
  * Run all checks. `cliRuntime` is the runtime this CLI runs from, used to resolve the worktree
  * when no runtime is selected yet. Returns the versioned report object.
  */
-export async function runDoctor({ home, workspace, codexProfile, handshake: doHandshake = true, cliRuntime = null, env = process.env }) {
+export async function runDoctor({
+  home,
+  workspace,
+  codexProfile,
+  handshake: doHandshake = true,
+  cliRuntime = null,
+  env = process.env,
+  /**
+   * Safe subset (wave13 §3): skip every check that would start a client or load the project's
+   * own configuration, so an incident export can reuse doctor without executing anything the
+   * project controls. The skipped checks are reported as such, never silently dropped.
+   */
+  safeSubset = false,
+}) {
   const checks = [];
   const add = (id, status, code, summary, { details, nextStep } = {}) =>
     checks.push({ id, status, code: status === "ok" ? "OK" : code, summary, ...(details ? { details } : {}), ...(nextStep ? { next_step: nextStep } : {}) });
@@ -524,7 +610,9 @@ export async function runDoctor({ home, workspace, codexProfile, handshake: doHa
     return add("codex_config", "ok", "OK", `${CODEX_CONFIG} has the managed bridge block${parsed.status === "unverified" ? " (TOML not parsed: python3 3.11+ missing)" : ""}`);
   };
   configStatic();
-  if (codex.status === 0 && identity && manifest) codexProjectCheck(add, root, identity, manifest, env, codexProfile);
+  if (safeSubset) {
+    add("codex_project", "skipped", "CODEX_PROJECT_UNCHECKED", "the safe subset does not start Codex against this project's configuration");
+  } else if (codex.status === 0 && identity && manifest) codexProjectCheck(add, root, identity, manifest, env, codexProfile);
   else add("codex_project", "skipped", "CODEX_PROJECT_UNCHECKED", "Codex, the worktree identity or the selected runtime is unavailable");
 
   if (identity?.kind === "git") {
@@ -591,8 +679,12 @@ export async function runDoctor({ home, workspace, codexProfile, handshake: doHa
     });
   } else add("active_use", "ok", "OK", "no running bridge server, client or open state file for this worktree");
 
+  logsCheck(add, root);
+
   const ready = runtime && identity && checks.find((check) => check.id === "runtime")?.status === "ok";
-  if (!doHandshake) {
+  if (safeSubset) {
+    add("handshake", "skipped", "HANDSHAKE_SKIPPED", "the safe subset starts no MCP server");
+  } else if (!doHandshake) {
     add("handshake", "skipped", "HANDSHAKE_SKIPPED", "handshake disabled with --no-handshake");
   } else if (!ready) {
     add("handshake", "skipped", "HANDSHAKE_NOT_POSSIBLE", "needs a resolved worktree and a complete selected runtime");

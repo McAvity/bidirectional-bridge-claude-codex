@@ -124,6 +124,12 @@ persisted session handles, which is a guardrail, not a guarantee.
    adjacent attempt, `resumed_from_attempt`, fresh worker-owned lease release, final state,
    and worker telemetry.
 
+Before deciding, the local [diagnostics log](diagnostics.md) shows the same attempt from the
+process side — when it started, which deadline it carried, how it ended and whether its evidence
+could be written — and `bridge.mjs diagnose --task <id>` packages that view together with the
+attempt records for someone else to read. Collecting it changes nothing and does not stop a
+running worker; the export is never a recovery step.
+
 Recovery semantics and state transitions are specified in [PROTOCOL.md](PROTOCOL.md) and
 covered deterministically by `shared/control-plane/src/recovery.test.ts`. For symptom-first
 guidance when a resume is refused, see
