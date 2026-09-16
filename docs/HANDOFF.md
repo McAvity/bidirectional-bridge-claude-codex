@@ -1,5 +1,12 @@
 # Current handoff
 
+## Wave14 planned; wave13 executing
+
+The user reports wave13 is executing in a separate worktree. Earlier planned-only
+status below is historical. [Wave14](plans/wave14.md) plans plugin distribution and
+automatic worktree preparation; implementation not yet authorized.
+[Wave14 progress](plans/wave14-progress.md). Do not modify wave13 or active runtimes.
+
 ## Next work — wave13 planned, 2026-09-16
 
 [Wave13 plan](plans/wave13.md) covers automatic logging, retention and incident export.
