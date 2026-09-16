@@ -339,9 +339,9 @@ describe("concurrent and interrupted preparation", () => {
  */
 async function launchEntry(
   cwd: string,
-  { frames = [] as unknown[], waitMs = 3500, env: extraEnv = {} as NodeJS.ProcessEnv } = {},
+  { frames = [] as unknown[], waitMs = 3500, env: extraEnv = {} as NodeJS.ProcessEnv, preload = "" } = {},
 ) {
-  const child = spawn(process.execPath, [join(cwd, PROJECT_ENTRY), "--caller", "codex", "--delegation", "allow"], {
+  const child = spawn(process.execPath, [...(preload ? ["--import", preload] : []), join(cwd, PROJECT_ENTRY), "--caller", "codex", "--delegation", "allow"], {
     cwd,
     env: childEnv({ ...env, ...extraEnv }),
     stdio: ["pipe", "pipe", "pipe"],
@@ -782,6 +782,148 @@ describe("an interrupted automatic first use (W14-R2-07)", () => {
       expect(readFileSync(join(external, ".bridge-runtime/pending.json"), "utf8")).toBe(body);
     }
   }, 180_000);
+});
+
+describe("every interruption boundary recovers itself (W14-R2-07)", () => {
+  function inherit(name: string): string {
+    setup();
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = real(join(root, name));
+    git(project, "worktree", "add", "-q", "-b", name.replace(/\s+/gu, "-"), external);
+    return external;
+  }
+
+  /** Kill the process at the first `.bridge-runtime` creation, i.e. after the native reservation. */
+  function crashBeforeSelection(): string {
+    const file = join(root, "crash-before-selection.mjs");
+    writeFileSync(
+      file,
+      [
+        'import fs from "node:fs";',
+        'import { syncBuiltinESMExports } from "node:module";',
+        "const original = fs.mkdirSync;",
+        'fs.mkdirSync = function (path, ...args) {',
+        '  if (String(path).endsWith("/.bridge-runtime")) process.kill(process.pid, "SIGKILL");',
+        "  return original.call(this, path, ...args);",
+        "};",
+        "syncBuiltinESMExports();",
+      ].join("\n"),
+    );
+    return `file://${file}`;
+  }
+
+  it("recovers a native reservation made before the first selection write", async () => {
+    const external = inherit("a reserved worktree");
+    const crashed = await launchEntry(external, {
+      frames: [...HANDSHAKE, mutationFrom("pre-selection", "k1")],
+      preload: crashBeforeSelection(),
+      waitMs: 9000,
+    });
+    crashed.child.kill("SIGKILL");
+    // The runtime reserved the worktree; the selection directory was never created.
+    expect(existsSync(join(external, ".bridge/workspace.json"))).toBe(true);
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+
+    // A restart serves reads and writes nothing.
+    const before = listing(external);
+    const readOnly = await launchEntry(external, { frames: HANDSHAKE });
+    expect(readOnly.replies.find((f: any) => f.id === 1)?.result?.tools?.length, readOnly.stderr).toBeGreaterThan(10);
+    expect(listing(external)).toEqual(before);
+    readOnly.child.kill("SIGKILL");
+
+    // The next authorised mutation completes the preparation.
+    const recovered = await launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("pre-selection", "k2")], waitMs: 9000 });
+    expect(recovered.replies.find((f: any) => f.id === 2)?.result?.isError, recovered.stderr.slice(-400)).toBeFalsy();
+    expect(JSON.parse(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8")).workspace.root).toBe(external);
+    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(false);
+    recovered.child.kill("SIGKILL");
+  }, 300_000);
+
+  it("clears its own journal when the interruption came after the record was written", async () => {
+    const external = inherit("a late interrupted worktree");
+    const crashed = await launchEntry(external, {
+      frames: [...HANDSHAKE, mutationFrom("late", "k1")],
+      env: { CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER: "2" },
+      waitMs: 9000,
+    });
+    crashed.child.kill("SIGKILL");
+    expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(true);
+    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(true);
+
+    const recovered = await launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("late", "k2")], waitMs: 9000 });
+    expect(recovered.replies.find((f: any) => f.id === 2)?.result?.isError, recovered.stderr.slice(-400)).toBeFalsy();
+    // The apply is finished: the journal is gone, not left behind forever.
+    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(false);
+    recovered.child.kill("SIGKILL");
+  }, 300_000);
+
+  it("refuses a state directory that is not this worktree's own", async () => {
+    const external = inherit("a foreign state worktree");
+    mkdirSync(join(external, ".bridge"), { recursive: true });
+    const foreign = `${JSON.stringify({ workspace_id: "ws_deadbeef", root: "/somewhere/else", database: "/somewhere/else/.bridge/bridge.db" })}\n`;
+    writeFileSync(join(external, ".bridge/workspace.json"), foreign);
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("SETUP_STATE_PARTIAL");
+    expect(run.replies).toEqual([]);
+    expect(readFileSync(join(external, ".bridge/workspace.json"), "utf8")).toBe(foreign);
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+  }, 180_000);
+
+  it("refuses a state directory with no readable marker", async () => {
+    const external = inherit("an unexplained state worktree");
+    mkdirSync(join(external, ".bridge"), { recursive: true });
+    writeFileSync(join(external, ".bridge/bridge.db"), "not a database\n");
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("SETUP_STATE_PARTIAL");
+    expect(run.replies).toEqual([]);
+    expect(readFileSync(join(external, ".bridge/bridge.db"), "utf8")).toBe("not a database\n");
+  }, 180_000);
+});
+
+describe("rollback returns to the previous runtime (W14-R2-09)", () => {
+  it("uses this worktree's own selection history, not the declared pin", () => {
+    setup();
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    expect(plugin(project, ["update", "--to", older.id, "--yes", "--json"], env).code).toBe(0);
+    expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(older.id);
+
+    const back = plugin(project, ["rollback", "--yes", "--json"], env);
+    expect(back.code, back.stderr).toBe(0);
+    expect((back.json as any).applied).toBe(true);
+    expect((back.json as any).runtime.id).toBe(runtimeId);
+    // Both the committed declaration and the local selection move together.
+    expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(runtimeId);
+    expect(JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8")).runtime.id).toBe(runtimeId);
+  }, 600_000);
+
+  it("accepts an explicit --to and refuses when there is no history to roll back to", () => {
+    setup();
+    const refused = plugin(project, ["rollback", "--yes", "--json"], env);
+    expect(refused.code).toBe(1);
+    expect(refused.stdout + refused.stderr).toContain("ROLLBACK_NO_PREVIOUS");
+    expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(runtimeId);
+
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const explicit = plugin(project, ["rollback", "--to", older.id, "--yes", "--json"], env);
+    expect(explicit.code, explicit.stderr).toBe(0);
+    expect((explicit.json as any).runtime.id).toBe(older.id);
+  }, 600_000);
+
+  it("refuses to roll back while a bridge server is serving this worktree", async () => {
+    setup();
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    expect(plugin(project, ["update", "--to", older.id, "--yes", "--json"], env).code).toBe(0);
+    const run = await launchEntry(project, { frames: [...HANDSHAKE, mutationFrom("serving", "hold")], waitMs: 6000 });
+    try {
+      const back = plugin(project, ["rollback", "--yes", "--json"], env);
+      expect(back.code).toBe(1);
+      expect(((back.json as any).refusals as { code: string }[]).map((r) => r.code)).toContain("ACTIVE_SESSION");
+      expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(older.id);
+    } finally {
+      run.child.kill("SIGKILL");
+    }
+  }, 600_000);
 });
 
 describe("the setup plan is read-only (W14-R2-08)", () => {
