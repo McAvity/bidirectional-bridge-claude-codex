@@ -776,6 +776,37 @@ describe("the project entry point reports without serving (W15-C1)", () => {
     expect(unrecognised.json.instructions).toBeNull();
   }, 180_000);
 
+  it("records the preference only when the plugin setup is explicitly asked, showing the diff", () => {
+    setup();
+    const own = "# Project rules\n\nKeep this line.\n";
+    writeFileSync(join(project, "AGENTS.md"), own);
+    // The ordinary path never touches it, so a plugin update cannot introduce a policy.
+    expect(setup().code).toBe(0);
+    expect(readFileSync(join(project, "AGENTS.md"), "utf8")).toBe(own);
+    expect(entryStatus(project).json.preference.declared).toBe(false);
+
+    const planned = plugin(project, ["setup", "--with-preference", "--json", "--source", REPO, "--commit", runtimeCommit], env);
+    expect(planned.code, planned.stdout + planned.stderr).toBe(0);
+    expect((planned.json as any).applied).toBe(false);
+    const change = ((planned.json as any).changes as { path: string; diff?: string }[]).find((c) => c.path === "AGENTS.md");
+    expect(change?.diff, JSON.stringify((planned.json as any).changes)).toContain("+## Bridge");
+    expect(readFileSync(join(project, "AGENTS.md"), "utf8")).toBe(own); // a plan writes nothing
+
+    const applied = setup(project, ["--with-preference"]);
+    expect(applied.code, applied.stdout + applied.stderr).toBe(0);
+    const written = readFileSync(join(project, "AGENTS.md"), "utf8");
+    expect(written.startsWith(own)).toBe(true);
+    expect(written).toContain("entry.mjs --status");
+    expect(written).not.toContain(sharedHome);
+    expect(written).not.toContain(runtimeId);
+    expect(entryStatus(project).json.preference.declared).toBe(true);
+
+    // Idempotent, and the plain path still leaves it alone.
+    expect(((setup(project, ["--with-preference"]).json as any).changes as { path: string }[]).some((c) => c.path === "AGENTS.md")).toBe(false);
+    expect(setup().code).toBe(0);
+    expect(readFileSync(join(project, "AGENTS.md"), "utf8")).toBe(written);
+  }, 180_000);
+
   it("still reports for a disabled project, which refuses to serve", async () => {
     setup();
     const declaration = JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8"));
