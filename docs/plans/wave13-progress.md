@@ -46,3 +46,17 @@ Finalna paczka F-W13-round-1-report-fixed.zip zweryfikowana; SHA-256
 4e180e8ffbe04640e0960fc7ffe2f43fe80e97108ab61acec82bf4f89d425ce5.
 Pozostaje eksport i pełna macierz AC. W13-02/03 zgrupowane w jednej sekwencyjnej
 rundzie dla działającego diagnose z testami/instrukcją; potem review całości.
+
+## 2026-09-16 — eksport dostarczony, niezależne review REWORK
+
+Runda task_4avpacpvbp DONE, commit cf2365c3d473be2c7119d0682b85b70e155ec661.
+F-W13-round-2.zip verify PASS, SHA-256 c7dc7596d34e6b776d086e496459f374b6c3becd8f969e4ccca478fd1d28f60b.
+Wykonawca: build, 469 JS,31 Python,140 pilot,docs PASS; Codex niezależnie22 diagnose/setup PASS.
+[Review02](../features/F-W13-diagnostics/reviews/02-export.md): R2-01 wyciek treści logu/parsera;
+R2-02 symlinki katalogów wejścia/wyjścia i publikacja; R2-03 filtr próby nie obejmuje
+telemetrii/logów/evidence; R2-04 wykonanie modułu z selekcji diagnozowanego projektu;
+R2-05 cutoffs/limity nie ujawniają wszystkich luk; R2-06 brak rzeczywistego testu
+przerwania/rotacji/ENOSPC mimo części twierdzeń PASS. Reprodukcje wyłącznie syntetyczne.
+Użytkownik polecił kontynuować w tej samej sesji i najpierw rozliczyć aktywną próbę:
+sprawdzono progress, feature_get i task; brak aktywnej próby, wynik poprzedniej DONE.
+Następny krok: jedna runda korekty w istniejącej sesji Claude’a; bez duplikacji delegacji.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W13-diagnostics",
-  "phase": "execution",
+  "phase": "corrections",
   "brief": "docs/features/F-W13-diagnostics/brief.md",
   "design": "docs/features/F-W13-diagnostics/design.md",
   "tasks": [
@@ -17,9 +17,9 @@
     "docs/manager-identity.md",
     "docs/recovery.md"
   ],
-  "latest_review": "docs/features/F-W13-diagnostics/reviews/01-logging.md",
+  "latest_review": "docs/features/F-W13-diagnostics/reviews/02-export.md",
   "latest_decision": "docs/features/F-W13-diagnostics/decisions/01.md",
-  "next_action": "Runda 2: W13-02 eksport oraz W13-03 zintegrowana walidacja/instrukcja; nast\u0119pnie review ca\u0142o\u015bci.",
+  "next_action": "Runda 3 tej samej sesji: poprawi\u0107 R2-01\u201306, nast\u0119pnie re-review eksportu i macierzy AC.",
   "bridge": {
     "feature_id": "F-W13-diagnostics",
     "parent_task_id": "task_0zpsfj1g59"
