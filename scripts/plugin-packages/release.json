@@ -2,14 +2,14 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.2.0",
   "pinned": {
-    "commit": "1115527ad0d1a1f95c2e1e39e1e13ed70d9de0b1",
-    "describe": "wave14 W14-03 base"
+    "commit": "f37207a7352b3277ac6d5f5a7c6051a80b00c6b1",
+    "describe": "wave14 W14-03 corrected runtime"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
     "This file is a source, not a generated artefact: the generator copies it verbatim so a",
     "release pin does not change every time the repository moves. Update it deliberately when",
-    "cutting a distribution.",
+    "cutting a distribution, and only to a commit that actually exists.",
     "Acquisition order is: an explicit --source, then CLAUDE_CODEX_BRIDGE_SOURCE, then a cached",
     "clone under <home>/sources/, then a fetch of exactly this commit from `repository`. Every",
     "path verifies the resolved commit hash before anything is installed, so no unpinned HEAD is",
