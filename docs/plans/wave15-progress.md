@@ -82,3 +82,13 @@ pozostają ważne dla niezmienionych obszarów. Bez smoke/push/merge/deployment.
 Pełne JS zakończone: 560 PASS, 1 FAIL (native-launcher: stare oczekiwanie identycznych
 skilli obu ról). Finding I7: dostosować test do jawnego podziału manager/executor,
 zachowując kontrolę wspólnych zasobów. Włączone do następnej rundy korekt/W15-04.
+
+## Runda 4 — 55cb52a; końcowa kontrola kompatybilności
+
+Kod/testy 0b563ba, raport55cb52a, task_16hy41wpzb DONE; paczka r04 PASS.
+Wszystkie C1-C4, I1-I7 closed. Pełne JS563 PASS, build/packages/links/diff PASS;
+niezależne continuation/role12 oraz orphan/no-handle i odmowy preferencji PASS.
+Nowe I8 z rzeczywistej próby: plugin --with-preference z przypiętym ff225e5 zapisuje
+blok wskazujący STARE entry bez --status. Wąska odmowa tej kombinacji potrzebna przed
+dostawą. Step-back klasy problemu wejścia: sprawdzać target runtime i odmówić, bez
+fallbacków/nowego instalatora/zmiany pinu. Następna runda tylko I8 i raport/validation.

@@ -99,3 +99,42 @@ aby test przeszedł. Dostosować regresję do nowego kontraktu: wspólne zasoby 
 spójne, entry skille są poprawne dla swoich ról, Claude executor nie przejmuje managera.
 Zachować meaningful assertions, nie usuwać kontroli całego pakietu.
 To konieczna korekta walidacji w istniejącym zakresie, nie nowa decyzja produktowa.
+
+## Review rundy 4 — task_16hy41wpzb, 55cb52a, 2026-09-16
+
+Paczka r04 PASS: SHA256 6326351fef9ed0fc6885312d741b9a8829729657723d128b28242a9bfb1ab813,
+6 plików w scope, czysty worktree. I6/I7 resolved. Koordynator niezależnie uruchomił
+12 regresji continuation/role PASS oraz dodatkową próbę otwartego WORKING orphan:
+syntetyczna trwała próba bez handle i bez live lease, reopen SQLite, exact no-handle
+INVALID_ARGUMENT, zero invoke i identyczne task/attempt/event/lease przed/po.
+Nie zabijano procesu. Dodatkowe próby: actual ff225e5 + NOWY entry -> RUNTIME_WITHOUT_STATUS,
+zero state; preference symlink/duplicate -> refuse before apply, bytes unchanged.
+Wykonawca: build, pełne JS563/37 plików, packages/links/diff PASS na 0b563ba.
+Koordynator: build/packages/links/diff PASS, dokumentacja162. Python46/pilot140 retained.
+
+## W15-I8 — nowy plugin + stary pin zapisuje bezużyteczne wejście (blocker AC-03/08)
+
+To odrębny reprodukowalny przypadek od próby NOWEGO entry na starym runtime:
+1. Puste tymczasowe repo z kanoniczną deklaracją wskazującą istniejący ff225e5.
+2. Bieżący bridge-plugin.mjs setup --with-preference --yes --json.
+3. Wynik: ok=true, applied=true, AGENTS wskazuje entry.mjs --status.
+4. Setup skopiował jednak STARY entry-template przypiętego runtime. Jego --status
+   uruchamia zwykłą ścieżkę MCP, kończy przy EOF z exit0/stdout0, nie zwraca status JSON.
+
+Samo ograniczenie do profilu dispatcher nie wystarcza. Przypięty starszy runtime
+pozostaje częstym przypadkiem (także obecny release pin). Wąska poprawka: odmówić
+--with-preference przed zapisem, gdy wybrany runtime nie obsługuje czystego wejścia;
+konkretny kod i następny krok, bez automatycznej zmiany pinu, nowego instalatora lub
+MCP API. Sprawdzić zdolność RZECZYWISTEGO target runtime, nie wersji pluginu. Dodać
+regresję przez rzeczywistą publiczną ścieżkę setupu ze starszym targetem: zero zapisów.
+
+Step-back (trzecie sprawdzenie klasy problemu „preferencja wskazuje niedziałające
+wejście”, I1/I5/I8): cel to jedno poprawne wejście dla wybranego runtime. Najprościej
+odmówić zapisu niewspieranej preferencji; nie dopisywać fallbacków wybierających inne
+skille/runtime. Zachować wspólne źródło klasyfikacji i istniejący setup.
+
+Raport końcowy: wyrażenie „no model ran in any round” jest nieprecyzyjne — brak modeli
+dotyczy TESTÓW/smoke, a implementację rzeczywiście wykonały rundy Claude przez bridge.
+Skorygować aktualny final-report, zachować historyczne ledgery i dodać sprostowanie
+w nowym W15-04 ledgerze. Uwzględnić powyższe dodatkowe dowody koordynatora, bez claimu
+własnego rerun. Pozostałe findingi zamknięte; tylko I8 wymaga korekty kodu.

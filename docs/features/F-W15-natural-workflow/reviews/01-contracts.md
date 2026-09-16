@@ -98,3 +98,11 @@ produkcyjnej maszyny stanów. To wąska poprawka testów, bez kolejnego rozwiąz
 C4: resolved; sprzeczne zalecenia usunięto z głównej tabeli. Test też skorygował
 błędne wcześniejsze twierdzenie o WORKING->WORKING. Naprawić tylko brak separatora
 kolumn w wierszu Root task (atomowość/odczyt), bez nowej zmiany semantycznej.
+
+## Domknięcie C2 — task_16hy41wpzb, 55cb52a, 2026-09-16
+
+C2 resolved. Request rundy i recovery jest zapisany atomowo i odczytywany/parsowany
+ponownie po przerwie; testuje key/contract/budget i liczniki po kolejnych przerwach.
+Koordynator uruchomił 12 regresji continuation/role: PASS na 0b563ba.
+Step-back nie przyniósł nowej warstwy: pozostał jeden plik intencji + istniejące replay.
+Wszystkie C1-C4 zamknięte; projekt techniczny PASS. Modelowe zachowanie nadal unverified.

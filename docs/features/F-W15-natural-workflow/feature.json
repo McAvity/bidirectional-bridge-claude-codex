@@ -17,7 +17,7 @@
   ],
   "latest_review": "docs/features/F-W15-natural-workflow/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W15-natural-workflow/decisions/01.md",
-  "next_action": "Runda 4: domknięcie dowodów C2/I6 i raport W15-04, następnie końcowe review i dostawa.",
+  "next_action": "Runda 5: I8 compatibility guard, final-report wording/evidence, focused+full validation; then final handoff.",
   "bridge": {
     "feature_id": "F-W15-natural-workflow",
     "parent_task_id": "task_7zykhr76zt"
