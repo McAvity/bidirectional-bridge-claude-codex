@@ -1,5 +1,15 @@
 # Current handoff
 
+## Dispatcher migration — diagnostic correction
+
+Runtime187fd3b activation and the project dispatcher migration succeeded.
+Migration commit3c21218 preserves the inherited worktree setup in Git.
+Doctor incorrectly compared the new configuration with the legacy launcher;
+[correction and deployment checkpoint](tasks/dispatcher-doctor.md) records the fix.
+Corrected runtime ff225e5 is installed beside the current selection. Its doctor
+reports ok against this project. Selecting it waits for normal client shutdown;
+no active runtime is overwritten. Earlier pending-activation notes are historical.
+
 ## Release accepted and published — wave13/wave14
 
 The user accepted the combined wave14 delivery and authorized publication and activation
