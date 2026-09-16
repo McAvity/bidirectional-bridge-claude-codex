@@ -1,5 +1,13 @@
 # Current handoff
 
+## Next work — wave13 planned, 2026-09-16
+
+[Wave13 plan](plans/wave13.md) covers automatic logging, retention and incident export.
+[Progress](plans/wave13-progress.md); implementation is not yet authorized.
+The user reports main-checkout init complete and doctor status=ok for the pinned
+wave12 runtime. Activation instructions below are historical; no need to repeat init.
+The reported database was not yet bound; this is not a real-task validation.
+
 ## Current integration — wave12, 2026-09-16
 
 Accepted wave12 delivery `860e2e7` is integrated and published on feature-workflow; CI 35053428452 passed.
