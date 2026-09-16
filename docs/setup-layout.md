@@ -42,7 +42,7 @@ Manifest fields:
 | `.bridge-runtime/install.json` | never | init, update, rollback | Selection record, format `claude-codex-bridge.workspace-install/v1` |
 | `.bridge-runtime/pending.json`, `.bridge-runtime/backup/` | never | init, update, rollback | Journal and backups of an apply in progress; present only after an interruption |
 | `.bridge/` | never | bridge runtime | Database, markers, lock and termination `evidence/` ([manager-identity](manager-identity.md), [recovery](recovery.md)) |
-| `.bridge/logs/` | never | reserved for wave13 | Local runtime logs; already an explained entry of the state directory |
+| `.bridge/logs/` | never | bridge runtime | Automatic [diagnostics log](diagnostics.md): one bounded JSONL file per process, written only after the identity guard authorizes an operation |
 
 `install.json` records the worktree `root` and `git_dir`, the selected runtime and its commit,
 the hash of every managed file as last written, and a history of `init`/`update`/`rollback`
@@ -57,7 +57,7 @@ in the worktree root, which the launcher requires anyway.
 
 | Path | Contents |
 | --- | --- |
-| `~/tmp/bridge-exchange/ws_<16 hex>/{packages,incoming,staging}/` | Exchange namespace of the worktree (`feature_exchange.py namespace`) |
+| `~/tmp/bridge-exchange/ws_<16 hex>/{packages,incoming,staging}/` | Exchange namespace of the worktree (`feature_exchange.py namespace`). Feature packages and [incident exports](diagnostics.md) share `packages/`; `diagnose` works in a private subdirectory of `staging/` and removes it |
 
 ## Doctor output
 
@@ -70,8 +70,10 @@ in [setup.md](setup.md#doctor-codes). Unknown or skipped required checks make th
 
 ## Guidance for wave13
 
-- Write local logs under `.bridge/logs/` of the worktree; rotation and retention stay there.
-- An incident export belongs in the worktree exchange namespace (`packages/`), not in Git.
+- Local logs live under `.bridge/logs/` of the worktree; rotation and retention stay there, with
+  the finite defaults and the environment configuration of [diagnostics.md](diagnostics.md).
+- An incident export belongs in the worktree exchange namespace (`packages/`), not in Git;
+  `bridge.mjs diagnose` writes it there with a unique name and never overwrites a file.
 - Identify versions from `runtime-manifest.json` and the selection from `install.json`; attach
   `doctor --json` output instead of re-collecting host checks.
 - Do not add another state source: events and attempts stay in the worktree database.

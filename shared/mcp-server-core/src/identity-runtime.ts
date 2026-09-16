@@ -16,6 +16,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
   ControlPlane,
+  DiagnosticsLogger,
   ManagerRegistry,
   SqliteStateStore,
   WorktreeCriticalSection,
@@ -23,10 +24,12 @@ import {
   assertStateDirectoryExplained,
   classifyNativeContext,
   completePublication,
+  digestRef,
   probeWorkspaceState,
   publishReservation,
   releaseOwnReservation,
   repairRecordsFromBinding,
+  stateDirectory,
   type ManagerBindingRecord,
   type NativeCallContext,
   type StateProbe,
@@ -40,6 +43,36 @@ export type ToolClass = "read" | "mutate" | "handoff" | "takeover";
 export interface AuthorizedSession {
   readonly binding: ManagerBindingRecord;
   readonly native: NativeCallContext;
+}
+
+/**
+ * Per-call write permission for the diagnostics log (review R1-01).
+ *
+ * One object per MCP request, created by the tool layer and filled in by the guard. It is what
+ * separates "this process was once authorized" from "the call being served right now is
+ * authorized": refusals, reads and calls that overlap a running round each carry their own
+ * audit, so none of them can write a record on another call's authority.
+ */
+export interface CallAudit {
+  authorized: boolean;
+  armed: boolean;
+  epoch: number | null;
+  generation: number | null;
+  thread: string | null;
+  task_id: string | null;
+  attempt: number | null;
+}
+
+export function newCallAudit(): CallAudit {
+  return {
+    authorized: false,
+    armed: false,
+    epoch: null,
+    generation: null,
+    thread: null,
+    task_id: null,
+    attempt: null,
+  };
 }
 
 /** Named operations that launch or resume a worker (contract §8). */
@@ -80,8 +113,74 @@ export class IdentityRuntime {
     readonly role: AgentId,
     instanceId = `inst_${randomBytes(8).toString("hex")}`,
     readonly legacyAdoption?: LegacyAdoption,
+    /**
+     * Diagnostics log of this process (wave13 §1). It is armed here and nowhere else: the
+     * authorized write point is the guard that has just granted this call authority over the
+     * worktree, so a refusal, a read or a handshake can never create `.bridge/logs/`.
+     */
+    readonly logger?: DiagnosticsLogger,
   ) {
     this.instanceId = instanceId;
+  }
+
+  private noteAuthority(
+    audit: CallAudit,
+    binding: ManagerBindingRecord | null,
+    native: NativeCallContext | null,
+  ): void {
+    audit.authorized = true;
+    audit.epoch = binding?.epoch ?? null;
+    audit.generation = binding?.instance_generation ?? null;
+    // The native thread id is a local session handle: correlate by digest, never by value.
+    audit.thread = digestRef(binding?.native_thread_id ?? native?.thread_id ?? null);
+  }
+
+  /**
+   * Arm the diagnostics log after an authorized operation has committed (or, for an
+   * asynchronous launch, after its reservation committed). Never called on a refusal, and
+   * never for a call this request did not authorize: the permission is per call, carried by
+   * `audit`, so overlapping calls cannot inherit each other's authority (review R1-01).
+   */
+  private armLogger(audit: CallAudit, toolName: string): void {
+    const logger = this.logger;
+    if (!logger || !audit.authorized || audit.armed) return;
+    audit.armed = true;
+    logger.arm({
+      stateDirectory: stateDirectory(this.workspace),
+      workspaceId: this.workspaceId,
+      by: toolName,
+    });
+    logger.record({
+      op: "manager",
+      event: "authorized",
+      tool: toolName,
+      outcome: "ok",
+      phase: "guard",
+      task_id: audit.task_id,
+      attempt: audit.attempt,
+      details: {
+        epoch: audit.epoch,
+        instance_generation: audit.generation,
+        thread_ref: audit.thread,
+        role: this.role,
+      },
+    });
+  }
+
+  /**
+   * Is this connection still the active instance of the worktree's manager? Pure read; used
+   * before a shutdown record so a session that lost the worktree to a takeover stops writing
+   * into state that is no longer its own.
+   */
+  isActiveInstance(): boolean {
+    try {
+      const probe = probeWorkspaceState(this.workspace, this.databasePath);
+      if (!probe.binding) return false;
+      if (this.role !== "codex") return true;
+      return probe.managerBinding?.active_instance_id === this.instanceId;
+    } catch {
+      return false;
+    }
   }
 
   get databasePath(): string {
@@ -202,8 +301,9 @@ export class IdentityRuntime {
     kind: ToolClass,
     run: (session: AuthorizedSession, registry: ManagerRegistry) => T,
     toolName = "",
+    audit: CallAudit = newCallAudit(),
   ): T {
-    return this.dispatch(meta, kind, toolName, (hooks, registry, store) => {
+    return this.dispatch(meta, kind, toolName, audit, (hooks, registry, store) => {
       let result: T;
       try {
         result = store.transaction(() => {
@@ -216,6 +316,9 @@ export class IdentityRuntime {
         hooks.abort();
         throw error;
       }
+      // Only a committed transaction arms the log: a rolled-back bootstrap leaves no binding
+      // and therefore no authorized owner of this worktree's log directory.
+      this.armLogger(audit, toolName);
       hooks.settle();
       return result;
     });
@@ -232,8 +335,9 @@ export class IdentityRuntime {
     meta: unknown,
     toolName: string,
     run: (authorize: () => void, onReserved: () => void) => Promise<T>,
+    audit: CallAudit = newCallAudit(),
   ): Promise<T> {
-    return this.dispatch(meta, "mutate", toolName, async (hooks, _registry, store) => {
+    return this.dispatch(meta, "mutate", toolName, audit, async (hooks, _registry, store) => {
       // Dispatch-time authority for the already-bound case: a replay reserves nothing, so the
       // reservation guard would never run, yet the caller must still own the worktree. This
       // check is pure — an invalid request leaves no adoption and no migration behind.
@@ -247,10 +351,25 @@ export class IdentityRuntime {
       }
       try {
         const result = await run(
-          () => void hooks.authorize(),
-          () => hooks.settle(),
+          () => {
+            try {
+              hooks.authorize();
+            } catch (error) {
+              // Authority changed between the pure precheck and the reservation: this call is
+              // refused after all, so it must not write to the worktree's log either.
+              audit.authorized = false;
+              throw error;
+            }
+          },
+          () => {
+            hooks.settle();
+            // The reservation has committed and the worker is about to run: a long round is
+            // visible in the log from its start, not only when it finishes.
+            this.armLogger(audit, toolName);
+          },
         );
         hooks.settle();
+        this.armLogger(audit, toolName);
         return result;
       } catch (error) {
         hooks.abort();
@@ -265,6 +384,7 @@ export class IdentityRuntime {
     meta: unknown,
     kind: ToolClass,
     toolName: string,
+    audit: CallAudit,
     body: (hooks: GuardHooks, registry: ManagerRegistry, store: SqliteStateStore) => T,
   ): T {
     const probe = this.probe();
@@ -273,8 +393,16 @@ export class IdentityRuntime {
       this.guardForeignRole(probe, toolName, kind);
       const store = this.openWriter();
       const passthrough: GuardHooks = {
-        precheck: () => {},
-        authorize: () => ({ binding: probe.managerBinding as ManagerBindingRecord, native: null as never }),
+        // An asynchronous replay reserves nothing, so this is the only authority check it gets;
+        // `guardForeignRole` has already established that the worktree is bound and the
+        // operation permitted, which is exactly the worker role's authority.
+        precheck: () => this.noteAuthority(audit, probe.managerBinding, null),
+        authorize: () => {
+          // The worker role has no native session; `guardForeignRole` already established that
+          // this worktree is bound and that the operation is a permitted mutation.
+          this.noteAuthority(audit, probe.managerBinding, null);
+          return { binding: probe.managerBinding as ManagerBindingRecord, native: null as never };
+        },
         afterOperation: () => {},
         settle: () => {},
         abort: () => {},
@@ -284,8 +412,8 @@ export class IdentityRuntime {
 
     const native = this.lastNative(meta);
     return probe.binding
-      ? this.inBound(probe, native, kind, body)
-      : this.inBootstrap(probe, native, kind, body);
+      ? this.inBound(probe, native, kind, audit, body)
+      : this.inBootstrap(probe, native, kind, audit, body);
   }
 
   /** Mode 1: nothing is bound yet. Ownership and schema are written by the guard itself. */
@@ -293,6 +421,7 @@ export class IdentityRuntime {
     probe: StateProbe,
     native: NativeCallContext,
     kind: ToolClass,
+    audit: CallAudit,
     body: (hooks: GuardHooks, registry: ManagerRegistry, store: SqliteStateStore) => T,
   ): T {
     if (kind !== "mutate") {
@@ -314,7 +443,7 @@ export class IdentityRuntime {
       assertProbeUsable(this.workspace, fresh, { adoptLegacy: this.legacyAdoption !== undefined });
       if (fresh.binding) {
         this.boundAtDispatch = true;
-        return this.inBound(fresh, native, kind, body, { release: releaseOnce });
+        return this.inBound(fresh, native, kind, audit, body, { release: releaseOnce });
       }
       assertStateDirectoryExplained(this.workspace, this.databasePath, fresh);
       const nonce = publishReservation(this.workspace, this.workspaceId, this.databasePath, fresh);
@@ -371,6 +500,7 @@ export class IdentityRuntime {
                 })
               : null,
           });
+          this.noteAuthority(audit, binding, native);
           if (adoption) {
             this.cp.store.appendEvent(
               {
@@ -438,6 +568,7 @@ export class IdentityRuntime {
     probe: StateProbe,
     native: NativeCallContext,
     kind: ToolClass,
+    audit: CallAudit,
     body: (hooks: GuardHooks, registry: ManagerRegistry, store: SqliteStateStore) => T,
     held?: { release: () => void },
   ): T {
@@ -473,14 +604,23 @@ export class IdentityRuntime {
         repairRecordsFromBinding(this.workspace, probe.binding);
       };
       const hooks: GuardHooks = {
-        precheck: () => registry.assertAuthorityPure(native, this.instanceId),
+        precheck: () => {
+          registry.assertAuthorityPure(native, this.instanceId);
+          // A legitimate replay is authorized here and nowhere else: it reserves nothing, so
+          // the reservation guard never runs. A later denial inside the reservation revokes
+          // this permission again (see `runMutationAsync`).
+          this.noteAuthority(audit, registry.read() ?? null, native);
+        },
         authorize: () => {
           if (kind !== "mutate") {
             // The real CAS lives in the handler; this class performs no write of its own and
             // must not repair or migrate before that CAS has succeeded.
-            return { binding: registry.read() as ManagerBindingRecord, native };
+            const current = registry.read() as ManagerBindingRecord;
+            this.noteAuthority(audit, current, native);
+            return { binding: current, native };
           }
           const session = { binding: registry.authorizeMutation(native, this.instanceId).binding, native };
+          this.noteAuthority(audit, session.binding, native);
           // Migration is part of the guarded transaction, never a precondition of the guard.
           if (needsMigration) store.initializeSchema();
           return session;
@@ -531,11 +671,31 @@ export class IdentityRuntime {
   detach(): void {
     try {
       const probe = probeWorkspaceState(this.workspace, this.databasePath);
-      if (!probe.binding || probe.managerBinding?.active_instance_id !== this.instanceId) return;
+      if (!probe.binding || (this.role === "codex" && probe.managerBinding?.active_instance_id !== this.instanceId)) {
+        // This connection no longer owns the worktree — a takeover or another instance took it.
+        // Its state, including the log directory, belongs to that manager now.
+        this.logger?.revoke("this connection is no longer the active instance of the worktree");
+        return;
+      }
+      if (probe.managerBinding?.active_instance_id !== this.instanceId) return;
       this.cp.activate("attach");
       this.cp.store.transaction(() => this.cp.managers.detach(this.instanceId, this.role));
-    } catch {
+      this.logger?.record({
+        op: "manager",
+        event: "instance.detached",
+        outcome: "ok",
+        phase: "shutdown",
+        details: { epoch: probe.managerBinding.epoch, instance_generation: probe.managerBinding.instance_generation },
+      });
+    } catch (error) {
       /* detaching is an optimisation; a crash is handled by explicit handoff */
+      this.logger?.record({
+        op: "manager",
+        event: "instance.detach_failed",
+        outcome: "error",
+        phase: "shutdown",
+        code: (error as { code?: string }).code ?? null,
+      });
     }
   }
 }

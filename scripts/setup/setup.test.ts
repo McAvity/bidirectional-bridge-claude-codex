@@ -538,6 +538,55 @@ describe("bridge setup CLI", () => {
     expect(snapshot(probes)).toEqual(probesBefore);
   });
 
+  it("reports the diagnostics log status: absent, healthy, degraded and redirected", () => {
+    const project = makeProject("logs status project");
+    init(project);
+    const logs = join(project, ".bridge", "logs");
+
+    // No log at all is normal: the runtime writes one after its first authorized call.
+    expect(check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"]).json, "logs")).toMatchObject({
+      status: "ok",
+      code: "OK",
+    });
+
+    // A healthy log is summarised, including what retention deleted.
+    mkdirSync(logs, { recursive: true });
+    const record = (fields: Record<string, unknown>) =>
+      `${JSON.stringify({ schema: "claude-codex-bridge.log/v1", ts: new Date().toISOString(), seq: 1, ...fields })}\n`;
+    writeFileSync(
+      join(logs, "bridge-20260916T060000Z-aaaabbbbccccdddd-00.jsonl"),
+      record({ op: "process", event: "start" }) +
+        record({ op: "log", event: "retention", details: { deleted_files: 2 } }) +
+        record({ op: "log", event: "close", details: { failures: 0 } }),
+    );
+    const healthy = check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"]).json, "logs");
+    expect(healthy.status).toBe("ok");
+    expect(healthy.summary).toContain("1 log file(s)");
+    expect(healthy.summary).toContain("2 file(s) deleted by retention");
+
+    // A logger that reported write failures is a warning, not a silent success.
+    writeFileSync(
+      join(logs, "bridge-20260916T070000Z-aaaabbbbccccdddd-00.jsonl"),
+      record({ op: "log", event: "close", details: { failures: 3 } }),
+    );
+    const degraded = check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"]).json, "logs");
+    expect(degraded).toMatchObject({ status: "warn", code: "LOGS_DEGRADED" });
+    expect(degraded.summary).toContain("write failure");
+
+    // A redirected log directory is an error and nothing is read through it.
+    const outside = join(tmp, "outside logs");
+    mkdirSync(outside, { recursive: true });
+    const outsideBefore = snapshot(outside);
+    rmSync(logs, { recursive: true, force: true });
+    symlinkSync(outside, logs);
+    expect(check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"]).json, "logs")).toMatchObject({
+      status: "error",
+      code: "LOGS_PATH_REDIRECTED",
+    });
+    expect(snapshot(outside)).toEqual(outsideBefore);
+    rmSync(logs, { force: true });
+  });
+
   it("completes an interrupted apply on the next run without deleting user files", () => {
     const project = makeProject("interrupted project");
     const agents = readFileSync(join(project, "AGENTS.md"));

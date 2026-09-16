@@ -51,6 +51,7 @@ See [docs/manager-identity.md](docs/manager-identity.md).
 - [Ownership and leases](#ownership-and-leases)
 - [Recovery](#recovery)
 - [Telemetry](#telemetry)
+- [Diagnostics](#diagnostics)
 - [Troubleshooting](#troubleshooting)
 - [Security and privacy](#security-and-privacy)
 - [Contributing](#contributing)
@@ -403,6 +404,18 @@ telemetry schema.
 
 Runtime-reported cost is not confirmed billing. See [docs/telemetry.md](docs/telemetry.md).
 
+## Diagnostics
+
+The runtime writes a bounded local log of what each process did — accepted and refused calls,
+attempt start and end, how the process stopped — under `.bridge/logs/`, armed only after the
+identity guard authorizes an operation, with finite rotation and retention. When a round is
+stuck, `node scripts/bridge.mjs diagnose --workspace <worktree> --feature <id>` collects one
+incident into a single local package: manifest, hashes, timeline, machine records, a doctor
+subset and the evidence metadata, with identifiers instead of content and local paths aliased.
+The raw database and the runtime stderr need explicit flags. Nothing is uploaded.
+
+See [docs/diagnostics.md](docs/diagnostics.md).
+
 ## Troubleshooting
 
 Common first stops: the bridge is not listed by `claude mcp list` / `codex mcp list`, the
@@ -452,6 +465,7 @@ because this release publishes source on GitHub, not packages to the npm registr
 - [Usage](docs/usage.md) — manager workflow, worked examples, writing tasks
 - [Telemetry](docs/telemetry.md) — recorded fields, sources, privacy boundary
 - [Recovery](docs/recovery.md) — persisted handles, strict same-task resume
+- [Diagnostics](docs/diagnostics.md) — automatic local logging, retention, incident export
 - [Troubleshooting](docs/troubleshooting.md) — symptoms, checks, and fixes
 - [Security and privacy](docs/security.md) — trust boundary, controls, disclosure
 - [Release policy](docs/release-policy.md) — versioning and stability expectations

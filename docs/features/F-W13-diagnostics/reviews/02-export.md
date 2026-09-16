@@ -1,0 +1,229 @@
+# Review W13-02/03 — eksport i walidacja całości
+
+REWORK. Paczka jest integralna, ale minimalny eksport ujawnia treść, przekracza wybrany
+zakres i podąża za symlinkami. Wykonuje też kod wskazany przez diagnozowany projekt.
+Potrzebne zwykłe poprawki w autoryzowanym zakresie. Nie potrzeba decyzji użytkownika.
+Rekomendacja: jeden spójny zestaw granic odczytu/zapisu oraz ścisłych projekcji,
+minimalny zestaw poprawnie obsługiwanych selektorów, następnie wąskie re-review.
+
+## Zakres i dowody
+
+2026-09-16. Codex koordynuje i recenzuje, nie implementował kodu Claude’a.
+Task task_4avpacpvbp DONE; brak aktywnej próby. Baza 536f7743b0124cba26e5821e0949ca5643fbd6f2,
+HEAD cf2365c3d473be2c7119d0682b85b70e155ec661, czysty worktree.
+F-W13-round-2.zip SHA-256 c7dc7596d34e6b776d086e496459f374b6c3becd8f969e4ccca478fd1d28f60b;
+verify z oczekiwanym feature/purpose/base/head PASS; 18 zmian, bez driftu dokumentów.
+Wszystkie ścieżki zmian mieszczą się w kontrakcie. Przejrzano collect/project/zip,
+CLI/doctor, testy i ledgery. Niezależne 22 testy diagnose/setup PASS. Wykonawca raportuje
+build, 469 JS, 31 Python exchange/ZIP, 140 pilot i docs PASS. Poniższe reprodukcje
+wykonano na finalnym HEAD, w syntetycznych katalogach tymczasowych, bez modeli.
+
+## R2-01 — prywatna treść przedostaje się do paczki minimalnej
+
+Blocker AC-06 / §4. projectLogRecord kopiuje dowolny scalar details o poprawnej nazwie
+klucza; nie ma listy dozwolonych kluczy. projectEvent zwraca error.message z JSON.parse,
+który zawiera fragment wejścia. collectEvidence, gaps i część versions/feature również
+są serializowane poza wspólną ścisłą projekcją. Test własny projectLogRecord z
+syntetycznymi details.prompt/answer zachował obie treści; projectEvent z błędnym JSON
+zachował fragment wejścia. Hash tego modułu przed reprodukcją:
+07cf7d24c23c2ba1f6958f85fa6ed69c6deb944dc92628f12dd944b255f3ab88.
+Pełny runDiagnose z syntetycznym logiem zachował REVIEW_PRIVATE_ANSWER_731 w ZIP-ie.
+Naprawa: jawne dozwolone klucze i typy/etykiety dla każdej części wyniku; błędy jako
+stałe kody bez fragmentów wejścia. Wszystkie projekcje, manifest/gaps/timeline/evidence
+metadata mają przechodzić tę samą granicę prywatności i spójne aliasy; nie opierać
+się wyłącznie na regexach znanych tokenów. Testy z dowolnymi sekretami w log.details,
+niepoprawnym JSON-ie, evidence metadata i uszkodzonych plikach setup; domyślnie
+zero sentineli i prywatnych ścieżek w całej paczce. Surowe rozszerzenia pozostają jawne.
+
+## R2-02 — niepełne granice filesystemu i wyjścia
+
+Blocker AC-07 / §3–4. Sprawdzane jest tylko .bridge i typ pojedynczego wpisu logu.
+collectLogs podąża za symlinkiem katalogu logs; collectEvidence za evidence i jego
+katalogiem taska; default bridge.db może być symlinkiem. mkdir/rename wyjścia podążają
+za symlinkami katalogów przestrzeni wymiany. Niezależna pełna reprodukcja:
+- logs -> outside-logs: rekord spoza zakresu odczytany i zapakowany;
+- evidence -> outside-evidence: metadane obydwu plików spoza zakresu zapakowane;
+- packages -> outside-output: sentinel.zip powstał w zewnętrznym katalogu.
+Istniejący target jest sprawdzany przed renameSync, ale rename nadpisze target
+utworzony pomiędzy sprawdzeniem a publikacją. --name nie ma walidacji traversal,
+--out omija obiecany namespace. Eksporter powiela resolver exchangeNamespace zamiast
+używać istniejącego; zachować istniejącą tożsamość i kanoniczny resolver.
+Naprawa: wspólne bezpieczne odczyty z kontrolą komponentów i regularnego pliku,
+bez podążania za linkami; poprawnie obsłużyć jawne --db zewnętrzne (wraz z miejscem
+jego evidence). Bezpieczne prywatne staging i atomowa publikacja bez nadpisania.
+Ograniczyć output do przewidzianego namespace. Można usunąć niepotrzebne opcjonalne
+obejścia --out/--name, jeśli upraszcza to zgodny z planem interfejs; nie dodawać trybów.
+Testy katalogowych symlinków, symlinka DB, nazw traversal i kolizji w momencie
+publikacji; pliki zewnętrzne i istniejące paczki bez zmian.
+
+## R2-03 — wybrany zakres nie obejmuje wszystkich źródeł jednakowo
+
+Blocker AC-04/06 / §3. --attempt filtruje tylko task_attempts; telemetry/events/logs/
+evidence nie są tak filtrowane. Niezależny runDiagnose task+attempt0:
+attempts=[0], telemetry=[0,1], evidence=[0,1], log próby1 w wyniku.
+Nieistniejący feature/task z --since tworzy warunek czasu bez ograniczenia tasków,
+co może wyeksportować inne incydenty. inScope bierze wszystkie rekordy bez taska
+z całej historii; dla window akceptuje też nieprawidłowy czas. Limit50 tasków okna
+nie jest jawnie zgłoszony. Naprawa: jeden wyliczony zakres dla wszystkich źródeł,
+nie poszerzać go przy braku identyfikatora/uszkodzeniu. Procesowy kontekst ma mieć
+uzasadnione powiązanie/cutoff, nie być całą historią. Albo poprawić semantykę
+opcjonalnych selektorów, albo uprościć CLI do minimalnego zestawu przewidzianego
+w planie (plan nie wymaga wszystkich dodanych flag). Testy dwóch prób i obcego
+incydentu, nieznanego ID, granic czasu i niepoprawnych kombinacji argumentów.
+
+## R2-04 — diagnose wykonuje kod z diagnozowanej selekcji runtime
+
+Blocker kontraktu rundy (safe subset bez uruchamiania kodu projektu), §4.
+runDiagnose wybiera selectionRuntime przed kodem swojego CLI, a resolveIdentity
+importuje jego shared/control-plane/dist/index.js. runDoctor safeSubset ma tę samą
+kolejność. Weryfikacja manifestu to tylko kształt, a verifyRuntime następuje później.
+Niezależna reprodukcja z syntetycznym manifestem i modułem tworzącym znacznik:
+Samo diagnose bez scope uruchomiło moduł (executed=true).
+Naprawa: kolektor i safeSubset używają zaufanego kodu własnego CLI/buildu; wskazany
+runtime jest danymi do oglądania. Bez importów/uruchamiania ścieżek z diagnozowanego
+stanu. Test ze złośliwym syntetycznym modułem musi pozostawić znacznik nieutworzony.
+Nie przebudowywać ani zmieniać aktywnego przypiętego runtime.
+
+## R2-05 — granice odczytu i braki są raportowane nieprecyzyjnie
+
+Blocker AC-05/07/08 / §3. collectLogs czyta cały plik readFileSync i dopiero potem
+ucina końcówkę; nie odczytuje zadeklarowanego ograniczonego prefiksu. Manifest nie
+zawiera per-file offsetów/rozmiarów odczytu, tylko liczbę plików i sumę bytes_read;
+read_at to początek całego eksportu, przed backupem/doctor. records.slice(0,5000)
+i SQL LIMIT5000 milcząco pomijają resztę, bez markerów truncation. Logi mogą zostać
+obcięte przez retencję/rotację w trakcie odczytu bez rozpoznania tej sytuacji.
+Naprawa: ograniczony odczyt deskryptora, rzeczywiste cutoffs i stat/inode/prefix
+metadata per plik; wykryć/uczciwie oznaczyć zmiany, niepoprawne końce i limity.
+Test >5000 rekordów i rotacji/usunięcia/podmiany podczas eksportu; braki widoczne
+w pakiecie. Nie obiecywać wspólnej atomowości DB/logów ani chronologii między zegarami.
+
+## R2-06 — macierz oznacza niewykonane scenariusze jako PASS
+
+Blocker dowodowy AC-07 i wymaganej walidacji planu. W13-03 ledger nazywa odmowę
+istniejącej paczki i brak uprawnień testem „interrupted export”, a EOF zastępuje
+nagłe przerwanie. Nie ma rzeczywistego przerwania eksportu ani deterministycznej
+rotacji podczas odczytu; 64KiB ustawione w teście nie dowodzi, że rotacja zaszła.
+ENOSPC jest jawnie niewykonany, ale plan wymaga symulacji pełnego dysku.
+Naprawa: prawdziwe/deterministycznie wymuszone scenariusze przerwania podczas backupu
+lub zapisu paczki, ENOSPC/krótki zapis, rotacja podczas odczytu i hard-stop workera.
+Sprawdzić brak naruszenia źródła/cudzych plików, politykę resztek prywatnego stagingu,
+brak pozornie kompletnego wyniku i użyteczną lukę. Nie wymaga to realnych modeli.
+Zachować poprzednie ledgery, skorygować twierdzenia w nowym ledgerze/macierzach.
+
+## Pokrycie i dalszy krok
+
+AC-01–03: zachowują review W13-01, brak wykazanej regresji. AC-04/05/06/07/08:
+unmet lub częściowo unverified zgodnie z findingami powyżej; PASS wykonawcy nie
+jest odbiorem. AC-09: dokumenty istnieją i linki przechodzą, ale opisy bezpieczeństwa
+wymagają zgodności z korektą. Zlecić kolejną rundę tej samej sesji Claude’a na
+R2-01–06, w granicach decyzji01. Pełne testy po zmianach, następnie wąskie re-review.
+
+
+## 2026-09-16 — re-review rundy 3: REWORK
+
+Task `task_3vs67f3tg9` DONE; zakres
+`853302cdf821671020e11f2a74c2406f33a68b75..6c4059a60346f112f8b8b7adee3c56bff9a9bdea`.
+Codex koordynuje, lecz nie implementował produktu; review niezależne od wykonawcy.
+Paczka F-W13-round-3.zip verify PASS, SHA-256
+`7f6786ae47cd8ca03a9b539d5e27d66fc9bc011469d9debec03fe5dc14f03c42`.
+18 zmienionych ścieżek w zakresie, czysty worktree, bez zmian dokumentów koordynatora.
+Niezależnie `npx vitest run scripts/diagnostics/diagnose.test.ts scripts/setup/setup.test.ts`:
+30 PASS. Wykonawca: build,477 JS,32 Python,140 pilot,docs PASS.
+
+| Finding | Dyspozycja | Dowód / pozostała praca |
+| --- | --- | --- |
+| R2-01 | resolved | Jawne specy pól, odrzucanie obcych kluczy i tekstu parsera; test sentineli w kilku źródłach PASS. |
+| R2-02 | progress | Log/evidence/DB/packages symlink i kolizja naprawione, ale sam namespace jest nadal zaufany bez sprawdzenia; reprodukcja poniżej. |
+| R2-03 | resolved | Jeden scope dla attempts/telemetry/evidence/logs; nieznane i sprzeczne selektory odmawiają; regresja PASS. |
+| R2-04 | resolved | Import własnego builda, bez importu wskazanego runtime; syntetyczny marker nie powstaje w summary/package/doctor. |
+| R2-05 | progress | Ograniczony odczyt, offset/inode/limity/gaps wdrożone; faktyczna rotacja/podmiana podczas eksportu pozostaje bez dowodu, patrz R2-06. |
+| R2-06 | progress | SIGKILL eksportera i launchera oraz RLIMIT_FSIZE są rzeczywistymi testami; nadal brakuje deterministycznego ENOSPC i faktycznej rotacji/podmiany. |
+
+### R2-02: powtarzalne obejście przez katalog namespace
+
+Na finalnym commicie manager utworzył wyłącznie syntetyczne katalogi w `/tmp`:
+workspace, home, outside. `exchangeNamespace(resolveWorkspaceIdentity(root), env)`
+z HOME=home wyznaczył namespace. Jego rodzic powstał jako zwykły katalog, a sam
+namespace jako symlink do outside. `runDiagnose({workspace:root,home,env})` zwrócił
+`mode=summary`, a outside zawierał nowe `packages` i `staging`.
+`assertUnderRoot(namespace.namespace, ...)` pomija sam root, zaś recursive mkdir
+wykonuje się przed kontrolą. To naruszenie planu bez hipotetycznego wyścigu.
+Wymagane: sprawdzić istniejące komponenty namespace od zaufanej kotwicy PRZED
+pierwszym mkdir/zapisem; nie przyjmować obliczonego namespace jako już zweryfikowanego.
+Regresje: link na namespace, staging i packages, z nieistniejącym potomkiem;
+odmowa ma pozostawić całe drzewo outside bez zmian. Zachować atomowe link publication.
+Sprawdzić ten sam wzorzec pominiętego root przy źródłach, szczególnie brakującym DB.
+
+### R2-05/06: domknąć dowody zamiast utożsamiać różne scenariusze
+
+Append nie jest rotacją: potrzeba powtarzalnego rename/unlink/replacement między
+odczytem logu i końcową kontrolą, z dowodem odpowiedniego changed/removed gap.
+ENOSPC nie wymaga montowania pełnego urządzenia: dozwolona deterministyczna
+iniekcja błędu I/O w teście (również po częściowym zapisie lub na fsync), z dowodem
+braku publikacji i nienaruszonych źródeł. Zachować test RLIMIT_FSIZE jako osobny dowód.
+Zielone testy i uczciwe limitations nie zastępują tych wymaganych scenariuszy.
+
+Następny krok: mała korekta R2-02 i brakujących dowodów R2-05/06, bez rozszerzania
+architektury ani ponownego otwierania zamkniętych ustaleń. Przy trzecim review tego
+problemu zastosować step-back: jedna wspólna kontrola ścieżek przed I/O i bezpośrednie
+fault-injection tests są prostsze niż kolejne lokalne wyjątki. Autoryzacja decyzja01;
+bez nowego pytania produktowego. AC-07 nadal wymagane; pozostałe dowody zachowane.
+
+
+## 2026-09-16 — re-review rundy 4 i końcowy wynik lokalny: PASS
+
+**Cały autoryzowany zakres lokalny wave13 jest gotowy do odbioru.** Brak otwartych
+wymaganych ustaleń. Jest to rekomendacja Codexa, niezależnego od implementatora Claude,
+lecz odpowiedzialnego za koordynację; nie akceptacja użytkownika. Integracja do
+feature-workflow, CI i wdrożenie nie były wykonywane zgodnie z zakazem push/merge/deploy.
+
+Task `task_xgpwasb532` DONE. Przejrzany zakres korekty:
+`921e7a6c104fa71127c2b7780e2c2a5380e915b7..79b104dd5f4feefdfe41b915ad74d8d30549c801`.
+Paczka F-W13-round-4.zip verify PASS; SHA-256
+`4ef51b541eb5ef60f3ea44001a94a17784e7e27f3769a8d7d4af779727645596`.
+8 ścieżek zgodnych z kontraktem, czysty worktree, brak zmian dokumentów koordynatora.
+Sprawdzono rzeczywisty kod kontroli ścieżek, writer ZIP, asercje regresji i nowe
+ledgery W13-02/03.md oraz W13-03/03.md.
+
+| Finding | Dyspozycja końcowa | Dowód |
+| --- | --- | --- |
+| R2-02 | resolved | Jedna kontrola istniejących komponentów od zaufanej kotwicy przed mkdir; niezależna reprodukcja namespace/packages/staging/source-no-db → UNSAFE i puste outside w każdym wariancie. |
+| R2-05 | resolved | Test rzeczywistego rename/replace/unlink pomiędzy odczytem i końcową kontrolą wymaga właściwego changed/removed gap, nazwy pliku i flagi cutoffs; PASS. |
+| R2-06 | resolved | Deterministyczny ENOSPC po realnym zapisie1KiB oraz podczas fsync: odmowa, brak paczki/stagingu, niezmienione źródło, kolejny eksport działa; PASS. |
+| R2-01/03/04 | resolved (retained) | Regresje prywatności, zakresu i zaufanego importu nadal PASS w pełnym zestawie eksportu. |
+| R1-01/02/03 | resolved (retained) | Review01 i jego dowody zachowane; brak zmiany unieważniającej te ustalenia. |
+
+Step-back przy trzecim sprawdzeniu problemu: wspólne `assertSafeDescent` sprawdza
+istniejącą część ścieżki PRZED pierwszym I/O; wcześniejsze pominięcie samego root
+jest usunięte w namespace i źródle. Bez dodatkowej architektury. Bezpośrednie
+wstrzyknięcie dwóch operacji I/O domyka dowód błędu zapisu; nie wymaga pełnego urządzenia.
+
+### Walidacja i pokrycie całego lokalnego zakresu
+
+Na kodzie `79b104dd5f4feefdfe41b915ad74d8d30549c801`:
+- Claude: npm ci --ignore-scripts, build, npm test **481/34**, Python **32**,
+  pilot-tooling **140**, kontrola dokumentów i diff PASS, zapisane w deliverable bridge.
+- Codex niezależnie: **24/24** testy eksportu PASS, cztery reprodukcje symlinków PASS,
+  dokumentacja **116** plików PASS, diff/zakres i integralność paczki PASS.
+- W poprzednim niezmienionym zakresie Codex niezależnie30 testów loggera/launchera,
+  30 eksport/setup, retencja115 rotacji →2 pliki, Python29 i pilot140 PASS.
+- Środowisko: Node24.15.0, Python3.12.3. Dokumentacja repo wymienia Python3.11;
+  testu na3.11 nie wykonano w tej sesji.
+
+Pełna macierz AC-01–AC-09: [W13-03/03](../execution/W13-03/03.md), z zachowaniem
+pierwotnych ledgera01 i korekty02. Review potwierdza lokalne spełnienie tych kryteriów;
+wcześniejsze błędne twierdzenia nie są traktowane jako dowody. Integracja między
+komponentami została zbadana we wspólnym checkout przez launcher/CLI/SQLite/testy.
+Brak publikacji, merge, CI i real-agent smoke jest jawny, nie oznaczony PASS.
+W pełnej lokalnej dostawie baza `67957034a2a48b5d3d82a5fdef22e5e6e4f5d2fa` obejmuje
+logowanie, retencję, eksport, dokumentację i wszystkie poprawki.
+
+### Granice i przekazanie
+
+Testy używają syntetycznego wykonawcy, nie płatnych modeli. ENOSPC jest deterministyczną
+iniekcją przy rzeczywistym zapisie, nie zapełnionym urządzeniem. Twardy kill może
+pozostawić prywatny staging. Baza i log nie mają wspólnej atomowej migawki; cutoffs
+oraz gaps są jawne. Rozszerzona surowa baza/evidence pozostaje prywatnym materiałem.
+Nie zmieniono przypiętego runtime nadzorującego tę pracę. Następny krok: jedna paczka
+implementation-review całego zakresu i decyzja użytkownika o lokalnym odbiorze;
+żadna dalsza zwykła poprawka nie pozostaje otwarta.

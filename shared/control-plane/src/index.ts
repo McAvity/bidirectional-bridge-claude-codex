@@ -17,6 +17,23 @@ export {
 } from "./evidence-store.js";
 export type { RecordTerminationEvidenceInput, TerminationEvidenceRecord } from "./evidence-store.js";
 
+export {
+  DEFAULT_DIAGNOSTICS_LIMITS,
+  DIAGNOSTICS_LOG_SCHEMA,
+  DiagnosticsLogger,
+  LOG_DIRECTORY_NAME,
+  digestRef,
+  loggableId,
+  readDiagnosticsLogConfig,
+} from "./diagnostics-log.js";
+export type {
+  DiagnosticsLogConfig,
+  DiagnosticsLogEntry,
+  DiagnosticsLogLimits,
+  DiagnosticsLogStatus,
+  DiagnosticsLoggerOptions,
+} from "./diagnostics-log.js";
+
 export { MAX_DELEGATION_DEPTH, TaskService } from "./task-service.js";
 export type {
   BeginRecoveryInput,
@@ -60,10 +77,11 @@ export type { IdempotentOptions } from "./idempotency.js";
 export {
   resolveWorkspaceIdentity,
   resolveDatabasePath,
+  exchangeNamespace,
   stateDirectory,
   canonicalizeWithoutCreating,
 } from "./workspace-identity.js";
-export type { WorkspaceIdentity, WorkspaceKind } from "./workspace-identity.js";
+export type { ExchangeNamespace, WorkspaceIdentity, WorkspaceKind } from "./workspace-identity.js";
 
 export {
   MARKER_NAME,

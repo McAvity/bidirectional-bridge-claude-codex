@@ -21,6 +21,7 @@ import {
   type RandomSource,
 } from "@bridge/protocol";
 import { SimpleAdapterRegistry } from "./adapter-registry.js";
+import type { DiagnosticsLogger } from "./diagnostics-log.js";
 import { ArtifactRegistry } from "./artifact-registry.js";
 import { AttemptService } from "./attempt-service.js";
 import { type Clock, systemClock } from "./clock.js";
@@ -45,6 +46,11 @@ export interface ControlPlaneOptions {
   readonly store?: StateStore;
   readonly inlineArtifactLimitBytes?: number;
   readonly onWarning?: (message: string, details?: Record<string, unknown>) => void;
+  /**
+   * Local diagnostics log of this process (wave13 §1). The control plane only *observes* into
+   * it — attempt lifecycle and evidence-write facts — and never decides state from it.
+   */
+  readonly logger?: DiagnosticsLogger;
   /** Canonical worktree identity; enables the isolation protocol and lazy opening. */
   readonly workspace?: WorkspaceIdentity;
   /** null disables evidence files; otherwise defaults beside the database. */
@@ -68,6 +74,8 @@ export class ControlPlane {
   readonly workspaceRoot: string;
   readonly workspace: WorkspaceIdentity | undefined;
   readonly databasePath: string;
+  /** Diagnostics observation sink; absent for embedders and unit tests. */
+  readonly logger: DiagnosticsLogger | undefined;
 
   private services: Services | undefined;
   private openMode: StoreOpenMode | undefined;
@@ -81,6 +89,7 @@ export class ControlPlane {
     this.workspaceRoot = options.workspace?.root ?? options.workspaceRoot;
     this.workspace = options.workspace;
     this.databasePath = options.databasePath ?? `${this.workspaceRoot}/.bridge/bridge.db`;
+    this.logger = options.logger;
     this.clock = options.clock ?? systemClock;
     this.adapters = new SimpleAdapterRegistry();
     if (store) this.attach(store, "initialize");

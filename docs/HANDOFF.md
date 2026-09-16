@@ -22,9 +22,10 @@ automatic worktree preparation; implementation not yet authorized.
 [Wave14 progress](plans/wave14-progress.md). Do not modify wave13 or active runtimes.
 
 ## Next work — wave13 planned, 2026-09-16
+## Current work — wave13 implementation, 2026-09-16
 
 [Wave13 plan](plans/wave13.md) covers automatic logging, retention and incident export.
-[Progress](plans/wave13-progress.md); implementation is not yet authorized.
+[Progress](plans/wave13-progress.md). The user authorized full implementation through Claude bridge rounds, local commits only (no push/merge/deploy). Logging/retention passed coordinator review after corrections at 59b3de3; ledgers through 50073f5. Incident exporter delivered at cf2365c; coordinator review02 requires privacy, scope, filesystem and evidence corrections. Next: same-session Claude correction round, then focused re-review and full validation. The supervising wave12 runtime remains unchanged.
 The user reports main-checkout init complete and doctor status=ok for the pinned
 wave12 runtime. Activation instructions below are historical; no need to repeat init.
 The reported database was not yet bound; this is not a real-task validation.
@@ -291,3 +292,43 @@ were removed; source trees are unchanged. Original reviewed history remains in t
 | 4469246 | dfeed9c |
 | 66b6f99 | 66c7347 |
 | 70d8dd4 | e26b321 |
+
+
+## Wave13 local correction checkpoint (2026-09-16)
+
+Wave13 branch: round3 `6c4059a` delivered through Claude bridge, package verified.
+Coordinator review02 closes R2-01/03/04; R2-02/05/06 remain in progress (namespace
+root symlink and direct rotation/ENOSPC evidence). Independent focused tests30 PASS;
+worker reports477 JS,32 Python,140 pilot/build/docs PASS. Next: round4 in the same
+bridge feature/session. See `docs/plans/wave13-progress.md` and review02. Local only;
+no push, merge, deployment or supervising runtime changes.
+
+
+## Wave13 local delivery ready (2026-09-16)
+
+Supersedes the correction checkpoint above: code `79b104d`, round4 task DONE,
+independent review02 PASS, all R1/R2 findings resolved, W13-01–03 locally done.
+Claude final checks:481 JS/34 files,32 Python,140 pilot-tooling,build/docs PASS.
+Codex:24 export tests plus four namespace/source symlink reproductions PASS;
+package provenance and docs116 PASS. Model-free only; ENOSPC injected at write/fsync.
+Final full-range packet: F-W13-final-implementation.zip, worktree exchange namespace.
+Progress and complete limitations: `docs/plans/wave13-progress.md`; recommendation:
+local acceptance. User acceptance remains pending. No integration merge, CI, push,
+deployment or changes to the pinned supervising runtime.
+
+
+## Wave13 accepted — awaiting coordinator integration (2026-09-16)
+
+Supersedes the pending-acceptance checkpoint: the user accepted local wave13 delivery
+`9cf1f4321f3686fcdf6f42a7e9a3265798385440`. Coordinator review PASS is recorded at
+`0109643ca570acf989ec83139871a1ff5f1748be` on `waves13-14-review`, as supplied by the user.
+The actual user decision is `docs/features/F-W13-diagnostics/decisions/02.md`.
+Bridge question q-01 answered; `bridge_feature_accept` returned accepted.
+
+Wave13 is received locally and awaits integration by the coordinator. All original
+ledgers, evidence and round/final packages are preserved. The final package still covers
+67957034..9cf1f432, SHA-256
+`69ebd0e2fc122f6a62df6f93c922108e6b1eca4cf0944234ba9ed3ea0951eb9a`.
+This closeout adds no review or tests and performs no merge, push, deployment or integration.
+No pending worker round remains. End this session after committing the documentation;
+the integration coordinator owns the next step. See `docs/plans/wave13-progress.md`.

@@ -152,6 +152,8 @@ result `incomplete`, never `ok`.
 | `ACCESS_DENIED`, `SANDBOX_RESTRICTED` | A directory is not writable; `SANDBOX_RESTRICTED` when a Codex sandbox is the likely cause. |
 | `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN` | The worktree is in use, or that cannot be determined (no `/proc`, sandbox). |
 | `HANDSHAKE_FAILED`, `HANDSHAKE_IDENTITY_MISMATCH`, `HANDSHAKE_TOOLS_MISSING`, `HANDSHAKE_NOT_POSSIBLE`, `HANDSHAKE_SKIPPED` | The MCP server did not start as configured, or was not tried. |
+| `LOGS_PATH_REDIRECTED` | `.bridge/logs` is a symlink; the runtime refuses to log through it. |
+| `LOGS_DEGRADED`, `LOGS_UNREADABLE` | The [diagnostics log](diagnostics.md) reported write failures, or its directory cannot be read. |
 
 `init`, `update` and `rollback` refuse with `PATH_REDIRECTED`, `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN`,
 `STATE_SCHEMA_NEWER`, `STATE_UNREADABLE`, `RUNTIME_COMPATIBILITY_UNKNOWN`, `RUNTIME_INCOMPLETE`,
@@ -159,6 +161,52 @@ result `incomplete`, never `ok`.
 `ROLLBACK_SAME_RUNTIME` or `ROLLBACK_NO_PREVIOUS`, and report file conflicts as
 `INSTRUCTION_MODIFIED`, `CODEX_CONFIG_*` or `GITIGNORE_CONFLICT`. `install` reports
 `INSTALL_SOURCE_INVALID` or `INSTALL_STEP_FAILED` with the path of its log.
+
+The `logs` check reports the [diagnostics log](diagnostics.md) of the worktree: how many files
+it holds, how much space they take, when the newest record was written, and whether the logger
+reported failures or deleted files by retention. No log at all is `ok`: the runtime writes one
+after its first authorized call.
+
+## 8. Diagnose an incident
+
+```sh
+node scripts/bridge.mjs diagnose --workspace <worktree>
+node scripts/bridge.mjs diagnose --workspace <worktree> --feature <feature id>
+node scripts/bridge.mjs diagnose --workspace <worktree> --task <task id> [--attempt <n>]
+node scripts/bridge.mjs diagnose --workspace <worktree> --since 2h
+```
+
+Without a scope, `diagnose` prints what can be selected — features, recent tasks, log files and
+the database state — and exports nothing. With a scope it writes one ZIP into this worktree's
+exchange namespace (`~/tmp/bridge-exchange/ws_<key>/packages/`, the namespace
+`feature_exchange.py` also resolves), with a generated name. There is no destination flag: the
+package is built in a private staging directory and linked into the namespace, which is atomic
+and fails on a name that already exists, so nothing is ever overwritten and a partly written
+package is never published. `--inspect <file.zip>` re-checks a package against its own manifest.
+
+The command only reads: it takes a private consistent snapshot of the database through SQLite's
+backup API (WAL included), reads the worktree's own diagnostics logs as bounded prefixes, reuses
+doctor's safe subset, and changes nothing in the worktree — no migration, no repair, no recovery,
+no claim, and no running worker is stopped. It executes nothing the diagnosed worktree selected:
+its runtime is described from its manifest, never imported. Every path is checked from a trusted
+anchor before the first read and before the first directory is created: no component may be a
+symlink, so a redirected state, log, evidence or database path is refused or reported, and a
+redirected exchange namespace refuses the command instead of creating anything inside it.
+`--db <path>` names an external database deliberately.
+
+The default package carries identifiers, states, timings and machine codes only.
+`--with-evidence` adds the termination evidence files (a redacted runtime stderr tail) and
+`--with-database` the raw snapshot; both are named in the manifest and in the printed risk note.
+Nothing is uploaded. What a package contains, what it withholds and how to read it is described
+in [diagnostics.md](diagnostics.md).
+
+Refusals: `DIAGNOSE_SCOPE_INVALID` (an unusable `--since`, `--attempt` without `--task`, or
+`--feature` together with `--task`), `DIAGNOSE_SCOPE_NOT_FOUND` (the named feature or task is not
+in this worktree), `DIAGNOSE_PATH_UNSAFE` (a state path is a link or not a regular file),
+`DIAGNOSE_OUTPUT_UNSAFE` (the namespace is redirected or resolves inside the worktree),
+`DIAGNOSE_OUTPUT_UNWRITABLE` (the destination cannot be written, including a disk that filled
+mid-package), `DIAGNOSE_PACKAGE_EXISTS` (that name is already taken) and
+`DIAGNOSE_PACKAGE_INVALID` (`--inspect` on something that is not a package).
 
 ## Limits
 
@@ -176,6 +224,12 @@ result `incomplete`, never `ok`.
 - `.mcp.json` for a Claude Code manager is not managed by `init`.
 - Removing a runtime is manual: check that no worktree links to it, then
   `chmod -R u+w <runtime> && rm -rf <runtime>`.
+- `diagnose` reports what it could not collect instead of failing: a missing, locked or corrupt
+  database, unreadable log lines, a redirected directory, absent evidence and a missing runtime
+  selection all appear as gaps in the manifest. A package with gaps is still a package.
+- A hard kill during an export publishes nothing, but can leave a private working directory under
+  `~/tmp/bridge-exchange/ws_<key>/staging/`. The next export neither reads nor needs it; remove it
+  when you want the space back.
 
 ## Developing the bridge
 

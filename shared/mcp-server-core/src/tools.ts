@@ -27,9 +27,22 @@ import {
   type TaskSpec,
   type VerificationResult,
 } from "@bridge/protocol";
-import { FeatureWorkflow, type ControlPlane, type Orchestrator } from "@bridge/control-plane";
+import {
+  FeatureWorkflow,
+  digestRef,
+  loggableId,
+  type ControlPlane,
+  type DiagnosticsLogger,
+  type Orchestrator,
+} from "@bridge/control-plane";
 import type { ManagerRegistry } from "@bridge/control-plane";
-import type { AuthorizedSession, IdentityRuntime, ToolClass } from "./identity-runtime.js";
+import {
+  newCallAudit,
+  type AuthorizedSession,
+  type CallAudit,
+  type IdentityRuntime,
+  type ToolClass,
+} from "./identity-runtime.js";
 
 /* ------------------------------------------------------------------ *
  * Zod shapes (the MCP SDK builds JSON Schema from these)
@@ -103,6 +116,13 @@ export interface ToolContext {
   readonly managerSession?: AuthorizedSession;
   /** Manager registry bound to the transaction of this call. */
   readonly managerRegistry?: ManagerRegistry;
+  /** Local diagnostics log of this process; absent for embedders and unit tests. */
+  readonly logger?: DiagnosticsLogger;
+  /**
+   * Write permission of the call being served. Only the guard may set it, and only for this
+   * request: a refusal or a read never inherits the authority of an earlier call (review R1-01).
+   */
+  readonly audit?: CallAudit;
 }
 
 export type DelegationPolicy = "allow" | "deny";
@@ -176,6 +196,7 @@ async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolContext,
   nativeMeta: unknown,
+  audit: CallAudit,
 ): Promise<unknown> {
   const identity = ctx.identity;
   if (!identity) return tool.handler(args, ctx);
@@ -204,8 +225,11 @@ async function executeTool(
     return tool.handler(args, ctx);
   }
   if (ASYNC_MUTATORS.has(tool.name)) {
-    return identity.runMutationAsync(nativeMeta, tool.name, async (authorize, onReserved) =>
-      tool.handler(args, { ...ctx, authorize, onReserved }),
+    return identity.runMutationAsync(
+      nativeMeta,
+      tool.name,
+      async (authorize, onReserved) => tool.handler(args, { ...ctx, authorize, onReserved }),
+      audit,
     );
   }
   return identity.runMutation(
@@ -213,6 +237,7 @@ async function executeTool(
     "mutate",
     (managerSession, managerRegistry) => tool.handler(args, { ...ctx, managerSession, managerRegistry }),
     tool.name,
+    audit,
   );
 }
 
@@ -368,7 +393,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           instance_generation: outcome.binding.instance_generation,
           changed: outcome.changed,
         };
-      });
+      }, "bridge_manager_resume_instance", ctx.audit);
     },
   },
   {
@@ -397,7 +422,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           reason: args["reason"] as string,
         });
         return { epoch: binding.epoch, instance_generation: binding.instance_generation };
-      });
+      }, "bridge_manager_takeover", ctx.audit);
     },
   },
   {
@@ -1069,19 +1094,138 @@ const ASYNC_MUTATORS = new Set([
   "bridge_resume_delegated_task",
 ]);
 
+/**
+ * Correlation fields taken from a call.
+ *
+ * The rule of wave13 §1: identifiers yes, content never. Objectives, scopes, questions,
+ * answers, messages, reasons and every other free-text argument stay out of the log; a
+ * manager-chosen idempotency key is referenced by digest so replays still correlate.
+ */
+function callCorrelation(tool: string, args: Record<string, unknown>): {
+  feature_id: string | null;
+  task_id: string | null;
+  details: Record<string, unknown>;
+} {
+  const details: Record<string, unknown> = {};
+  const run = loggableId(args["run_id"]);
+  const parent = loggableId(args["parent_task_id"]);
+  // `to` is an agent only for a delegation; `bridge_set_state` uses the same argument name for
+  // the target state, and recording that as an agent would be a small, permanent lie.
+  const target = tool === "bridge_delegate" ? loggableId(args["to"]) : null;
+  const key = digestRef(args["idempotency_key"]);
+  if (run !== null) details["run_id"] = run;
+  if (parent !== null) details["parent_task_id"] = parent;
+  if (target !== null) details["target_agent"] = target;
+  if (key !== null) details["idempotency_ref"] = key;
+  if (typeof args["deadline_ms"] === "number") details["deadline_ms"] = args["deadline_ms"];
+  if (typeof args["max_turns"] === "number") details["max_turns"] = args["max_turns"];
+  return {
+    feature_id: loggableId(args["feature_id"]),
+    task_id: loggableId(args["task_id"]),
+    details,
+  };
+}
+
+/** Scalar result fields worth correlating; anything else, including nested payloads, is dropped. */
+const RESULT_FIELDS = [
+  "state",
+  "outcome",
+  "recovered_attempt",
+  "resumed_from_attempt",
+  "recovery_mode",
+  "same_execution_handle",
+  "epoch",
+  "instance_generation",
+  "changed",
+] as const;
+
+function resultSummary(result: unknown): {
+  task_id: string | null;
+  attempt: number | null;
+  code: string | null;
+  details: Record<string, unknown>;
+} {
+  const details: Record<string, unknown> = {};
+  if (result === null || typeof result !== "object" || Array.isArray(result)) {
+    return { task_id: null, attempt: null, code: null, details };
+  }
+  const value = result as Record<string, unknown>;
+  const task = value["task"] as Record<string, unknown> | undefined;
+  for (const field of RESULT_FIELDS) {
+    const raw = value[field] ?? (task ? task[field] : undefined);
+    if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") {
+      details[field] = raw;
+    }
+  }
+  const error = value["error"] as { code?: unknown } | undefined;
+  const attempt = value["attempt"] ?? value["recovered_attempt"];
+  return {
+    task_id: loggableId(value["task_id"] ?? (task ? task["task_id"] : null)),
+    attempt: typeof attempt === "number" ? attempt : null,
+    // A round that ends in a runtime TIMEOUT reports it inside a successful envelope.
+    code: typeof error?.code === "string" ? error.code : null,
+    details,
+  };
+}
+
 /** Wrap a handler result in the MCP content envelope, converting errors to structured JSON. */
 export async function runTool(
   tool: ToolDefinition,
   args: Record<string, unknown>,
   ctx: ToolContext,
   nativeMeta?: unknown,
+  requestId?: string | number,
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
+  const logger = ctx.logger;
+  const startedMs = logger?.monotonicMs() ?? 0;
+  const correlation = callCorrelation(tool.name, args);
+  // One permission object per request. The guard fills it in for the call it authorizes, so a
+  // refused call, a read, and a call overlapping a running round each decide on their own
+  // whether they may write to this worktree's state (review R1-01).
+  const audit = newCallAudit();
+  const finished = (
+    outcome: "ok" | "error",
+    code: string | null,
+    extra: { task_id?: string | null; attempt?: number | null; details?: Record<string, unknown> },
+  ): void => {
+    const entry = {
+      op: "tool" as const,
+      event: "call.finished",
+      tool: tool.name,
+      outcome,
+      code,
+      // Whether the identity guard granted *this call* authority separates a refusal from a
+      // failure inside the operation itself.
+      phase: audit.authorized ? "handler" : "guard",
+      request_id: requestId ?? null,
+      duration_ms: (logger?.monotonicMs() ?? 0) - startedMs,
+      feature_id: correlation.feature_id,
+      task_id: extra.task_id ?? correlation.task_id,
+      attempt: extra.attempt ?? null,
+      details: { ...correlation.details, ...(extra.details ?? {}) },
+    };
+    // Authorized: the record belongs in this worktree's log. Not authorized — a refusal, a
+    // read, an unguarded embedder — it reaches the bounded stderr sink only, so no refusal
+    // and no read ever mutates state, however long this process has been authorized before.
+    if (audit.authorized) logger?.record(entry);
+    else logger?.note(entry);
+  };
   try {
-    const scoped: ToolContext = ctx.identity ? { ...ctx, nativeMeta } : ctx;
-    const result = await executeTool(tool, args, scoped, nativeMeta);
+    const scoped: ToolContext = ctx.identity ? { ...ctx, nativeMeta, audit } : { ...ctx, audit };
+    const result = await executeTool(tool, args, scoped, nativeMeta, audit);
+    const summary = resultSummary(result);
+    finished("ok", summary.code, {
+      task_id: summary.task_id,
+      attempt: summary.attempt,
+      details: summary.details,
+    });
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     const bridgeErr = BridgeError.from(err);
+    const reason = (bridgeErr.details as { reason?: unknown } | undefined)?.reason;
+    finished("error", bridgeErr.code, {
+      details: { reason: typeof reason === "string" ? reason : null },
+    });
     return {
       content: [{ type: "text", text: JSON.stringify({ error: bridgeErr.toJSON() }, null, 2) }],
       isError: true,

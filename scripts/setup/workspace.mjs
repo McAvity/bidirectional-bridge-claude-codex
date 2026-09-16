@@ -170,6 +170,34 @@ export function bridgeTableMatches(bridge, manifest) {
   );
 }
 
+/**
+ * Import the control plane of a **trusted** local build.
+ *
+ * `candidates` are tried in order and the first complete one wins. Callers that must not execute
+ * code the diagnosed worktree selected — the incident export and doctor's safe subset — pass only
+ * their own CLI root and the runtime this CLI was installed in, never `.bridge-runtime/current`
+ * of the worktree being inspected (review R2-04).
+ */
+export async function loadControlPlane(...candidates) {
+  const tried = [];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const entry = join(candidate, "shared/control-plane/dist/index.js");
+    tried.push(candidate);
+    if (!existsSync(entry)) continue;
+    try {
+      return await import(pathToFileURL(entry).href);
+    } catch (error) {
+      throw new SetupError("RUNTIME_INCOMPLETE", `build ${candidate} cannot resolve worktrees: ${error.message}`, {
+        nextStep: "run `npm run build` in this checkout, or run the command from an installed runtime",
+      });
+    }
+  }
+  throw new SetupError("RUNTIME_INCOMPLETE", `no built control plane in ${tried.join(", ") || "any candidate"}`, {
+    nextStep: "run `npm run build` in this checkout, or run the command from an installed runtime",
+  });
+}
+
 export async function resolveIdentity(runtimePath, workspacePath) {
   let controlPlane;
   try {

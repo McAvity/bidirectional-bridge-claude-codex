@@ -13,7 +13,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { ControlPlane, Orchestrator, type WorkspaceIdentity } from "@bridge/control-plane";
+import {
+  ControlPlane,
+  Orchestrator,
+  type DiagnosticsLogger,
+  type WorkspaceIdentity,
+} from "@bridge/control-plane";
 import type { AgentAdapter, AgentId } from "@bridge/protocol";
 import { IdentityRuntime } from "./identity-runtime.js";
 import {
@@ -60,6 +65,11 @@ export interface BridgeServerOptions {
    * deliberate flag may set it; it is recorded with provenance in the binding row.
    */
   readonly adoptLegacy?: { readonly reason: string };
+  /**
+   * Connection instance id. Supplied by the composition root so the diagnostics log and the
+   * manager identity name the same instance; generated per process when omitted.
+   */
+  readonly instanceId?: string;
   /** Extra tools beyond the coordination set, for agent-specific surfaces. */
   readonly extraTools?: readonly ToolDefinition[];
   readonly serverName?: string;
@@ -70,12 +80,18 @@ export interface BridgeServerOptions {
    * written there that is not a JSON-RPC frame corrupts the session.
    */
   readonly onWarning?: (message: string, details?: Record<string, unknown>) => void;
+  /**
+   * Local diagnostics log of this process (wave13 §1). The composition root owns it; it starts
+   * disarmed and writes nothing until the identity guard authorizes an operation.
+   */
+  readonly logger?: DiagnosticsLogger;
 }
 
 export class BridgeMcpServer {
   readonly cp: ControlPlane;
   readonly orchestrator: Orchestrator;
   readonly identity: IdentityRuntime | undefined;
+  readonly logger: DiagnosticsLogger | undefined;
   private readonly server: McpServer;
   private readonly ctx: ToolContext;
   private readonly tools: readonly ToolDefinition[];
@@ -89,18 +105,21 @@ export class BridgeMcpServer {
       workspaceRoot: options.workspaceRoot,
       ...(options.databasePath ? { databasePath: options.databasePath } : {}),
       ...(options.onWarning ? { onWarning: options.onWarning } : {}),
+      ...(options.logger ? { logger: options.logger } : {}),
       ...(options.workspace ? { workspace: options.workspace } : {}),
     };
     this.cp =
       options.controlPlane ??
       (options.workspace ? ControlPlane.deferred(planeOptions) : ControlPlane.open(planeOptions));
+    this.logger = options.logger;
     this.identity = options.workspace
       ? new IdentityRuntime(
           this.cp,
           options.workspace,
           options.agent ?? "bridge",
-          undefined,
+          options.instanceId,
           options.adoptLegacy,
+          options.logger,
         )
       : undefined;
     this.orchestrator = new Orchestrator(this.cp);
@@ -112,6 +131,7 @@ export class BridgeMcpServer {
       defaultAgent: options.agent ?? "bridge",
       delegationPolicy: options.delegationPolicy ?? "allow",
       ...(this.identity ? { identity: this.identity } : {}),
+      ...(options.logger ? { logger: options.logger } : {}),
     };
 
     this.tools = [...TOOLS, ...(options.extraTools ?? [])];
@@ -128,9 +148,13 @@ export class BridgeMcpServer {
       this.server.registerTool(
         tool.name,
         { title: tool.title, description: tool.description, inputSchema: tool.inputShape },
-        async (args: Record<string, unknown>, extra?: { _meta?: unknown }) =>
-          // The per-request context is the only identity source (contract section 5.1).
-          runTool(tool, args ?? {}, this.ctx, extra?._meta),
+        async (
+          args: Record<string, unknown>,
+          extra?: { _meta?: unknown; requestId?: string | number },
+        ) =>
+          // The per-request context is the only identity source (contract section 5.1); the
+          // JSON-RPC request id is the correlation handle the diagnostics log records.
+          runTool(tool, args ?? {}, this.ctx, extra?._meta, extra?.requestId),
       );
     }
   }

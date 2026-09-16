@@ -172,6 +172,23 @@ file locally (`jq . <path>`). Nothing is written to the MCP stdout stream. A bri
 that is killed mid-attempt writes no evidence, because the file is produced when the runtime
 process closes.
 
+### Collecting one incident for someone else to read
+
+When a round is stuck and the answer is not in the sections above, collect it:
+
+```sh
+node scripts/bridge.mjs diagnose --workspace <worktree>                 # what can be selected
+node scripts/bridge.mjs diagnose --workspace <worktree> --feature <id>  # the package
+```
+
+The package is written into this worktree's exchange namespace and contains identifiers,
+states, timings, machine codes, the two cutoffs and a readable timeline — no prompts, answers,
+transcripts, objectives, blockers or error messages. `--with-evidence` adds the termination
+evidence (a redacted stderr tail) and `--with-database` the raw snapshot; both are announced in
+the printed risk note. The command changes nothing in the worktree, executes nothing the worktree
+selected, and does not stop a running worker, so it is safe while the incident is still open.
+Format, gaps and the reading instruction: [diagnostics.md](diagnostics.md).
+
 ### A custom `bridge_delegate` caller disconnects after about 60 seconds
 
 The MCP TypeScript SDK defaults a request to 60,000 ms when a custom client calls
