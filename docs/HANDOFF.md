@@ -1,11 +1,24 @@
 # Current handoff
 
-Next planned work: coordinator integration of [wave12 — setup, updates and doctor](plans/wave12.md)
-into `feature-workflow`, including `init` in each bridge worktree before a client starts there.
-The user accepted wave12 on 2026-09-16; it is implemented locally on branch `wave12` and not
-merged or published. Smoke evidence and the smoke project's Codex trust entry stay untouched until
-integration finishes. Report: [wave12](plans/wave12-report.md), review:
-[wave12](plans/wave12-review.md), progress: [wave12](plans/wave12-progress.md).
+## Current integration — wave12, 2026-09-16
+
+Accepted wave12 delivery `860e2e7` is integrated for publication on feature-workflow.
+A separate immutable runtime pinned to `860e2e77d95fb5e1d7c5f25ddc0909cfead13c6f`
+is installed locally. No active runtime has been rebuilt or switched.
+Main-checkout activation is deferred until its current Codex/bridge session exits.
+Before reopening Codex in that checkout, run from a shell:
+
+```sh
+node scripts/bridge.mjs init --workspace "$PWD" --runtime 0.2.0-860e2e77d95f --yes
+node scripts/bridge.mjs doctor --workspace "$PWD"
+```
+
+Run these from the worktree root after closing its clients. Do not bypass an
+ACTIVE_SESSION refusal. Other worktrees require their own explicit init and retain
+old selections until then. No automatic adoption or database repair is authorized.
+Smoke evidence and trust entry remain preserved. Publication/validation details:
+[wave12 progress](plans/wave12-progress.md). Next product scope: wave13 diagnostics.
+Historical implementation/acceptance checkpoints below remain evidence, not active work.
 
 ## Wave12 — setup, updates and doctor implemented locally, 2026-09-15
 

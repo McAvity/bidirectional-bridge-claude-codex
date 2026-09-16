@@ -127,7 +127,7 @@ sesji albo doctorem, sprawdzić logi i procesy w katalogu przebiegu.
 ## 2026-09-15 — smoke AC-08 wykonany: PASS
 
 Runtime `0.2.0-e08724567c80` (`e087245`), projekt i konfiguracja jak w checkpoincie powyżej.
-Szczegóły i ograniczenia: [raport, sekcja smoke](wave12-report.md#smoke-ac-08-z-modelami--wykonany-2026-09-15).
+Szczegóły i ograniczenia: [raport, sekcja smoke](wave12-report.md#smoke-ac-08-z-modelami-wykonany-2026-09-15).
 
 - Bez modeli: `init` 30 zmian, ponowny 0; `codex debug prompt-input` widzi AGENTS.md,
   `using-bridge` i skille `feature-*`; doctor przed zaufaniem tylko `CODEX_PROJECT_UNTRUSTED`.
@@ -177,3 +177,17 @@ Stan końcowy: branch `wave12`, worktree czysty, ten commit jest HEAD. Poprzedni
 
 Następny krok (koordynator): integracja `wave12` do `feature-workflow`; po integracji sprzątanie
 dowodów smoke i wpisu zaufania.
+
+
+## 2026-09-16 — integracja koordynatora
+
+Użytkownik zlecił integrację, publikację i przygotowanie głównego checkoutu.
+Dostawa 860e2e7, bez zmian kodu produktu po odbiorze. Osobny runtime
+0.2.0-860e2e77d95f zbudowany i zainstalowany poza aktywnym checkoutem.
+Główny checkout nadal ma żywy proces bridge; jego init jest odłożony do normalnego
+zamknięcia tej sesji. Nie omijamy ochrony ACTIVE_SESSION. Instrukcja w HANDOFF.
+Dowody i wpis zaufania smoke zachowane; inne worktree i runtime nietknięte.
+
+Walidacja integracji: build, 434 JS, 29 exchange i 140 pilot PASS. Poprawiono dwa
+odsyłacze do nagłówka smoke; bez zmiany kodu produktu. Kontrola dokumentacji
+i diff są częścią tego checkpointu. Pozostają publikacja/CI i lokalny init po quit.

@@ -1,7 +1,7 @@
 # Wave12 — instalacja, aktualizacje i doctor
 
 Status: ODEBRANE przez użytkownika 2026-09-16 na branchu `wave12`; review W12-R1 zamknięte,
-smoke AC-08 PASS; oczekuje integracji przez koordynatora. Plan: 2026-09-14.
+smoke AC-08 PASS; integracja koordynatora 2026-09-16; aktywacja głównego checkoutu po zamknięciu sesji przez koordynatora. Plan: 2026-09-14.
 Baza planowania: feature-workflow `1eae147`; wave10 i wave11 przyjęte oraz opublikowane.
 Postęp: [wave12-progress.md](wave12-progress.md). Raport: [wave12-report.md](wave12-report.md).
 
