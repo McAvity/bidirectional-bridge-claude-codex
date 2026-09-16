@@ -16,6 +16,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
   ControlPlane,
+  DiagnosticsLogger,
   ManagerRegistry,
   SqliteStateStore,
   WorktreeCriticalSection,
@@ -23,10 +24,12 @@ import {
   assertStateDirectoryExplained,
   classifyNativeContext,
   completePublication,
+  digestRef,
   probeWorkspaceState,
   publishReservation,
   releaseOwnReservation,
   repairRecordsFromBinding,
+  stateDirectory,
   type ManagerBindingRecord,
   type NativeCallContext,
   type StateProbe,
@@ -80,8 +83,66 @@ export class IdentityRuntime {
     readonly role: AgentId,
     instanceId = `inst_${randomBytes(8).toString("hex")}`,
     readonly legacyAdoption?: LegacyAdoption,
+    /**
+     * Diagnostics log of this process (wave13 §1). It is armed here and nowhere else: the
+     * authorized write point is the guard that has just granted this call authority over the
+     * worktree, so a refusal, a read or a handshake can never create `.bridge/logs/`.
+     */
+    readonly logger?: DiagnosticsLogger,
   ) {
     this.instanceId = instanceId;
+  }
+
+  /** Set inside the guard's `authorize()`; read once per call to report the failing phase. */
+  private authorizedCall = false;
+  private armedThisCall = false;
+  private authority: { epoch: number | null; generation: number | null; thread: string | null } = {
+    epoch: null,
+    generation: null,
+    thread: null,
+  };
+
+  /** True when the identity guard authorized the call currently being served. */
+  get callWasAuthorized(): boolean {
+    return this.authorizedCall;
+  }
+
+  private noteAuthority(binding: ManagerBindingRecord | null, native: NativeCallContext | null): void {
+    this.authorizedCall = true;
+    this.authority = {
+      epoch: binding?.epoch ?? null,
+      generation: binding?.instance_generation ?? null,
+      // The native thread id is a local session handle: correlate by digest, never by value.
+      thread: digestRef(binding?.native_thread_id ?? native?.thread_id ?? null),
+    };
+  }
+
+  /**
+   * Arm the diagnostics log after an authorized operation has committed (or, for an
+   * asynchronous launch, after its reservation committed). Never called on a refusal.
+   */
+  private armLogger(toolName: string): void {
+    const logger = this.logger;
+    if (!logger || !this.authorizedCall || this.armedThisCall) return;
+    this.armedThisCall = true;
+    logger.arm({
+      stateDirectory: stateDirectory(this.workspace),
+      workspaceId: this.workspaceId,
+      by: toolName,
+    });
+    logger.record({
+      op: "manager",
+      event: "authorized",
+      tool: toolName,
+      outcome: "ok",
+      phase: "guard",
+      details: {
+        epoch: this.authority.epoch,
+        instance_generation: this.authority.generation,
+        thread_ref: this.authority.thread,
+        role: this.role,
+      },
+    });
   }
 
   get databasePath(): string {
@@ -216,6 +277,9 @@ export class IdentityRuntime {
         hooks.abort();
         throw error;
       }
+      // Only a committed transaction arms the log: a rolled-back bootstrap leaves no binding
+      // and therefore no authorized owner of this worktree's log directory.
+      this.armLogger(toolName);
       hooks.settle();
       return result;
     });
@@ -248,9 +312,15 @@ export class IdentityRuntime {
       try {
         const result = await run(
           () => void hooks.authorize(),
-          () => hooks.settle(),
+          () => {
+            hooks.settle();
+            // The reservation has committed and the worker is about to run: a long round is
+            // visible in the log from its start, not only when it finishes.
+            this.armLogger(toolName);
+          },
         );
         hooks.settle();
+        this.armLogger(toolName);
         return result;
       } catch (error) {
         hooks.abort();
@@ -267,6 +337,8 @@ export class IdentityRuntime {
     toolName: string,
     body: (hooks: GuardHooks, registry: ManagerRegistry, store: SqliteStateStore) => T,
   ): T {
+    this.authorizedCall = false;
+    this.armedThisCall = false;
     const probe = this.probe();
     this.boundAtDispatch = probe.binding !== null;
     if (this.role !== "codex") {
@@ -274,7 +346,12 @@ export class IdentityRuntime {
       const store = this.openWriter();
       const passthrough: GuardHooks = {
         precheck: () => {},
-        authorize: () => ({ binding: probe.managerBinding as ManagerBindingRecord, native: null as never }),
+        authorize: () => {
+          // The worker role has no native session; `guardForeignRole` already established that
+          // this worktree is bound and that the operation is a permitted mutation.
+          this.noteAuthority(probe.managerBinding, null);
+          return { binding: probe.managerBinding as ManagerBindingRecord, native: null as never };
+        },
         afterOperation: () => {},
         settle: () => {},
         abort: () => {},
@@ -371,6 +448,7 @@ export class IdentityRuntime {
                 })
               : null,
           });
+          this.noteAuthority(binding, native);
           if (adoption) {
             this.cp.store.appendEvent(
               {
@@ -478,9 +556,12 @@ export class IdentityRuntime {
           if (kind !== "mutate") {
             // The real CAS lives in the handler; this class performs no write of its own and
             // must not repair or migrate before that CAS has succeeded.
-            return { binding: registry.read() as ManagerBindingRecord, native };
+            const current = registry.read() as ManagerBindingRecord;
+            this.noteAuthority(current, native);
+            return { binding: current, native };
           }
           const session = { binding: registry.authorizeMutation(native, this.instanceId).binding, native };
+          this.noteAuthority(session.binding, native);
           // Migration is part of the guarded transaction, never a precondition of the guard.
           if (needsMigration) store.initializeSchema();
           return session;
@@ -534,8 +615,22 @@ export class IdentityRuntime {
       if (!probe.binding || probe.managerBinding?.active_instance_id !== this.instanceId) return;
       this.cp.activate("attach");
       this.cp.store.transaction(() => this.cp.managers.detach(this.instanceId, this.role));
-    } catch {
+      this.logger?.record({
+        op: "manager",
+        event: "instance.detached",
+        outcome: "ok",
+        phase: "shutdown",
+        details: { epoch: probe.managerBinding.epoch, instance_generation: probe.managerBinding.instance_generation },
+      });
+    } catch (error) {
       /* detaching is an optimisation; a crash is handled by explicit handoff */
+      this.logger?.record({
+        op: "manager",
+        event: "instance.detach_failed",
+        outcome: "error",
+        phase: "shutdown",
+        code: (error as { code?: string }).code ?? null,
+      });
     }
   }
 }

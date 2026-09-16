@@ -27,7 +27,14 @@ import {
   type TaskSpec,
   type VerificationResult,
 } from "@bridge/protocol";
-import { FeatureWorkflow, type ControlPlane, type Orchestrator } from "@bridge/control-plane";
+import {
+  FeatureWorkflow,
+  digestRef,
+  loggableId,
+  type ControlPlane,
+  type DiagnosticsLogger,
+  type Orchestrator,
+} from "@bridge/control-plane";
 import type { ManagerRegistry } from "@bridge/control-plane";
 import type { AuthorizedSession, IdentityRuntime, ToolClass } from "./identity-runtime.js";
 
@@ -103,6 +110,8 @@ export interface ToolContext {
   readonly managerSession?: AuthorizedSession;
   /** Manager registry bound to the transaction of this call. */
   readonly managerRegistry?: ManagerRegistry;
+  /** Local diagnostics log of this process; absent for embedders and unit tests. */
+  readonly logger?: DiagnosticsLogger;
 }
 
 export type DelegationPolicy = "allow" | "deny";
@@ -1069,19 +1078,127 @@ const ASYNC_MUTATORS = new Set([
   "bridge_resume_delegated_task",
 ]);
 
+/**
+ * Correlation fields taken from a call.
+ *
+ * The rule of wave13 §1: identifiers yes, content never. Objectives, scopes, questions,
+ * answers, messages, reasons and every other free-text argument stay out of the log; a
+ * manager-chosen idempotency key is referenced by digest so replays still correlate.
+ */
+function callCorrelation(args: Record<string, unknown>): {
+  feature_id: string | null;
+  task_id: string | null;
+  details: Record<string, unknown>;
+} {
+  const details: Record<string, unknown> = {};
+  const run = loggableId(args["run_id"]);
+  const parent = loggableId(args["parent_task_id"]);
+  const target = loggableId(args["to"]);
+  const key = digestRef(args["idempotency_key"]);
+  if (run !== null) details["run_id"] = run;
+  if (parent !== null) details["parent_task_id"] = parent;
+  if (target !== null) details["target_agent"] = target;
+  if (key !== null) details["idempotency_ref"] = key;
+  if (typeof args["deadline_ms"] === "number") details["deadline_ms"] = args["deadline_ms"];
+  if (typeof args["max_turns"] === "number") details["max_turns"] = args["max_turns"];
+  return {
+    feature_id: loggableId(args["feature_id"]),
+    task_id: loggableId(args["task_id"]),
+    details,
+  };
+}
+
+/** Scalar result fields worth correlating; anything else, including nested payloads, is dropped. */
+const RESULT_FIELDS = [
+  "state",
+  "outcome",
+  "recovered_attempt",
+  "resumed_from_attempt",
+  "recovery_mode",
+  "same_execution_handle",
+  "epoch",
+  "instance_generation",
+  "changed",
+] as const;
+
+function resultSummary(result: unknown): {
+  task_id: string | null;
+  attempt: number | null;
+  code: string | null;
+  details: Record<string, unknown>;
+} {
+  const details: Record<string, unknown> = {};
+  if (result === null || typeof result !== "object" || Array.isArray(result)) {
+    return { task_id: null, attempt: null, code: null, details };
+  }
+  const value = result as Record<string, unknown>;
+  const task = value["task"] as Record<string, unknown> | undefined;
+  for (const field of RESULT_FIELDS) {
+    const raw = value[field] ?? (task ? task[field] : undefined);
+    if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") {
+      details[field] = raw;
+    }
+  }
+  const error = value["error"] as { code?: unknown } | undefined;
+  const attempt = value["attempt"] ?? value["recovered_attempt"];
+  return {
+    task_id: loggableId(value["task_id"] ?? (task ? task["task_id"] : null)),
+    attempt: typeof attempt === "number" ? attempt : null,
+    // A round that ends in a runtime TIMEOUT reports it inside a successful envelope.
+    code: typeof error?.code === "string" ? error.code : null,
+    details,
+  };
+}
+
 /** Wrap a handler result in the MCP content envelope, converting errors to structured JSON. */
 export async function runTool(
   tool: ToolDefinition,
   args: Record<string, unknown>,
   ctx: ToolContext,
   nativeMeta?: unknown,
+  requestId?: string | number,
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }> {
+  const logger = ctx.logger;
+  const startedMs = logger?.monotonicMs() ?? 0;
+  const correlation = callCorrelation(args);
+  const finished = (
+    outcome: "ok" | "error",
+    code: string | null,
+    extra: { task_id?: string | null; attempt?: number | null; details?: Record<string, unknown> },
+  ): void => {
+    logger?.record({
+      op: "tool",
+      event: "call.finished",
+      tool: tool.name,
+      outcome,
+      code,
+      // Whether the identity guard granted this call authority separates a refusal from a
+      // failure inside the operation itself.
+      phase: ctx.identity ? (ctx.identity.callWasAuthorized ? "handler" : "guard") : "unguarded",
+      request_id: requestId ?? null,
+      duration_ms: (logger?.monotonicMs() ?? 0) - startedMs,
+      feature_id: correlation.feature_id,
+      task_id: extra.task_id ?? correlation.task_id,
+      attempt: extra.attempt ?? null,
+      details: { ...correlation.details, ...(extra.details ?? {}) },
+    });
+  };
   try {
     const scoped: ToolContext = ctx.identity ? { ...ctx, nativeMeta } : ctx;
     const result = await executeTool(tool, args, scoped, nativeMeta);
+    const summary = resultSummary(result);
+    finished("ok", summary.code, {
+      task_id: summary.task_id,
+      attempt: summary.attempt,
+      details: summary.details,
+    });
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   } catch (err) {
     const bridgeErr = BridgeError.from(err);
+    const reason = (bridgeErr.details as { reason?: unknown } | undefined)?.reason;
+    finished("error", bridgeErr.code, {
+      details: { reason: typeof reason === "string" ? reason : null },
+    });
     return {
       content: [{ type: "text", text: JSON.stringify({ error: bridgeErr.toJSON() }, null, 2) }],
       isError: true,

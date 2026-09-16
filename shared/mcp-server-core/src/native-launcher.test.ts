@@ -142,6 +142,19 @@ class NativeHarness {
     };
   }
 
+  /** Close the way a client that ends its session does: SIGTERM, the path that detaches. */
+  async terminate(): Promise<number | null> {
+    this.child.kill("SIGTERM");
+    const timeout = Symbol("timeout");
+    const result = await Promise.race([
+      this.exited,
+      new Promise<typeof timeout>((resolveTimeout) => setTimeout(() => resolveTimeout(timeout), 5_000)),
+    ]);
+    if (result !== timeout) return result;
+    this.child.kill("SIGKILL");
+    return this.exited;
+  }
+
   async shutdown(): Promise<number | null> {
     if (!this.child.stdin.destroyed) this.child.stdin.end();
     const timeout = Symbol("timeout");
@@ -177,6 +190,47 @@ function recursiveFileHashes(root: string): Array<{ readonly path: string; reado
     path,
     sha256: createHash("sha256").update(readFileSync(join(root, ...path.split("/")))).digest("hex"),
   }));
+}
+
+/** Every diagnostics record of a worktree, in file and line order. */
+function logRecords(workspace: string): Array<Record<string, any>> {
+  const directory = join(workspace, ".bridge", "logs");
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory)
+    .filter((name) => name.endsWith(".jsonl"))
+    .sort()
+    .flatMap((name) =>
+      readFileSync(join(directory, name), "utf8")
+        .split("\n")
+        .filter((line) => line.length > 0)
+        .map((line) => JSON.parse(line) as Record<string, any>),
+    );
+}
+
+/**
+ * Content hash of the worktree state directory.
+ *
+ * SQLite's own `-wal`/`-shm` sidecars are excluded: a read-only open of a WAL database creates
+ * them and the isolation protocol already classifies them as technical files, not state
+ * (docs/manager-identity.md). Everything else — the database, the marker, the owner record,
+ * evidence and every log file — must be byte-identical after a refused foreign call.
+ */
+function stateFingerprint(workspace: string): Record<string, string> {
+  const root = join(workspace, ".bridge");
+  const out: Record<string, string> = {};
+  const visit = (directory: string, prefix: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        visit(join(directory, entry.name), relative);
+        continue;
+      }
+      if (/-(wal|shm|journal)$/u.test(entry.name)) continue;
+      out[relative] = createHash("sha256").update(readFileSync(join(directory, entry.name))).digest("hex");
+    }
+  };
+  if (existsSync(root)) visit(root, "");
+  return out;
 }
 
 function taskSpec() {
@@ -480,6 +534,274 @@ describe("native project MCP launcher", () => {
     }
   }, 30_000);
 
+  it("logs an authorized session automatically, and nothing before the guard authorizes it", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "bridge-log-launcher-"));
+    const logDirectory = join(workspace, ".bridge", "logs");
+    const harness = new NativeHarness("codex", "allow", workspace);
+    try {
+      await harness.initialize();
+      // Handshake and reads: no state directory, so no log directory either.
+      expect((await harness.callTool("bridge_server_info")).isError).toBe(false);
+      expect((await harness.callTool("bridge_manager_status")).data.workspace).toMatchObject({ bound: false });
+      expect(existsSync(join(workspace, ".bridge"))).toBe(false);
+
+      // A refusal before any binding is bounded to stderr; it creates nothing.
+      const refusedEarly = await harness.callTool("bridge_create_task", { spec: taskSpec() });
+      expect(refusedEarly.data.error.code).toBe("NATIVE_CONTEXT_INVALID");
+      expect(existsSync(join(workspace, ".bridge"))).toBe(false);
+
+      // The first authorized operation binds the worktree and arms the log.
+      const created = await harness.callTool(
+        "bridge_create_task",
+        { spec: taskSpec(), idempotency_key: "round-1-create" },
+        nativeMeta("thread-log-1"),
+      );
+      expect(created.isError).toBe(false);
+      expect(existsSync(logDirectory)).toBe(true);
+
+      // A foreign session is refused by the guard of the owning process and recorded as such.
+      const foreign = await harness.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-log-2"),
+      );
+      expect(foreign.data.error.code).toBe("MANAGER_FOREIGN_THREAD");
+      expect(await harness.terminate()).toBe(0);
+
+      const records = logRecords(workspace);
+      expect(records.every((record) => record["schema"] === "claude-codex-bridge.log/v1")).toBe(true);
+      // Sequence numbers count every record the process produced, so the written ones are
+      // contiguous and start after the records that were deferred to stderr before arming.
+      const sequence = records.map((record) => record["seq"] as number);
+      expect(sequence).toEqual(sequence.map((_, index) => sequence[0]! + index));
+
+      const start = records.find((record) => record["event"] === "start")!;
+      expect(start).toMatchObject({ op: "process", role: "codex", source: "0.2.0" });
+      expect(start["workspace"]).toMatch(/^ws_[0-9a-f]{16}$/u);
+      expect(start["pid"]).toBeGreaterThan(0);
+      expect(start["details"]["deferred_records"]).toBeGreaterThan(0);
+      expect(sequence[0]).toBe((start["details"]["deferred_records"] as number) + 1);
+
+      const authorized = records.find((record) => record["event"] === "authorized")!;
+      expect(authorized).toMatchObject({ op: "manager", tool: "bridge_create_task", phase: "guard" });
+      expect(authorized["details"]).toMatchObject({ epoch: 1, instance_generation: 1 });
+      // The native thread id is a session handle: only a digest of it is recorded.
+      expect(JSON.stringify(records)).not.toContain("thread-log-1");
+      expect(authorized["details"]["thread_ref"]).toMatch(/^[0-9a-f]{12}$/u);
+
+      const accepted = records.find(
+        (record) => record["event"] === "call.finished" && record["outcome"] === "ok",
+      )!;
+      expect(accepted).toMatchObject({
+        op: "tool",
+        tool: "bridge_create_task",
+        phase: "handler",
+        instance: start["instance"],
+      });
+      expect(accepted["task_id"]).toBe(created.data.task_id);
+      expect(accepted["request_id"]).not.toBeNull();
+      expect(accepted["duration_ms"]).toBeGreaterThanOrEqual(0);
+      // The idempotency key correlates by digest, never by value.
+      expect(accepted["details"]["idempotency_ref"]).toMatch(/^[0-9a-f]{12}$/u);
+      expect(JSON.stringify(records)).not.toContain("round-1-create");
+
+      const refused = records.find(
+        (record) => record["code"] === "MANAGER_FOREIGN_THREAD",
+      )!;
+      expect(refused).toMatchObject({ op: "tool", outcome: "error", phase: "guard" });
+
+      // Shutdown is recorded, and the active marker is released.
+      expect(records.map((record) => record["event"])).toEqual(
+        expect.arrayContaining(["stop", "instance.detached", "close"]),
+      );
+      expect(readdirSync(logDirectory).filter((name) => name.endsWith(".active"))).toEqual([]);
+
+      // Privacy: no task content, no argument values, no environment.
+      const text = JSON.stringify(records);
+      for (const forbidden of [
+        "prove shared native MCP state",
+        "BENCHMARK/native-mcp/**",
+        "the other stdio process can read it",
+        workspace,
+      ]) {
+        expect(text, `diagnostics log must not contain ${forbidden}`).not.toContain(forbidden);
+      }
+
+      for (const line of harness.stdoutLines) {
+        expect(JSON.parse(line)).toMatchObject({ jsonrpc: "2.0" });
+      }
+    } finally {
+      await harness.shutdown();
+      rmSync(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  }, 30_000);
+
+  it("records the worker runtime's own authorized calls beside the manager's, in its own file", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "bridge-log-worker-"));
+    const manager = new NativeHarness("codex", "allow", workspace);
+    const worker = new NativeHarness("claude", "deny", workspace);
+    try {
+      await manager.initialize();
+      await worker.initialize();
+      const root = await manager.callTool("bridge_create_task", { spec: taskSpec() }, nativeMeta("thread-worker"));
+      // The worker role carries no native session; its authority comes from the bound worktree.
+      const claimed = await worker.callTool("bridge_claim_task", { task_id: root.data.task_id });
+      expect(claimed.isError, JSON.stringify(claimed.data)).toBe(false);
+      expect(await manager.terminate()).toBe(0);
+      expect(await worker.terminate()).toBe(0);
+
+      const records = logRecords(workspace);
+      const byRole = new Map(records.map((record) => [record["role"], record["instance"]]));
+      expect([...byRole.keys()].sort()).toEqual(["claude", "codex"]);
+      expect(byRole.get("claude")).not.toBe(byRole.get("codex"));
+      // Two processes write two files; neither truncates or interleaves with the other.
+      expect(
+        readdirSync(join(workspace, ".bridge", "logs")).filter((name) => name.endsWith(".jsonl")),
+      ).toHaveLength(2);
+      const workerCall = records.find(
+        (record) => record["role"] === "claude" && record["event"] === "call.finished",
+      )!;
+      expect(workerCall).toMatchObject({ tool: "bridge_claim_task", outcome: "ok", phase: "handler" });
+      expect(workerCall["task_id"]).toBe(root.data.task_id);
+    } finally {
+      await manager.shutdown();
+      await worker.shutdown();
+      rmSync(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  }, 30_000);
+
+  it("leaves a visible gap when a process ends without shutting down, and cleans it up later", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "bridge-log-eof-"));
+    const logDirectory = join(workspace, ".bridge", "logs");
+    const first = new NativeHarness("codex", "allow", workspace);
+    let second: NativeHarness | undefined;
+    try {
+      await first.initialize();
+      const created = await first.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-eof"),
+      );
+      expect(created.isError).toBe(false);
+      // Closing stdin is the wave12-observed path that does not run the shutdown sequence: the
+      // log records the facts and simply stops. The missing `stop`/`close` records are the
+      // evidence of that gap; nothing here claims a clean close that did not happen.
+      expect(await first.shutdown()).toBe(0);
+
+      const afterEof = logRecords(workspace);
+      expect(afterEof.some((record) => record["event"] === "call.finished")).toBe(true);
+      expect(afterEof.some((record) => ["stop", "close"].includes(String(record["event"])))).toBe(false);
+      const staleMarker = readdirSync(logDirectory).filter((name) => name.endsWith(".active"));
+      expect(staleMarker).toHaveLength(1);
+
+      // The next authorized process recognises the dead instance's marker and removes it,
+      // so a crashed run cannot protect its file from retention forever.
+      second = new NativeHarness("codex", "allow", workspace);
+      await second.initialize();
+      const manager = (await second.callTool("bridge_manager_status")).data.manager;
+      await second.callTool(
+        "bridge_manager_resume_instance",
+        { expected_epoch: manager.epoch, expected_generation: manager.instance_generation },
+        nativeMeta("thread-eof"),
+      );
+      const again = await second.callTool("bridge_create_task", { spec: taskSpec() }, nativeMeta("thread-eof"));
+      expect(again.isError, JSON.stringify(again.data)).toBe(false);
+      expect(await second.terminate()).toBe(0);
+
+      const markers = readdirSync(logDirectory).filter((name) => name.endsWith(".active"));
+      expect(markers).toEqual([]);
+      expect(readdirSync(logDirectory).filter((name) => name.endsWith(".jsonl")).length).toBe(2);
+    } finally {
+      await first.shutdown();
+      if (second) await second.shutdown();
+      rmSync(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  }, 30_000);
+
+  it("adds no state through the logger when a foreign session or a read is refused", async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "bridge-log-foreign-"));
+    const owner = new NativeHarness("codex", "allow", workspace);
+    let stranger: NativeHarness | undefined;
+    try {
+      await owner.initialize();
+      const created = await owner.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-owner"),
+      );
+      expect(created.isError).toBe(false);
+      expect(await owner.shutdown()).toBe(0);
+      const before = stateFingerprint(workspace);
+      expect(Object.keys(before).some((path) => path.startsWith("logs/"))).toBe(true);
+
+      // A different native session in a different process: handshake, read and refused mutation.
+      stranger = new NativeHarness("codex", "allow", workspace);
+      await stranger.initialize();
+      expect((await stranger.callTool("bridge_server_info")).isError).toBe(false);
+      const status = await stranger.callTool("bridge_manager_status");
+      expect(status.data.manager).toMatchObject({ is_calling_instance: false });
+      const refused = await stranger.callTool(
+        "bridge_create_task",
+        { spec: taskSpec() },
+        nativeMeta("thread-stranger"),
+      );
+      expect(refused.data.error.code).toBe("MANAGER_FOREIGN_THREAD");
+      const alsoRefused = await stranger.callTool("bridge_feature_get", { feature_id: "F-none" });
+      expect(alsoRefused.isError).toBe(true);
+      expect(await stranger.shutdown()).toBe(0);
+
+      expect(stateFingerprint(workspace)).toEqual(before);
+    } finally {
+      await owner.shutdown();
+      if (stranger) await stranger.shutdown();
+      rmSync(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  }, 30_000);
+
+  it("keeps the logs of two worktrees apart even when their features and tasks share names", async () => {
+    const workspaces = [
+      mkdtempSync(join(tmpdir(), "bridge-log-ws-a-")),
+      mkdtempSync(join(tmpdir(), "bridge-log-ws-b-")),
+    ];
+    const harnesses = workspaces.map((workspace) => new NativeHarness("codex", "allow", workspace));
+    try {
+      const taskIds: string[] = [];
+      for (const [index, harness] of harnesses.entries()) {
+        await harness.initialize();
+        const meta = nativeMeta(`thread-parallel-${index}`);
+        const root = await harness.callTool("bridge_create_task", { spec: taskSpec() }, meta);
+        await harness.callTool("bridge_claim_task", { task_id: root.data.task_id }, meta);
+        await harness.callTool("bridge_set_state", { task_id: root.data.task_id, to: "WORKING" }, meta);
+        const feature = await harness.callTool(
+          "bridge_feature_create",
+          { feature_id: "F-same-name", parent_task_id: root.data.task_id },
+          meta,
+        );
+        expect(feature.isError, JSON.stringify(feature.data)).toBe(false);
+        taskIds.push(root.data.task_id as string);
+        expect(await harness.shutdown()).toBe(0);
+      }
+      expect(taskIds[0]).not.toBe(taskIds[1]);
+
+      const [first, second] = workspaces.map(logRecords);
+      for (const [index, records] of [first!, second!].entries()) {
+        const text = JSON.stringify(records);
+        expect(records.some((record) => record["feature_id"] === "F-same-name")).toBe(true);
+        expect(text).toContain(taskIds[index]!);
+        expect(text, "one worktree's log must not mention the other's task").not.toContain(
+          taskIds[1 - index]!,
+        );
+        expect(new Set(records.map((record) => record["workspace"])).size).toBe(1);
+      }
+      expect(first![0]!["workspace"]).not.toBe(second![0]!["workspace"]);
+    } finally {
+      for (const harness of harnesses) await harness.shutdown();
+      for (const workspace of workspaces) {
+        rmSync(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      }
+    }
+  }, 45_000);
+
   it("recovers a timed-out feature round after a bridge restart in the same runtime session", async () => {
     // A stand-in `claude` on PATH speaks the real stream-json protocol; no model is called.
     const workspace = mkdtempSync(join(tmpdir(), "bridge-timeout-e2e-"));
@@ -573,6 +895,29 @@ describe("native project MCP launcher", () => {
       for (const line of [...first.stdoutLines, ...second.stdoutLines]) {
         expect(JSON.parse(line)).toMatchObject({ jsonrpc: "2.0" });
       }
+
+      // The diagnostics log of the same run separates the executor's deadline from the client
+      // timeout and names the attempt that was recovered, without any transcript or payload.
+      const records = logRecords(workspace);
+      const timedOut = records.find(
+        (record) => record["tool"] === "bridge_feature_run" && record["event"] === "call.finished",
+      )!;
+      expect(timedOut).toMatchObject({ outcome: "ok", code: "TIMEOUT", task_id: taskId });
+      expect(timedOut["details"]).toMatchObject({ deadline_ms: 1_000, state: "FAILED" });
+      const recovered = records.filter(
+        (record) => record["tool"] === "bridge_resume_delegated_task" && record["event"] === "call.finished",
+      );
+      expect(recovered).toHaveLength(2); // the recovery and its idempotent replay
+      expect(recovered[0]).toMatchObject({ task_id: taskId, attempt: 1 });
+      expect(recovered[0]!["details"]).toMatchObject({
+        deadline_ms: 4_500_000,
+        max_turns: 120,
+        recovery_mode: "timeout",
+        resumed_from_attempt: 0,
+        state: "DONE",
+      });
+      expect(JSON.stringify(records)).not.toContain("fake runtime warning");
+      expect(JSON.stringify(records)).not.toContain("write the contract");
     } finally {
       await first.shutdown();
       const exit = second ? await second.shutdown() : 0;

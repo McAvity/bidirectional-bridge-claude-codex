@@ -17,6 +17,23 @@ export {
 } from "./evidence-store.js";
 export type { RecordTerminationEvidenceInput, TerminationEvidenceRecord } from "./evidence-store.js";
 
+export {
+  DEFAULT_DIAGNOSTICS_LIMITS,
+  DIAGNOSTICS_LOG_SCHEMA,
+  DiagnosticsLogger,
+  LOG_DIRECTORY_NAME,
+  digestRef,
+  loggableId,
+  readDiagnosticsLogConfig,
+} from "./diagnostics-log.js";
+export type {
+  DiagnosticsLogConfig,
+  DiagnosticsLogEntry,
+  DiagnosticsLogLimits,
+  DiagnosticsLogStatus,
+  DiagnosticsLoggerOptions,
+} from "./diagnostics-log.js";
+
 export { MAX_DELEGATION_DEPTH, TaskService } from "./task-service.js";
 export type {
   BeginRecoveryInput,

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import { realpathSync, statSync } from "node:fs";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { randomBytes } from "node:crypto";
+import { readFileSync, realpathSync, statSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const launcherPath = fileURLToPath(import.meta.url);
@@ -109,6 +110,27 @@ function redactedClaudeLog(line) {
   return line.replace(/session\s+\S+/iu, "session [redacted]");
 }
 
+/**
+ * Source identity of the running code for the diagnostics log: the package version always, and
+ * the installed runtime id when this process runs from an installed runtime. A development
+ * checkout has no manifest, and the id is then reported as unknown (null) rather than guessed.
+ */
+export function readSourceIdentity(root = nativeBridgeRepositoryRoot) {
+  const read = (path) => {
+    try {
+      return JSON.parse(readFileSync(path, "utf8"));
+    } catch {
+      return null;
+    }
+  };
+  const pkg = read(join(root, "package.json"));
+  const manifest = read(join(root, "runtime-manifest.json"));
+  return {
+    packageVersion: typeof pkg?.version === "string" ? pkg.version : "unknown",
+    runtimeId: typeof manifest?.runtime_id === "string" ? manifest.runtime_id : null,
+  };
+}
+
 export async function runNativeBridge(args) {
   if (args.help) {
     process.stderr.write(NATIVE_BRIDGE_HELP);
@@ -164,6 +186,19 @@ export async function runNativeBridge(args) {
     sandbox: "workspace-write",
   });
 
+  // Automatic local diagnostics logging (wave13 §1). It is created here, with the process, but
+  // writes nothing until the identity guard authorizes an operation on this worktree.
+  const source = readSourceIdentity();
+  const instanceId = `inst_${randomBytes(8).toString("hex")}`;
+  const logger = new controlPlane.DiagnosticsLogger({
+    instanceId,
+    role: args.caller,
+    packageVersion: source.packageVersion,
+    runtimeId: source.runtimeId,
+    config: controlPlane.readDiagnosticsLogConfig(process.env),
+    warn: (line) => core.stderrLog(line),
+  });
+
   const adapters = [claudeAdapter, codexAdapter];
   const server = new core.BridgeMcpServer({
     workspaceRoot: workspace.root,
@@ -174,7 +209,24 @@ export async function runNativeBridge(args) {
     delegationPolicy: args.delegation,
     adapters,
     serverName: "bridge-native-project",
-    onWarning: (message) => log(`warning: ${message}`),
+    instanceId,
+    logger,
+    onWarning: (message, details) => {
+      log(`warning: ${message}`);
+      // The control plane's warnings are authored strings (today: the SQLite journal fallback),
+      // so the clamped message is safe to keep; its structured details are not copied.
+      logger.record({
+        op: "process",
+        event: "warning",
+        outcome: "error",
+        phase: "runtime",
+        details: {
+          message,
+          requested: details?.requested ?? null,
+          actual: details?.actual ?? null,
+        },
+      });
+    },
   });
 
   log(

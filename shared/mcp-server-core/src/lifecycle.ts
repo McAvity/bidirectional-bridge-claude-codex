@@ -108,16 +108,27 @@ export async function serve(options: ServeOptions): Promise<ServeHandle> {
     if (shutting) return shutting;
     shutting = (async () => {
       log(`[${label}] ${reason}, shutting down`);
+      // Why the process ended is the fact a later export needs most; a hard kill cannot
+      // record it, which is exactly why the absence of this record is meaningful.
+      server.logger?.record({ op: "process", event: "stop", phase: "shutdown", details: { reason } });
       try {
         for (const adapter of options.adapters ?? []) {
           try {
             await adapter.dispose?.();
           } catch (err) {
             log(`[${label}] adapter dispose failed: ${(err as Error).message}`);
+            server.logger?.record({
+              op: "adapter",
+              event: "dispose.failed",
+              outcome: "error",
+              phase: "shutdown",
+              details: { agent: adapter.info?.agent ?? null },
+            });
           }
         }
       } finally {
         await server.close();
+        server.logger?.close(reason);
       }
     })();
     return shutting;
@@ -141,6 +152,12 @@ export async function serve(options: ServeOptions): Promise<ServeHandle> {
   try {
     await server.connect(options.transport);
   } catch (err) {
+    server.logger?.record({
+      op: "process",
+      event: "transport.failed",
+      outcome: "error",
+      phase: "startup",
+    });
     await shutdown("startup failure").catch(() => undefined);
     throw err;
   }
@@ -170,6 +187,14 @@ export async function serve(options: ServeOptions): Promise<ServeHandle> {
   }
 
   log(`[${label}] serving ${server.toolNames.length} tools`);
+  // Produced before any authorized call, so it is normally counted as deferred and restated
+  // by the `process.start` record written when the log is armed.
+  server.logger?.record({
+    op: "process",
+    event: "serving",
+    phase: "startup",
+    details: { label, tools: server.toolNames.length },
+  });
 
   return {
     shutdown,
