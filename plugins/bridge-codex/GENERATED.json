@@ -42,7 +42,7 @@
     },
     {
       "path": "scripts/plugin-packages/release.json",
-      "sha256": "0c7ecaeef7f6f0901db7f5145640828dd54fce83129559ad5e9a1f19c5e2be72"
+      "sha256": "25f4bf138a3ea3587693c05498b0f139a86624e0ea222be5a2e49fb50ea7bbb0"
     },
     {
       "path": "scripts/setup/common.mjs",
