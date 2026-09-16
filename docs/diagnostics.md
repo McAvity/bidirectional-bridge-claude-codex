@@ -247,7 +247,7 @@ evidence beside it.
 | `records/feature.json`, `records/workspace.json` | Feature routing state and worktree/manager identity, without the question or answer text |
 | `logs/<file>.jsonl` | The diagnostics records of the scope, projected again on the way in |
 | `evidence/index.json` | Termination-evidence metadata: attempt, file name, size, SHA-256, termination kind, whether the content is included |
-| `doctor.json` | Includes a typed `distribution` block (runtime/plugin versions, instruction digest, declared/applied pin, location classes/digests; configured and observed facts remain separate). Doctor's safe subset: ids, machine codes and aliased summaries. `handshake` and `codex_project` are skipped, so nothing is started and no project configuration is loaded |
+| `doctor.json` | Includes a typed `distribution` block (runtime/plugin versions, instruction digest, declared/applied pin, location classes/digests; configured and observed facts remain separate). Doctor's safe subset: ids, machine codes and aliased summaries. `handshake` and `codex_project` are skipped, so no client/server is started and no project configuration is executed |
 | `ANALYSIS.md` | The instruction below, travelling with the package |
 
 ## One scope for every source

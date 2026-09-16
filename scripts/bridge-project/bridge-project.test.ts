@@ -6,6 +6,7 @@
 // then runs against that runtime, real git worktrees and the real launch gate. No model is
 // involved and no client is required.
 
+import { createHash } from "node:crypto";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -59,6 +60,22 @@ function digestOf(dir: string): string {
   return spawnSync("sh", ["-c", `find ${JSON.stringify(dir)} -type f -exec sha256sum {} + | sort | sha256sum`], {
     encoding: "utf8",
   }).stdout.trim();
+}
+
+// Read-only SQLite may create/update technical WAL/SHM sidecars. Compare domain files
+// and logs individually so a failure identifies the changed source, as in diagnose.test.ts.
+function stateFingerprint(dir: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  const visit = (base: string, prefix: string) => {
+    for (const item of readdirSync(base, { withFileTypes: true })) {
+      if (/-(wal|shm|journal)$/u.test(item.name)) continue;
+      const name = `${prefix}${item.name}`;
+      if (item.isDirectory()) visit(join(base, item.name), `${name}/`);
+      else if (item.isFile()) result[name] = createHash("sha256").update(readFileSync(join(base, item.name))).digest("hex");
+    }
+  };
+  visit(dir, "");
+  return result;
 }
 
 function removeTree(path: string): void {
@@ -457,7 +474,7 @@ describe("the launch gate", () => {
 
   it("refuses and serves nothing when the applied selection and the declared pin differ", async () => {
     setup();
-    const other = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const other = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     rewrite(project, { ...declarationOf(project), pinned: { runtime_id: other.id, commit: other.manifest.source.commit } });
     const run = await launchEntry(project, { frames: HANDSHAKE });
     expect(run.stderr).toContain("PIN_DIVERGED");
@@ -586,7 +603,7 @@ describe("an inherited worktree serves without any manual step (AC-03)", () => {
     await stopped;
     // Joint wave13/wave14 path: real installed dispatcher writes diagnostics, and the
     // installed exporter describes its plugin without starting an agent or changing state.
-    const before = digestOf(join(external, ".bridge"));
+    const before = stateFingerprint(join(external, ".bridge"));
     const task = JSON.parse(result.result.content[0].text).task_id;
     const exported = spawnSync(process.execPath, [join(runtimePath, "scripts/bridge.mjs"), "diagnose",
       "--workspace", external, "--task", task, "--home", sharedHome, "--json"],
@@ -601,7 +618,7 @@ describe("an inherited worktree serves without any manual step (AC-03)", () => {
     expect(doctor.distribution.executor.observed_plugin_dir).toBeNull();
     expect(doctor.distribution.pin.diverged).toBe(false);
     expect([...entries.keys()].some((name) => name.startsWith("logs/"))).toBe(true);
-    expect(digestOf(join(external, ".bridge"))).toBe(before);
+    expect(stateFingerprint(join(external, ".bridge"))).toEqual(before);
   }, 120_000);
 
   it("writes nothing when a mutation is not authorised by the native guard", async () => {
@@ -660,7 +677,7 @@ describe("an inherited worktree serves without any manual step (AC-03)", () => {
 describe("update and rollback while the worktree is in use", () => {
   it("refuses to move the pin while a bridge server is serving this worktree", async () => {
     setup();
-    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     const run = await launchEntry(project, { frames: [...HANDSHAKE, authorizedMutation("hold-open")] });
     expect(run.replies.find((f: any) => f.id === 2)?.result?.isError, run.stderr).toBeFalsy();
     try {
@@ -717,7 +734,7 @@ describe("two first uses of the SAME worktree (W14-R2-06)", () => {
 
   it("keeps the ordinary CLI active-session refusal while a server is serving", async () => {
     setup();
-    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     const run = await launchEntry(project, { frames: [...HANDSHAKE, authorizedMutation("hold")] });
     try {
       const moved = plugin(project, ["update", "--to", older.id, "--yes", "--json"], env);
@@ -944,7 +961,7 @@ describe("every interruption boundary recovers itself (W14-R2-07)", () => {
 describe("rollback returns to the previous runtime (W14-R2-09)", () => {
   it("uses this worktree's own selection history, not the declared pin", () => {
     setup();
-    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     expect(plugin(project, ["update", "--to", older.id, "--yes", "--json"], env).code).toBe(0);
     expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(older.id);
 
@@ -964,7 +981,7 @@ describe("rollback returns to the previous runtime (W14-R2-09)", () => {
     expect(refused.stdout + refused.stderr).toContain("ROLLBACK_NO_PREVIOUS");
     expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(runtimeId);
 
-    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     const explicit = plugin(project, ["rollback", "--to", older.id, "--yes", "--json"], env);
     expect(explicit.code, explicit.stderr).toBe(0);
     expect((explicit.json as any).runtime.id).toBe(older.id);
@@ -972,7 +989,7 @@ describe("rollback returns to the previous runtime (W14-R2-09)", () => {
 
   it("refuses to roll back while a bridge server is serving this worktree", async () => {
     setup();
-    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     expect(plugin(project, ["update", "--to", older.id, "--yes", "--json"], env).code).toBe(0);
     const run = await launchEntry(project, { frames: [...HANDSHAKE, mutationFrom("serving", "hold")], waitMs: 6000 });
     try {

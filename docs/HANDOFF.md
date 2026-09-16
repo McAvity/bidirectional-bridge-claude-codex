@@ -1,5 +1,12 @@
 # Current handoff
 
+## Current: wave13/wave14 integration
+
+Both accepted local deliveries are combined on waves13-14-integration.
+[Integration report](plans/wave13-wave14-integration.md) records exact inputs,
+remaining validation and deployment boundaries. Older entries below are historical.
+Active runtime selections remain unchanged; wave15 is still DRAFT.
+
 ## Wave13 and wave14 — coordinator review
 
 Both local deliveries have been reviewed at wave13 `9cf1f43` and wave14 `e76a066`.
