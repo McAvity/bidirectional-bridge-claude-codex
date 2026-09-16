@@ -129,3 +129,17 @@ oczekiwanie source=0.2.0 w teście logu. Po porównaniu z package.json: cały la
 16/16 PASS. Python46/pilot140, packages, linki168 i diff PASS. Ostateczny pełny
 przebieg po tej korekcie wykona CI. Zmiana wyłącznie testowa, pin runtime2611d1e
 pozostaje właściwy. Starego runtime i sesji wave15 nie zmieniano.
+
+## 0.3.0 opublikowane — aktywacja oczekuje
+
+[CI35160973276](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/35160973276):
+SUCCESS na0143fa4 (build, pakiety, dokumentacja, JS565/Python46/pilot140).
+Tag anotowany v0.3.0 wskazuje ten commit;
+[GitHub prerelease](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.3.0)
+jest opublikowane, jawnie smoke pending. Nie publikowano pakietu do npm.
+
+Nowy runtime0.3.0-2611d1ecccfa zainstalowany; aktywny nadal0.2.0-ff225e550966,
+do normalnego zamknięcia klienta. Lokalny skrypt bridge-activate-0.3.0.sh obok
+checkoutu jest gotowy i sprawdzony składniowo; dry-run bez konfliktów, tylko
+ACTIVE_SESSION. Po wykonaniu i dokładnym resume: doctor, entry --status, odczyt
+nowych instrukcji, potem autoryzowany smoke według wave15-release.md.

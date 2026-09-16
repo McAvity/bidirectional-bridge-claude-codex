@@ -1,6 +1,15 @@
 # Current handoff
 
-## Wave15 release 0.3.0 authorized; smoke pending
+## Wave15 0.3.0 published; activation then smoke
+
+GitHub prerelease/tag v0.3.0: 0143fa4. CI35160973276 SUCCESS (565 JS/46 Python/140 pilot).
+Runtime0.3.0-2611d1ecccfa installed beside ff225e5. User must close this client and
+run the prepared local activation script; then resume the same session, read
+entry --status and the new pinned instructions, verify doctor, and perform the
+bounded smoke in a disposable project. See [release checkpoint](plans/wave15-release.md).
+No feature_accept or behavioural PASS yet. The original wave15 manager stays untouched.
+
+## Earlier authorization — retained
 
 User authorized integration of b64b858 plus review10eb3ed, version bump, publication
 and runtime activation before the bounded smoke from the plan. Behavioural acceptance
