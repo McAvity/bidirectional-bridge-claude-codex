@@ -39,6 +39,47 @@ modelu — trzeba sprawdzić realne scenariusze po ustaleniu zakresu.
 - Naturalne zlecenie nie jest automatycznie zgodą na merge, push, wdrożenie lub
   kosztowny dodatkowy eksperyment. Zachować istniejące granice i rzeczywisty odbiór.
 
+## Uzgodnione uzupełnienie draftu — bezpieczne „kontynuuj”
+
+Po capacity, przerwaniu odpowiedzi, rozłączeniu lub restarcie użytkownik ma móc
+napisać samo „kontynuuj”. Nie wymagać dodatkowej formułki ani osobnego skilla.
+Regułę umieścić w istniejącym workflowie managera; szczegóły implementacyjne ustalić
+po wave13/14. Sam komunikat klienta o capacity nie dowodzi zakończenia zadania Claude’a.
+
+Przed delegacją utrwalić minimalny checkpoint operacji: kontekst featura/rundy,
+stabilny klucz idempotencji i odniesienie do kontraktu; po odpowiedzi powiązać
+zwrócone task/attempt ID. Wykorzystać istniejący zapis, nie tworzyć drugiej bazy
+stanu. Przerwa może nastąpić po rezerwacji zadania, zanim manager pozna jego ID.
+
+Po wznowieniu Astra najpierw odczytuje checkpoint i autorytatywny stan bridge’a:
+- aktywna próba → kontynuuje oczekiwanie, bez nowej delegacji;
+- zakończona próba → odbiera wynik i przechodzi do review lub obsługi blokady;
+- niepewne przyjęcie wywołania → rozstrzyga przez stan i istniejącą idempotencję;
+  dopuszczalne ponowienie tej samej operacji zachowuje klucz i kontrakt, bez nowego
+  zadania zastępczego; brak dowodu nie oznacza, że operacja się nie wykonała;
+- rzeczywista blokada → wskazuje konkretną potrzebną decyzję; nie obchodzi recovery,
+  waiting_user, własności managera ani budżetu. „Kontynuuj” nie odpowiada automatycznie
+  na otwarte pytanie produktowe i nie odnawia limitów czasu/kosztu.
+
+Stan lokalnej pracy i wykonanych zmian także trzeba odczytać przed powtórzeniem
+kroku. Nie zakładać, że przerwana odpowiedź oznacza brak wykonania narzędzia.
+Przy niejednoznacznym przypisaniu sesji zapytać o konkretny kontekst zamiast wybierać
+najnowszą sesję, resetować bazę lub rozpoczynać nowego Claude’a.
+
+Robocze kryterium: po przerwaniu wystarcza „kontynuuj”; agent odzyskuje właściwy
+kontekst i kończy autoryzowaną pracę bez zdublowania rundy oraz bez żądania od
+użytkownika technicznych identyfikatorów dostępnych w zapisanym stanie.
+Sprawdzić przerwanie przed wysłaniem delegacji, po jej przyjęciu przed potwierdzeniem,
+podczas pracy Claude’a oraz po zakończeniu przed odebraniem wyniku; uwzględnić
+kolejne przerwanie podczas samego uzgadniania stanu. Testy mają wykazać brak
+zdublowanych wykonań, poprawną tożsamość i zachowanie historii/budżetu.
+
+Automatyczne ponawianie wywołań modelu podczas capacity BEZ wiadomości użytkownika
+pozostaje osobną kwestią klienta lub nadzorcy. Skill nie działa, gdy model jest
+niedostępny. Ten draft nie obiecuje automatycznego wybudzania ani samodzielnej zmiany
+modelu/dostawcy; nie trzeba też sztucznie wywoływać rzeczywistego przeciążenia usługi,
+aby testować utratę odpowiedzi i odtwarzanie stanu.
+
 ## Kandydaci do zakresu — jeszcze nie zobowiązania
 
 Po integracji wave13/14 zdecydować, co pozostaje brakującym elementem, a co już działa:
