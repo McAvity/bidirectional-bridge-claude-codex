@@ -55,3 +55,14 @@ zakaz zastępczego featura, ścisłe replay i poprawne scenariusze). Korekty w r
 istniejącej zgody, bez nowego protokołu. Następna runda: korekty projektu i W15-02.
 Walidacja bazowa: npm ci --ignore-scripts PASS, npm run build PASS, 140 pilot tests PASS.
 Node24.15.0 / Python3.12.3. Smoke niezlecony; aktywny runtime bez zmian.
+
+## Runda 2 i review — ea7d1bd
+
+W15-02: c4483b4, 55d3e5f oraz dokumenty/testy do ea7d1bd; task_axt2g9bfzf DONE.
+Paczka r02 zweryfikowana, 30 plików zgodnych ze scope, czysty worktree.
+Review: C1/C3 resolved; C2/C4 progress, pozostają konkretne korekty.
+Nowe I1-I5: legacy entry, diff nowego AGENTS, pin commit w plugin status,
+markery nie są zgodą, cienkie wejście pluginu. Niezależne próby potwierdziły błędy.
+Wykonawca: build, 6 entry/plugin + 3 preference, packages i links PASS.
+Następny krok: te poprawki wraz z W15-03; trzecie sprawdzenie C2/C4 wymaga step-back.
+Nie zmieniono aktywnego runtime, projektu .bridge-project ani globalnej konfiguracji.

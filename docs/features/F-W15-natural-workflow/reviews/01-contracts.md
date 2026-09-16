@@ -53,3 +53,29 @@ Walidacja koordynatora: odczyt feature-workflow.ts, orchestrator.ts, idempotency
 identity-runtime.ts, locate.mjs, entry-template.mjs i workspace.mjs; verify r01 i diff.
 G-3 pozostaje ograniczeniem przy stałym runtime, bez potrzeby zmiany publicznego API.
 Pierwsze review tych problemów; step-back przy trzecim.
+
+## Review korekt — 2026-09-16, task_axt2g9bfzf, ea7d1bd
+
+REWORK; zakres e66c6d7..ea7d1bd75e2c418c96694bb5c07cbac31cb571d5.
+Paczka r02 integrity/range PASS, SHA256 5a2cd2a68ef93ac3cdb651ef8f1f2efddd5e6693a8a82d75f2c376c3a36a5ee9,
+30 plików w kontrakcie, czysty worktree. Koordynator nadal niezależny od implementacji.
+
+- C1: resolved dla pristine entry; nowy read-only entry rozwiązuje pin bez current.
+  Odrębne usterki plugin status i legacy opisano w 02-implementation.
+- C2: progress, wymagane domknięcie. Dokładny lokalny request i rozdział ledgerów są
+  poprawne, ale .bridge/intent przed rootem blokuje bootstrap: classifyNativeState
+  (workspace.mjs) traktuje katalog .bridge bez workspace.json jako unexplained;
+  assertPristineStateDirectory w workspace-state.ts odmawia nieznanych plików.
+  Użyć istniejącej prywatnej przestrzeni exchange danego worktree, np. osobnego
+  katalogu intents obok packages, wyliczanej istniejącym namespace (czysty odczyt).
+  Nie tworzyć .bridge ani .bridge-runtime przed bootstrapem, nie osłabiać guardów.
+  Plik intencji ma być trwały, zapisany atomowo przed wysłaniem; brak/uszkodzenie
+  oznacza blokadę. Dodać test rzeczywistego bootstrapu po zapisie intencji.
+- C3: resolved. Brak handle = jawny stop; utrata odpowiedzi oddzielona od śmierci serwera.
+- C4: progress. G-4 i scenariusze poprawione, ale główna tabela §4 nadal zaleca
+  list_tasks(owner=codex)+objective/scope i uznaje równy predecessor za dowód braku
+  rezerwacji. Usunąć sprzeczne instrukcje w miejscu, nie dopisywać kolejnego wyjątku.
+
+To drugie review C2/C4. Przy następnym sprawdzeniu obowiązuje step-back niezależnie
+od postępu. Prostszy kierunek: jeden plik intencji w istniejącej przestrzeni wymiany,
+jedna kanoniczna tabela replay, żadnej nowej maszyny stanów ani zmian protokołu.
