@@ -17,3 +17,13 @@ checkpoint przed delegacją, uzgodnienie stanu/idempotencji bez dublowania prób
 Bez nowego skilla do pamiętania; automatyczne retry niedostępnego modelu nie jest
 obiecane. Wave15 nadal DRAFT po integracji wave13/14; brak implementacji i zmian
 w pracujących falach.
+
+## Doprecyzowanie po integracji wave13/14
+
+Baza e721aa4; wybrany runtime ff225e5, rzeczywisty doctor: ok. Plan ograniczono do
+naturalnego zlecania i bezpiecznego wznowienia. Dodano zweryfikowane luki, proponowane
+miejsce preferencji, W15-01…04, AC-01…09 i oddzielny, niezlecony smoke.
+
+Autoryzacja użytkownika: publikacja bieżących zmian/CI oraz dopracowanie planu,
+wyraźnie bez implementacji. Nie zmieniono skilli, kodu, konfiguracji ani runtime;
+nie uruchamiano modeli. Następny krok: osobne zlecenie wykonania planu.

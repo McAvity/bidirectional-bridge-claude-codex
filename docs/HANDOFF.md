@@ -1,5 +1,13 @@
 # Current handoff
 
+## Runtime activated; wave15 planning only
+
+User completed the dispatcher update. Commit e721aa4 selects runtime ff225e5;
+coordinator doctor confirms ok after resume. Migration/fix commits are published.
+[Wave15](plans/wave15.md) now has a bounded plan, tasks and acceptance criteria;
+implementation and model smoke are NOT authorized. Earlier pending activation and
+wave15 draft entries are historical. See [progress](plans/wave15-progress.md).
+
 ## Dispatcher migration — diagnostic correction
 
 Runtime187fd3b activation and the project dispatcher migration succeeded.
