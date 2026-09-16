@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W14-plugin-distribution",
+  "phase": "execution",
+  "brief": "docs/features/F-W14-plugin-distribution/brief.md",
+  "design": "docs/plans/wave14.md",
+  "tasks": [
+    "work-items/W14-01.md",
+    "work-items/W14-02.md",
+    "work-items/W14-03.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave14.md",
+    "docs/setup-layout.md"
+  ],
+  "latest_review": null,
+  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/01.md",
+  "next_action": "W14-01: model-free feasibility probes and proposed interfaces, then coordinator review.",
+  "bridge": {
+    "feature_id": "F-W14-plugin-distribution",
+    "parent_task_id": "task_538nb9refm"
+  }
+}
