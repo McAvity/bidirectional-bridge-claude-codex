@@ -207,6 +207,37 @@ describe("diagnostics log", () => {
     expect(log.status.deleted).toBe(2);
   });
 
+  it("keeps recognising its own files past the hundredth rotation", () => {
+    // Review R1-02, reproduced with a configuration the environment accepts: a two-digit
+    // rotation index stopped matching at 100, after which retention retained everything.
+    const ws = workspace();
+    const { logger: log } = logger({ maxFileBytes: 65_536, maxTotalBytes: 262_144, maxFiles: 2 });
+    log.arm({ stateDirectory: ws.state, workspaceId: "ws_1", by: "bridge_create_task" });
+    // Another live instance keeps one file that retention must never take.
+    const busy = "bridge-20260103T000000Z-eeeeffff00001111-00.jsonl";
+    writeFileSync(join(ws.logs, busy), "{}\n");
+    writeFileSync(
+      join(ws.logs, "instance-eeeeffff00001111.active"),
+      `${JSON.stringify({ pid: process.pid, instance: "inst_eeeeffff00001111", file: busy })}\n`,
+    );
+
+    const padding = "p".repeat(190);
+    while (log.status.rotations < 115) {
+      log.record({ op: "tool", event: "call.finished", tool: "bridge_get_task", details: { padding } });
+      if (log.status.disabled) break;
+    }
+    expect(log.status.rotations).toBeGreaterThanOrEqual(115);
+    expect(log.status.disabled).toBe(false);
+
+    const files = readdirSync(ws.logs).filter((name) => name.endsWith(".jsonl"));
+    // maxFiles = 2 (the current one plus one), plus the file the live instance holds.
+    expect(files.length).toBeLessThanOrEqual(3);
+    expect(files).toContain(busy);
+    expect(files.some((name) => /-1\d\d\.jsonl$/u.test(name))).toBe(true);
+    const total = files.reduce((sum, name) => sum + statSync(join(ws.logs, name)).size, 0);
+    expect(total).toBeLessThanOrEqual(262_144);
+  });
+
   it("deletes files older than the configured age and keeps younger ones", () => {
     const ws = workspace();
     mkdirSync(ws.logs, { recursive: true });
@@ -272,7 +303,11 @@ describe("diagnostics log", () => {
         harness.logger.record({ op: "tool", event: "call.finished", details: { index } });
       }
       expect(harness.logger.status.written).toBe(0);
-      expect(harness.warnings.length).toBeLessThanOrEqual(4);
+      // Bounded: the failure warnings plus at most MAX_NOTES stderr notes for the records
+      // that reached no file, and nothing after that.
+      expect(harness.warnings.length).toBeLessThanOrEqual(MAX_EXPECTED_WARNINGS + 21);
+      expect(harness.logger.status.deferred).toBe(50);
+      expect(harness.logger.status.noted).toBe(20);
       expect(harness.warnings.join("\n")).toMatch(/EACCES|permission denied/iu);
       harness.logger.close("test");
       expect(readdirSync(ws.logs)).toEqual([]);
@@ -291,7 +326,8 @@ describe("diagnostics log", () => {
       expect(() => log.record({ op: "tool", event: "call.finished", details: { index } })).not.toThrow();
     }
     expect(log.status.disabled).toBe(true);
-    expect(warnings.length).toBeLessThanOrEqual(MAX_EXPECTED_WARNINGS);
+    expect(warnings.length).toBeLessThanOrEqual(MAX_EXPECTED_WARNINGS + 21);
+    expect(log.status.noted).toBeLessThanOrEqual(20);
     expect(existsSync(ws.logs)).toBe(false);
   });
 

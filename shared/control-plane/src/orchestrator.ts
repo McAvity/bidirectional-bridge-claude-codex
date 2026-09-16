@@ -312,6 +312,20 @@ export class Orchestrator {
       // then crashes still leaves a row the next attempt can resume from.
       this.cp.attempts.start(task.task_id, attempt, request.to);
       attemptOpened = true;
+      // Observation point of the attempt itself (wave13 §1): a long round is correlatable from
+      // its start, not only when the call returns. Identifiers and budgets only.
+      this.cp.logger?.record({
+        op: "attempt",
+        event: "started",
+        task_id: task.task_id,
+        attempt,
+        details: {
+          agent: request.to,
+          deadline_ms: request.deadline_ms,
+          max_turns: request.spec.max_turns ?? null,
+          continuation: Boolean(options.resumeFromTaskId),
+        },
+      });
       const previousHandle = options.resumeFromTaskId
         ? this.cp.attempts.list(options.resumeFromTaskId).at(-1)?.execution_handle ?? null
         : this.cp.attempts.previousHandle(task.task_id, attempt);
@@ -387,6 +401,22 @@ export class Orchestrator {
 
       const submitted = this.cp.deliverables.submit(deliverable);
       this.cp.attempts.end(task.task_id, attempt, request.to, submitted.status);
+      this.cp.logger?.record({
+        op: "attempt",
+        event: "finished",
+        outcome: "ok",
+        task_id: task.task_id,
+        attempt,
+        details: {
+          agent: request.to,
+          status: submitted.status,
+          termination_kind: terminationKind,
+          runtime_ms:
+            observedRuntimeStartedAt !== null && observedRuntimeEndedAt !== null
+              ? observedRuntimeEndedAt - observedRuntimeStartedAt
+              : null,
+        },
+      });
       return submitted;
     } catch (err) {
       const bridgeErr = BridgeError.from(err);
@@ -407,6 +437,26 @@ export class Orchestrator {
       } catch {
         /* attempt bookkeeping must never mask the original failure */
       }
+      this.cp.logger?.record({
+        op: "attempt",
+        event: "finished",
+        outcome: "error",
+        code: bridgeErr.code,
+        // The deadline that expired here is the executor's, never the MCP client's timeout.
+        phase: timedOut ? "deadline" : "runtime",
+        task_id: task.task_id,
+        attempt,
+        details: {
+          agent: request.to,
+          termination_kind: terminationKind,
+          deadline_ms: request.deadline_ms,
+          aborted: controller.signal.aborted,
+          runtime_ms:
+            observedRuntimeStartedAt !== null && observedRuntimeEndedAt !== null
+              ? observedRuntimeEndedAt - observedRuntimeStartedAt
+              : null,
+        },
+      });
       // Record why this attempt died so the log explains a retry rather than just showing one.
       try {
         const current = this.cp.tasks.get(task.task_id);
@@ -448,6 +498,14 @@ export class Orchestrator {
           );
         } catch (error) {
           telemetryError = error;
+          this.cp.logger?.record({
+            op: "attempt",
+            event: "telemetry.write_failed",
+            outcome: "error",
+            phase: "bookkeeping",
+            task_id: task.task_id,
+            attempt,
+          });
           options.onEvent?.("telemetry_record_failed", {
             task_id: task.task_id,
             attempt,
@@ -841,6 +899,20 @@ export class Orchestrator {
       },
     );
 
+    this.cp.logger?.record({
+      op: "attempt",
+      event: "started",
+      task_id: task.task_id,
+      attempt: reservation.recovered_attempt,
+      details: {
+        agent: executionAgent,
+        deadline_ms: reservation.deadline_ms,
+        max_turns: reservation.max_turns ?? null,
+        recovery: true,
+        resumed_from_attempt: reservation.previous_attempt,
+      },
+    });
+
     try {
       timer = setTimeout(() => {
         timedOut = true;
@@ -884,6 +956,21 @@ export class Orchestrator {
         executionAgent,
         deliverable.status,
       );
+      this.cp.logger?.record({
+        op: "attempt",
+        event: "finished",
+        outcome: "ok",
+        task_id: task.task_id,
+        attempt: reservation.recovered_attempt,
+        details: {
+          agent: executionAgent,
+          status: deliverable.status,
+          termination_kind: terminationKind,
+          recovery: true,
+          runtime_ms:
+            runtimeStartedAt !== null && runtimeEndedAt !== null ? runtimeEndedAt - runtimeStartedAt : null,
+        },
+      });
       this.cp.store.appendEvent(
         {
           type: EventType.RESUME_SUCCEEDED,
@@ -929,6 +1016,22 @@ export class Orchestrator {
           `resume ${runtimeError.code}: ${runtimeError.message}`.slice(0, 500),
         );
       }
+      this.cp.logger?.record({
+        op: "attempt",
+        event: "finished",
+        outcome: "error",
+        code: runtimeError.code,
+        phase: timedOut ? "deadline" : "runtime",
+        task_id: task.task_id,
+        attempt: reservation.recovered_attempt,
+        details: {
+          agent: executionAgent,
+          termination_kind: terminationKind,
+          deadline_ms: reservation.deadline_ms,
+          recovery: true,
+          aborted: controller.signal.aborted,
+        },
+      });
       this.cp.store.appendEvent(
         {
           type: EventType.RESUME_FAILED,
@@ -1436,7 +1539,34 @@ export class Orchestrator {
         cp.tasks.block(task_id, agent, reason);
       },
       async recordTerminationEvidence(evidence: TerminationEvidence): Promise<void> {
-        cp.evidence.record({ task_id, attempt, agent, evidence });
+        try {
+          const stored = cp.evidence.record({ task_id, attempt, agent, evidence });
+          // A pointer to the evidence file, not a copy of it: the stderr tail stays there.
+          cp.logger?.record({
+            op: "attempt",
+            event: "evidence.recorded",
+            task_id,
+            attempt,
+            details: {
+              file: stored?.file ?? null,
+              bytes: stored?.bytes ?? null,
+              termination_kind: stored?.termination_kind ?? null,
+              stderr_truncated: stored?.stderr_truncated ?? null,
+            },
+          });
+        } catch (error) {
+          // Evidence that cannot be stored is exactly the gap an export has to show.
+          cp.logger?.record({
+            op: "attempt",
+            event: "evidence.write_failed",
+            outcome: "error",
+            phase: "evidence",
+            task_id,
+            attempt,
+            code: (error as { code?: string }).code ?? null,
+          });
+          throw error;
+        }
       },
       signal,
     };

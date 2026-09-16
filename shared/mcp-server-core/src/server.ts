@@ -105,6 +105,7 @@ export class BridgeMcpServer {
       workspaceRoot: options.workspaceRoot,
       ...(options.databasePath ? { databasePath: options.databasePath } : {}),
       ...(options.onWarning ? { onWarning: options.onWarning } : {}),
+      ...(options.logger ? { logger: options.logger } : {}),
       ...(options.workspace ? { workspace: options.workspace } : {}),
     };
     this.cp =

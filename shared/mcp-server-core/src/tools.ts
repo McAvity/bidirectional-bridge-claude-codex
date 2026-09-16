@@ -36,7 +36,13 @@ import {
   type Orchestrator,
 } from "@bridge/control-plane";
 import type { ManagerRegistry } from "@bridge/control-plane";
-import type { AuthorizedSession, IdentityRuntime, ToolClass } from "./identity-runtime.js";
+import {
+  newCallAudit,
+  type AuthorizedSession,
+  type CallAudit,
+  type IdentityRuntime,
+  type ToolClass,
+} from "./identity-runtime.js";
 
 /* ------------------------------------------------------------------ *
  * Zod shapes (the MCP SDK builds JSON Schema from these)
@@ -112,6 +118,11 @@ export interface ToolContext {
   readonly managerRegistry?: ManagerRegistry;
   /** Local diagnostics log of this process; absent for embedders and unit tests. */
   readonly logger?: DiagnosticsLogger;
+  /**
+   * Write permission of the call being served. Only the guard may set it, and only for this
+   * request: a refusal or a read never inherits the authority of an earlier call (review R1-01).
+   */
+  readonly audit?: CallAudit;
 }
 
 export type DelegationPolicy = "allow" | "deny";
@@ -185,6 +196,7 @@ async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolContext,
   nativeMeta: unknown,
+  audit: CallAudit,
 ): Promise<unknown> {
   const identity = ctx.identity;
   if (!identity) return tool.handler(args, ctx);
@@ -213,8 +225,11 @@ async function executeTool(
     return tool.handler(args, ctx);
   }
   if (ASYNC_MUTATORS.has(tool.name)) {
-    return identity.runMutationAsync(nativeMeta, tool.name, async (authorize, onReserved) =>
-      tool.handler(args, { ...ctx, authorize, onReserved }),
+    return identity.runMutationAsync(
+      nativeMeta,
+      tool.name,
+      async (authorize, onReserved) => tool.handler(args, { ...ctx, authorize, onReserved }),
+      audit,
     );
   }
   return identity.runMutation(
@@ -222,6 +237,7 @@ async function executeTool(
     "mutate",
     (managerSession, managerRegistry) => tool.handler(args, { ...ctx, managerSession, managerRegistry }),
     tool.name,
+    audit,
   );
 }
 
@@ -377,7 +393,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           instance_generation: outcome.binding.instance_generation,
           changed: outcome.changed,
         };
-      });
+      }, "bridge_manager_resume_instance", ctx.audit);
     },
   },
   {
@@ -406,7 +422,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           reason: args["reason"] as string,
         });
         return { epoch: binding.epoch, instance_generation: binding.instance_generation };
-      });
+      }, "bridge_manager_takeover", ctx.audit);
     },
   },
   {
@@ -1161,31 +1177,40 @@ export async function runTool(
   const logger = ctx.logger;
   const startedMs = logger?.monotonicMs() ?? 0;
   const correlation = callCorrelation(args);
+  // One permission object per request. The guard fills it in for the call it authorizes, so a
+  // refused call, a read, and a call overlapping a running round each decide on their own
+  // whether they may write to this worktree's state (review R1-01).
+  const audit = newCallAudit();
   const finished = (
     outcome: "ok" | "error",
     code: string | null,
     extra: { task_id?: string | null; attempt?: number | null; details?: Record<string, unknown> },
   ): void => {
-    logger?.record({
-      op: "tool",
+    const entry = {
+      op: "tool" as const,
       event: "call.finished",
       tool: tool.name,
       outcome,
       code,
-      // Whether the identity guard granted this call authority separates a refusal from a
+      // Whether the identity guard granted *this call* authority separates a refusal from a
       // failure inside the operation itself.
-      phase: ctx.identity ? (ctx.identity.callWasAuthorized ? "handler" : "guard") : "unguarded",
+      phase: audit.authorized ? "handler" : "guard",
       request_id: requestId ?? null,
       duration_ms: (logger?.monotonicMs() ?? 0) - startedMs,
       feature_id: correlation.feature_id,
       task_id: extra.task_id ?? correlation.task_id,
       attempt: extra.attempt ?? null,
       details: { ...correlation.details, ...(extra.details ?? {}) },
-    });
+    };
+    // Authorized: the record belongs in this worktree's log. Not authorized — a refusal, a
+    // read, an unguarded embedder — it reaches the bounded stderr sink only, so no refusal
+    // and no read ever mutates state, however long this process has been authorized before.
+    if (audit.authorized) logger?.record(entry);
+    else logger?.note(entry);
   };
   try {
-    const scoped: ToolContext = ctx.identity ? { ...ctx, nativeMeta } : ctx;
-    const result = await executeTool(tool, args, scoped, nativeMeta);
+    const scoped: ToolContext = ctx.identity ? { ...ctx, nativeMeta, audit } : { ...ctx, audit };
+    const result = await executeTool(tool, args, scoped, nativeMeta, audit);
     const summary = resultSummary(result);
     finished("ok", summary.code, {
       task_id: summary.task_id,

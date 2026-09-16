@@ -48,12 +48,22 @@ export const DIAGNOSTICS_LOG_SCHEMA = "claude-codex-bridge.log/v1";
 /** Log directory inside the worktree state directory (`.bridge/logs`). */
 export const LOG_DIRECTORY_NAME = "logs";
 
-/** `bridge-<UTC compact timestamp>-<instance suffix>-<rotation index>.jsonl`. */
-const FILE_PATTERN = /^bridge-\d{8}T\d{6}Z-[0-9a-f]{4,32}-\d{2}\.jsonl$/u;
+/**
+ * `bridge-<UTC compact timestamp>-<instance suffix>-<rotation index>.jsonl`.
+ *
+ * The index is at least two digits and may grow: a long-lived process passes rotation 99, and a
+ * pattern that only matched two digits stopped recognising its own files from there on, so
+ * retention silently retained everything after the hundredth rotation (review R1-02).
+ */
+const FILE_PATTERN = /^bridge-\d{8}T\d{6}Z-[0-9a-f]{4,32}-\d{2,6}\.jsonl$/u;
+/** Beyond this the name would no longer match the pattern; the logger stops instead of drifting. */
+const MAX_ROTATION_INDEX = 999_999;
 /** `instance-<instance suffix>.active` — names the file a live process is writing. */
 const MARKER_PATTERN = /^instance-[0-9a-f]{4,32}\.active$/u;
 
 const MAX_WARNINGS = 3;
+/** Bounded stderr reporting for records this process may not write to the file. */
+const MAX_NOTES = 20;
 const MAX_FAILURES = 3;
 const MAX_DETAIL_KEYS = 12;
 const MAX_VALUE_CHARS = 200;
@@ -187,9 +197,13 @@ export interface DiagnosticsLogStatus {
   readonly enabled: boolean;
   readonly armed: boolean;
   readonly disabled: boolean;
+  readonly revoked: boolean;
   readonly file: string | null;
   readonly written: number;
+  /** Records that could not be written to a file and went to the bounded stderr sink. */
   readonly deferred: number;
+  /** Stderr lines actually emitted for those records, before the bound was reached. */
+  readonly noted: number;
   readonly failures: number;
   readonly rotations: number;
   readonly deleted: number;
@@ -251,12 +265,14 @@ export class DiagnosticsLogger {
   private rotationIndex = 0;
   private seq = 0;
   private deferred = 0;
+  private noted = 0;
   private written = 0;
   private failures = 0;
   private warnings = 0;
   private rotations = 0;
   private deleted = 0;
   private disabled = false;
+  private revoked = false;
   private closed = false;
   private enforcing = false;
 
@@ -280,9 +296,11 @@ export class DiagnosticsLogger {
       enabled: this.enabled,
       armed: this.fd !== null,
       disabled: this.disabled,
+      revoked: this.revoked,
       file: this.directory && this.fileName ? join(this.directory, this.fileName) : null,
       written: this.written,
       deferred: this.deferred,
+      noted: this.noted,
       failures: this.failures,
       rotations: this.rotations,
       deleted: this.deleted,
@@ -325,15 +343,51 @@ export class DiagnosticsLogger {
     this.enforce();
   }
 
-  /** Append one record. Never throws; a record produced before arming is counted, not buffered. */
+  /**
+   * Append one record of an operation this process is authorized to perform.
+   *
+   * Never throws. When no file may be written — the log is not armed yet, was revoked or
+   * disabled — the record is not buffered and not silently dropped either: it goes to the
+   * bounded stderr sink and is counted, which is what `process.start.details.deferred_records`
+   * and `log.close.details.deferred` report.
+   */
   record(entry: DiagnosticsLogEntry): void {
-    if (this.closed || this.disabled || !this.enabled) return;
+    if (this.closed || !this.enabled) return;
     const line = this.serialize(entry);
     if (this.fd === null) {
       this.deferred += 1;
+      this.emit(line);
       return;
     }
     this.append(line);
+  }
+
+  /**
+   * Report an operation that may **not** write to this worktree's state: a refused call, a read,
+   * or any call the identity guard did not authorize. It reaches stderr only — bounded — so a
+   * refusal never mutates the state of the manager that owns the worktree, however long this
+   * process has already been running (review R1-01).
+   */
+  note(entry: DiagnosticsLogEntry): void {
+    if (this.closed || !this.enabled) return;
+    this.deferred += 1;
+    this.emit(this.serialize(entry));
+  }
+
+  /**
+   * Stop writing without a closing record: this process is no longer the active instance of the
+   * worktree (a takeover moved ownership), so the log directory is another manager's state now.
+   */
+  revoke(reason: string): void {
+    if (this.closed || this.revoked) return;
+    this.revoked = true;
+    const wasArmed = this.fd !== null;
+    // Only the file descriptor is released: deleting even this process's own marker would be
+    // one more write into a state directory that is no longer ours. The next authorized
+    // process removes the marker as stale, which is what its liveness check is for.
+    this.closeFd();
+    this.closed = true;
+    if (wasArmed) this.options.warn(`[bridge-log] stopped writing: ${reason}`);
   }
 
   /** Final record, marker removal and file close. Idempotent. */
@@ -348,6 +402,7 @@ export class DiagnosticsLogger {
           reason,
           records: this.written,
           deferred: this.deferred,
+          noted: this.noted,
           failures: this.failures,
           rotations: this.rotations,
           deleted_files: this.deleted,
@@ -362,6 +417,18 @@ export class DiagnosticsLogger {
         `[bridge-log] ${this.failures} diagnostics log write(s) failed; the log of this process is incomplete`,
       );
     }
+  }
+
+  /**
+   * Bounded stderr sink for records that reach no file. The line is the same allowlisted
+   * record, so nothing private is added by this path; stdout is never touched.
+   */
+  private emit(line: string): void {
+    if (this.noted >= MAX_NOTES) return;
+    this.noted += 1;
+    const suffix =
+      this.noted === MAX_NOTES ? "\n[bridge-log] further unwritten records are counted, not printed" : "";
+    this.options.warn(`[bridge-log] ${line.trimEnd()}${suffix}`);
   }
 
   /* ------------------------------------------------------------------ *
@@ -458,6 +525,10 @@ export class DiagnosticsLogger {
   private openNextFile(): boolean {
     if (this.directory === null) return false;
     for (let attempt = 0; attempt < 8; attempt += 1) {
+      if (this.rotationIndex > MAX_ROTATION_INDEX) {
+        this.disable(`rotation index exceeded ${MAX_ROTATION_INDEX}; this process writes no further records`);
+        return false;
+      }
       const name =
         `bridge-${compactUtc(this.now())}-${this.instanceSuffix}-` +
         `${String(this.rotationIndex).padStart(2, "0")}.jsonl`;

@@ -19,20 +19,41 @@ The incident export that reads these files is wave13 §3 and is not implemented 
 `.bridge/logs/` is never in Git ([setup layout](setup-layout.md)), and each worktree has its own:
 two worktrees using the same feature, task or package names never share a log.
 
-**The authorized write point is the identity guard.** A process starts with the log *disarmed*.
-The first operation this process is authorized to perform — the guard granted it authority over
-this worktree and its transaction committed, or, for a round that launches a worker, its
-reservation committed — arms the log and creates `.bridge/logs/`. Consequently:
+**The authorized write point is the identity guard, and the permission is per call.** A process
+starts with the log *disarmed*. An operation the guard authorizes — its transaction committed,
+or, for a round that launches a worker, its reservation committed — arms the log, creates
+`.bridge/logs/` and writes its own records. Every request carries its own permission object, so
+authority is never inherited from an earlier call or from a call running concurrently.
+Consequently:
 
-- starting the server, a handshake, a read and `bridge_manager_status` create nothing;
+- starting the server, a handshake, a read and `bridge_manager_status` write nothing — before
+  *or* after the process has been authorized for something else;
 - a refused call — foreign manager thread, fenced instance, missing or unsupported native
-  metadata — writes nothing in a process that was never authorized;
-- records produced before arming are **counted, not buffered**: the first record in the file is
-  `process.start`, and its `details.deferred_records` says how many earlier records went to the
-  bounded stderr warnings only. The `seq` of the first written record is that count plus one.
+  metadata — writes nothing, including while an authorized round of the same process is still
+  running. Refusals and reads reach the bounded stderr sink instead (see below);
+- a legitimate idempotent replay is authorized by the guard's pure authority check even though it
+  reserves nothing; if authority changes between that check and the reservation, the call is
+  refused and writes nothing;
+- a session superseded by `bridge_manager_takeover` stops writing: at shutdown it releases its
+  file without a closing record, because the worktree — and its log directory — now belong to
+  another manager. Its `.active` marker is left for the next authorized process to clean up as
+  stale, rather than writing once more into state that is no longer its own;
+- records produced when no file may be written are **counted and reported, never buffered and
+  never silently dropped**: they go to the bounded stderr sink, `details.deferred_records` of
+  `process.start` and `details.deferred`/`details.noted` of `log.close` say how many there were,
+  and the gaps in `seq` mark exactly where they belong.
 
 A worker runtime (`--caller claude`) is authorized by the worktree binding rather than by a
 native session; it writes its own file in the same directory.
+
+### The bounded stderr sink
+
+A record that may not be written to the file is printed as one line on stderr, prefixed
+`[bridge-log]`, with the same allowlisted fields — so a refusal is still diagnosable without
+mutating anything, and nothing private is added by that path. It is bounded: at most 20 lines per
+process, then a single suppression notice, after which the records are only counted. stdout stays
+the MCP transport; nothing here ever writes to it. The bridge does not capture its own stderr, so
+an export must report these records as unavailable.
 
 ## Record format
 
@@ -50,28 +71,38 @@ self-describing. Unknown or inapplicable values are `null`; nothing is guessed.
 | `role` | Startup-bound caller (`codex` or `claude`) |
 | `source`, `runtime` | Package version, and the installed runtime id from `runtime-manifest.json` (`null` in a development checkout) |
 | `workspace` | Worktree id of the binding this log belongs to |
-| `op`, `event` | Subsystem (`process`, `tool`, `manager`, `adapter`, `log`) and operation |
+| `op`, `event` | Subsystem (`process`, `tool`, `manager`, `attempt`, `adapter`, `log`) and operation |
 | `tool` | MCP tool name for `op: "tool"` |
-| `outcome`, `code`, `phase` | `ok`/`error`, the stable `BridgeError` code, and where it failed (`guard`, `handler`, `startup`, `shutdown`, `unguarded`) |
+| `outcome`, `code`, `phase` | `ok`/`error`, the stable `BridgeError` code, and where it failed (`guard`, `handler`, `startup`, `shutdown`, `runtime`, `deadline`, `evidence`, `bookkeeping`) |
 | `request_id` | JSON-RPC request id of the call — the correlation handle of one client request |
 | `duration_ms` | Measured duration of the call |
 | `feature_id`, `task_id`, `attempt` | Correlation with the database records; an identifier of an unexpected shape is reported as `invalid` |
 | `details` | At most 12 scalar fields, each at most 200 characters |
 
-Recorded events: `process.start`, `process.serving`, `process.stop`, `process.warning`,
-`process.transport.failed`, `manager.authorized`, `manager.instance.detached`,
-`manager.instance.detach_failed`, `tool.call.finished`, `adapter.dispose.failed`, `log.rotated`,
-`log.retention`, `log.close`.
+Recorded events:
+
+| Event | Point of observation |
+| --- | --- |
+| `process.start`, `process.serving`, `process.stop` | Launcher lifecycle; `stop` carries the reason |
+| `process.warning`, `process.transport.failed` | Control-plane warning (for example the SQLite journal fallback) and a transport that failed to connect |
+| `manager.authorized` | The guard authorized this call; epoch, generation and thread digest |
+| `manager.instance.detached`, `manager.instance.detach_failed` | Clean detach on shutdown, or its failure |
+| `tool.call.finished` | One per authorized MCP call: outcome, code, phase, duration, correlation |
+| `attempt.started`, `attempt.finished` | The worker attempt itself, at `attempts.start`/`attempts.end` — a long round is correlatable while it runs, not only when the call returns. Carries the agent, the executor deadline, the turn ceiling, the termination kind and, for a recovery, `resumed_from_attempt` |
+| `attempt.evidence.recorded`, `attempt.evidence.write_failed` | The termination-evidence file was stored (by reference: name, bytes, kind) or could not be |
+| `attempt.telemetry.write_failed` | Attempt bookkeeping that failed after the runtime returned |
+| `adapter.dispose.failed` | An adapter that failed to shut down |
+| `log.rotated`, `log.retention`, `log.close` | The logger's own bookkeeping |
 
 `phase` separates a refusal from a failure inside the operation: `guard` means the call was
 refused before the operation ran, `handler` means the operation ran and failed — including the
 compare-and-swap of an instance resume or a takeover, which those tools perform themselves. The
-attribution assumes one guarded call in flight per process, which is what one manager and one
-feature per worktree already require. A round that
-ends in a runtime `TIMEOUT` reports it in `code` inside a successful envelope, which is how the
-log distinguishes the executor's deadline (`details.deadline_ms` of the call) from the MCP client
-timeout — they are different budgets and neither is proof of the other. `num_turns` is likewise
-never compared with `max_turns`, and cost telemetry is never treated as a charge.
+value is decided per request, so a refusal that overlaps a running round is still `guard`. A
+round that ends in a runtime `TIMEOUT` reports it in `code` inside a successful envelope, and the
+matching `attempt.finished` carries `phase: "deadline"` with the executor's
+`details.deadline_ms`. That is how the log distinguishes the executor's deadline from the MCP
+client timeout — they are different budgets and neither is proof of the other. `num_turns` is
+likewise never compared with `max_turns`, and cost telemetry is never treated as a charge.
 
 ### What is never recorded
 
@@ -105,8 +136,10 @@ The environment the launcher was started in is the single configuration surface;
 daemon and no second configuration file. A value outside its supported range is refused with a
 bounded stderr warning and the default is kept, so the limits are always finite.
 
-Rotation starts a new file of the same process; retention then deletes, oldest first, until the
-age, size and count limits hold. It deletes **only** files matching this bridge's own log name
+Rotation starts a new file of the same process, numbering it `-00`, `-01`, … with as many digits
+as it needs; retention then deletes, oldest first, until the age, size and count limits hold. A
+process that somehow passes rotation 999999 stops writing rather than producing names its own
+retention would not recognise. It deletes **only** files matching this bridge's own log name
 pattern, and never:
 
 - the file this process is writing, or a file named by another instance's marker whose process is
@@ -125,8 +158,9 @@ show that older records were deleted rather than never written.
 Logging never blocks or repeats a product operation and never throws into it. A filesystem error
 is counted and warned about on stderr at most three times; after three failures, or a failed
 rotation, the logger disables itself and says so once. It never reports a record as written when
-it was not: `log.close` carries the counts (`records`, `deferred`, `failures`, `rotations`,
-`deleted_files`) for the process that wrote it.
+it was not: `log.close` carries the counts (`records`, `deferred`, `noted`, `failures`,
+`rotations`, `deleted_files`) for the process that wrote it. A disabled logger keeps reporting
+through the bounded stderr sink until that bound is reached, and then only counts.
 
 Known gaps, all of them visible rather than papered over:
 
@@ -139,13 +173,22 @@ Known gaps, all of them visible rather than papered over:
    close.
 3. **A full disk, a missing permission or a retention deletion produce gaps.** The first two are
    reported as failures on stderr; the third is reported in-band as `log.retention`.
-4. **Records written before the guard authorizes anything are not in the file** (see
-   `deferred_records`); refusals in a never-authorized process exist only in that process's
-   stderr, which the bridge does not capture. An export must describe them as unavailable.
-5. **The log, the database and the processes have no common atomic snapshot.** Cutoffs differ;
+4. **Records of unauthorized calls are not in the file at all** — by design. Records produced
+   before arming (`deferred_records`), refusals and reads all exist only as bounded stderr
+   lines, which the bridge does not capture, and beyond 20 lines per process only as counts. An
+   export must describe them as unavailable rather than absent.
+5. **MCP schema validation is not observable.** Arguments that violate a tool's input schema are
+   rejected by the MCP SDK before any bridge code runs, so no record and no stderr note exists
+   for them; the client sees the protocol error. Validation the bridge itself performs — a write
+   scope that escapes the repository, a contradictory caller — is inside the authorized
+   operation and is recorded as `call.finished` with `code: "INVALID_ARGUMENT"` and
+   `phase: "handler"`.
+6. **A takeover ends this process's log silently.** The superseded session writes no closing
+   record and leaves a stale `.active` marker; the next authorized process removes it.
+7. **The log, the database and the processes have no common atomic snapshot.** Cutoffs differ;
    `seq` and `mono_ms` order records within one process only, and `ts` is a wall clock that can
    step.
-6. **A diagnostics status check in `doctor` is not implemented yet.** Today the status is the
+8. **A diagnostics status check in `doctor` is not implemented yet.** Today the status is the
    bounded stderr warnings plus the in-band `log.*` records; the check belongs with the export
    work (wave13 §3), which also owns the doctor output it attaches.
 

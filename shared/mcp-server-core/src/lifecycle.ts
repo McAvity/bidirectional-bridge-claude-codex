@@ -109,8 +109,13 @@ export async function serve(options: ServeOptions): Promise<ServeHandle> {
     shutting = (async () => {
       log(`[${label}] ${reason}, shutting down`);
       // Why the process ended is the fact a later export needs most; a hard kill cannot
-      // record it, which is exactly why the absence of this record is meaningful.
-      server.logger?.record({ op: "process", event: "stop", phase: "shutdown", details: { reason } });
+      // record it, which is exactly why the absence of this record is meaningful. A session
+      // that lost the worktree to a takeover writes nothing more into its state (review R1-01).
+      if (server.identity && !server.identity.isActiveInstance()) {
+        server.logger?.revoke("shutting down without being the active instance");
+      } else {
+        server.logger?.record({ op: "process", event: "stop", phase: "shutdown", details: { reason } });
+      }
       try {
         for (const adapter of options.adapters ?? []) {
           try {
