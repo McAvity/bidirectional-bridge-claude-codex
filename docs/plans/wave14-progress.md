@@ -35,3 +35,17 @@ Claude potwierdził instrukcje przez --plugin-dir i usuwanie starego cache Codex
 propozycji, zachowane dowody prób. Poprawki: instrukcje poza projektem, działający
 bootstrap nowego worktree, dowód konkurencji, prywatność metadanych diagnose.
 Następny krok W14-02 w istniejącej zgodzie. Brak implementacji produktu i pełnych testów JS.
+
+## 2026-09-16 — implementacja rundy2, review REWORK
+
+Task `task_a5b6kt56sk` DONE w tej samej sesji. Commity `8c1cd85`, `7d2e096`, `3c61427`.
+Paczka F-W14-round-2.zip integralna, SHA-256 `889cc5f6af43da315f207f0a4272a2bbae3b0cb04c071738395ef631c30d22b0`.
+Claude: build,461 JS,41 Python,140 pilot (1 skipped); Codex:27 focused JS PASS.
+[Review02](../features/F-W14-plugin-distribution/reviews/02-implementation.md):
+REWORK — brak kompletnej instalacji runtime z pluginu, niedziałający eksporter w obcym
+repo, pin/foreign/custom-config nie blokują launch/zapisu, SIGTERM dispatchera zostawia
+proces runtime, macierz przecenia dowody z fixture. Reprodukcje tylko syntetyczne /tmp.
+Następny krok: spójna korekta R2-01–05 bez nowych pytań produktowych.
+Użytkownik delegował roboczy interfejs wave13; [decyzja02](../features/F-W14-plugin-distribution/decisions/02.md)
+zapisuje kod cf2365c i review853302c. Wspólna integracja po odbiorze wave13, nie blokuje
+niezależnej pracy. Bez push,merge,wdrożenia,zmian wave13 i dodatkowych pilotów modeli.

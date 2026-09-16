@@ -14,9 +14,9 @@
     "docs/plans/wave14.md",
     "docs/setup-layout.md"
   ],
-  "latest_review": "docs/features/F-W14-plugin-distribution/reviews/01-contracts.md",
-  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/01.md",
-  "next_action": "W14-02: resolve W14-R1-01..04 and implement shared-source distribution/bootstrap; diagnose integration remains gated.",
+  "latest_review": "docs/features/F-W14-plugin-distribution/reviews/02-implementation.md",
+  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/02.md",
+  "next_action": "Same Claude session: correct W14-R2-01..05 and finish independent delivery; combined wave13 integration deferred until its acceptance.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"
