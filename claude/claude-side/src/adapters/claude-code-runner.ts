@@ -151,6 +151,15 @@ export interface ClaudeCodeRunnerOptions {
   readonly allowResume?: boolean;
   /** Milliseconds between SIGTERM and SIGKILL when cancelling. Default 5000. */
   readonly killGraceMs?: number;
+  /**
+   * Directory or `.zip` of the executor instruction package to load for the round.
+   *
+   * W14-01 measured that `claude -p --plugin-dir <path>` loads a plugin for one session with no
+   * user-profile and no project install, so the delegated executor reads the instruction set of
+   * the runtime that is driving it rather than whatever the operator happens to have installed.
+   * Absent means the caller supplies no package and Claude Code uses its own discovery.
+   */
+  readonly pluginDir?: string;
   /** Diagnostics sink. Never stdout — a launcher's stdout is the MCP transport. */
   readonly log?: (line: string) => void;
   readonly env?: NodeJS.ProcessEnv;
@@ -657,6 +666,10 @@ export class ClaudeCodeRunner implements ClaudeRunner {
       }
       for (const d of dirs) args.push("--add-dir", d);
     }
+
+    // The pinned instruction package travels with the runtime, not with the project and not
+    // with the operator's profile; see docs/plugin-distribution.md.
+    if (o.pluginDir) args.push("--plugin-dir", o.pluginDir);
 
     if (o.allowedTools?.length) args.push("--allowed-tools", ...o.allowedTools);
     if (o.disallowedTools?.length) args.push("--disallowed-tools", ...o.disallowedTools);

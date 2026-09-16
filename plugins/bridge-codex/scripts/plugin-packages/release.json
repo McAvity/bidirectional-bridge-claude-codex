@@ -1,0 +1,20 @@
+{
+  "format": "claude-codex-bridge.release/v1",
+  "package_version": "0.2.0",
+  "pinned": {
+    "commit": "87cceed8d08c298ce2976aa3ce9bec771dea31fe",
+    "describe": "wave14 W14-03 runtime with the unified recovery rule"
+  },
+  "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
+  "notes": [
+    "This file is a source, not a generated artefact: the generator copies it verbatim so a",
+    "release pin does not change every time the repository moves. Update it deliberately when",
+    "cutting a distribution, and only to a commit that actually exists.",
+    "Acquisition order is: an explicit --source, then CLAUDE_CODEX_BRIDGE_SOURCE, then a cached",
+    "clone under <home>/sources/, then a fetch of exactly this commit from `repository`. Every",
+    "path verifies the resolved commit hash before anything is installed, so no unpinned HEAD is",
+    "ever built.",
+    "No npm publish is involved and a marketplace is never assumed to install dependencies: the",
+    "wave12 installer runs `npm ci --ignore-scripts` and `npm run build` into an immutable runtime."
+  ]
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from "node:crypto";
-import { readFileSync, realpathSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -159,8 +159,16 @@ export async function runNativeBridge(args) {
   ]);
 
   const log = (line) => core.stderrLog(`[bridge-native:${args.caller}] ${line}`);
+  // The executor package generated from this runtime's own canonical skills. It ships inside the
+  // runtime, so a plugin cache refresh cannot take it away from a round already under way.
+  const executorPackage = new URL("../plugins/bridge-claude", import.meta.url);
+  const executorPackagePath = existsSync(fileURLToPath(new URL("./.claude-plugin/plugin.json", `${executorPackage.href}/`)))
+    ? fileURLToPath(executorPackage)
+    : undefined;
+
   const claudeRunner = new claudeSide.ClaudeCodeRunner({
     permissionMode: "acceptEdits",
+    ...(executorPackagePath ? { pluginDir: executorPackagePath } : {}),
     // ClaudeCodeRunner owns the protected opus/high profile and conservative bounded
     // default. A validated TaskSpec.max_turns may raise or lower only the turn ceiling.
     // Delegated Claude runs are non-interactive, so permission prompts cannot be answered.
@@ -200,8 +208,14 @@ export async function runNativeBridge(args) {
   });
 
   const adapters = [claudeAdapter, codexAdapter];
+  // A worktree inherited from an enabled project starts pristine: the launch gate registered what
+  // its first mutating call must write, and nothing has been written yet.
+  const { takePendingSelection } = await import(new URL("./bridge-project/pending-selection.mjs", import.meta.url).href);
+  const materialiseSelection = takePendingSelection();
+
   const server = new core.BridgeMcpServer({
     workspaceRoot: workspace.root,
+    ...(materialiseSelection ? { beforeFirstMutation: materialiseSelection } : {}),
     workspace,
     databasePath,
     ...(args.adoptLegacy ? { adoptLegacy: args.adoptLegacy } : {}),

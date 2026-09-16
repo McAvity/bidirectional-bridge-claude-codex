@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "exit_code": 1,
+      "required": true,
+      "runtime_symlink_present": false,
+      "session_reached_the_model_request": true,
+      "stderr_tail": "Reading additional input from stdin...\n"
+    },
+    {
+      "exit_code": 1,
+      "required": false,
+      "runtime_symlink_present": false,
+      "session_reached_the_model_request": true,
+      "stderr_tail": "Reading additional input from stdin...\n"
+    }
+  ],
+  "conclusion": "Under `codex exec` a bridge server that cannot launch does not abort the session, so a setup skill can still run in a freshly created worktree. Whether the TUI behaves the same is unverified and must be confirmed before relying on it.",
+  "findings": {
+    "exec_continues_with_required_false": true,
+    "exec_continues_with_required_true": true
+  },
+  "front_end": "codex exec",
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.273 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.154.0"
+    }
+  },
+  "probe": "missing-runtime-startup",
+  "question": "Does an inherited `[mcp_servers.bridge]` block whose launcher is missing stop a Codex session from starting, so the setup skill could not run?",
+  "run_root": "<home>/tmp/w14-01-probes/missing-runtime-startup-20260916-094520-548758",
+  "scope_limit": "The interactive TUI is not covered; only `codex exec` was exercised."
+}

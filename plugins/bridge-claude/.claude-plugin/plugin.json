@@ -1,0 +1,10 @@
+{
+  "name": "bridge-claude",
+  "version": "0.2.0",
+  "description": "Feature workflow and bridge role instructions for Claude Code.",
+  "author": {
+    "name": "claude-codex-bridge"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

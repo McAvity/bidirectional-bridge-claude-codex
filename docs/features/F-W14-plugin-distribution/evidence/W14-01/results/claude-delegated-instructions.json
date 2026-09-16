@@ -1,0 +1,214 @@
+{
+  "cases": [
+    {
+      "CLAUDE_PLUGIN_DATA": null,
+      "CLAUDE_PLUGIN_ROOT": null,
+      "CLAUDE_PROJECT_DIR": null,
+      "api_error_status": 400,
+      "case": "control/no-plugin-dir",
+      "config_dir_was_empty": true,
+      "cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "debug": {
+        "inline_plugin_loaded": false,
+        "plugin_mcp_started": false,
+        "plugin_skill_count": 0,
+        "plugin_skills_loaded": false
+      },
+      "exit_code": 1,
+      "extra_args": [],
+      "mcp_methods": [],
+      "mcp_server_cwd": null,
+      "mcp_server_cwd_is_project": false,
+      "mcp_server_started": false,
+      "spent_nothing": true,
+      "total_cost_usd": 0,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    },
+    {
+      "CLAUDE_PLUGIN_DATA": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/claude-config-plugin-dir__directory/plugins/data/w14-probe-inline",
+      "CLAUDE_PLUGIN_ROOT": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe",
+      "CLAUDE_PROJECT_DIR": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "api_error_status": 400,
+      "case": "plugin-dir/directory",
+      "config_dir_was_empty": true,
+      "cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "debug": {
+        "inline_plugin_loaded": true,
+        "plugin_mcp_started": true,
+        "plugin_skill_count": 1,
+        "plugin_skills_loaded": true
+      },
+      "exit_code": 1,
+      "extra_args": [
+        "--plugin-dir",
+        "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe"
+      ],
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "mcp_server_cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "mcp_server_cwd_is_project": true,
+      "mcp_server_started": true,
+      "spent_nothing": true,
+      "total_cost_usd": 0,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    },
+    {
+      "CLAUDE_PLUGIN_DATA": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/claude-config-plugin-dir__from-subdirectory/plugins/data/w14-probe-inline",
+      "CLAUDE_PLUGIN_ROOT": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe",
+      "CLAUDE_PROJECT_DIR": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces/sub dir",
+      "api_error_status": 400,
+      "case": "plugin-dir/from-subdirectory",
+      "config_dir_was_empty": true,
+      "cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces/sub dir",
+      "debug": {
+        "inline_plugin_loaded": true,
+        "plugin_mcp_started": true,
+        "plugin_skill_count": 1,
+        "plugin_skills_loaded": true
+      },
+      "exit_code": 1,
+      "extra_args": [
+        "--plugin-dir",
+        "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe"
+      ],
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "mcp_server_cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces/sub dir",
+      "mcp_server_cwd_is_project": true,
+      "mcp_server_started": true,
+      "spent_nothing": true,
+      "total_cost_usd": 0,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    },
+    {
+      "CLAUDE_PLUGIN_DATA": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/claude-config-plugin-dir__zip-archive/plugins/data/w14-probe-inline",
+      "CLAUDE_PLUGIN_ROOT": "/tmp/claude-plugin-session-e8f13f7c2b146a5a/inline-0-w14-probe/w14-probe",
+      "CLAUDE_PROJECT_DIR": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "api_error_status": 400,
+      "case": "plugin-dir/zip-archive",
+      "config_dir_was_empty": true,
+      "cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "debug": {
+        "inline_plugin_loaded": true,
+        "plugin_mcp_started": true,
+        "plugin_skill_count": 1,
+        "plugin_skills_loaded": true
+      },
+      "exit_code": 1,
+      "extra_args": [
+        "--plugin-dir",
+        "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/w14-probe.zip"
+      ],
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "mcp_server_cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "mcp_server_cwd_is_project": true,
+      "mcp_server_started": true,
+      "spent_nothing": true,
+      "total_cost_usd": 0,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    },
+    {
+      "CLAUDE_PLUGIN_DATA": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/claude-config-plugin-dir__with-delegation-lock/plugins/data/w14-probe-inline",
+      "CLAUDE_PLUGIN_ROOT": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe",
+      "CLAUDE_PROJECT_DIR": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "api_error_status": 400,
+      "case": "plugin-dir/with-delegation-lock",
+      "config_dir_was_empty": true,
+      "cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "debug": {
+        "inline_plugin_loaded": true,
+        "plugin_mcp_started": true,
+        "plugin_skill_count": 1,
+        "plugin_skills_loaded": true
+      },
+      "exit_code": 1,
+      "extra_args": [
+        "--plugin-dir",
+        "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe",
+        "--disallowed-tools",
+        "Task",
+        "mcp__bridge__bridge_delegate_task"
+      ],
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "mcp_server_cwd": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/project with spaces",
+      "mcp_server_cwd_is_project": true,
+      "mcp_server_started": true,
+      "spent_nothing": true,
+      "total_cost_usd": 0,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      }
+    }
+  ],
+  "conclusion": "Claude Code 2.1.273 loads a plugin for one session from `--plugin-dir`, with no user-profile or project install, and exports CLAUDE_PROJECT_DIR / CLAUDE_PLUGIN_ROOT to the plugin's MCP subprocess, whose cwd is the project directory.",
+  "findings": {
+    "CLAUDE_PROJECT_DIR_is_exported": true,
+    "compatible_with_the_delegation_lock": true,
+    "control_loads_no_plugin_skill": true,
+    "every_session_was_model_free": true,
+    "plugin_dir_loads_skills_with_no_install": true,
+    "plugin_dir_starts_plugin_mcp": true,
+    "plugin_mcp_cwd_is_the_project": true,
+    "works_from_a_subdirectory": true,
+    "zip_archive_accepted": true
+  },
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.273 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.154.0"
+    }
+  },
+  "plugin_manifest_valid": {
+    "exit_code": 0,
+    "report": {
+      "contents": [],
+      "manifest": {
+        "errors": [],
+        "file": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe/.claude-plugin/plugin.json",
+        "notes": [],
+        "type": "plugin",
+        "warnings": []
+      },
+      "strict": false,
+      "success": true,
+      "target": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366/pinned-runtime/plugins/w14-probe/.claude-plugin/plugin.json"
+    },
+    "strict": false
+  },
+  "probe": "claude-delegated-instructions",
+  "question": "Can a bridge-spawned `claude -p` load the pinned executor instruction set without installing a plugin in the profile or the project?",
+  "run_root": "<home>/tmp/w14-01-probes/claude-delegation-20260916-094310-538366"
+}

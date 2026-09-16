@@ -123,6 +123,20 @@ export interface ToolContext {
    * request: a refusal or a read never inherits the authority of an earlier call (review R1-01).
    */
   readonly audit?: CallAudit;
+  /**
+   * Run once, immediately before the first mutating call of this process, and never for a read.
+   *
+   * A worktree inherited from an enabled project starts pristine: it has the committed
+   * declaration but none of its own local state, because local state is never inherited. The
+   * server may serve reads from it as-is; the moment a call would actually mutate, this hook
+   * materialises that worktree's own selection through the ordinary setup plan. Reads, the
+   * handshake and a foreign refusal therefore still write nothing.
+   *
+   * It runs *inside* the guarded mutation, after the identity guard has authorised the caller, so
+   * an unauthenticated or foreign call never reaches it. A throw here fails that call and leaves
+   * the worktree exactly as it was. It must be synchronous: the guard's transaction is.
+   */
+  readonly beforeFirstMutation?: () => void;
 }
 
 export type DelegationPolicy = "allow" | "deny";
@@ -221,24 +235,43 @@ async function executeTool(
     return tool.handler(args, ctx);
   }
   if (tool.name === "bridge_manager_resume_instance" || tool.name === "bridge_manager_takeover") {
-    // These tools drive the guard themselves; the class is carried for documentation.
+    // These tools drive the guard themselves; the class is carried for documentation. They manage
+    // identity rather than domain state, and deliberately do not trigger materialisation.
     return tool.handler(args, ctx);
   }
   if (ASYNC_MUTATORS.has(tool.name)) {
-    return identity.runMutationAsync(
-      nativeMeta,
-      tool.name,
-      async (authorize, onReserved) => tool.handler(args, { ...ctx, authorize, onReserved }),
+    return identity.runMutationAsync(nativeMeta, tool.name, async (authorize, onReserved) =>
+      tool.handler(args, {
+        ...ctx,
+        // Materialise the moment the guard authorises, never before it.
+        authorize: () => {
+          authorize();
+          runFirstMutationHook(ctx);
+        },
+        onReserved,
+      }),
       audit,
     );
   }
   return identity.runMutation(
     nativeMeta,
     "mutate",
-    (managerSession, managerRegistry) => tool.handler(args, { ...ctx, managerSession, managerRegistry }),
+    (managerSession, managerRegistry) => {
+      runFirstMutationHook(ctx);
+      return tool.handler(args, { ...ctx, managerSession, managerRegistry });
+    },
     tool.name,
     audit,
   );
+}
+
+/** `beforeFirstMutation` runs at most once per process, and only from inside a guarded mutation. */
+const FIRST_MUTATION_DONE = new WeakSet<() => void>();
+
+function runFirstMutationHook(ctx: ToolContext): void {
+  if (!ctx.beforeFirstMutation || FIRST_MUTATION_DONE.has(ctx.beforeFirstMutation)) return;
+  ctx.beforeFirstMutation();
+  FIRST_MUTATION_DONE.add(ctx.beforeFirstMutation);
 }
 
 export const TOOLS: readonly ToolDefinition[] = [

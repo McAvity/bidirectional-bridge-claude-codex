@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W14-plugin-distribution",
+  "phase": "execution",
+  "brief": "docs/features/F-W14-plugin-distribution/brief.md",
+  "design": "docs/plans/wave14.md",
+  "tasks": [
+    "work-items/W14-01.md",
+    "work-items/W14-02.md",
+    "work-items/W14-03.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave14.md",
+    "docs/setup-layout.md",
+    "docs/setup.md",
+    "docs/plugin-distribution.md",
+    "docs/plans/wave14-progress.md"
+  ],
+  "latest_review": "docs/features/F-W14-plugin-distribution/reviews/02-implementation.md",
+  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/03.md",
+  "next_action": "User accepted independent local delivery e76a066; coordinator review PASS at 0109643 on waves13-14-review. Whole feature remains open: integration coordinator must integrate final wave13 and validate the combined result. This session ends after documentation checkpoint; no feature_accept, new review/tests, merge, push or deployment.",
+  "bridge": {
+    "feature_id": "F-W14-plugin-distribution",
+    "parent_task_id": "task_538nb9refm"
+  }
+}

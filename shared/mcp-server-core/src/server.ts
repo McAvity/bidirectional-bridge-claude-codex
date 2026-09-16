@@ -85,6 +85,13 @@ export interface BridgeServerOptions {
    * disarmed and writes nothing until the identity guard authorizes an operation.
    */
   readonly logger?: DiagnosticsLogger;
+  /**
+   * Materialise this worktree's own local state before the first mutating call.
+   *
+   * Used by the project entry point for a worktree inherited from an enabled project, which has
+   * the committed declaration but no local selection of its own. See `ToolContext`.
+   */
+  readonly beforeFirstMutation?: () => void;
 }
 
 export class BridgeMcpServer {
@@ -130,6 +137,7 @@ export class BridgeMcpServer {
       orchestrator: this.orchestrator,
       defaultAgent: options.agent ?? "bridge",
       delegationPolicy: options.delegationPolicy ?? "allow",
+      ...(options.beforeFirstMutation ? { beforeFirstMutation: options.beforeFirstMutation } : {}),
       ...(this.identity ? { identity: this.identity } : {}),
       ...(options.logger ? { logger: options.logger } : {}),
     };

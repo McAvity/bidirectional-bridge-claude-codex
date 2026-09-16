@@ -16,7 +16,9 @@
   "bin": {
     "claude-codex-bridge": "./scripts/native-bridge-mcp.mjs"
   },
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "workspaces": [
     "shared/*",
     "claude/*",
@@ -30,6 +32,8 @@
     "test:watch": "vitest",
     "links:check": "node scripts/repair-workspace-links.mjs",
     "links:fix": "node scripts/repair-workspace-links.mjs --fix",
+    "packages": "node scripts/plugin-packages/generate.mjs",
+    "packages:check": "node scripts/plugin-packages/generate.mjs --check",
     "live:claude": "node claude/claude-side/scripts/live-claude-delegation.mjs"
   },
   "devDependencies": {
