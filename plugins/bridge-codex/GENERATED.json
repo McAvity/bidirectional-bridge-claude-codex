@@ -58,7 +58,7 @@
     },
     {
       "path": "scripts/plugin-packages/release.json",
-      "sha256": "326b3bf92306fb76086b8adc266da7398af202050bf948c64fb81922be793395"
+      "sha256": "0a14171b3c457ed9ba7d48ff254384495dd17c4ad1b718ea25a3867f4ce64477"
     },
     {
       "path": "scripts/setup/common.mjs",
