@@ -337,10 +337,13 @@ describe("concurrent and interrupted preparation", () => {
  * it answered. The launch gate runs inside that process, so a refusal is observed the way a user
  * observes it: on stderr, with nothing served.
  */
-async function launchEntry(cwd: string, { frames = [] as unknown[], waitMs = 3500 } = {}) {
+async function launchEntry(
+  cwd: string,
+  { frames = [] as unknown[], waitMs = 3500, env: extraEnv = {} as NodeJS.ProcessEnv } = {},
+) {
   const child = spawn(process.execPath, [join(cwd, PROJECT_ENTRY), "--caller", "codex", "--delegation", "allow"], {
     cwd,
-    env: childEnv(env),
+    env: childEnv({ ...env, ...extraEnv }),
     stdio: ["pipe", "pipe", "pipe"],
   });
   let out = "";
@@ -379,6 +382,30 @@ const NATIVE_META = {
     thread_source: "cli",
   },
 };
+
+const nativeMeta = (thread: string) => ({
+  threadId: thread,
+  "x-codex-turn-metadata": { session_id: thread, thread_id: thread, codex_version: "0.154.0", thread_source: "cli" },
+});
+
+const mutationFrom = (thread: string, key: string) => ({
+  jsonrpc: "2.0",
+  id: 2,
+  method: "tools/call",
+  params: {
+    name: "bridge_create_task",
+    _meta: nativeMeta(thread),
+    arguments: {
+      spec: {
+        objective: "materialise this worktree",
+        scope: { paths: ["README.md"] },
+        expected_deliverable: "nothing",
+        verification_criteria: ["none"],
+      },
+      idempotency_key: key,
+    },
+  },
+});
 
 const authorizedMutation = (key: string) => ({
   jsonrpc: "2.0",
@@ -628,6 +655,158 @@ describe("update and rollback while the worktree is in use", () => {
       run.child.kill("SIGKILL");
     }
   }, 600_000);
+});
+
+describe("two first uses of the SAME worktree (W14-R2-06)", () => {
+  it("produces exactly one owner, refuses the other as a foreign manager, and leaves neither stuck", async () => {
+    setup();
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = real(join(root, "one shared worktree"));
+    git(project, "worktree", "add", "-q", "-b", "shared", external);
+
+    // Both processes complete the handshake first, so both hold the worktree's database open when
+    // the mutations arrive. That is the situation in which the process scan used to veto both.
+    const both = await Promise.all([
+      launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("same-worktree-a", "a")], waitMs: 6000 }),
+      launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("same-worktree-b", "b")], waitMs: 6000 }),
+    ]);
+    try {
+      const outcomes = both.map((run) => {
+        const reply = run.replies.find((f: any) => f.id === 2);
+        if (!reply) return "no reply";
+        if (!reply.result?.isError) return "owner";
+        return JSON.parse(reply.result.content[0].text).error.code as string;
+      });
+      expect(outcomes.filter((o) => o === "owner").length, JSON.stringify({ outcomes, err: both.map((r) => r.stderr.slice(-300)) })).toBe(1);
+      expect(outcomes.filter((o) => o === "MANAGER_FOREIGN_THREAD").length).toBe(1);
+
+      // One selection, naming this worktree; no interrupted apply left behind.
+      const record = JSON.parse(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8"));
+      expect(record.workspace.root).toBe(external);
+      expect(record.runtime.id).toBe(runtimeId);
+      expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(false);
+
+      // Neither process is wedged: both still answer a read afterwards.
+      for (const run of both) run.child.stdin!.write(`${JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list" })}\n`);
+      await new Promise((done) => setTimeout(done, 2500));
+    } finally {
+      for (const run of both) run.child.kill("SIGKILL");
+    }
+  }, 300_000);
+
+  it("keeps the ordinary CLI active-session refusal while a server is serving", async () => {
+    setup();
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const run = await launchEntry(project, { frames: [...HANDSHAKE, authorizedMutation("hold")] });
+    try {
+      const moved = plugin(project, ["update", "--to", older.id, "--yes", "--json"], env);
+      expect(moved.code).toBe(1);
+      expect(((moved.json as any).refusals as { code: string }[]).map((r) => r.code)).toContain("ACTIVE_SESSION");
+    } finally {
+      run.child.kill("SIGKILL");
+    }
+  }, 600_000);
+});
+
+describe("an interrupted automatic first use (W14-R2-07)", () => {
+  function inheritedWorktree(name: string): string {
+    setup();
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = real(join(root, name));
+    git(project, "worktree", "add", "-q", "-b", name.replace(/\s+/gu, "-"), external);
+    return external;
+  }
+
+  it("recovers at the next authorised mutation, after a pure read, with no manual setup", async () => {
+    const external = inheritedWorktree("an interrupted worktree");
+
+    // The product's own fault injection, inside the first authorised mutation.
+    const crashed = await launchEntry(external, {
+      frames: [...HANDSHAKE, mutationFrom("interrupted", "k1")],
+      env: { CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER: "1" },
+      waitMs: 8000,
+    });
+    crashed.child.kill("SIGKILL");
+    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(true);
+    expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(false);
+
+    // A restart serves reads and still writes nothing.
+    const before = listing(external);
+    const readOnly = await launchEntry(external, { frames: HANDSHAKE });
+    expect(readOnly.replies.find((f: any) => f.id === 1)?.result?.tools?.length, readOnly.stderr).toBeGreaterThan(10);
+    expect(listing(external)).toEqual(before);
+    readOnly.child.kill("SIGKILL");
+
+    // The next authorised mutation completes the interrupted apply.
+    const recovered = await launchEntry(external, { frames: [...HANDSHAKE, mutationFrom("interrupted", "k2")], waitMs: 8000 });
+    const reply = recovered.replies.find((f: any) => f.id === 2);
+    expect(reply?.result?.isError, JSON.stringify(reply) + recovered.stderr.slice(-400)).toBeFalsy();
+    expect(JSON.parse(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8")).workspace.root).toBe(external);
+    expect(existsSync(join(external, ".bridge-runtime/pending.json"))).toBe(false);
+    recovered.child.kill("SIGKILL");
+  }, 300_000);
+
+  it("refuses a journal copied from another worktree instead of resuming it", async () => {
+    const external = inheritedWorktree("a copied journal worktree");
+    mkdirSync(join(external, ".bridge-runtime"), { recursive: true });
+    const foreign = `${JSON.stringify({
+      format: "claude-codex-bridge.workspace-pending/v1",
+      action: "init",
+      workspace: { kind: "git", root: "/somewhere/else", git_dir: "/somewhere/else/.git" },
+      runtime_id: runtimeId,
+      tag: "deadbeef",
+      paths: [],
+    })}\n`;
+    writeFileSync(join(external, ".bridge-runtime/pending.json"), foreign);
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("SETUP_STATE_PARTIAL");
+    expect(run.replies).toEqual([]);
+    expect(readFileSync(join(external, ".bridge-runtime/pending.json"), "utf8")).toBe(foreign);
+    expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(false);
+  }, 180_000);
+
+  it("refuses a tampered or runtime-mismatched journal", async () => {
+    const external = inheritedWorktree("a tampered journal worktree");
+    mkdirSync(join(external, ".bridge-runtime"), { recursive: true });
+    for (const body of [
+      "{ not json",
+      JSON.stringify({ format: "claude-codex-bridge.workspace-pending/v1", action: "init", workspace: { kind: "git", root: external, git_dir: join(external, ".git") }, runtime_id: "0.1.0-000000000000", tag: "t", paths: [] }),
+      JSON.stringify({ format: "claude-codex-bridge.workspace-pending/v1", action: "init", runtime_id: runtimeId, tag: "t", paths: [] }),
+    ]) {
+      writeFileSync(join(external, ".bridge-runtime/pending.json"), body);
+      const run = await launchEntry(external, { frames: HANDSHAKE });
+      expect(run.stderr, body.slice(0, 60)).toContain("SETUP_STATE_PARTIAL");
+      expect(run.replies).toEqual([]);
+      expect(readFileSync(join(external, ".bridge-runtime/pending.json"), "utf8")).toBe(body);
+    }
+  }, 180_000);
+});
+
+describe("the setup plan is read-only (W14-R2-08)", () => {
+  it("installs nothing and creates no bridge home without --yes", () => {
+    const emptyHome = join(root, "an untouched home");
+    const planned = plugin(project, ["setup", "--json", "--offline", "--source", REPO], { CLAUDE_CODEX_BRIDGE_HOME: emptyHome });
+    expect(planned.code, planned.stderr).toBe(0);
+    expect((planned.json as any).applied).toBe(false);
+    expect((planned.json as any).runtime_installed_now).toBe(false);
+    expect((planned.json as any).would_install_runtime.commit).toMatch(/^[0-9a-f]{40}$/u);
+    // Neither the distribution home nor the project was touched.
+    expect(existsSync(emptyHome)).toBe(false);
+    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
+    expect(existsSync(join(project, ".codex/config.toml"))).toBe(false);
+  }, 120_000);
+
+  it("still shows a reviewable per-file plan when the runtime is already installed", () => {
+    const planned = plugin(project, ["setup", "--json", "--source", REPO, "--commit", runtimeCommit], env);
+    expect(planned.code).toBe(0);
+    expect((planned.json as any).applied).toBe(false);
+    const paths = ((planned.json as any).changes as { path: string }[]).map((c) => c.path);
+    expect(paths).toContain(PROJECT_DECLARATION);
+    expect(paths).toContain(".codex/config.toml");
+    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
+  }, 120_000);
 });
 
 describe("the pin is independent of any plugin cache", () => {
