@@ -204,8 +204,8 @@ export function inspectCodexToml(text, env = process.env) {
   return { status: "unverified", detail: "python3 with tomllib (3.11+) is not available" };
 }
 
-export function bridgeTableMatches(bridge, manifest) {
-  const expected = mcpDefinition(manifest);
+export function bridgeTableMatches(bridge, manifest, profile = "legacy") {
+  const expected = mcpDefinition(manifest, profile);
   return (
     bridge !== null &&
     typeof bridge === "object" &&
@@ -549,7 +549,7 @@ function planCodexConfig(plan, home, target, env, profile = "legacy") {
     conflict("CODEX_CONFIG_INVALID", `resulting TOML does not parse: ${inspected.detail}`);
     return null;
   }
-  if (inspected.status === "parsed" && !bridgeTableMatches(inspected.bridge, target.manifest)) {
+  if (inspected.status === "parsed" && !bridgeTableMatches(inspected.bridge, target.manifest, profile)) {
     conflict("CODEX_CONFIG_CONFLICT", "keys outside the managed block change the effective mcp_servers.bridge table");
     return null;
   }

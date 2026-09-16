@@ -16,7 +16,7 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SetupError, bridgeHome, canonical } from "../setup/common.mjs";
-import { installRuntime, loadRuntime } from "../setup/runtime.mjs";
+import { installRuntime, listRuntimes, loadRuntime } from "../setup/runtime.mjs";
 import { applyPlan, declarationContent, planChange, resolveIdentity } from "../setup/workspace.mjs";
 import { status } from "../bridge-project/locate.mjs";
 import { acquireSource, readRelease } from "./acquire.mjs";
@@ -69,7 +69,14 @@ function targetRuntimeId(report, options, release) {
   return { runtimeId: null, commit: options.commit ?? release.pinned.commit, reason: "release" };
 }
 
-/** Install the pinned runtime when it is not already installed. Immutable and idempotent. */
+/**
+ * The pinned runtime, installed if it is not here yet. Immutable, idempotent and never a guess.
+ *
+ * Nothing is acquired when the pin is already satisfied by an installed runtime — by id when the
+ * project declares one, by commit when only the distribution's release pin applies. That is what
+ * makes a second worktree, and an offline machine that has already installed the release, need
+ * no source at all.
+ */
 function ensureRuntime({ home, runtimeId, commit, options }) {
   if (runtimeId) {
     try {
@@ -82,6 +89,9 @@ function ensureRuntime({ home, runtimeId, commit, options }) {
         });
       }
     }
+  } else if (commit) {
+    const installed = listRuntimes(home).find((candidate) => candidate.manifest?.source.commit === commit);
+    if (installed) return { runtime: installed, installed: false, source: null };
   }
   const release = readRelease(join(HERE, "release.json"));
   const source = acquireSource({

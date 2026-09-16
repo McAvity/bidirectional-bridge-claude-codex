@@ -9,9 +9,11 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const here = new URL(".", import.meta.url).pathname;
+// `fileURLToPath`, not `.pathname`: a project directory may contain spaces, which a URL
+// percent-encodes and the filesystem does not.
+const here = fileURLToPath(new URL(".", import.meta.url));
 
 function bridgeHome() {
   const explicit = process.env.CLAUDE_CODEX_BRIDGE_HOME;

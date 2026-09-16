@@ -1,26 +1,28 @@
-// Behaviour of the portable project dispatcher, its facade and the bootstrap it performs.
+// Behaviour of the distribution: installing a pinned runtime, preparing a worktree, and the
+// launch gate of the committed entry point.
 //
-// Everything here runs against real temporary worktrees and real git; nothing is mocked away,
-// because the properties under test are filesystem and process properties.
+// Nothing here is a fixture stand-in. One real runtime is built once for the whole file with the
+// product's own installer, from this repository's HEAD commit, into a temporary home; every case
+// then runs against that runtime, real git worktrees and the real launch gate. No model is
+// involved and no client is required.
 
-import { execFileSync, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..");
+const PLUGIN_ENTRY = join(REPO, "plugins", "bridge-codex", "scripts", "plugin-packages", "bridge-plugin.mjs");
 
-const { status, resolveWorkspace, readLocalRecord, pathIsRedirected, bridgeHome } = await import(
-  join(HERE, "locate.mjs")
+const { status } = await import(join(HERE, "locate.mjs"));
+const { resolveWorkspaceRoot } = await import(join(HERE, "dispatch.mjs"));
+const { PROJECT_DECLARATION, PROJECT_ENTRY, declarationContent, mcpDefinition, renderCodexBlock } = await import(
+  join(REPO, "scripts", "setup", "workspace.mjs")
 );
-const { prepare, acquireLock, spliceBlock, BootstrapRefusal, BLOCK_BEGIN, BLOCK_END, CODEX_CONFIG } = await import(
-  join(HERE, "bootstrap.mjs")
-);
-const { handle, TOOLS, callTool } = await import(join(HERE, "facade.mjs"));
-const { plan } = await import(join(HERE, "dispatch.mjs"));
+const { installRuntime, loadRuntime, verifyRuntime } = await import(join(REPO, "scripts", "setup", "runtime.mjs"));
 
 const GIT_ENV = {
   ...process.env,
@@ -36,383 +38,478 @@ function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8", env: GIT_ENV }).trim();
 }
 
-function makeRepo(path: string): void {
+function makeRepo(path: string): string {
   mkdirSync(path, { recursive: true });
   execFileSync("git", ["init", "-q", "-b", "main", path], { env: GIT_ENV });
   writeFileSync(join(path, "README.md"), "project\n");
   git(path, "add", "-A");
   git(path, "commit", "-qm", "init");
+  return real(path);
 }
 
-/** A fake installed runtime: enough manifest and launcher for resolution, no build. */
-function installRuntime(home: string, id: string): string {
-  const path = join(home, "runtimes", id);
-  mkdirSync(join(path, "scripts"), { recursive: true });
-  mkdirSync(join(path, ".agents/skills/feature-execute"), { recursive: true });
-  mkdirSync(join(path, ".codex/skills/using-bridge"), { recursive: true });
-  writeFileSync(join(path, "scripts", "native-bridge-mcp.mjs"), "// launcher\n");
-  writeFileSync(join(path, ".agents/skills/feature-execute/SKILL.md"), "pinned workflow\n");
-  writeFileSync(join(path, ".codex/skills/using-bridge/SKILL.md"), "pinned role\n");
-  writeFileSync(
-    join(path, "runtime-manifest.json"),
-    JSON.stringify({
-      format: "claude-codex-bridge.runtime/v1",
-      runtime_id: id,
-      source: { commit: "a".repeat(40) },
-      compatibility: {},
-      instructions: { set_sha256: "b".repeat(64), files: [] },
-      mcp: { launcher: "scripts/native-bridge-mcp.mjs" },
-      tree_sha256: "c".repeat(64),
-    }),
-  );
-  return path;
+function real(path: string): string {
+  return execFileSync("realpath", [path], { encoding: "utf8" }).trim();
 }
+
+function listing(dir: string): string[] {
+  return spawnSync("find", [dir, "-mindepth", "1"], { encoding: "utf8" }).stdout.split("\n").filter(Boolean).sort();
+}
+
+function digestOf(dir: string): string {
+  return spawnSync("sh", ["-c", `find ${JSON.stringify(dir)} -type f -exec sha256sum {} + | sort | sha256sum`], {
+    encoding: "utf8",
+  }).stdout.trim();
+}
+
+function removeTree(path: string): void {
+  // Installed runtimes are read-only on purpose; make them writable before deleting the sandbox.
+  spawnSync("chmod", ["-R", "u+w", path]);
+  rmSync(path, { recursive: true, force: true });
+}
+
+/** The environment a client would give the entry point, without the test runner's own injections. */
+function childEnv(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key === "NODE_OPTIONS" || key === "NODE_V8_COVERAGE" || key.startsWith("VITEST")) continue;
+    out[key] = value;
+  }
+  // The test runner puts `node_modules/.bin` first, which shadows the host `codex` with the
+  // pinned development dependency. A client's environment does not, and the compatibility guard
+  // legitimately refuses the shadowed version, so the runner's own entries are removed here.
+  out.PATH = (process.env.PATH ?? "")
+    .split(":")
+    .filter((entry) => !entry.includes("node_modules/.bin"))
+    .join(":");
+  return { ...out, ...extra };
+}
+
+/** `bridge-plugin.mjs` exactly as the generated Codex package ships it. */
+function plugin(cwd: string, args: string[], env: NodeJS.ProcessEnv) {
+  const out = spawnSync(process.execPath, [PLUGIN_ENTRY, ...args], { cwd, encoding: "utf8", env: childEnv(env) });
+  let json: Record<string, unknown> | null = null;
+  try {
+    json = JSON.parse(out.stdout);
+  } catch {
+    json = null;
+  }
+  return { code: out.status, stdout: out.stdout, stderr: out.stderr, json };
+}
+
+// ---------------------------------------------------------------------------
+// one real runtime for the whole file
+// ---------------------------------------------------------------------------
+
+let sharedHome: string;
+let runtimeId: string;
+let runtimeCommit: string;
+let runtimePath: string;
+
+beforeAll(() => {
+  sharedHome = mkdtempSync(join(tmpdir(), "bridge-home-"));
+  runtimeCommit = git(REPO, "rev-parse", "HEAD");
+  // Built with a client-like environment: the runner's NODE_OPTIONS and `node_modules/.bin`
+  // would otherwise reach `npm ci` and `npm run build` inside the immutable install.
+  const { runtime } = installRuntime({ source: REPO, ref: runtimeCommit, home: sharedHome, env: childEnv({}) });
+  runtimeId = runtime.id;
+  runtimePath = runtime.path;
+  expect(existsSync(join(runtimePath, PROJECT_ENTRY_SOURCE()))).toBe(true);
+  expect(verifyRuntime(loadRuntime(sharedHome, runtimeId))).toEqual([]);
+  const built = join(runtimePath, "shared/control-plane/dist/index.js");
+  if (!existsSync(built)) {
+    throw new Error(`the installed runtime was not built: ${built} is missing\n${readFileSync(join(runtimePath, "install.log"), "utf8").slice(-3000)}`);
+  }
+}, 600_000);
+
+function PROJECT_ENTRY_SOURCE(): string {
+  return "scripts/bridge-project/entry-template.mjs";
+}
+
+afterAll(() => {
+  if (sharedHome) removeTree(sharedHome);
+});
 
 let root: string;
 let project: string;
-let home: string;
 let env: NodeJS.ProcessEnv;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "bridge-project-"));
-  project = join(root, "a project with spaces");
-  home = join(root, "home");
-  makeRepo(project);
-  env = { ...process.env, CLAUDE_CODEX_BRIDGE_HOME: home };
+  project = makeRepo(join(root, "a project with spaces"));
+  env = { CLAUDE_CODEX_BRIDGE_HOME: sharedHome };
 });
 
 afterEach(() => {
-  rmSync(root, { recursive: true, force: true });
+  if (root) removeTree(root);
 });
 
-const sources = () => ({
-  "dispatch.mjs": readFileSync(join(HERE, "dispatch.mjs"), "utf8"),
-  "locate.mjs": readFileSync(join(HERE, "locate.mjs"), "utf8"),
-  "bootstrap.mjs": readFileSync(join(HERE, "bootstrap.mjs"), "utf8"),
-  "facade.mjs": readFileSync(join(HERE, "facade.mjs"), "utf8"),
+const setup = (cwd = project, extra: string[] = []) =>
+  plugin(cwd, ["setup", "--yes", "--json", "--source", REPO, "--commit", runtimeCommit, ...extra], env);
+
+// ---------------------------------------------------------------------------
+
+describe("installation from the distribution", () => {
+  it("installs the pinned runtime and prepares a clean project with no runtime id from the caller", () => {
+    const result = setup();
+    expect(result.code, JSON.stringify({ refusals: (result.json as any)?.refusals, conflicts: (result.json as any)?.conflicts })).toBe(0);
+    expect(result.json?.applied).toBe(true);
+    expect((result.json as any).runtime.id).toBe(runtimeId);
+    expect((result.json as any).runtime_installed_now).toBe(false); // the shared runtime is already there
+    const paths = ((result.json as any).changes as { path: string }[]).map((c) => c.path).sort();
+    expect(paths).toEqual([PROJECT_DECLARATION, PROJECT_ENTRY, ".bridge-runtime/current", ".codex/config.toml", ".gitignore"].sort());
+    expect(status(project, env).state).toBe("ready");
+  });
+
+  it("writes a local selection record and a selection symlink, not just a declaration", () => {
+    setup();
+    const record = JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8"));
+    expect(record.runtime.id).toBe(runtimeId);
+    expect(record.workspace.root).toBe(project);
+    expect(real(join(project, ".bridge-runtime/current"))).toBe(real(runtimePath));
+  });
+
+  it("copies no instruction file into the project and keeps the entry point minimal", () => {
+    setup();
+    expect(existsSync(join(project, ".agents/skills"))).toBe(false);
+    expect(existsSync(join(project, ".claude/skills"))).toBe(false);
+    expect(existsSync(join(project, ".codex/skills"))).toBe(false);
+    const committed = readdirSync(join(project, ".bridge-project")).sort();
+    expect(committed).toEqual(["bridge.json", "entry.mjs"]);
+    const lines = readFileSync(join(project, PROJECT_ENTRY), "utf8").split("\n").length;
+    expect(lines).toBeLessThan(80);
+  });
+
+  it("points the manager at instructions inside the installed runtime", () => {
+    setup();
+    const report = status(project, env);
+    expect(report.instructions.root).toBe(runtimePath);
+    for (const key of ["workflow_skills", "codex_role_skill", "exchange_helper", "claude_executor_package"]) {
+      expect(existsSync((report.instructions as Record<string, string>)[key])).toBe(true);
+      expect((report.instructions as Record<string, string>)[key].startsWith(runtimePath)).toBe(true);
+    }
+  });
+
+  it("is idempotent", () => {
+    setup();
+    const again = setup();
+    expect(again.code).toBe(0);
+    expect((again.json as any).changes).toEqual([]);
+  });
+
+  it("writes a managed block with no home directory, machine path or runtime id", () => {
+    setup();
+    const toml = readFileSync(join(project, ".codex/config.toml"), "utf8");
+    expect(toml).toContain(`args = ["./${PROJECT_ENTRY}"`);
+    expect(toml).not.toContain(sharedHome);
+    expect(toml).not.toContain(runtimeId);
+    expect(mcpDefinition({}, "dispatcher").required).toBe(false);
+    expect(renderCodexBlock({}, "dispatcher")).toContain("env_vars");
+  });
 });
 
-describe("workspace resolution", () => {
-  it("resolves the git top level from the working directory, not from PWD", () => {
-    const sub = join(project, "sub dir", "deeper");
-    mkdirSync(sub, { recursive: true });
-    // A misleading PWD is exactly the W14-01 failure mode; it must not be consulted.
-    const resolved = resolveWorkspace(sub);
-    expect(resolved.root).toBe(realish(project));
-    expect(resolved.inGitRepository).toBe(true);
-  });
-
-  it("resolves an external worktree to itself, not to the main checkout", () => {
-    const external = join(root, "external worktree");
-    git(project, "worktree", "add", "-q", "-b", "feature", external);
-    const resolved = resolveWorkspace(external);
-    expect(resolved.root).toBe(realish(external));
-    expect(resolved.gitDir).toContain("worktrees");
-  });
-
-  it("reports a directory outside any repository without throwing", () => {
-    const loose = join(root, "loose");
-    mkdirSync(loose);
-    expect(resolveWorkspace(loose).inGitRepository).toBe(false);
-  });
-});
-
-function realish(path: string): string {
-  return execFileSync("realpath", [path], { encoding: "utf8" }).trim();
-}
-
-describe("status is a pure read", () => {
-  it("reports not-enabled and writes nothing at all", () => {
+describe("reads and refusals never mutate", () => {
+  it("status writes nothing in a project that is not enabled", () => {
     const before = listing(project);
     const report = status(project, env);
     expect(report.state).toBe("not-enabled");
-    expect(report.reads_only).toBe(true);
     expect(listing(project)).toEqual(before);
   });
 
-  it("names the installed runtime as the instruction root once prepared", () => {
-    const runtime = installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const report = status(project, env);
-    expect(report.state).toBe("needs-preparation");
-    expect(report.instructions.root).toBe(runtime);
-    expect(report.instructions.workflow_skills).toBe(join(runtime, ".agents/skills"));
-    // The instruction set is never copied into the project.
-    expect(existsSync(join(project, ".agents/skills"))).toBe(false);
-    expect(existsSync(join(project, ".claude/skills"))).toBe(false);
-  });
-});
-
-function listing(dir: string): string[] {
-  const out = spawnSync("find", [dir, "-mindepth", "1"], { encoding: "utf8" });
-  return out.stdout.split("\n").filter(Boolean).sort();
-}
-
-describe("prepare", () => {
-  it("writes only the portable declaration, dispatcher, MCP block and ignore block", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const result = prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    expect(result.applied).toBe(true);
-    const paths = result.changes.map((c: { path: string }) => c.path).sort();
-    expect(paths).toEqual(
-      [".bridge-project/bootstrap.mjs", ".bridge-project/bridge.json", ".bridge-project/dispatch.mjs", ".bridge-project/facade.mjs", ".bridge-project/locate.mjs", ".codex/config.toml", ".gitignore"].sort(),
-    );
-    const declaration = JSON.parse(readFileSync(join(project, ".bridge-project/bridge.json"), "utf8"));
-    expect(declaration.pinned.runtime_id).toBe("0.2.0-abcdefabcdef");
+  it("a dry run writes nothing", () => {
+    const planned = plugin(project, ["setup", "--json", "--source", REPO, "--commit", runtimeCommit], env);
+    expect((planned.json as any).applied).toBe(false);
+    expect((planned.json as any).changes.length).toBeGreaterThan(0);
+    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
   });
 
-  it("writes a managed block with no machine path, home directory or runtime id", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const toml = readFileSync(join(project, CODEX_CONFIG), "utf8");
-    expect(toml).toContain('args = ["./.bridge-project/dispatch.mjs"');
-    expect(toml).not.toContain(home);
-    expect(toml).not.toContain("0.2.0-abcdefabcdef");
-    expect(toml).not.toContain(process.env.HOME ?? "/nonexistent-home");
+  it("refuses a project whose config already defines mcp_servers.bridge, leaving the bytes unchanged", () => {
+    mkdirSync(join(project, ".codex"), { recursive: true });
+    const custom = '[mcp_servers.bridge]\ncommand = "my-own-server"\n';
+    writeFileSync(join(project, ".codex/config.toml"), custom);
+    const result = setup();
+    expect(result.code).toBe(1);
+    expect((result.json as any).ok).toBe(false);
+    expect(((result.json as any).conflicts as { code: string }[])[0].code).toBe("CODEX_CONFIG_CONFLICT");
+    // Exactly one table, exactly the user's bytes.
+    expect(readFileSync(join(project, ".codex/config.toml"), "utf8")).toBe(custom);
+    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
   });
 
-  it("is idempotent: a second run changes nothing", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const again = prepare({ cwd: project, env, sources: sources() });
-    expect(again.changes).toEqual([]);
+  it("refuses a copied setup record without rewriting it", () => {
+    mkdirSync(join(project, ".bridge-runtime"), { recursive: true });
+    const foreign = JSON.stringify({
+      format: "claude-codex-bridge.workspace-install/v1",
+      workspace: { kind: "git", root: "/somewhere/else", git_dir: "/somewhere/else/.git" },
+      runtime: { id: runtimeId },
+    });
+    writeFileSync(join(project, ".bridge-runtime/install.json"), foreign);
+    const result = setup();
+    expect(result.code).toBe(1);
+    expect(((result.json as any).refusals as { code: string }[]).map((r) => r.code)).toContain("SETUP_RECORD_FOREIGN");
+    expect(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8")).toBe(foreign);
+  });
+
+  it("refuses a hand edited entry point instead of overwriting it", () => {
+    setup();
+    const edited = `${readFileSync(join(project, PROJECT_ENTRY), "utf8")}\n// my own change\n`;
+    writeFileSync(join(project, PROJECT_ENTRY), edited);
+    const result = setup();
+    expect(result.code).toBe(1);
+    expect(((result.json as any).conflicts as { code: string }[]).map((c) => c.code)).toContain("PROJECT_FILE_MODIFIED");
+    expect(readFileSync(join(project, PROJECT_ENTRY), "utf8")).toBe(edited);
+  });
+
+  it("keeps a hand edited file when asked to, instead of refusing", () => {
+    setup();
+    const edited = `${readFileSync(join(project, PROJECT_ENTRY), "utf8")}\n// my own change\n`;
+    writeFileSync(join(project, PROJECT_ENTRY), edited);
+    const result = setup(project, ["--keep-local"]);
+    expect(result.code).toBe(0);
+    expect(((result.json as any).kept_local as { path: string }[]).map((k) => k.path)).toContain(PROJECT_ENTRY);
+    expect(readFileSync(join(project, PROJECT_ENTRY), "utf8")).toBe(edited);
+  });
+
+  it("refuses to write through a symlinked managed path", () => {
+    const elsewhere = join(root, "elsewhere");
+    mkdirSync(elsewhere);
+    symlinkSync(elsewhere, join(project, ".bridge-project"));
+    const result = setup();
+    expect(result.code).toBe(1);
+    expect(JSON.stringify((result.json as any).refusals)).toMatch(/symlink|REDIRECT/iu);
+    expect(existsSync(join(elsewhere, "bridge.json"))).toBe(false);
   });
 
   it("preserves the user's own content around the managed blocks", () => {
     mkdirSync(join(project, ".codex"), { recursive: true });
     writeFileSync(join(project, ".codex/config.toml"), 'model = "gpt-5"\n\n[mcp_servers.other]\ncommand = "true"\n');
     writeFileSync(join(project, ".gitignore"), "node_modules/\n*.log\n");
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
+    mkdirSync(join(project, ".agents/skills/my-own"), { recursive: true });
+    writeFileSync(join(project, ".agents/skills/my-own/SKILL.md"), "the user's own skill\n");
+    expect(setup().code).toBe(0);
     const toml = readFileSync(join(project, ".codex/config.toml"), "utf8");
     expect(toml).toContain('model = "gpt-5"');
     expect(toml).toContain("[mcp_servers.other]");
+    expect(toml.match(/\[mcp_servers\.bridge\]/gu)?.length).toBe(1);
     expect(readFileSync(join(project, ".gitignore"), "utf8")).toContain("*.log");
-  });
-
-  it("refuses to write through a symlinked managed path", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const elsewhere = join(root, "elsewhere");
-    mkdirSync(elsewhere);
-    symlinkSync(elsewhere, join(project, ".bridge-project"));
-    expect(() => prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() })).toThrow(
-      /MANAGED_PATH_IS_SYMLINK|symlink/u,
-    );
-    expect(existsSync(join(elsewhere, "bridge.json"))).toBe(false);
-  });
-
-  it("refuses a local record copied from another worktree and never adopts it", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    mkdirSync(join(project, ".bridge-runtime"), { recursive: true });
-    const foreign = JSON.stringify({ root: "/somewhere/else", runtime: { id: "0.1.0-000000000000" } });
-    writeFileSync(join(project, ".bridge-runtime/install.json"), foreign);
-    expect(() => prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() })).toThrow(
-      /FOREIGN_WORKSPACE_RECORD|copied/u,
-    );
-    expect(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8")).toBe(foreign);
-    expect(existsSync(join(project, ".bridge-project/bridge.json"))).toBe(false);
-  });
-
-  it("refuses without a pin instead of guessing a runtime", () => {
-    expect(() => prepare({ cwd: project, env, sources: sources() })).toThrow(/NO_PIN|pinned runtime/u);
-  });
-
-  it("dry run reports the same plan and writes nothing", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const planned = prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, dryRun: true, sources: sources() });
-    expect(planned.applied).toBe(false);
-    expect(planned.changes.length).toBeGreaterThan(0);
-    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
+    expect(readFileSync(join(project, ".agents/skills/my-own/SKILL.md"), "utf8")).toBe("the user's own skill\n");
   });
 });
 
-describe("concurrent first use", () => {
-  it("serialises two simultaneous bootstraps: the loser is refused and writes nothing", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const held = acquireLock(realish(project));
-    try {
-      let refusal: { code?: string } | null = null;
-      try {
-        prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-      } catch (error) {
-        refusal = error as { code?: string };
-      }
-      expect(refusal?.code).toBe("BOOTSTRAP_IN_PROGRESS");
-      expect(existsSync(join(project, ".bridge-project/bridge.json"))).toBe(false);
-    } finally {
-      held.release();
-    }
-  });
-
-  it("two real processes racing produce one consistent result", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const script = join(root, "race.mjs");
-    writeFileSync(
-      script,
-      `import { prepare } from ${JSON.stringify(join(HERE, "bootstrap.mjs"))};
-import { readFileSync } from "node:fs";
-const sources = Object.fromEntries(["dispatch.mjs","locate.mjs","bootstrap.mjs","facade.mjs"].map((n) => [n, readFileSync(${JSON.stringify(HERE)} + "/" + n, "utf8")]));
-try { const r = prepare({ cwd: process.argv[2], pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources }); console.log(JSON.stringify({ ok: true, changes: r.changes.length })); }
-catch (e) { console.log(JSON.stringify({ ok: false, code: e.code })); }
-`,
-    );
+describe("concurrent and interrupted preparation", () => {
+  it("two simultaneous first uses leave one consistent result and no half-written state", () => {
+    const args = ["setup", "--yes", "--json", "--source", REPO, "--commit", runtimeCommit];
     const runs = [0, 1].map(() =>
-      spawnSync(process.execPath, [script, project], { encoding: "utf8", env: { ...env } }),
+      spawn(process.execPath, [PLUGIN_ENTRY, ...args], { cwd: project, env: childEnv(env) }),
     );
-    const results = runs.map((r) => JSON.parse(r.stdout.trim()));
-    // Either both serialise cleanly, or the loser is refused; never two conflicting writes.
-    const succeeded = results.filter((r) => r.ok);
-    expect(succeeded.length).toBeGreaterThanOrEqual(1);
-    const declaration = JSON.parse(readFileSync(join(project, ".bridge-project/bridge.json"), "utf8"));
-    expect(declaration.pinned.runtime_id).toBe("0.2.0-abcdefabcdef");
-    expect(existsSync(join(project, ".bridge/bootstrap.lock"))).toBe(false);
-  });
-
-  it("an interrupted bootstrap leaves a stale lock that is broken and reported, not honoured forever", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const stale = acquireLock(realish(project));
-    const result = prepare({
-      cwd: project,
-      env,
-      pin: { runtime_id: "0.2.0-abcdefabcdef" },
-      sources: sources(),
-      // the production default is ten minutes; the same code path breaks a lock older than that
-      lockOptions: { staleMs: 0 },
+    const codes = runs.map(
+      (child) =>
+        new Promise<number>((resolveCode) => {
+          child.on("exit", (code) => resolveCode(code ?? 1));
+        }),
+    );
+    return Promise.all(codes).then((results) => {
+      expect(results.filter((code) => code === 0).length).toBeGreaterThanOrEqual(1);
+      expect(status(project, env).state).toBe("ready");
+      const record = JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8"));
+      expect(record.runtime.id).toBe(runtimeId);
+      expect(existsSync(join(project, ".bridge-runtime/pending.json"))).toBe(false);
     });
-    expect(result.applied).toBe(true);
-    expect(result.lock.broke_stale).toBe(true);
-    stale.release();
+  }, 120_000);
+
+  it("an interrupted apply is completed by the next run, not left half applied", () => {
+    // The product's own fault injection: kill the process after the first write of an apply.
+    const killed = spawnSync(
+      process.execPath,
+      [PLUGIN_ENTRY, "setup", "--yes", "--json", "--source", REPO, "--commit", runtimeCommit],
+      { cwd: project, encoding: "utf8", env: childEnv({ ...env, CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER: "1" }) },
+    );
+    expect(killed.status).not.toBe(0);
+    expect(existsSync(join(project, ".bridge-runtime/pending.json"))).toBe(true);
+    const finished = setup();
+    expect(finished.code).toBe(0);
+    expect(status(project, env).state).toBe("ready");
+    expect(existsSync(join(project, ".bridge-runtime/pending.json"))).toBe(false);
+  }, 120_000);
+});
+
+/**
+ * Start the committed entry point exactly as a client would, feed it MCP frames and collect what
+ * it answered. The launch gate runs inside that process, so a refusal is observed the way a user
+ * observes it: on stderr, with nothing served.
+ */
+async function launchEntry(cwd: string, { frames = [] as unknown[], waitMs = 3500 } = {}) {
+  const child = spawn(process.execPath, [join(cwd, PROJECT_ENTRY), "--caller", "codex", "--delegation", "allow"], {
+    cwd,
+    env: childEnv(env),
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let out = "";
+  let err = "";
+  child.stdout.on("data", (chunk) => (out += chunk));
+  child.stderr.on("data", (chunk) => (err += chunk));
+  for (const frame of frames) child.stdin.write(`${JSON.stringify(frame)}\n`);
+  const exited = await new Promise<number | null>((done) => {
+    const timer = setTimeout(() => done(null), waitMs);
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      done(code ?? 1);
+    });
+  });
+  const replies = out
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+  return { child, exited, stdout: out, stderr: err, replies };
+}
+
+const HANDSHAKE = [
+  { jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "w14-test", version: "1" } } },
+  { jsonrpc: "2.0", method: "notifications/initialized" },
+  { jsonrpc: "2.0", id: 1, method: "tools/list" },
+];
+
+describe("the launch gate", () => {
+  const declarationOf = (path: string) => JSON.parse(readFileSync(join(path, PROJECT_DECLARATION), "utf8"));
+  const rewrite = (path: string, value: unknown) =>
+    writeFileSync(join(path, PROJECT_DECLARATION), `${JSON.stringify(value, null, 2)}\n`);
+
+  it("serves a prepared worktree and binds that worktree's own database", async () => {
+    setup();
+    const run = await launchEntry(project, { frames: HANDSHAKE });
+    expect(run.replies.find((frame: any) => frame.id === 0)?.result?.serverInfo?.name, run.stderr).toBe("bridge-native-project");
+    expect(run.replies.find((frame: any) => frame.id === 1)?.result?.tools?.length).toBeGreaterThan(10);
+    expect(run.stderr).toContain(`workspace=${project}`);
+    expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(true);
+    run.child.kill("SIGKILL");
+  }, 60_000);
+
+  it("refuses and serves nothing when the applied selection and the declared pin differ", async () => {
+    setup();
+    const other = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    rewrite(project, { ...declarationOf(project), pinned: { runtime_id: other.id, commit: other.manifest.source.commit } });
+    const run = await launchEntry(project, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("PIN_DIVERGED");
+    expect(run.replies).toEqual([]);
+    expect(run.exited).toBe(1);
+  }, 600_000);
+
+  it("refuses a copied setup record and never rewrites it", async () => {
+    setup();
+    const record = JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8"));
+    record.workspace.root = "/somewhere/else";
+    const bytes = JSON.stringify(record);
+    writeFileSync(join(project, ".bridge-runtime/install.json"), bytes);
+    const run = await launchEntry(project, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("SETUP_RECORD_FOREIGN");
+    expect(run.replies).toEqual([]);
+    expect(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8")).toBe(bytes);
+    expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(false);
+  }, 60_000);
+
+  it("refuses a worktree that was never prepared, without creating any state", async () => {
+    setup();
+    removeTree(join(project, ".bridge-runtime"));
+    const run = await launchEntry(project, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("SETUP_NOT_INITIALIZED");
+    expect(run.replies).toEqual([]);
+    expect(existsSync(join(project, ".bridge"))).toBe(false);
+  }, 60_000);
+
+  it("refuses a disabled project and an unrecognised declaration", async () => {
+    setup();
+    rewrite(project, { ...declarationOf(project), enabled: false });
+    expect((await launchEntry(project, { frames: HANDSHAKE })).stderr).toContain("disabled");
+    rewrite(project, { format: "something/else" });
+    expect((await launchEntry(project, { frames: HANDSHAKE })).stderr).toMatch(/not a recognised bridge declaration/u);
+  }, 60_000);
+
+  it("refuses a pin whose commit does not match the runtime answering to its id", async () => {
+    setup();
+    rewrite(project, { ...declarationOf(project), pinned: { runtime_id: runtimeId, commit: "0".repeat(40) } });
+    const run = await launchEntry(project, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("PIN_COMMIT_MISMATCH");
+    expect(run.replies).toEqual([]);
+  }, 60_000);
+
+  it("resolves the worktree from its own directory, never from PWD", () => {
+    const sub = join(project, "sub dir", "deeper");
+    mkdirSync(sub, { recursive: true });
+    expect(resolveWorkspaceRoot(sub)).toBe(project);
   });
 });
 
-describe("inherited worktree", () => {
-  it("a worktree created after enablement starts ready with no preparation step", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
+describe("closing the client", () => {
+  it("runs the server in the entry process itself and leaves nothing behind on SIGTERM", async () => {
+    setup();
+    const run = await launchEntry(project, { frames: HANDSHAKE });
+    expect(run.exited).toBe(null); // still serving
+    // No wrapper: the entry point is the server, so there is no child to orphan.
+    expect(spawnSync("pgrep", ["-P", String(run.child.pid)], { encoding: "utf8" }).stdout.trim()).toBe("");
+    run.child.kill("SIGTERM");
+    const closed = await new Promise<boolean>((done) => {
+      const timer = setTimeout(() => done(false), 10_000);
+      run.child.on("exit", () => {
+        clearTimeout(timer);
+        done(true);
+      });
+    });
+    expect(closed).toBe(true);
+    expect(spawnSync("pgrep", ["-f", join(project, PROJECT_ENTRY)], { encoding: "utf8" }).stdout.trim()).toBe("");
+  }, 60_000);
+});
+
+describe("an inherited worktree", () => {
+  it("inherits the declaration and entry point and needs only its own local selection", () => {
+    setup();
     git(project, "add", "-A");
     git(project, "commit", "-qm", "enable bridge");
-
     const external = join(root, "inherited worktree");
     git(project, "worktree", "add", "-q", "-b", "inherited", external);
 
-    // Inherited through git: the declaration and the dispatcher are both present, the local
-    // state directories are not, and nothing has to be prepared before the client starts.
-    expect(existsSync(join(external, ".bridge-project/bridge.json"))).toBe(true);
-    expect(existsSync(join(external, ".bridge-project/dispatch.mjs"))).toBe(true);
+    expect(existsSync(join(external, PROJECT_DECLARATION))).toBe(true);
+    expect(existsSync(join(external, PROJECT_ENTRY))).toBe(true);
     expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
     expect(existsSync(join(external, ".bridge"))).toBe(false);
+    expect(status(external, env).state).toBe("needs-selection");
 
-    const decision = plan({ cwd: external, env });
-    expect(decision.route).toBe("runtime");
-    expect(decision.workspace.root).toBe(realish(external));
-    expect(decision.pin.runtime_id).toBe("0.2.0-abcdefabcdef");
-  });
+    const prepared = setup(external);
+    expect(prepared.code).toBe(0);
+    // Only its own selection: no reinstall, no configuration rewrite, no instruction copy.
+    expect(((prepared.json as any).changes as { path: string }[]).map((c) => c.path)).toEqual([".bridge-runtime/current"]);
+    expect((prepared.json as any).runtime_installed_now).toBe(false);
+    expect(status(external, env).state).toBe("ready");
+  }, 120_000);
 
-  it("routes to the facade, not to a wrong version, when the pinned runtime is absent here", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const otherHome = join(root, "other-home");
-    installRuntime(otherHome, "0.9.9-ffffffffffff");
-    const decision = plan({ cwd: project, env: { ...process.env, CLAUDE_CODEX_BRIDGE_HOME: otherHome } });
-    expect(decision.route).toBe("facade");
-    expect(decision.runtime.state).toBe("runtime-missing");
-  });
+  it("binds its own database, not the one of the checkout it came from", async () => {
+    setup();
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = join(root, "second worktree");
+    git(project, "worktree", "add", "-q", "-b", "second", external);
+    setup(external);
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.stderr, run.stderr).toContain(`workspace=${real(external)}`);
+    expect(existsSync(join(external, ".bridge/bridge.db"))).toBe(true);
+    expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(false);
+    run.child.kill("SIGKILL");
+  }, 120_000);
 });
 
-describe("pin and plugin cache independence", () => {
-  it("the declaration and the selected runtime live outside any plugin cache", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const report = status(project, env);
-    expect(report.instructions.root).toContain(join(home, "runtimes"));
-    expect(report.instructions.root).not.toContain("plugins/cache");
-    expect(readFileSync(join(project, ".bridge-project/bridge.json"), "utf8")).not.toContain("plugins/cache");
-  });
-
-  it("deleting a plugin cache does not disturb the pinned instruction set", () => {
-    const runtime = installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
+describe("the pin is independent of any plugin cache", () => {
+  it("survives deleting a plugin cache, and a declaration names no cache path", () => {
+    setup();
     const cache = join(root, "codex-home", "plugins", "cache", "m", "bridge-codex", "1.0.0");
     mkdirSync(cache, { recursive: true });
-    writeFileSync(join(cache, "SKILL.md"), "cached copy\n");
-    const before = readFileSync(join(runtime, ".agents/skills/feature-execute/SKILL.md"), "utf8");
+    writeFileSync(join(cache, "SKILL.md"), "a cached copy\n");
+    const before = digestOf(join(runtimePath, ".agents/skills"));
     rmSync(join(root, "codex-home"), { recursive: true, force: true });
-    expect(readFileSync(join(runtime, ".agents/skills/feature-execute/SKILL.md"), "utf8")).toBe(before);
-    expect(status(project, env).state).toBe("needs-preparation");
+    expect(digestOf(join(runtimePath, ".agents/skills"))).toBe(before);
+    expect(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).not.toContain("plugins/cache");
+    expect(status(project, env).state).toBe("ready");
   });
 
-  it("a pin different from the local selection is reported, never silently switched", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    mkdirSync(join(project, ".bridge-runtime"), { recursive: true });
-    writeFileSync(
-      join(project, ".bridge-runtime/install.json"),
-      JSON.stringify({ root: realish(project), runtime: { id: "0.1.0-111111111111" } }),
-    );
-    expect(status(project, env).state).toBe("pin-diverged");
-  });
-});
-
-describe("facade", () => {
-  it("offers a static catalogue, so nothing depends on tools/list_changed", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    const before = handle({ jsonrpc: "2.0", id: 1, method: "tools/list" }, { cwd: project, env });
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const after = handle({ jsonrpc: "2.0", id: 2, method: "tools/list" }, { cwd: project, env });
-    expect(after.result.tools).toEqual(before.result.tools);
-    expect(TOOLS.map((t: { name: string }) => t.name)).toEqual(["bridge_status", "bridge_prepare_worktree"]);
-  });
-
-  it("answers initialize without touching the worktree", () => {
-    const before = listing(project);
-    const reply = handle({ jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: "2025-06-18" } }, { cwd: project, env });
-    expect(reply.result.serverInfo.name).toBe("claude-codex-bridge-facade");
-    expect(listing(project)).toEqual(before);
-  });
-
-  it("refuses preparation without an explicit confirmation", () => {
-    const { ok, payload } = callTool("bridge_prepare_worktree", { workspace: realish(project) }, { cwd: project, env });
-    expect(ok).toBe(false);
-    expect(payload.code).toBe("NOT_CONFIRMED");
-    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
-  });
-
-  it("refuses a call that names a different workspace than the one it resolved", () => {
-    const { ok, payload } = callTool(
-      "bridge_prepare_worktree",
-      { workspace: "/somewhere/else", confirm: true },
-      { cwd: project, env },
-    );
-    expect(ok).toBe(false);
-    expect(payload.code).toBe("WORKSPACE_MISMATCH");
-    expect(existsSync(join(project, ".bridge-project"))).toBe(false);
-  });
-});
-
-describe("migration protection", () => {
-  it("leaves an existing wave12 managed block's neighbours and custom skills untouched", () => {
-    installRuntime(home, "0.2.0-abcdefabcdef");
-    mkdirSync(join(project, ".agents/skills/my-own"), { recursive: true });
-    writeFileSync(join(project, ".agents/skills/my-own/SKILL.md"), "the user's own skill\n");
-    mkdirSync(join(project, ".codex"), { recursive: true });
-    writeFileSync(
-      join(project, ".codex/config.toml"),
-      `profile = "work"\n\n${BLOCK_BEGIN}\n[mcp_servers.bridge]\ncommand = "node"\nargs = [".bridge-runtime/current/scripts/native-bridge-mcp.mjs"]\n${BLOCK_END}\n\n[mcp_servers.other]\ncommand = "true"\n`,
-    );
-    prepare({ cwd: project, env, pin: { runtime_id: "0.2.0-abcdefabcdef" }, sources: sources() });
-    const toml = readFileSync(join(project, ".codex/config.toml"), "utf8");
-    expect(toml).toContain('profile = "work"');
-    expect(toml).toContain("[mcp_servers.other]");
-    expect(toml).toContain("./.bridge-project/dispatch.mjs");
-    expect(toml).not.toContain(".bridge-runtime/current/scripts");
-    expect(readFileSync(join(project, ".agents/skills/my-own/SKILL.md"), "utf8")).toBe("the user's own skill\n");
-  });
-
-  it("replaces only the managed block when splicing", () => {
-    const spliced = spliceBlock(`keep me\n${BLOCK_BEGIN}\nold\n${BLOCK_END}\nkeep me too\n`, "new");
-    expect(spliced).toContain("keep me");
-    expect(spliced).toContain("keep me too");
-    expect(spliced).toContain("new");
-    expect(spliced).not.toContain("old");
+  it("the declaration content is exactly what the installed runtime would write", () => {
+    setup();
+    expect(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).toBe(declarationContent(loadRuntime(sharedHome, runtimeId)));
   });
 });

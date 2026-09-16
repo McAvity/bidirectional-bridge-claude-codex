@@ -15,7 +15,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonical, run } from "../setup/common.mjs";
 import { LAUNCHER, loadRuntimeAt, verifyRuntime } from "../setup/runtime.mjs";
 import { PROJECT_FORMAT, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
@@ -171,7 +171,8 @@ export async function launch({ cwd = process.cwd(), argv = [], declaration, runt
 }
 
 function defaultRuntimePath() {
-  return new URL("../..", import.meta.url).pathname;
+  // Never `.pathname`: an installed runtime may sit under a path containing spaces.
+  return fileURLToPath(new URL("../..", import.meta.url));
 }
 
 export { existsSync, readFileSync };

@@ -14,11 +14,11 @@
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
-      "sha256": "0a5f43e0b589dddc0283570309b4994de9b4f6b9c8b9216a2eb38f75d6b22efa"
+      "sha256": "6a86c0f69a11a9b3b8c1638c69d15a71473be2126a1e679a10446ffc876545fd"
     },
     {
       "path": "scripts/bridge-project/entry-template.mjs",
-      "sha256": "e246208d81da8257cc9266ed33bc26cbae6fe2c555f5b8ec2d8dfc80b5ed3da3"
+      "sha256": "8c073fc525afa82c130cb80cc361a4657878a263a5115cfef705bdea4beddb44"
     },
     {
       "path": "scripts/bridge-project/locate.mjs",
@@ -34,7 +34,7 @@
     },
     {
       "path": "scripts/plugin-packages/bridge-plugin.mjs",
-      "sha256": "e600444e9653284630e410a6306508aca2eac61c9fe34fd734ff3551a37d4517"
+      "sha256": "1dd2e2236f498110e9cdc3a37f6c9ec0660ec20741c96431e6e0b911173ca165"
     },
     {
       "path": "scripts/plugin-packages/release.json",
@@ -66,7 +66,7 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "e0272f04b23cef4490bc8f464e9cd85f5ff66e781b240737f0055329d7a0d480"
+      "sha256": "bbb0162d00c88ce947c431022471b37053b33fb7c9b1b881bf2b4949617fd18b"
     },
     {
       "path": "skills/bridge/SKILL.md",
