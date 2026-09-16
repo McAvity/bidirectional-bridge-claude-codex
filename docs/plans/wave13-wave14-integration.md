@@ -21,7 +21,7 @@ Odczyty nowych plików metadanych są ograniczone i odmawiają symlinków.
 Rozpoznanie dispatchera używa rzeczywistego entry.mjs, a nie nieistniejącego dispatch.mjs.
 Generator dołącza zależności diagnostyki do CLI pluginu.
 
-## Walidacja — w toku
+## Walidacja — PASS na afe1bd8
 
 Instalacja npm ci --ignore-scripts i build PASS. Python:46, pilot-tooling:140 PASS.
 Pakiety zgodne ze źródłami; kontrola144 dokumentów i diff PASS.
@@ -31,7 +31,10 @@ niezależna reprodukcja i 3 testy projekcji/doctora PASS.
 Pierwszy pełny przebieg JS: 532 PASS / 4 FAIL. Jeden błąd dotyczył asercji
 liczącej techniczne sidecary SQLite; trzy testów rollbacku odwołujących się do
 HEAD zmienionego podczas korekty. Test łączny po poprawieniu asercji PASS.
-Porównanie wersji testów przypięto do runtimeCommit; finalny pełny przebieg w toku.
+Porównanie wersji testów przypięto do runtimeCommit. Finalny pełny przebieg:
+**536/536 JS, 46/46 Python, 140/140 pilot-tooling PASS**. Build, packages:check,
+146 dokumentów i git diff --check PASS. Kod zamrożony na afe1bd8; późniejsze
+zmiany dotyczą wyłącznie statusów i niniejszego raportu.
 Nowy test łączny używa rzeczywiście zainstalowanego runtime, nowego worktree,
 autoryzowanej operacji MCP, normalnego zamknięcia i eksportu z metadanymi pluginu.
 To test bez modeli, nie nowy pilot Astry i Claude'a.
@@ -40,7 +43,8 @@ To test bez modeli, nie nowy pilot Astry i Claude'a.
 
 Nie przełączono aktywnego runtime, nie wdrożono do projektów użytkownika i nie
 zmieniono prywatnych baz ani konfiguracji. Nie wykonano push ani publikacji marketplace.
-Po testach/review: zapisać wynik, scalić do feature-workflow bez przełączania runtime.
+Testy i niezależne review zakończone. Wynik scalany do feature-workflow przez
+fast-forward; nie oznacza to wdrożenia ani publikacji.
 Odbiór niezależnej części wave14 jest zachowany; nie zastępuje odbioru wspólnego wyniku.
 Nie wywoływać feature_accept z innego managera w bazie oryginalnego wave14.
 Wave15 nadal DRAFT; nie implementowano jego zakresu.

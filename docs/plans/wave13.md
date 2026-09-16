@@ -1,6 +1,6 @@
 # Wave13 — logi, retencja i eksport incydentów
 
-Status: ZAPLANOWANE; zapis planu nie zleca implementacji ani uruchamiania modeli.
+Status: ODEBRANE przez użytkownika; zintegrowane lokalnie z wave14 i wspólnie zwalidowane. Bez publikacji i wdrożenia.
 Data: 2026-09-16. Baza planowania: feature-workflow `066cedb`, odebrane wave12.
 Postęp: [wave13-progress.md](wave13-progress.md).
 

@@ -19,7 +19,7 @@
   ],
   "latest_review": "docs/features/F-W13-diagnostics/reviews/02-export.md",
   "latest_decision": "docs/features/F-W13-diagnostics/decisions/02.md",
-  "next_action": "Wave13 odebrane lokalnie na 9cf1f43; oczekuje integracji przez koordynatora. Review PASS: 0109643 na waves13-14-review. Bridge accepted. Ta sesja zakończona po przekazaniu; bez nowych review, testów, merge, push i wdrożenia.",
+  "next_action": "User acceptance retained; integrated with wave14 and jointly validated at afe1bd8. No deployment or publication. See docs/plans/wave13-wave14-integration.md.",
   "bridge": {
     "feature_id": "F-W13-diagnostics",
     "parent_task_id": "task_0zpsfj1g59"

@@ -1,7 +1,7 @@
 # Wave14 — postęp
 
 Aktualny status: **niezależna dostawa odebrana przez użytkownika; cały wave14 nadal otwarty**.
-Integracja z finalnym wave13 i walidacja wspólnego wyniku pozostają zadaniem koordynatora.
+Integracja z finalnym wave13 i walidacja wspólnego wyniku zakończone lokalnie; końcowy odbiór użytkownika pozostaje oddzielny.
 Końcowy checkpoint sesji znajduje się na końcu dokumentu.
 
 ## 2026-09-16 — plan zapisany
@@ -142,3 +142,13 @@ F-W14-local-delivery.zip nadal opisuje e76a066, SHA-256
 `6e1ba156931230dced4e84eb73a0f12d5ce95a621a2dee8e77e061e0ef015abb`.
 Bez merge, push, wdrożenia, dodatkowych pilotów i zmian worktree/runtime wave13.
 Sesja kończy się po przekazaniu SHA; dalsza integracja nie jest wykonywana tutaj.
+
+
+## 2026-09-16 — wspólna integracja przez koordynatora
+
+Po rzeczywistych odbiorach połączono wave13 e5ec270 i wave14 50458be, zachowując
+historię. Wspólny kod afe1bd8, pin runtime187fd3b. Build,536 JS,46 Python,140 pilot
+tests, pakiety i dokumentacja PASS. Niezależne review integracji PASS po jednej
+poprawce FIFO; wynik i granice w [raporcie integracji](wave13-wave14-integration.md).
+Bez modeli, push, wdrożenia lub zmiany aktywnych runtime. Wave13 zachowuje odbiór;
+wave14 ma ukończoną integrację, gotową do finalnego odbioru użytkownika.

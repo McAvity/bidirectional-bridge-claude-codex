@@ -106,3 +106,13 @@ Wszystkie dowody, ledgery i paczki zachowane bez zmian. Poprzedni następny krok
 Ten checkpoint zmienia wyłącznie dokumentację i status bridge; nie wykonywano nowych
 review ani testów. Merge, push, wdrożenie i integracja niewykonane. Następny właściciel:
 koordynator integracji. Sesja kończy się po lokalnym commicie dokumentacji przekazania.
+
+
+## 2026-09-16 — wspólna integracja przez koordynatora
+
+Po rzeczywistych odbiorach połączono wave13 e5ec270 i wave14 50458be, zachowując
+historię. Wspólny kod afe1bd8, pin runtime187fd3b. Build,536 JS,46 Python,140 pilot
+tests, pakiety i dokumentacja PASS. Niezależne review integracji PASS po jednej
+poprawce FIFO; wynik i granice w [raporcie integracji](wave13-wave14-integration.md).
+Bez modeli, push, wdrożenia lub zmiany aktywnych runtime. Wave13 zachowuje odbiór;
+wave14 ma ukończoną integrację, gotową do finalnego odbioru użytkownika.

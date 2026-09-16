@@ -2,9 +2,13 @@
 
 ## Current: wave13/wave14 integration
 
-Both accepted local deliveries are combined on waves13-14-integration.
-[Integration report](plans/wave13-wave14-integration.md) records exact inputs,
-remaining validation and deployment boundaries. Older entries below are historical.
+Wave13 e5ec270 and wave14 50458be are integrated locally for feature-workflow.
+Final code afe1bd8: build,536 JS,46 Python,140 pilot-tooling, packages and docs PASS.
+Independent integration review PASS after FIFO correction187fd3b; distribution pins
+that corrected runtime. [Integration report](plans/wave13-wave14-integration.md) records
+inputs, evidence and deployment boundaries. No push or active runtime switch.
+Wave14 is ready for final user acceptance; its original bridge feature was not
+accepted by a different manager. Older entries below are historical.
 Active runtime selections remain unchanged; wave15 is still DRAFT.
 
 ## Wave13 and wave14 — coordinator review
