@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W13-diagnostics",
+  "phase": "execution",
+  "brief": "docs/features/F-W13-diagnostics/brief.md",
+  "design": "docs/features/F-W13-diagnostics/design.md",
+  "tasks": [
+    "docs/tasks/wave13-01.md",
+    "docs/tasks/wave13-02.md",
+    "docs/tasks/wave13-03.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave13.md",
+    "docs/plans/wave13-progress.md",
+    "docs/setup-layout.md",
+    "docs/manager-identity.md",
+    "docs/recovery.md"
+  ],
+  "latest_review": null,
+  "latest_decision": "docs/features/F-W13-diagnostics/decisions/01.md",
+  "next_action": "Claude round 1: W13-01; nast\u0119pnie niezale\u017cne review Codex.",
+  "bridge": {
+    "feature_id": "F-W13-diagnostics",
+    "parent_task_id": "task_0zpsfj1g59"
+  }
+}
