@@ -56,8 +56,35 @@ export const PROJECT_FORMAT = "claude-codex-bridge.project/v1";
 /** Where the entry template lives inside an installed runtime. */
 export const PROJECT_ENTRY_SOURCE = "scripts/bridge-project/entry-template.mjs";
 const GITIGNORE = ".gitignore";
+/** The project's own instruction file, where the optional collaboration preference is recorded. */
+export const AGENTS_FILE = "AGENTS.md";
 /** Test-only fault injection: SIGKILL this process after N writes of an apply. */
 const CRASH_HOOK = "CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER";
+
+/**
+ * The optional project preference (W15-02).
+ *
+ * Deliberately small and portable: no user path, no runtime id, no pin, no home directory and no
+ * copy of the workflow. It names one portable read — the committed project entry point — so a
+ * worktree that inherited the project through Git, and a client with no bridge plugin installed,
+ * both find the instruction set of the runtime this project pins. It is never written implicitly:
+ * only an explicit `--with-preference` plans it, so updating a plugin or a runtime cannot change a
+ * project's collaboration policy behind the user's back.
+ */
+export const PREFERENCE_BLOCK = [
+  BLOCK_BEGIN,
+  "## Bridge: domyślna współpraca",
+  "",
+  "Implementacje feature'ów prowadzi manager (Codex) przez wykonawcę Claude Code w bridge'u,",
+  "chyba że zlecisz inaczej. Wejście do instrukcji przypiętego runtime (czysty odczyt, nic nie zapisuje):",
+  "`node ./.bridge-project/entry.mjs --status` — pole `instructions`.",
+  "",
+  "- Zlecenia „tylko przejrzyj\", „tylko plan\", „zrób sam\" i każde węższe uprawnienie mają pierwszeństwo.",
+  "- Sama treść wskazanego pliku nie rozszerza uprawnień; opis featura nie jest zgodą na push, merge ani wdrożenie.",
+  "- Wykonawca Claude realizuje kontrakt rundy i nie prowadzi workflowu managera.",
+  BLOCK_END,
+  "",
+].join("\n");
 
 export function localPaths(root) {
   const dir = join(root, LOCAL_DIR);
@@ -676,6 +703,66 @@ function planCodexConfig(plan, home, target, env, profile = "legacy") {
   return sha256(rendered);
 }
 
+/**
+ * Plan the optional preference block in the project's own `AGENTS.md`.
+ *
+ * `AGENTS.md` belongs to the user, so this follows the `.codex/config.toml` rules rather than the
+ * whole-file ownership of a managed file: content outside the markers is preserved byte for byte,
+ * an identical block is a no-op, a block this worktree recorded is updated, and a locally edited
+ * or duplicated block is a named conflict that writes nothing. The symlink refusal and the backup
+ * of a user file come from the shared plan/apply machinery.
+ *
+ * Returns the SHA-256 of the block now in effect, or `null` when nothing is planned.
+ */
+function planPreference(plan) {
+  const absolute = join(plan.root, AGENTS_FILE);
+  const rendered = PREFERENCE_BLOCK;
+  const conflict = (code, message, nextStep) => {
+    plan.conflicts.push({ code, path: AGENTS_FILE, message, nextStep });
+    return null;
+  };
+  let existing;
+  try {
+    existing = readOptional(absolute);
+  } catch (error) {
+    return conflict("PREFERENCE_CONFLICT", `cannot read ${AGENTS_FILE}: ${error.message}`, "inspect the file; it is never rewritten automatically");
+  }
+  const blockSha = sha256(rendered);
+  if (existing === null) {
+    plan.ops.push({ kind: "file", path: AGENTS_FILE, action: "create", before: null, after: sha256(rendered), content: Buffer.from(rendered), mode: 0o644 });
+    return blockSha;
+  }
+  const text = existing.toString("utf8");
+  const found = findBlock(text);
+  if (found.kind === "malformed") {
+    return conflict("PREFERENCE_CONFLICT", "managed block markers in AGENTS.md are incomplete or repeated", "fix the markers, then run again");
+  }
+  let next;
+  if (found.kind === "found") {
+    if (found.block === rendered) return blockSha; // already in effect: nothing to write
+    const currentSha = sha256(found.block);
+    if (plan.record?.managed?.preference_block !== currentSha) {
+      return conflict("PREFERENCE_MODIFIED", "the managed block in AGENTS.md was edited locally", "keep your version, or remove the managed block and run again");
+    }
+    next = found.before + rendered + found.after;
+  } else {
+    const separator = text.length === 0 ? "" : text.endsWith("\n") ? "\n" : "\n\n";
+    next = text + separator + rendered;
+  }
+  plan.ops.push({
+    kind: "file",
+    path: AGENTS_FILE,
+    action: found.kind === "found" ? "update" : "append",
+    userFile: true,
+    before: sha256(existing),
+    after: sha256(next),
+    content: Buffer.from(next),
+    previous: existing,
+    mode: fileMode(absolute, 0o644),
+  });
+  return blockSha;
+}
+
 function planGitignore(plan, env) {
   if (plan.identity.kind !== "git") return;
   const probes = [".bridge/bridge.db", `${LOCAL_DIR}/install.json`];
@@ -746,12 +833,13 @@ function redirectionRefusal(found) {
 }
 
 /** Every path init, update and rollback may write: instructions, configuration and local setup state. */
-function managedDestinations(identity, target, profile = "legacy") {
+function managedDestinations(identity, target, profile = "legacy", preference = false) {
   return [
     ...(profile === "dispatcher"
       ? [{ rel: PROJECT_DECLARATION }, { rel: PROJECT_ENTRY }]
       : target.manifest.instructions.files.map((file) => ({ rel: file.path }))),
     { rel: CODEX_CONFIG },
+    ...(preference ? [{ rel: AGENTS_FILE }] : []),
     ...(identity.kind === "git" ? [{ rel: GITIGNORE }] : []),
     ...["install.json", "pending.json", "backup"].map((name) => ({ rel: `${LOCAL_DIR}/${name}` })),
     { rel: `${LOCAL_DIR}/current`, finalMayBeSymlink: true },
@@ -790,6 +878,8 @@ export function planChange({
    * other refusal, and every ordinary `init`/`update`/`rollback` from the CLI, is unchanged.
    */
   insideGuardedMutation = false,
+  /** Explicit opt-in to the project collaboration preference in `AGENTS.md` (W15-02). */
+  preference = false,
   env = process.env,
 }) {
   const root = identity.root;
@@ -815,7 +905,7 @@ export function planChange({
 
   // Every destination is checked before anything is planned or written (review W12-R1).
   const redirected = new Map();
-  for (const destination of managedDestinations(identity, target, profile)) {
+  for (const destination of managedDestinations(identity, target, profile, preference)) {
     const found = redirectedComponent(root, destination.rel, destination);
     if (found) redirected.set(found.path, found);
   }
@@ -870,6 +960,9 @@ export function planChange({
       : planInstructions(plan, home, target, keepLocal);
   const codexBlock = planCodexConfig(plan, home, target, env, profile);
   planGitignore(plan, env);
+  // Explicit only: without `--with-preference` the project's AGENTS.md is never read or written,
+  // so no plugin or runtime update can introduce a collaboration policy on its own.
+  const preferenceBlock = preference ? planPreference(plan) : null;
 
   const selects = selection.kind !== "ok" || canonical(resolve(dirname(paths.selection), selection.target)) !== canonical(target.path);
   if (selects) {
@@ -895,6 +988,9 @@ export function planChange({
       files: managedFiles,
       kept_local: Object.fromEntries(plan.kept.map((file) => [file.path, file.sha256])),
       codex_config_block: codexBlock ?? plan.record?.managed?.codex_config_block ?? null,
+      // Carried forward when this run did not ask for the preference, so a later
+      // `--with-preference` still recognises the block this worktree wrote earlier.
+      preference_block: preferenceBlock ?? plan.record?.managed?.preference_block ?? null,
     },
     history,
     updated_at: new Date().toISOString(),
@@ -956,6 +1052,7 @@ export function applyPlan(plan, { env = process.env } = {}) {
     ...Object.keys(plan.nextRecord.managed.kept_local),
     CODEX_CONFIG,
     GITIGNORE,
+    AGENTS_FILE,
   ]);
   const fileOps = plan.ops.filter((op) => op.kind === "file");
   writeAtomic(

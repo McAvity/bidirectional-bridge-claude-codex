@@ -16,11 +16,15 @@ const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Co
   install   [--source <bridge clone>] [--ref <commit>]
             build the runtime of one commit into <home>/runtimes/<id>, beside older ones
   runtimes  list installed runtimes
-  init      --workspace <worktree> [--runtime <id>] [--keep-local] [--yes]
-  update    --workspace <worktree> --runtime <id> [--keep-local] [--yes]
+  init      --workspace <worktree> [--runtime <id>] [--keep-local] [--with-preference] [--yes]
+  update    --workspace <worktree> --runtime <id> [--keep-local] [--with-preference] [--yes]
   rollback  --workspace <worktree> [--to <id>] [--keep-local] [--yes]
             plan (and with --yes apply) the MCP configuration, instructions and runtime
-            selection of one worktree; without --yes nothing is written
+            selection of one worktree; without --yes nothing is written.
+            --with-preference also records the short collaboration preference in the project's
+            AGENTS.md, between the managed markers. It is never written without that flag, the
+            rest of the file is preserved, and a locally edited block is a conflict, not a
+            rewrite. The plan prints the exact diff first.
   doctor    --workspace <worktree> [--codex-profile <name>] [--no-handshake]
             check tools, setup, configuration, state and a real MCP handshake; no models
   diagnose  --workspace <worktree> [--feature <id> | --task <id> [--attempt <n>] | --since <30m|6h|ISO>]
@@ -42,6 +46,7 @@ const VALUE_FLAGS = new Set([
 ]);
 const BOOLEAN_FLAGS = new Set([
   "--yes", "--json", "--keep-local", "--no-handshake", "--help", "--with-evidence", "--with-database",
+  "--with-preference",
 ]);
 const COMMANDS = new Set(["install", "runtimes", "init", "update", "rollback", "doctor", "diagnose"]);
 
@@ -168,7 +173,14 @@ async function workspaceCommand(command, options, home) {
   const resolver = [selection.kind === "ok" ? selection.runtime : null, ownRuntime(), target]
     .find((runtime) => runtime && existsSync(join(runtime.path, "shared/control-plane/dist/index.js"))) ?? target;
   const identity = await resolveIdentity(resolver.path, workspace);
-  const plan = planChange({ action: command, home, identity, target, keepLocal: Boolean(options["keep-local"]) });
+  const plan = planChange({
+    action: command,
+    home,
+    identity,
+    target,
+    keepLocal: Boolean(options["keep-local"]),
+    preference: Boolean(options["with-preference"]) && command !== "rollback",
+  });
   let applied = false;
   if (options.yes && plan.ok && plan.changed) applied = applyPlan(plan).applied;
   const json = planJson(plan, applied);

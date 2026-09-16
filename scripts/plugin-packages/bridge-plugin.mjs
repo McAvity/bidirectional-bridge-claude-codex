@@ -6,6 +6,9 @@
 //   bridge-plugin.mjs status                   pure read: workspace, pin, runtime, instructions
 //   bridge-plugin.mjs setup [--yes]            acquire the pinned source, install the runtime,
 //                                              prepare this worktree; nothing is written without --yes
+//                        [--with-preference]   additionally record the project collaboration
+//                                              preference in AGENTS.md, explicitly and never
+//                                              as a side effect of an update
 //   bridge-plugin.mjs update --to <id> [--yes] move the declaration and the local selection together
 //   bridge-plugin.mjs rollback [--to <id>] [--yes]
 //
@@ -13,9 +16,11 @@
 // records, symlinked paths, an already-defined `mcp_servers.bridge`, active sessions and the
 // resumable journal are the wave12 ones. Nothing here re-implements them.
 
+import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SetupError, bridgeHome, canonical } from "../setup/common.mjs";
+import { unifiedDiff } from "../setup/diff.mjs";
 import { installRuntime, listRuntimes, loadRuntime } from "../setup/runtime.mjs";
 import { applyPlan, declarationContent, planChange, resolveIdentity, rollbackTarget } from "../setup/workspace.mjs";
 import { status } from "../bridge-project/locate.mjs";
@@ -26,7 +31,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const HELP = `bridge-plugin.mjs — enable and inspect the bridge in this worktree
 
   status                        report workspace, pin, selected runtime and instruction root
-  setup    [--yes]              install the pinned runtime if needed and prepare this worktree
+  setup    [--yes] [--with-preference]
+                                install the pinned runtime if needed and prepare this worktree
   update   --to <runtime id> [--yes]
   rollback [--to <runtime id>] [--yes]
 
@@ -36,6 +42,9 @@ Options:
   --commit <sha>                override the pinned commit (with --source)
   --keep-local                  keep locally modified managed files instead of refusing
   --offline                     never fetch; fail if no local checkout has the pinned commit
+  --with-preference             also record the short collaboration preference in the project's
+                                AGENTS.md (setup/update only). Never written without this flag;
+                                the plan shows the exact diff and the rest of the file is kept.
 `;
 
 const VALUE_FLAGS = new Set(["--to", "--source", "--commit", "--home"]);
@@ -134,6 +143,8 @@ async function writeWorktree({ action, home, workspace, runtime, options }) {
     target: runtime,
     profile: "dispatcher",
     keepLocal: Boolean(options["keep-local"]),
+    // Rolling a pin back is not a moment to change a collaboration policy.
+    preference: Boolean(options["with-preference"]) && action !== "rollback",
   });
   let applied = false;
   if (options.yes && plan.ok && plan.changed) applied = applyPlan(plan).applied;
@@ -144,7 +155,16 @@ async function writeWorktree({ action, home, workspace, runtime, options }) {
     action: plan.action,
     workspace: plan.root,
     runtime: { id: runtime.id, commit: runtime.manifest.source.commit, path: runtime.path },
-    changes: plan.ops.map((op) => ({ kind: op.kind, path: op.path, action: op.action ?? "select" })),
+    // A change to a file the user also owns is shown as a concrete diff, so the preference is
+    // reviewed before it is applied rather than described in prose.
+    changes: plan.ops.map((op) => ({
+      kind: op.kind,
+      path: op.path,
+      action: op.action ?? "select",
+      ...(op.previous
+        ? { diff: unifiedDiff(op.previous.toString("utf8"), (op.content ?? readFileSync(op.source)).toString("utf8"), op.path) }
+        : {}),
+    })),
     kept_local: plan.kept,
     conflicts: plan.conflicts,
     refusals: plan.refusals,
@@ -260,6 +280,7 @@ export async function main(argv, { cwd = process.cwd(), env = process.env } = {}
     `${r.applied ? "prepared" : r.ok ? "plan" : "refused"}: ${r.workspace}`,
     `runtime:  ${r.runtime.id} (${r.runtime_installed_now ? "installed now" : "already installed"})`,
     ...(r.changes.length === 0 ? ["changes:  none"] : ["changes:", ...r.changes.map((c) => `  ${String(c.action).padEnd(6)} ${c.path}`)]),
+    ...r.changes.filter((c) => c.diff).map((c) => c.diff.trimEnd()),
     ...r.kept_local.map((k) => `kept local: ${k.path}`),
     ...r.conflicts.map((c) => `conflict: ${c.code} ${c.path}: ${c.message}`),
     ...r.refusals.map((c) => `refused:  ${c.code}: ${c.message}${c.nextStep ? `\n  next: ${c.nextStep}` : ""}`),

@@ -6,7 +6,7 @@
   "canonical_sources": [
     ".codex/skills/using-bridge"
   ],
-  "source_digest": "0bd41db3813cd50080f9348b8a36c941dd4fcda0b8e0b208d57675deafd119b3",
+  "source_digest": "81767b56cf24bec0da1d4e0ec353f0fa74d8f556d00527c812598167b7f69ef4",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -14,15 +14,15 @@
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
-      "sha256": "ca781779ce6b9608a0b67538025dcf3ceff3ff0f233939602229b121b5e3e84a"
+      "sha256": "936755cb737c5c43bef97d4ba1b00ec2dcb1bfc3bf321e0e54b1a29521b93c3c"
     },
     {
       "path": "scripts/bridge-project/entry-template.mjs",
-      "sha256": "8c073fc525afa82c130cb80cc361a4657878a263a5115cfef705bdea4beddb44"
+      "sha256": "e7d139b7484ab3d783a6eaa8aeaf9c41ccfed6649e912adc4377df63cb6d5d97"
     },
     {
       "path": "scripts/bridge-project/locate.mjs",
-      "sha256": "7b19a6a646d51958806b834eb6cdce92a35149cf7483c4d23a65cf94b9ab1232"
+      "sha256": "65e542afa48b0dd1ccdeab3373d24f372560f9dee5950c885e6f9d6c759418c2"
     },
     {
       "path": "scripts/bridge-project/pending-selection.mjs",
@@ -30,7 +30,7 @@
     },
     {
       "path": "scripts/bridge.mjs",
-      "sha256": "b2f73bb6b847dc1e6289b59bb1bfef0ed5073a52c9d7a0593138ca72f0a2bc43"
+      "sha256": "8565682c81d1b2323ee63232531731d982939af9537ba8d317d062693fe7c5af"
     },
     {
       "path": "scripts/diagnostics/collect.mjs",
@@ -54,7 +54,7 @@
     },
     {
       "path": "scripts/plugin-packages/bridge-plugin.mjs",
-      "sha256": "c0bc5a034851c7a1cfdbc763207e3ab004d93e9d4d0ff1c532c0e6cba7af660e"
+      "sha256": "cf9c455eadf8afc108af00d647053d050b84c1cdb7834cbc16846d9470efc255"
     },
     {
       "path": "scripts/plugin-packages/release.json",
@@ -86,11 +86,11 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "45bf73289d2fbefb7c458744b9c7f1f9066caf1b80ca768cc6a85ede21085fa9"
+      "sha256": "8b9c20106c52e2fe4d9ee959e4ec506b364c8c891e9532e7b802b8753f248720"
     },
     {
       "path": "skills/bridge/SKILL.md",
-      "sha256": "a047c30e70ce259710346b846806c1430940960d00ceea5737af571190dc5836"
+      "sha256": "0240243390b8724f0690c55ce14a6ce9100b02a51bf6a0b848c1ff0856b97294"
     }
   ]
 }

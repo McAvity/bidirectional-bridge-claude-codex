@@ -24,23 +24,37 @@ function bridgeHome() {
   return join(data, "claude-codex-bridge");
 }
 
-function fail(message, nextStep) {
+// `--status` / `--instructions`: report this project's pin and the instruction paths of the
+// runtime it selects, then exit. Purely a read, and the answer stays useful when the runtime is
+// missing, so a manager is never left guessing which workflow version a project expects.
+const argv = process.argv.slice(2);
+const reading = argv.includes("--status") || argv.includes("--instructions");
+
+function fail(code, message, nextStep) {
+  if (reading) {
+    const report = { format: "claude-codex-bridge.project-entry/v1", ok: false, state: code.toLowerCase(),
+      error: { code, message }, next_step: nextStep, instructions: null, reads_only: true };
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    process.exit(1);
+  }
   process.stderr.write(`claude-codex-bridge: ${message}\n  next: ${nextStep}\n`);
   process.exit(1);
 }
+
+const SETUP_STEP = "ask the bridge setup skill to prepare this project again";
 
 let declaration;
 try {
   declaration = JSON.parse(readFileSync(join(here, "bridge.json"), "utf8"));
 } catch (error) {
-  fail(`cannot read .bridge-project/bridge.json (${error.message})`, "ask the bridge setup skill to prepare this project again");
+  fail("DECLARATION_UNREADABLE", `cannot read .bridge-project/bridge.json (${error.message})`, SETUP_STEP);
 }
 const runtimeId = declaration?.pinned?.runtime_id;
 if (declaration?.format !== "claude-codex-bridge.project/v1" || typeof runtimeId !== "string") {
-  fail("the project declaration is not a recognised bridge declaration", "ask the bridge setup skill to prepare this project again");
+  fail("DECLARATION_INVALID", "the project declaration is not a recognised bridge declaration", SETUP_STEP);
 }
-if (declaration.enabled === false) {
-  fail("the bridge is disabled for this project", "set enabled to true in .bridge-project/bridge.json, or ask the setup skill to enable it");
+if (declaration.enabled === false && !reading) {
+  fail("PROJECT_DISABLED", "the bridge is disabled for this project", "set enabled to true in .bridge-project/bridge.json, or ask the setup skill to enable it");
 }
 
 const dispatcher = join(bridgeHome(), "runtimes", runtimeId, "scripts", "bridge-project", "dispatch.mjs");
@@ -49,8 +63,9 @@ try {
   ({ launch } = await import(pathToFileURL(dispatcher).href));
 } catch (error) {
   fail(
+    "RUNTIME_NOT_INSTALLED",
     `the pinned runtime ${runtimeId} is not installed here (${error.code ?? error.message})`,
     "ask the bridge setup skill to set this project up; it installs exactly this pinned runtime",
   );
 }
-await launch({ cwd: process.cwd(), argv: process.argv.slice(2), declaration });
+await launch({ cwd: process.cwd(), argv, declaration });

@@ -8,7 +8,7 @@
     ".claude/skills/using-bridge",
     "docs/features/README.md"
   ],
-  "source_digest": "0bd41db3813cd50080f9348b8a36c941dd4fcda0b8e0b208d57675deafd119b3",
+  "source_digest": "81767b56cf24bec0da1d4e0ec353f0fa74d8f556d00527c812598167b7f69ef4",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -72,7 +72,7 @@
     },
     {
       "path": "skills/using-bridge/SKILL.md",
-      "sha256": "4aece196f17a2b3442dd8c7079ff91b734e14c0d937200008b2207d67290f0a4"
+      "sha256": "37e6f3056d2518cfa697a645cc9dd77be8c813ab4a915ee770689f7f4c29acaf"
     },
     {
       "path": "skills/using-bridge/agents/openai.yaml",
@@ -96,7 +96,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "e0a71675481ed0e948b15eeadf21f646052717158a397c6bea53e89f84ca9ab5"
+      "sha256": "a88dcf658cb51c873cc7392a6621bff12bf66e86386cfe9195c5bb698f12f98b"
     }
   ]
 }

@@ -60,6 +60,19 @@ workflow than the runtime it is driving, and the delegated executor is given
 A plugin cache refresh cannot disturb any of this. Codex deletes the previous version's cache
 directory on update; the pinned runtime is not in a cache.
 
+A project that already carries the committed entry point can report the same paths without the
+plugin:
+
+```sh
+node ./.bridge-project/entry.mjs --status      # or --instructions
+```
+
+That is a pure read: it resolves the project's pin itself, prints the `instructions` paths of the
+pinned runtime, and writes nothing. It needs no `.bridge-runtime/current`, so it answers in a
+worktree just created from the project, and a missing runtime, an unrecognised declaration or a
+diverged pin come back as a code and a next step rather than a repair. It installs nothing; the
+plugin's `setup` remains the only way to install or prepare anything.
+
 ## Enabling a project
 
 Open Codex in the project and ask to use the bridge. The entry skill runs:
@@ -77,7 +90,8 @@ is typed — then writes:
 
 - `.bridge-project/bridge.json` — the portable declaration: enabled, and the pinned runtime id and
   commit;
-- `.bridge-project/entry.mjs` — a 54-line entry point that loads the pinned runtime;
+- `.bridge-project/entry.mjs` — a small entry point that loads the pinned runtime, and answers
+  `--status` as a pure read;
 - the managed `[mcp_servers.bridge]` block in `.codex/config.toml`;
 - the managed block in `.gitignore`;
 - this worktree's own `.bridge-runtime/install.json` and `current`, which are **not** committed.
@@ -88,6 +102,21 @@ Every write goes through the same plan the setup CLI uses, so a locally modified
 `mcp_servers.bridge` defined elsewhere, a copied setup record, a symlinked managed path or an
 active session are refused with a named code and nothing is written. `--keep-local` keeps your
 edit instead of refusing.
+
+### The optional project preference
+
+`setup --with-preference` additionally records a short collaboration preference in the project's
+own `AGENTS.md`, between the bridge's managed markers: feature implementations run through the
+bridge unless the user asks otherwise, narrower instructions win, and a document's own text grants
+no authority. It names the portable read above and carries no user path, runtime id or pin.
+
+It is written only with that flag. Plain `setup`, `update` and `rollback` never read or write
+`AGENTS.md`, so delivering a new plugin version or moving a pin cannot introduce or change a
+project's policy. The plan shows the exact diff first; content outside the markers is preserved, a
+second run changes nothing, a block edited by hand is refused as `PREFERENCE_MODIFIED`, duplicated
+markers as `PREFERENCE_CONFLICT`, and a symlinked `AGENTS.md` like any other managed path. A
+project without the preference is never treated as consent to delegate: `status` reports
+`preference.declared: false`, and the entry skill may offer the step once.
 
 **Two host steps remain, and they are the host's, not the bridge's.** Codex reads a project
 `.codex/config.toml` only for a project you have trusted, and a client reads its MCP server list at

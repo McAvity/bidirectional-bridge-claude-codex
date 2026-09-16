@@ -8,9 +8,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { LOCAL_DIR, canonical, readJson, run } from "../setup/common.mjs";
+import { LOCAL_DIR, canonical, readJson, readOptional, run } from "../setup/common.mjs";
 import { loadRuntime, verifyRuntime } from "../setup/runtime.mjs";
-import { PROJECT_DECLARATION, PROJECT_ENTRY, PROJECT_FORMAT, readRecord, readSelection } from "../setup/workspace.mjs";
+import { AGENTS_FILE, PROJECT_DECLARATION, PROJECT_ENTRY, PROJECT_FORMAT, findBlock, readRecord, readSelection } from "../setup/workspace.mjs";
 
 export const HOME_ENV = "CLAUDE_CODEX_BRIDGE_HOME";
 
@@ -115,20 +115,43 @@ export function status(cwd = process.cwd(), env = process.env) {
       runtime_id: record.kind === "valid" ? record.value.runtime.id : null,
       current: selection.kind,
     },
-    instructions:
-      runtimeState === "ok"
-        ? {
-            root: runtime.path,
-            workflow_skills: join(runtime.path, ".agents/skills"),
-            codex_role_skill: join(runtime.path, ".codex/skills/using-bridge/SKILL.md"),
-            manager_entry: join(runtime.path, ".codex/skills/using-bridge/SKILL.md"),
-            exchange_helper: join(runtime.path, ".agents/skills/feature-exchange/scripts/feature_exchange.py"),
-            claude_executor_package: join(runtime.path, "plugins/bridge-claude"),
-            set_sha256: runtime.manifest.instructions?.set_sha256 ?? null,
-          }
-        : null,
+    instructions: runtimeState === "ok" ? instructionPaths(runtime) : null,
+    // Whether this project states a default collaboration preference. A project without one is
+    // never treated as consent to delegate: at most it earns a single proposal to record one.
+    preference: { declared: hasPreference(workspace.root), path: AGENTS_FILE },
     reads_only: true,
   };
+}
+
+/**
+ * Absolute paths of the instruction set inside one installed runtime.
+ *
+ * The single place that maps a runtime to the files a manager must read, so the plugin's `status`
+ * and the project entry point's own read-only mode can never disagree about which version of the
+ * workflow belongs to a pin. It derives everything from the runtime directory: it never consults
+ * `.bridge-runtime/current`, which a worktree inherited through Git does not have.
+ */
+export function instructionPaths(runtime) {
+  return {
+    root: runtime.path,
+    workflow_skills: join(runtime.path, ".agents/skills"),
+    codex_role_skill: join(runtime.path, ".codex/skills/using-bridge/SKILL.md"),
+    manager_entry: join(runtime.path, ".codex/skills/using-bridge/SKILL.md"),
+    exchange_helper: join(runtime.path, ".agents/skills/feature-exchange/scripts/feature_exchange.py"),
+    claude_executor_package: join(runtime.path, "plugins/bridge-claude"),
+    set_sha256: runtime.manifest?.instructions?.set_sha256 ?? null,
+  };
+}
+
+/** True when the project's AGENTS.md carries the bridge's managed preference block. A pure read. */
+function hasPreference(root) {
+  let existing;
+  try {
+    existing = readOptional(join(root, AGENTS_FILE));
+  } catch {
+    return false;
+  }
+  return existing !== null && findBlock(existing.toString("utf8")).kind === "found";
 }
 
 export { readFileSync };

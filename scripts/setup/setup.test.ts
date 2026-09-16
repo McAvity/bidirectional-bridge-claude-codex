@@ -487,6 +487,100 @@ describe("bridge setup CLI", () => {
     expect(check(bridgeJson(["doctor", "--workspace", copy, "--no-handshake"], {}, join(runtimeA.path, "scripts", "bridge.mjs")).json, "setup").code).toBe("SETUP_RECORD_FOREIGN");
   });
 
+  // W15-02: the project collaboration preference is an explicit, optional step of the existing
+  // plan/apply machinery. It is never a side effect of enabling, updating or rolling back.
+  describe("the optional project preference", () => {
+    const AGENTS = "AGENTS.md";
+    const marker = "Bridge: domyślna współpraca";
+    const readAgents = (project: string) => readFileSync(join(project, AGENTS), "utf8");
+
+    it("is never written by an ordinary init, update or rollback", () => {
+      const project = makeProject("no preference project");
+      const original = readAgents(project);
+      init(project);
+      expect(readAgents(project)).toBe(original);
+      expect(bridgeJson(["update", "--workspace", project, "--runtime", runtimeB.id, "--yes"]).json.applied).toBe(true);
+      expect(readAgents(project)).toBe(original);
+      const rolled = bridgeJson(["rollback", "--workspace", project, "--yes", "--with-preference"]);
+      expect(rolled.status, rolled.stdout).toBe(0);
+      // Even asked for explicitly, a rollback is not a moment to change a collaboration policy.
+      expect(readAgents(project)).toBe(original);
+    });
+
+    it("shows the exact diff before writing, preserves the user's file and is idempotent", () => {
+      const project = makeProject("preference project", { "AGENTS.md": "# Project rules\n\nKeep this line.\n" });
+      const original = readAgents(project);
+      init(project);
+
+      const planned = bridgeJson(["init", "--workspace", project, "--runtime", runtimeA.id, "--with-preference"]);
+      expect(planned.status, planned.stdout).toBe(0);
+      expect(planned.json.applied).toBe(false);
+      const change = planned.json.changes.find((entry: { path: string }) => entry.path === AGENTS);
+      expect(change, JSON.stringify(planned.json.changes)).toBeTruthy();
+      expect(change.action).toBe("append");
+      expect(change.diff).toContain(`+${marker}`);
+      expect(readAgents(project)).toBe(original); // a plan writes nothing
+
+      const applied = bridgeJson(["init", "--workspace", project, "--runtime", runtimeA.id, "--with-preference", "--yes"]);
+      expect(applied.status, applied.stdout).toBe(0);
+      const written = readAgents(project);
+      expect(written.startsWith(original)).toBe(true); // the user's own content, byte for byte
+      expect(written).toContain(marker);
+      expect(written).toContain("entry.mjs --status");
+      // No machine path, no runtime id and no pin end up in a committed project file.
+      expect(written).not.toContain(home);
+      expect(written).not.toContain(runtimeA.id);
+      expect(written).not.toContain(runtimeA.commit);
+      const record = JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8"));
+      expect(record.managed.preference_block).toMatch(/^[0-9a-f]{64}$/u);
+
+      // Idempotent: asking again changes nothing at all.
+      const again = bridgeJson(["init", "--workspace", project, "--runtime", runtimeA.id, "--with-preference", "--yes"]);
+      expect(again.status).toBe(0);
+      expect(again.json.changes.some((entry: { path: string }) => entry.path === AGENTS)).toBe(false);
+      expect(readAgents(project)).toBe(written);
+
+      // An update that does not ask for it keeps the block and its recorded identity.
+      expect(bridgeJson(["update", "--workspace", project, "--runtime", runtimeB.id, "--yes"]).json.applied).toBe(true);
+      expect(readAgents(project)).toBe(written);
+      const afterUpdate = JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8"));
+      expect(afterUpdate.managed.preference_block).toBe(record.managed.preference_block);
+    });
+
+    it("refuses a locally edited or duplicated block, and a symlinked AGENTS.md, writing nothing", () => {
+      const edited = makeProject("edited preference project");
+      init(edited);
+      expect(bridgeJson(["init", "--workspace", edited, "--runtime", runtimeA.id, "--with-preference", "--yes"]).status).toBe(0);
+      const mine = `${readAgents(edited)}\nmy own extra line inside nothing\n`.replace(marker, "my own policy");
+      writeFileSync(join(edited, AGENTS), mine);
+      const refused = bridgeJson(["init", "--workspace", edited, "--runtime", runtimeA.id, "--with-preference", "--yes"]);
+      expect(refused.status).toBe(1);
+      expect(refused.json.conflicts.map((entry: { code: string }) => entry.code)).toContain("PREFERENCE_MODIFIED");
+      expect(readAgents(edited)).toBe(mine);
+
+      const duplicated = makeProject("duplicated preference project", {
+        "AGENTS.md": "# rules\n\n# >>> claude-codex-bridge managed block >>>\n# <<< claude-codex-bridge managed block <<<\n# >>> claude-codex-bridge managed block >>>\n# <<< claude-codex-bridge managed block <<<\n",
+      });
+      init(duplicated);
+      const before = readAgents(duplicated);
+      const malformed = bridgeJson(["init", "--workspace", duplicated, "--runtime", runtimeA.id, "--with-preference", "--yes"]);
+      expect(malformed.status).toBe(1);
+      expect(malformed.json.conflicts.map((entry: { code: string }) => entry.code)).toContain("PREFERENCE_CONFLICT");
+      expect(readAgents(duplicated)).toBe(before);
+
+      const external = join(tmp, "shared agents file");
+      writeFileSync(external, "someone else's instructions\n");
+      const linked = makeProject("symlinked agents project");
+      init(linked);
+      rmSync(join(linked, AGENTS));
+      symlinkSync(external, join(linked, AGENTS));
+      const symlinked = bridgeJson(["init", "--workspace", linked, "--runtime", runtimeA.id, "--with-preference", "--yes"]);
+      expect(symlinked.status).toBe(1);
+      expect(JSON.stringify(symlinked.json.refusals)).toMatch(/symlink/iu);
+      expect(readFileSync(external, "utf8")).toBe("someone else's instructions\n");
+    });
+  });
+
   it("refuses init, update and rollback through symlinks and leaves external directories unchanged", () => {
     // W12-R1: an ordinary directory symlink must not let init write into a shared directory.
     const shared = join(tmp, "shared agents");

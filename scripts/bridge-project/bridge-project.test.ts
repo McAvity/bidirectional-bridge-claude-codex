@@ -674,6 +674,120 @@ describe("an inherited worktree serves without any manual step (AC-03)", () => {
   }, 180_000);
 });
 
+/**
+ * W15-C1: the committed entry point answers a pure read about this project's pin.
+ *
+ * A worktree inherited through Git has no `.bridge-runtime/current` and the machine may have no
+ * bridge plugin at all, so this read is the only portable way to learn which instruction set the
+ * project's pin selects. It resolves the runtime from the pin, never from a local selection.
+ */
+describe("the project entry point reports without serving (W15-C1)", () => {
+  function entryStatus(cwd: string, extraEnv: NodeJS.ProcessEnv = {}, flag = "--status") {
+    const out = spawnSync(process.execPath, [join(cwd, PROJECT_ENTRY), flag], {
+      cwd,
+      encoding: "utf8",
+      env: childEnv({ ...env, ...extraEnv }),
+      timeout: 60_000,
+    });
+    let json: any = null;
+    try {
+      json = JSON.parse(out.stdout);
+    } catch {
+      json = null;
+    }
+    return { code: out.status, stdout: out.stdout, stderr: out.stderr, json };
+  }
+
+  function inherit(name: string): string {
+    setup();
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = real(join(root, name));
+    git(project, "worktree", "add", "-q", "-b", name.replace(/\s+/gu, "-"), external);
+    return external;
+  }
+
+  it("answers in a pristine inherited worktree, with no selection and no write", () => {
+    const external = inherit("a pristine reporting worktree");
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+    const before = listing(external);
+
+    const report = entryStatus(external);
+    expect(report.code, report.stdout + report.stderr).toBe(0);
+    expect(report.json.ok).toBe(true);
+    expect(report.json.state).toBe("inherited-pristine");
+    expect(report.json.reads_only).toBe(true);
+    // The instruction paths come from the pinned runtime, and they exist.
+    expect(report.json.instructions.root).toBe(runtimePath);
+    for (const key of ["workflow_skills", "codex_role_skill", "exchange_helper", "claude_executor_package"]) {
+      expect(existsSync(report.json.instructions[key]), key).toBe(true);
+    }
+    expect(report.json.preference).toEqual({ declared: false, path: "AGENTS.md" });
+    // A read is a read: no selection, no database, no state of any kind.
+    expect(listing(external)).toEqual(before);
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+    expect(existsSync(join(external, ".bridge"))).toBe(false);
+  }, 180_000);
+
+  it("reports a prepared worktree and a declared preference the same way", () => {
+    setup();
+    expect(entryStatus(project).json.state).toBe("ready");
+    writeFileSync(
+      join(project, "AGENTS.md"),
+      "# rules\n\n# >>> claude-codex-bridge managed block >>>\nimplementacje prowadzi manager\n# <<< claude-codex-bridge managed block <<<\n",
+    );
+    const declared = entryStatus(project, {}, "--instructions");
+    expect(declared.code).toBe(0);
+    expect(declared.json.preference.declared).toBe(true);
+    expect(declared.json.instructions.root).toBe(runtimePath);
+  }, 180_000);
+
+  it("reports the absence of the pinned runtime instead of serving or installing it", () => {
+    const external = inherit("a runtimeless worktree");
+    const emptyHome = join(root, "an empty bridge home");
+    const before = listing(external);
+    const report = entryStatus(external, { CLAUDE_CODEX_BRIDGE_HOME: emptyHome });
+    expect(report.code).toBe(1);
+    expect(report.json.ok).toBe(false);
+    expect(report.json.error.code).toBe("RUNTIME_NOT_INSTALLED");
+    expect(report.json.instructions).toBeNull();
+    expect(report.json.next_step).toMatch(/setup/iu);
+    // Reporting a missing runtime installs nothing, here or under the named home.
+    expect(existsSync(emptyHome)).toBe(false);
+    expect(listing(external)).toEqual(before);
+  }, 180_000);
+
+  it("reports a pin whose commit does not match, and a declaration it cannot recognise", () => {
+    setup();
+    const declaration = JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8"));
+    writeFileSync(
+      join(project, PROJECT_DECLARATION),
+      `${JSON.stringify({ ...declaration, pinned: { runtime_id: runtimeId, commit: "0".repeat(40) } }, null, 2)}\n`,
+    );
+    const mismatch = entryStatus(project);
+    expect(mismatch.code).toBe(1);
+    expect(mismatch.json.state).toBe("pin_commit_mismatch");
+    expect(mismatch.json.instructions).toBeNull();
+
+    writeFileSync(join(project, PROJECT_DECLARATION), `${JSON.stringify({ format: "something/else" }, null, 2)}\n`);
+    const unrecognised = entryStatus(project);
+    expect(unrecognised.code).toBe(1);
+    expect(unrecognised.json.error.code).toBe("DECLARATION_INVALID");
+    expect(unrecognised.json.instructions).toBeNull();
+  }, 180_000);
+
+  it("still reports for a disabled project, which refuses to serve", async () => {
+    setup();
+    const declaration = JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8"));
+    writeFileSync(join(project, PROJECT_DECLARATION), `${JSON.stringify({ ...declaration, enabled: false }, null, 2)}\n`);
+    const report = entryStatus(project);
+    expect(report.code).toBe(0);
+    expect(report.json.state).toBe("project-disabled");
+    expect(report.json.next_step).toMatch(/disabled/iu);
+    expect((await launchEntry(project, { frames: HANDSHAKE })).stderr).toContain("disabled");
+  }, 180_000);
+});
+
 describe("update and rollback while the worktree is in use", () => {
   it("refuses to move the pin while a bridge server is serving this worktree", async () => {
     setup();
