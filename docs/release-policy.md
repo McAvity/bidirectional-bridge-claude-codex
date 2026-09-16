@@ -31,7 +31,7 @@ project does not promise that a database created by one revision will be readabl
 
 ## Versioning
 
-- The package/checkpoint version is `0.2.0` and the workspace root is marked `private`; nothing here is
+- The package/checkpoint version is `0.3.0` and the workspace root is marked `private`; nothing here is
   published to a package registry.
 - While the major version is `0`, a minor bump may carry breaking changes. Treat every version
   change as potentially breaking and read the changelog.
@@ -45,7 +45,15 @@ Every user-visible change is recorded in [CHANGELOG.md](../CHANGELOG.md) under a
 Security. Breaking changes are called out explicitly rather than being implied by a version
 number, because a `0.x` number does not communicate impact on its own.
 
-## Release checklist
+## Fork checkpoint 0.3.0
+
+This fork checkpoint is an experimental GitHub prerelease. Wave15 model smoke is
+pending; technical validation is not full behavioural acceptance. The inherited
+certification manifest describes the upstream 0.2.0 checkpoint and is not a current
+fork certification. Its mismatch is recorded, not repaired by relabelling old evidence.
+Fork validation follows AGENTS.md plus package equivalence and documentation checks.
+
+## Upstream certification checklist (historical reference)
 
 A checkpoint is only prepared after these gates pass locally, with real exit codes:
 

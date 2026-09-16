@@ -9,7 +9,7 @@
       "name": "bridge-claude",
       "source": "./plugins/bridge-claude",
       "description": "Feature workflow and bridge role instructions for Claude Code.",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ]
 }

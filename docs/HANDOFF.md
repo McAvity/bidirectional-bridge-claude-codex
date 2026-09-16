@@ -1,5 +1,14 @@
 # Current handoff
 
+## Wave15 release 0.3.0 authorized; smoke pending
+
+User authorized integration of b64b858 plus review10eb3ed, version bump, publication
+and runtime activation before the bounded smoke from the plan. Behavioural acceptance
+is still pending; do not feature_accept. Existing runtime ff225e5 must remain untouched
+until normal client shutdown. New runtime is installed beside it. See
+[decision02](features/F-W15-natural-workflow/decisions/02.md) and
+[release progress](plans/wave15-progress.md). Older statuses below are historical.
+
 ## Wave15 — local delivery ready for acceptance
 
 All authorized tasks implemented and independently reviewed: technical PASS.

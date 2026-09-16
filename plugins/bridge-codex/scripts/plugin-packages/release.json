@@ -1,6 +1,6 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.2.0",
+  "package_version": "0.3.0",
   "pinned": {
     "commit": "ff225e550966806e2d39221eeaaa1428abc5307e",
     "describe": "Integrated wave13/wave14 runtime with dispatcher-aware doctor"

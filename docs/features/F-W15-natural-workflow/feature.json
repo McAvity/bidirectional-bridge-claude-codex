@@ -15,9 +15,9 @@
     "docs/plans/wave15.md",
     "docs/plans/wave15-progress.md"
   ],
-  "latest_review": "docs/features/F-W15-natural-workflow/reviews/02-implementation.md",
-  "latest_decision": "docs/features/F-W15-natural-workflow/decisions/01.md",
-  "next_action": "Technical PASS; final handoff ready. Await user acceptance (q-01); no new round, smoke, push, merge or deployment authorized.",
+  "latest_review": "docs/features/F-W15-natural-workflow/reviews/03-coordinator-delivery.md",
+  "latest_decision": "docs/features/F-W15-natural-workflow/decisions/02.md",
+  "next_action": "Integration/release 0.3.0 authorized; select runtime after client shutdown, then bounded model smoke. Behavioural acceptance pending; do not feature_accept.",
   "bridge": {
     "feature_id": "F-W15-natural-workflow",
     "parent_task_id": "task_7zykhr76zt"

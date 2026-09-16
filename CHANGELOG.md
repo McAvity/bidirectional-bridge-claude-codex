@@ -11,6 +11,29 @@ explicitly.
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-17 (experimental; wave15 smoke pending)
+
+### Added
+
+- Natural feature requests and safe continuation guidance in the selected runtime.
+- Optional, explicitly requested project collaboration preference in AGENTS.md.
+- Read-only project entry status/instruction discovery in inherited worktrees.
+
+### Fixed
+
+- Dispatcher-aware doctor and target-runtime compatibility checks for preferences.
+- Regression coverage for interruption, replay and role-specific instructions.
+
+### Validation boundary
+
+Technical checks and coordinator review cover the implementation. Wave15 real-model
+smoke is pending; this is not full behavioural acceptance or production certification.
+Updating a plugin does not move a project's runtime pin. Close the project clients
+before selecting the new runtime; historical runtime files remain untouched.
+
+### Changes carried from earlier fork checkpoints
+
+
 ### Added
 
 - Add `scripts/bridge.mjs` with `install`, `runtimes`, `init`, `update`, `rollback` and
