@@ -46,3 +46,12 @@ Zlecono cały plan z lokalnymi commitami, testami i poprawkami; historyczny stat
 Feature F-W15-natural-workflow; root task_7zykhr76zt, run_shm6vat1q4.
 Runtime nadzorujący przypięty oddzielnie do ff225e550966, pozostaje niezmieniony.
 Następny krok: W15-01 przez Claude, jedna sesja dla kolejnych rund.
+
+## Runda 1 i review kontraktów
+
+W15-01: 2345b30, task_10ehn2rfm9 DONE. Paczka r01 zweryfikowana przez koordynatora.
+Review 01-contracts: REWORK C1-C4 (pristine wejście, odtwarzalny checkpoint,
+zakaz zastępczego featura, ścisłe replay i poprawne scenariusze). Korekty w ramach
+istniejącej zgody, bez nowego protokołu. Następna runda: korekty projektu i W15-02.
+Walidacja bazowa: npm ci --ignore-scripts PASS, npm run build PASS, 140 pilot tests PASS.
+Node24.15.0 / Python3.12.3. Smoke niezlecony; aktywny runtime bez zmian.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W15-natural-workflow",
-  "phase": "execution",
+  "phase": "corrections",
   "brief": "docs/features/F-W15-natural-workflow/brief.md",
   "design": "docs/features/F-W15-natural-workflow/design.md",
   "tasks": [
@@ -15,9 +15,9 @@
     "docs/plans/wave15.md",
     "docs/plans/wave15-progress.md"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W15-natural-workflow/reviews/01-contracts.md",
   "latest_decision": "docs/features/F-W15-natural-workflow/decisions/01.md",
-  "next_action": "W15-01: Claude design, następnie lokalne review koordynatora.",
+  "next_action": "Runda 2: korekty C1-C4 projektu i W15-02 według rozstrzygniętego kierunku; potem review, W15-03.",
   "bridge": {
     "feature_id": "F-W15-natural-workflow",
     "parent_task_id": "task_7zykhr76zt"
