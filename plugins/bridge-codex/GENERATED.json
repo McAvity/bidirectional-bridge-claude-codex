@@ -74,7 +74,7 @@
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "0c2c40c9d12656f52f6f97bf5d03f0239b40eda1f007d9cc5ec22b2a46537488"
+      "sha256": "ccd78a5a4abe980be919bcd1859f005f309b87171c12da9388d32ad4a9898439"
     },
     {
       "path": "scripts/setup/processes.mjs",

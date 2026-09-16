@@ -253,8 +253,8 @@ function codexTrust(root, identity, env, profile) {
   return { known: true, trusted: levels.includes("trusted"), files };
 }
 
-function codexProjectCheck(add, root, identity, manifest, env, profile) {
-  const expected = mcpDefinition(manifest);
+function codexProjectCheck(add, root, identity, manifest, env, profile, setupProfile) {
+  const expected = mcpDefinition(manifest, setupProfile);
   const query = (extra) =>
     run("codex", [...(profile ? ["--profile", profile] : []), ...extra, "mcp", "get", "bridge", "--json"], {
       cwd: root,
@@ -451,6 +451,8 @@ export async function runDoctor({
   }
   const root = identity?.root ?? requested;
   const manifest = runtime?.manifest ?? null;
+  const integrationSource = integrationSourceOf(root);
+  const setupProfile = integrationSource === "project-dispatcher" ? "dispatcher" : "legacy";
 
   // Setup record and selection.
   const paths = localPaths(root);
@@ -558,7 +560,7 @@ export async function runDoctor({
     for (const file of manifest.instructions.files) {
       let content;
       try {
-        content = readFileSync(join(root, file.path));
+        content = readFileSync(join(setupProfile === "dispatcher" ? runtime.path : root, file.path));
       } catch {
         missing.push(file.path);
         continue;
@@ -609,11 +611,11 @@ export async function runDoctor({
     if (definesBridge(found.before + found.after)) return add("codex_config", "error", "CODEX_CONFIG_CONFLICT", "mcp_servers.bridge is also defined outside the managed block");
     const parsed = inspectCodexToml(configText, env);
     if (parsed.status === "invalid") return add("codex_config", "error", "CODEX_CONFIG_INVALID", `TOML does not parse: ${parsed.detail}`, { nextStep: `fix ${CODEX_CONFIG}` });
-    if (manifest && found.block !== renderCodexBlock(manifest)) {
+    if (manifest && found.block !== renderCodexBlock(manifest, setupProfile)) {
       return add("codex_config", "warn", "CODEX_CONFIG_MODIFIED", "the managed block differs from the selected runtime's block", { nextStep: "run init --yes to restore it, or keep the local change deliberately" });
     }
     const effective = parsed.status === "parsed" ? parsed.bridge : null;
-    if (effective && manifest && (effective.command !== "node" || JSON.stringify(effective.args) !== JSON.stringify(mcpDefinition(manifest).args))) {
+    if (effective && manifest && (effective.command !== "node" || JSON.stringify(effective.args) !== JSON.stringify(mcpDefinition(manifest, setupProfile).args))) {
       return add("codex_config", "error", "CODEX_CONFIG_MISMATCH", "the effective mcp_servers.bridge table differs from the managed block");
     }
     return add("codex_config", "ok", "OK", `${CODEX_CONFIG} has the managed bridge block${parsed.status === "unverified" ? " (TOML not parsed: python3 3.11+ missing)" : ""}`);
@@ -621,7 +623,7 @@ export async function runDoctor({
   configStatic();
   if (safeSubset) {
     add("codex_project", "skipped", "CODEX_PROJECT_UNCHECKED", "the safe subset does not start Codex against this project's configuration");
-  } else if (codex.status === 0 && identity && manifest) codexProjectCheck(add, root, identity, manifest, env, codexProfile);
+  } else if (codex.status === 0 && identity && manifest) codexProjectCheck(add, root, identity, manifest, env, codexProfile, setupProfile);
   else add("codex_project", "skipped", "CODEX_PROJECT_UNCHECKED", "Codex, the worktree identity or the selected runtime is unavailable");
 
   if (identity?.kind === "git") {
@@ -701,7 +703,7 @@ export async function runDoctor({
   } else if (!ready) {
     add("handshake", "skipped", "HANDSHAKE_NOT_POSSIBLE", "needs a resolved worktree and a complete selected runtime");
   } else {
-    const result = await handshake(root, mcpDefinition(manifest), env);
+    const result = await handshake(root, mcpDefinition(manifest, setupProfile), env);
     const featureTools = result.tools?.filter((name) => name.startsWith("bridge_feature_")).length ?? 0;
     if (!result.ok) {
       add("handshake", "error", "HANDSHAKE_FAILED", `MCP handshake failed: ${result.error}`, {
@@ -749,7 +751,7 @@ export async function runDoctor({
       runtime,
       declaration,
       selection: record.kind === "valid" ? { runtime_id: record.value.runtime?.id ?? null } : null,
-      integrationSource: integrationSourceOf(root),
+      integrationSource,
     }),
   };
 }
