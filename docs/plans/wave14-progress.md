@@ -1,7 +1,7 @@
 # Wave14 — postęp
 
-Aktualny status: **niezależna dostawa odebrana przez użytkownika; cały wave14 nadal otwarty**.
-Integracja z finalnym wave13 i walidacja wspólnego wyniku zakończone lokalnie; końcowy odbiór użytkownika pozostaje oddzielny.
+Aktualny status: **cały wave14 odebrany przez użytkownika, wraz ze wspólną integracją**.
+Integracja z finalnym wave13 i walidacja wspólnego wyniku zakończone lokalnie; końcowy odbiór użytkownika zapisany w decyzji04.
 Końcowy checkpoint sesji znajduje się na końcu dokumentu.
 
 ## 2026-09-16 — plan zapisany
@@ -152,3 +152,10 @@ tests, pakiety i dokumentacja PASS. Niezależne review integracji PASS po jednej
 poprawce FIFO; wynik i granice w [raporcie integracji](wave13-wave14-integration.md).
 Bez modeli, push, wdrożenia lub zmiany aktywnych runtime. Wave13 zachowuje odbiór;
 wave14 ma ukończoną integrację, gotową do finalnego odbioru użytkownika.
+
+## 2026-09-16 — finalny odbiór i publikacja autoryzowane
+
+[Decyzja04](../features/F-W14-plugin-distribution/decisions/04.md) zapisuje odbiór
+zintegrowanego wyniku ab8ce87 i zgodę na push,CI,README oraz aktywację runtime
+w tym projekcie. Publikacja i CI w toku; aktywacja wymaga normalnego zamknięcia
+klientów, bo działające procesy blokują zmianę wersji. Brak przejęcia obcego managera.

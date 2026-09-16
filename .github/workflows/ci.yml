@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -15,7 +17,11 @@ jobs:
         with:
           python-version: '3.11'
       - run: npm ci --ignore-scripts
+      # Real CLI identity/version checks only; no login, model calls or API credentials.
+      - run: npm install --global --ignore-scripts @openai/codex@0.154.0
       - run: npm run build
+      - run: npm run packages:check
+      - run: node docs/tools/check-doc-links.mjs
       - run: npm test
       - run: python3 -m unittest discover -s tests -v
       # Pilot tools: synthetic regressions and the tooling dry run (scripted executor, no model).

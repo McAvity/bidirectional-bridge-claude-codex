@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W14-plugin-distribution",
-  "phase": "implementation-review",
+  "phase": "accepted",
   "brief": "docs/features/F-W14-plugin-distribution/brief.md",
   "design": "docs/plans/wave14.md",
   "tasks": [
@@ -18,8 +18,8 @@
     "docs/plans/wave14-progress.md"
   ],
   "latest_review": "docs/features/F-W14-plugin-distribution/reviews/03-integration.md",
-  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/03.md",
-  "next_action": "Joint integration with accepted wave13 complete and validated at afe1bd8; user final acceptance remains. No publication/deployment or foreign-manager feature_accept. See docs/plans/wave13-wave14-integration.md.",
+  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/04.md",
+  "next_action": "Final user acceptance recorded. Publish feature-workflow, verify CI, then activate runtime after normal client closure. Original manager database untouched; wave15 remains draft.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"

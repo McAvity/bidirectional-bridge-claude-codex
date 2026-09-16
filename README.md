@@ -150,46 +150,89 @@ Details: [docs/architecture.md](docs/architecture.md). Normative wire contract:
 
 ## Installation
 
-The supported workflow is deterministic and uses the committed lockfile:
+### Recommended: the repository marketplace
 
-```bash
-npm ci          # deterministic install from package-lock.json
-npm run build   # tsc --build; required before a client opens the bridge
-npm test        # vitest run; the deterministic regression suite
+For the Astra (Codex) → Claude workflow, install the Codex plugin once on your machine.
+Use Linux, Git, Node.js24, npm and Python3.11 or newer, with Codex and Claude Code
+installed and logged in. The current native identity adapter supports **Codex0.154.0**;
+`doctor` refuses an unverified version. No separate bridge server or API key is needed.
+
+Run these as **two consecutive commands in a normal terminal**, not in the Codex prompt:
+
+```sh
+codex plugin marketplace add McAvity/bidirectional-bridge-claude-codex --ref feature-workflow
+codex plugin add bridge-codex@claude-codex-bridge
 ```
 
-`npm ci` (not `npm install`) is what makes the dependency tree reproducible. The native
-launcher imports **compiled** workspace packages, so `npm run build` must succeed before you
-open the bridge from a client. Run the suite yourself rather than trusting a recorded test
-count in prose.
+This is our repository marketplace, not a listing in an OpenAI-curated catalog.
+The plugin acquires the exact published commit pinned in its release descriptor,
+then installs dependencies and builds a separate immutable runtime. No manual clone,
+`npm init`, global MCP server or per-worktree installation is needed on this machine.
+Network access to GitHub and npm (or an existing cache) is needed on first setup.
 
-Optional checks: `npm run typecheck` forces a clean type build, and `npm run links:check`
-inspects workspace package links (use `npm run links:fix` only when it reports a break).
+### Optional: native Claude Code plugin
 
-More detail: [docs/installation.md](docs/installation.md).
+The bridge already supplies its delegated Claude with the executor plugin from its
+pinned runtime. You do **not** need this extra installation for Astra to delegate.
+To use the same workflow directly in Claude Code, run in a normal terminal:
+
+```sh
+claude plugin marketplace add McAvity/bidirectional-bridge-claude-codex
+claude plugin install bridge-claude@claude-codex-bridge
+```
+
+The fork's default branch is `feature-workflow`; both marketplaces live in this repo.
+See [plugin distribution](docs/plugin-distribution.md) for updates and removal.
+
+### Developer / no-plugin alternative
+
+Clone the `feature-workflow` branch, then follow [setup](docs/setup.md) to install
+and select a pinned runtime. For development, dependencies and validation are:
+
+```sh
+npm ci --ignore-scripts
+npm run build
+npm test
+```
+
+Do not rebuild a runtime supervising an active task. Installing a new version beside
+the old one is safe; switching a worktree refuses while its clients are active.
 
 ## Quick start
 
-1. Clone the repository and `cd` into it.
-2. Run `npm ci && npm run build && npm test`.
-3. Install a pinned runtime of this commit and select it for this worktree (Linux; see
-   [docs/setup.md](docs/setup.md)):
-   ```bash
-   node scripts/bridge.mjs install
-   node scripts/bridge.mjs init --workspace . --yes
-   node scripts/bridge.mjs doctor --workspace .
+1. Open a terminal at the **root of your project's Git repository** and run `codex`.
+2. In the **Codex prompt**, enter:
+   ```text
+   Use the bridge skill to enable the bridge in this project.
    ```
-4. Verify MCP discovery from the repository root:
-   ```bash
-   claude mcp list     # expect a "bridge" server, caller=claude
-   codex mcp list      # expect a "bridge" server, caller=codex
+   The skill installs the pinned runtime and prepares the project's configuration.
+   Approve Codex's project trust prompt if shown.
+3. After setup, exit Codex with `/quit`, then run `codex` again in the same directory.
+   Inside Codex, `/mcp` should show `bridge: connected`. First activation needs this
+   restart because the client loads project MCP configuration at startup.
+4. Commit `.bridge-project/`, the managed `.codex/config.toml` block and `.gitignore`
+   changes. Do not commit `.bridge/` or `.bridge-runtime/`; those are local state.
+5. In the Codex prompt, provide the feature, for example:
+   ```text
+   Use bridge to implement the complete plan in docs/plans/my-feature.md.
    ```
-5. Launch either client from the repository root and approve the project-scoped MCP server
-   when prompted. Inside Claude Code, `/mcp` shows the active connections.
-6. Ask the client to use the `using-bridge` skill for one bounded delegation, then read the
-   two worked examples in [Bounded delegation](#bounded-delegation).
+   Astra delegates implementation to Claude, reviews delivery and asks you for real
+   blockers or final acceptance. Worker completion is distinct from your acceptance.
+
+A new Herdr/Git worktree created from that commit inherits setup. Start plain `codex`
+at its root; **do not repeat init**. Codex may still ask you to trust the new path.
+Each worktree has its own state, logs and selected runtime; use one active manager
+per worktree. A new machine must acquire the project's pinned runtime once.
+
+For diagnosis, ask the bridge skill to locate the selected runtime and run its
+`bridge.mjs doctor` or scoped `diagnose` command. See [diagnostics](docs/diagnostics.md)
+for incident ZIPs; they stay local and are never uploaded automatically.
 
 ## Project-scoped MCP configuration
+
+The examples below describe the developer checkout / legacy per-worktree setup.
+The recommended plugin setup uses `.bridge-project/entry.mjs` instead; see
+[its layout](docs/setup-layout.md).
 
 Both configuration files are committed, worktree-relative, and contain no credentials.
 Neither creates a global MCP registration. Both start the runtime selected for this worktree in
