@@ -46,6 +46,8 @@ const PENDING_FORMAT = "claude-codex-bridge.workspace-pending/v1";
 export const BLOCK_BEGIN = "# >>> claude-codex-bridge managed block >>>";
 export const BLOCK_END = "# <<< claude-codex-bridge managed block <<<";
 export const CODEX_CONFIG = ".codex/config.toml";
+/** The runtime's own state marker; the authority on which worktree `.bridge/` belongs to. */
+export const MARKER_NAME = "workspace.json";
 /** Committed, inherited project files of the dispatcher profile. */
 export const PROJECT_DIR = ".bridge-project";
 export const PROJECT_DECLARATION = `${PROJECT_DIR}/bridge.json`;
@@ -301,6 +303,31 @@ export function classifyPending(root, identity, runtimeId) {
   return { kind: "own", value: pending };
 }
 
+/**
+ * Classify `<root>/.bridge/` using the native marker only — read-only, no database is opened.
+ *
+ * The marker `<root>/.bridge/workspace.json` is the runtime's own record of which worktree that
+ * state belongs to. It is therefore the existing authority for "is this reservation explained and
+ * mine?", and this function adds no second opinion and no new protocol.
+ *
+ *  - `absent`      — no state directory at all;
+ *  - `own`         — the marker names exactly this worktree;
+ *  - `foreign`     — the marker names another worktree: copied state, never adopted;
+ *  - `unexplained` — a state directory with no readable marker; refused, never repaired.
+ */
+export function classifyNativeState(root, identity) {
+  const stateDir = join(root, ".bridge");
+  if (!existsSync(stateDir)) return { kind: "absent" };
+  const marker = readJson(join(stateDir, MARKER_NAME));
+  if (marker.kind !== "valid" || typeof marker.value.root !== "string") {
+    return { kind: "unexplained", detail: marker.kind === "absent" ? `${MARKER_NAME} is missing` : `${MARKER_NAME} is unreadable` };
+  }
+  if (canonical(marker.value.root) !== canonical(identity.root)) {
+    return { kind: "foreign", detail: `the state marker belongs to ${marker.value.root}` };
+  }
+  return { kind: "own", value: marker.value };
+}
+
 /** Schema version of this worktree's database, read-only; never migrates or creates anything. */
 export function readStateSchema(root) {
   let database = join(root, ".bridge", "bridge.db");
@@ -377,6 +404,31 @@ function fileMode(path, fallback) {
   } catch {
     return fallback;
   }
+}
+
+/**
+ * The runtime a `rollback` returns to: the explicit `--to`, otherwise the previous distinct entry
+ * of this worktree's own selection history.
+ *
+ * Extracted from the wave12 setup CLI so the plugin resolves it identically (review W14-R2-09);
+ * both callers pass the same `loadRuntime`, so compatibility and active-use guards are unchanged.
+ */
+export function rollbackTarget(home, workspace, options, loadRuntime) {
+  if (options.to) return loadRuntime(home, options.to);
+  const record = readRecord(canonical(workspace));
+  if (record.kind !== "valid") {
+    throw new SetupError("SETUP_NOT_INITIALIZED", "this worktree has no usable setup record to roll back", {
+      nextStep: "run doctor --workspace <worktree>",
+    });
+  }
+  const current = record.value.runtime.id;
+  const previous = [...record.value.history].reverse().find((entry) => entry.runtime_id !== current);
+  if (!previous) {
+    throw new SetupError("ROLLBACK_NO_PREVIOUS", `runtime ${current} is the only one this worktree has selected`, {
+      nextStep: "pass --to <runtime id> explicitly",
+    });
+  }
+  return loadRuntime(home, previous.runtime_id);
 }
 
 /** The committed pin and entry point of the dispatcher profile. */

@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SetupError, bridgeHome, canonical } from "../setup/common.mjs";
 import { installRuntime, listRuntimes, loadRuntime } from "../setup/runtime.mjs";
-import { applyPlan, declarationContent, planChange, resolveIdentity } from "../setup/workspace.mjs";
+import { applyPlan, declarationContent, planChange, resolveIdentity, rollbackTarget } from "../setup/workspace.mjs";
 import { status } from "../bridge-project/locate.mjs";
 import { acquireSource, readRelease } from "./acquire.mjs";
 
@@ -67,6 +67,17 @@ function targetRuntimeId(report, options, release) {
   const declared = report.declaration?.pinned;
   if (declared?.runtime_id) return { runtimeId: declared.runtime_id, commit: declared.commit ?? null, reason: "declared" };
   return { runtimeId: null, commit: options.commit ?? release.pinned.commit, reason: "release" };
+}
+
+/**
+ * `rollback` resolves its target from this worktree's own selection history, never from the
+ * declared pin — the declared pin *is* the current runtime, so treating rollback like setup made
+ * the default always refuse `ROLLBACK_SAME_RUNTIME` (review W14-R2-09). The resolver is the wave12
+ * CLI's, shared verbatim; an explicit `--to` still wins, and the plan's compatibility and
+ * active-session guards are untouched.
+ */
+function rollbackRuntime(home, workspace, options) {
+  return rollbackTarget(home, workspace, options, loadRuntime);
 }
 
 /**
@@ -177,8 +188,25 @@ export async function main(argv, { cwd = process.cwd(), env = process.env } = {}
   }
 
   const release = readRelease(join(HERE, "release.json"));
-  const wanted = targetRuntimeId(current, options, release);
   const apply = Boolean(options.yes);
+
+  if (command === "rollback") {
+    const target = rollbackRuntime(home, canonical(current.workspace.root), options);
+    const rolled = await writeWorktree({ action: "rollback", home, workspace: canonical(current.workspace.root), runtime: target, options });
+    rolled.runtime_installed_now = false;
+    rolled.source = null;
+    rolled.declaration = declarationContent(target).trim();
+    report(rolled, asJson, (r) => [
+      `${r.applied ? "rolled back" : r.ok ? "plan" : "refused"}: ${r.workspace}`,
+      `runtime:  ${r.runtime.id}`,
+      ...(r.changes.length === 0 ? ["changes:  none"] : ["changes:", ...r.changes.map((c) => `  ${String(c.action).padEnd(6)} ${c.path}`)]),
+      ...r.refusals.map((c) => `refused:  ${c.code}: ${c.message}${c.nextStep ? `\n  next: ${c.nextStep}` : ""}`),
+      r.applied ? "result:   applied" : r.ok ? "result:   dry run, nothing written; re-run with --yes" : "result:   nothing written",
+    ]);
+    return rolled.ok ? 0 : 1;
+  }
+
+  const wanted = targetRuntimeId(current, options, release);
   const { runtime, installed, source, wouldInstall } = ensureRuntime({
     home,
     runtimeId: wanted.runtimeId,

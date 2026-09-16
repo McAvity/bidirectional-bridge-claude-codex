@@ -9,7 +9,7 @@ import { SetupError, bridgeHome, canonical, run } from "./setup/common.mjs";
 import { unifiedDiff } from "./setup/diff.mjs";
 import { formatDoctor, runDoctor } from "./setup/doctor.mjs";
 import { installRuntime, listRuntimes, loadRuntime, loadRuntimeAt, runtimesDir } from "./setup/runtime.mjs";
-import { applyPlan, planChange, readRecord, readSelection, resolveIdentity } from "./setup/workspace.mjs";
+import { applyPlan, planChange, readRecord, readSelection, resolveIdentity, rollbackTarget } from "./setup/workspace.mjs";
 
 const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Codex bridge
 
@@ -85,24 +85,6 @@ function defaultRuntime(home, workspace) {
   });
 }
 
-function rollbackTarget(home, workspace, options) {
-  if (options.to) return loadRuntime(home, options.to);
-  const record = readRecord(canonical(workspace));
-  if (record.kind !== "valid") {
-    throw new SetupError("SETUP_NOT_INITIALIZED", "this worktree has no usable setup record to roll back", {
-      nextStep: "run doctor --workspace <worktree>",
-    });
-  }
-  const current = record.value.runtime.id;
-  const previous = [...record.value.history].reverse().find((entry) => entry.runtime_id !== current);
-  if (!previous) {
-    throw new SetupError("ROLLBACK_NO_PREVIOUS", `runtime ${current} is the only one this worktree has selected`, {
-      nextStep: "pass --to <runtime id> explicitly",
-    });
-  }
-  return loadRuntime(home, previous.runtime_id);
-}
-
 function planJson(plan, applied) {
   return {
     format: "claude-codex-bridge.setup-plan/v1",
@@ -167,7 +149,7 @@ async function workspaceCommand(command, options, home) {
   else if (command === "update") {
     if (!options.runtime) throw new UsageError("update requires --runtime <id>");
     target = loadRuntime(home, options.runtime);
-  } else target = rollbackTarget(home, workspace, options);
+  } else target = rollbackTarget(home, workspace, options, loadRuntime);
   // Resolve the worktree with a complete runtime, so an incomplete target is refused, not a crash.
   const selection = readSelection(canonical(workspace));
   const resolver = [selection.kind === "ok" ? selection.runtime : null, ownRuntime(), target]

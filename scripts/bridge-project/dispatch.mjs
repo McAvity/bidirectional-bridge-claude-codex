@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonical, run } from "../setup/common.mjs";
 import { LAUNCHER, loadRuntimeAt, verifyRuntime } from "../setup/runtime.mjs";
 import { LOCAL_DIR } from "../setup/common.mjs";
-import { PROJECT_FORMAT, applyPlan, classifyPending, localPaths, planChange, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
+import { PROJECT_FORMAT, applyPlan, classifyNativeState, classifyPending, localPaths, planChange, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
 import { setPendingSelection } from "./pending-selection.mjs";
 
 /** Resolved from the working directory the host gave us, never from `PWD`. */
@@ -115,16 +115,23 @@ export async function decide({ cwd, declaration, runtimePath }) {
     // state and is refused with nothing written.
     const local = localPaths(identity.root);
     const journal = classifyPending(identity.root, identity, declaredId);
-    const pristine = !existsSync(local.dir) && !existsSync(join(identity.root, ".bridge"));
+    const native = classifyNativeState(identity.root, identity);
+    const pristine = !existsSync(local.dir) && native.kind === "absent";
     const resumable = journal.kind === "own";
-    if (!pristine && !resumable) {
+    // A reservation the runtime itself made for *this* worktree, before the selection journal
+    // existed: the marker is the runtime's own record of ownership, so the state is explained and
+    // this worktree may finish what it started (review W14-R2-07, boundary before the first
+    // `.bridge-runtime` write). A copied or unexplained state directory is still refused.
+    const reserved = !existsSync(local.dir) && native.kind === "own";
+    if (!pristine && !resumable && !reserved) {
+      const unexplained = journal.kind === "absent" ? native : journal;
       throw new LaunchRefusal(
         "SETUP_STATE_PARTIAL",
-        journal.kind === "absent"
-          ? `${identity.root} has ${LOCAL_DIR}/ or .bridge/ but no usable selection record and no journal of its own`
-          : `${identity.root} has an interrupted setup that is not this worktree's own: ${journal.detail}`,
-        journal.kind === "foreign"
-          ? `remove ${LOCAL_DIR}/ from this worktree after checking it; a copied journal is never resumed`
+        journal.kind === "absent" && native.kind === "absent"
+          ? `${identity.root} has ${LOCAL_DIR}/ but no usable selection record and no journal of its own`
+          : `${identity.root} has partial state that is not this worktree's own: ${unexplained.detail ?? "unexplained"}`,
+        unexplained.kind === "foreign"
+          ? `remove the copied state from this worktree after checking it; it is never adopted`
           : SETUP_STEP,
       );
     }
@@ -133,7 +140,7 @@ export async function decide({ cwd, declaration, runtimePath }) {
       identity,
       runtime,
       pristine,
-      resuming: resumable,
+      resuming: resumable || reserved,
       launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
     };
   }
@@ -154,12 +161,17 @@ export async function decide({ cwd, declaration, runtimePath }) {
     );
   }
 
+  // The record can be valid while this worktree's own apply was interrupted after writing it —
+  // the journal is removed last. Registering the materialiser lets the next authorised mutation
+  // finish that apply instead of leaving `pending.json` behind forever (review W14-R2-07,
+  // boundary after the record write).
+  const unfinished = classifyPending(identity.root, identity, declaredId).kind === "own";
   return {
     root: identity.root,
     identity,
     runtime,
     pristine: false,
-    resuming: false,
+    resuming: unfinished,
     launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
   };
 }
@@ -176,8 +188,13 @@ export async function decide({ cwd, declaration, runtimePath }) {
  */
 export function materialiseSelection({ home, identity, runtime }) {
   return () => {
-    // Recompute under the call: another process may have prepared this worktree meanwhile.
-    if (readRecord(identity.root, identity).kind === "valid") return;
+    // Recompute under the call: another process may have prepared this worktree meanwhile. A
+    // valid record is not enough to stop here — an apply interrupted after writing the record
+    // still has its own journal to finish, and `planChange` picks that up as `plan.pending`.
+    const settled =
+      readRecord(identity.root, identity).kind === "valid" &&
+      classifyPending(identity.root, identity, runtime.id).kind !== "own";
+    if (settled) return;
     // `insideGuardedMutation`: the native identity guard has already authorised exactly one caller
     // for this worktree, so its own other processes must not veto it through the process scan.
     const plan = planChange({
