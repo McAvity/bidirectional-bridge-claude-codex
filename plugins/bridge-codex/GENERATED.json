@@ -42,7 +42,7 @@
     },
     {
       "path": "scripts/diagnostics/safe-read.mjs",
-      "sha256": "ad6bb54f82472c83eb35a17ce6efed978d26e6ff6e9bf500a0fc99e8fad89e3d"
+      "sha256": "631e50e27602c00fa97ae9b67da41f14ae4c8c92a8e384ad3ea48ec7a3e9f349"
     },
     {
       "path": "scripts/diagnostics/zip.mjs",

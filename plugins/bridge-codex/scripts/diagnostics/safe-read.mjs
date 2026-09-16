@@ -146,7 +146,8 @@ export function readBounded(root, target, { maxBytes, from = "end" } = {}) {
   let fd;
   try {
     // O_NOFOLLOW makes the final component's link check atomic with the open itself.
-    fd = openSync(absolute, constants.O_RDONLY | constants.O_NOFOLLOW);
+    // O_NONBLOCK prevents a FIFO from hanging before fstat can reject it.
+    fd = openSync(absolute, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   } catch (error) {
     throw new UnsafePathError(error?.code === "ELOOP" ? UNSAFE.SYMLINK : errnoReason(error), absolute, error?.code ?? null);
   }
