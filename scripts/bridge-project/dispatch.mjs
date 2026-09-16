@@ -14,7 +14,7 @@
 // explicitly and absolutely, and the guard inside the runtime remains the authority.
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonical, run } from "../setup/common.mjs";
 import { LAUNCHER, loadRuntimeAt, verifyRuntime } from "../setup/runtime.mjs";
@@ -365,8 +365,10 @@ function runtimeHome(runtimePath) {
 }
 
 function defaultRuntimePath() {
-  // Never `.pathname`: an installed runtime may sit under a path containing spaces.
-  return fileURLToPath(new URL("../..", import.meta.url));
+  // Never `.pathname`: an installed runtime may sit under a path containing spaces. `resolve`
+  // drops the trailing separator a directory URL carries, so a reported path compares equal to
+  // the runtime path every other reader uses.
+  return resolve(fileURLToPath(new URL("../..", import.meta.url)));
 }
 
 export { existsSync, readFileSync };
