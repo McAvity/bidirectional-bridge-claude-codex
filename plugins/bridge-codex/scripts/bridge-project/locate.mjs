@@ -8,7 +8,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { canonical, readJson, run } from "../setup/common.mjs";
+import { LOCAL_DIR, canonical, readJson, run } from "../setup/common.mjs";
 import { loadRuntime, verifyRuntime } from "../setup/runtime.mjs";
 import { PROJECT_DECLARATION, PROJECT_ENTRY, PROJECT_FORMAT, readRecord, readSelection } from "../setup/workspace.mjs";
 
@@ -50,7 +50,8 @@ export function readDeclaration(root) {
  *
  * `state` is what the setup entry point and the launch gate both act on:
  *   not-enabled | declaration-invalid | project-disabled | runtime-missing | runtime-incomplete
- *   | foreign-record | record-invalid | needs-selection | pin-diverged | entry-missing | ready
+ *   | foreign-record | record-invalid | inherited-pristine | state-partial | needs-selection
+ *   | pin-diverged | entry-missing | ready
  */
 export function status(cwd = process.cwd(), env = process.env) {
   const workspace = resolveWorkspace(cwd);
@@ -83,7 +84,13 @@ export function status(cwd = process.cwd(), env = process.env) {
   else if (record.kind === "foreign") state = "foreign-record";
   else if (record.kind === "invalid") state = "record-invalid";
   else if (runtimeState !== "ok") state = runtimeState;
-  else if (record.kind === "absent" || selection.kind !== "ok") state = "needs-selection";
+  else if (record.kind === "absent")
+    // Pristine: inherited through Git with none of its own local state. It serves reads now and
+    // takes its own selection on the first mutating call. Anything else is partial state.
+    state = !existsSync(join(workspace.root, LOCAL_DIR)) && !existsSync(join(workspace.root, ".bridge"))
+      ? "inherited-pristine"
+      : "state-partial";
+  else if (selection.kind !== "ok") state = "needs-selection";
   else if (record.value.runtime.id !== pin.runtime_id) state = "pin-diverged";
   else if (!existsSync(join(workspace.root, PROJECT_ENTRY))) state = "entry-missing";
   else state = "ready";

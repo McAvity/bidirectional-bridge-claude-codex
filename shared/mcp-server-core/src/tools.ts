@@ -103,6 +103,19 @@ export interface ToolContext {
   readonly managerSession?: AuthorizedSession;
   /** Manager registry bound to the transaction of this call. */
   readonly managerRegistry?: ManagerRegistry;
+  /**
+   * Run once, immediately before the first mutating call of this process, and never for a read.
+   *
+   * A worktree inherited from an enabled project starts pristine: it has the committed
+   * declaration but none of its own local state, because local state is never inherited. The
+   * server may serve reads from it as-is; the moment a call would actually mutate, this hook
+   * materialises that worktree's own selection through the ordinary setup plan. Reads, the
+   * handshake and a foreign refusal therefore still write nothing.
+   *
+   * It runs before the identity guard's mutation, so a failure here refuses the call and leaves
+   * the worktree exactly as it was.
+   */
+  readonly beforeFirstMutation?: () => void | Promise<void>;
 }
 
 export type DelegationPolicy = "allow" | "deny";
@@ -199,6 +212,9 @@ async function executeTool(
     identity.requireReadableState();
     return tool.handler(args, ctx);
   }
+  // Everything below mutates. Materialise a pristine inherited worktree's own local state first,
+  // once, before any ownership is taken.
+  await runFirstMutationHook(ctx);
   if (tool.name === "bridge_manager_resume_instance" || tool.name === "bridge_manager_takeover") {
     // These tools drive the guard themselves; the class is carried for documentation.
     return tool.handler(args, ctx);
@@ -214,6 +230,19 @@ async function executeTool(
     (managerSession, managerRegistry) => tool.handler(args, { ...ctx, managerSession, managerRegistry }),
     tool.name,
   );
+}
+
+/** `beforeFirstMutation` runs at most once per process, even under concurrent first calls. */
+const FIRST_MUTATION = new WeakMap<ToolContext, Promise<void>>();
+
+async function runFirstMutationHook(ctx: ToolContext): Promise<void> {
+  if (!ctx.beforeFirstMutation) return;
+  let pending = FIRST_MUTATION.get(ctx);
+  if (!pending) {
+    pending = Promise.resolve().then(() => ctx.beforeFirstMutation?.());
+    FIRST_MUTATION.set(ctx, pending);
+  }
+  await pending;
 }
 
 export const TOOLS: readonly ToolDefinition[] = [

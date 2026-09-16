@@ -70,6 +70,13 @@ export interface BridgeServerOptions {
    * written there that is not a JSON-RPC frame corrupts the session.
    */
   readonly onWarning?: (message: string, details?: Record<string, unknown>) => void;
+  /**
+   * Materialise this worktree's own local state before the first mutating call.
+   *
+   * Used by the project entry point for a worktree inherited from an enabled project, which has
+   * the committed declaration but no local selection of its own. See `ToolContext`.
+   */
+  readonly beforeFirstMutation?: () => void | Promise<void>;
 }
 
 export class BridgeMcpServer {
@@ -111,6 +118,7 @@ export class BridgeMcpServer {
       orchestrator: this.orchestrator,
       defaultAgent: options.agent ?? "bridge",
       delegationPolicy: options.delegationPolicy ?? "allow",
+      ...(options.beforeFirstMutation ? { beforeFirstMutation: options.beforeFirstMutation } : {}),
       ...(this.identity ? { identity: this.identity } : {}),
     };
 

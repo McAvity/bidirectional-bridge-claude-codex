@@ -6,7 +6,7 @@
   "canonical_sources": [
     ".codex/skills/using-bridge"
   ],
-  "source_digest": "a58cd5178bdcad9248abf995d9a02fa78ef9aa7c1385feae59db4e89489bc426",
+  "source_digest": "0bd41db3813cd50080f9348b8a36c941dd4fcda0b8e0b208d57675deafd119b3",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -14,7 +14,7 @@
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
-      "sha256": "6a86c0f69a11a9b3b8c1638c69d15a71473be2126a1e679a10446ffc876545fd"
+      "sha256": "d7241d33e4a5481b5f7ce48da17f152344acfcd9d72e6608de95396c596e7dda"
     },
     {
       "path": "scripts/bridge-project/entry-template.mjs",
@@ -22,7 +22,11 @@
     },
     {
       "path": "scripts/bridge-project/locate.mjs",
-      "sha256": "ff7851984701b2dc943de600931cb9027f7c665d43771c4bce1a439a17856f76"
+      "sha256": "7b19a6a646d51958806b834eb6cdce92a35149cf7483c4d23a65cf94b9ab1232"
+    },
+    {
+      "path": "scripts/bridge-project/pending-selection.mjs",
+      "sha256": "df903c1195f82d3c127d03f9b1107e7fe534cbe0e8946a73ff4f500501bb6a1c"
     },
     {
       "path": "scripts/bridge.mjs",

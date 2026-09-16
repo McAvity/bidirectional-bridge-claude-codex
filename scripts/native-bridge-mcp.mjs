@@ -173,8 +173,14 @@ export async function runNativeBridge(args) {
   });
 
   const adapters = [claudeAdapter, codexAdapter];
+  // A worktree inherited from an enabled project starts pristine: the launch gate registered what
+  // its first mutating call must write, and nothing has been written yet.
+  const { takePendingSelection } = await import(new URL("./bridge-project/pending-selection.mjs", import.meta.url).href);
+  const materialiseSelection = takePendingSelection();
+
   const server = new core.BridgeMcpServer({
     workspaceRoot: workspace.root,
+    ...(materialiseSelection ? { beforeFirstMutation: materialiseSelection } : {}),
     workspace,
     databasePath,
     ...(args.adoptLegacy ? { adoptLegacy: args.adoptLegacy } : {}),

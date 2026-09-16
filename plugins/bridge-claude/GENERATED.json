@@ -8,7 +8,7 @@
     ".claude/skills/using-bridge",
     "docs/features/README.md"
   ],
-  "source_digest": "a58cd5178bdcad9248abf995d9a02fa78ef9aa7c1385feae59db4e89489bc426",
+  "source_digest": "0bd41db3813cd50080f9348b8a36c941dd4fcda0b8e0b208d57675deafd119b3",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -40,7 +40,7 @@
     },
     {
       "path": "skills/feature-exchange/scripts/feature_exchange.py",
-      "sha256": "7e318b0fbfddb5003f0c3fc2f01ea8cae7ea50438dd1e9148861da4a96a784ff"
+      "sha256": "3d3dc3bed6e33f959c54d28e606f5c4972185d3679e37178f02b7c3d7e95fbdf"
     },
     {
       "path": "skills/feature-execute/SKILL.md",

@@ -46,6 +46,7 @@ export const INSTALLER_FILES = [
   "scripts/bridge-project/dispatch.mjs",
   "scripts/bridge-project/entry-template.mjs",
   "scripts/bridge-project/locate.mjs",
+  "scripts/bridge-project/pending-selection.mjs",
   "scripts/plugin-packages/acquire.mjs",
   "scripts/plugin-packages/bridge-plugin.mjs",
   "scripts/plugin-packages/release.json",

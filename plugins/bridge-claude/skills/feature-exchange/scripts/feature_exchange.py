@@ -367,11 +367,18 @@ def verify(args):
                 fail('Code snapshot does not match declared head: ' + change['path'])
         matches = True
     documents = sorted(n for n in entries if n != MANIFEST and not n.startswith('exchange/'))
-    changed, missing = [], []
+    # Provenance decides what "drift" means. A file the exporter took from the target worktree must
+    # still be there and still match, and a difference is real drift. A file that travelled from
+    # the installed instruction set (`source: installed`, today only the shared workflow guide) was
+    # never claimed to exist in this repository, so its absence is not drift — but its bytes are
+    # still hashed by the manifest, and a *present* copy that differs is still reported.
+    records = manifest.get('files') or {}
+    changed, missing, supplied = [], [], []
     for name in documents:
+        origin = (records.get(name) or {}).get('source', 'worktree')
         p = local_path(root, name)
         if not p.is_file():
-            missing.append(name)
+            (supplied if origin == 'installed' else missing).append(name)
         elif p.read_bytes() != entries[name]:
             changed.append(name)
     print(json.dumps({
@@ -381,7 +388,8 @@ def verify(args):
         'worktree_dirty_at_export': manifest['worktree_dirty'], 'code_range': code_range,
         'code_range_matches_repository': matches,
         'code_changes': len(manifest['code_changes']) if code_range else None,
-        'documents': {'files': documents, 'changed': changed, 'missing': missing},
+        'documents': {'files': documents, 'changed': changed, 'missing': missing,
+                      'supplied_by_installation': supplied},
         'note': 'Integrity and provenance only. Not a review, test run or approval.',
     }, indent=2))
 

@@ -18,7 +18,9 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonical, run } from "../setup/common.mjs";
 import { LAUNCHER, loadRuntimeAt, verifyRuntime } from "../setup/runtime.mjs";
-import { PROJECT_FORMAT, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
+import { LOCAL_DIR } from "../setup/common.mjs";
+import { PROJECT_FORMAT, applyPlan, localPaths, planChange, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
+import { setPendingSelection } from "./pending-selection.mjs";
 
 /** Resolved from the working directory the host gave us, never from `PWD`. */
 export function resolveWorkspaceRoot(cwd) {
@@ -88,6 +90,15 @@ export async function decide({ cwd, declaration, runtimePath }) {
     throw new LaunchRefusal(error.code ?? "WORKSPACE_UNRESOLVED", error.message, error.nextStep ?? SETUP_STEP);
   }
 
+  // A worktree inherited from an enabled project is *pristine*: the committed declaration and
+  // entry point are there, and none of its own local state is, because local state is never
+  // inherited. Such a worktree may serve reads immediately; its selection is materialised by the
+  // first call that actually mutates (see `materialiseSelection`). Any other absence — a selection
+  // without a record, or a state directory without either — is partial state and is refused.
+  const local = localPaths(identity.root);
+  const pristine =
+    !existsSync(local.dir) && !existsSync(join(identity.root, ".bridge"));
+
   const record = readRecord(identity.root, identity);
   if (record.kind === "foreign") {
     throw new LaunchRefusal(
@@ -100,11 +111,20 @@ export async function decide({ cwd, declaration, runtimePath }) {
     throw new LaunchRefusal("SETUP_RECORD_INVALID", `.bridge-runtime/install.json cannot be used: ${record.detail}`, "inspect the file; it is never rewritten automatically");
   }
   if (record.kind === "absent") {
-    throw new LaunchRefusal(
-      "SETUP_NOT_INITIALIZED",
-      `${identity.root} has no local bridge selection yet`,
-      SETUP_STEP,
-    );
+    if (!pristine) {
+      throw new LaunchRefusal(
+        "SETUP_STATE_PARTIAL",
+        `${identity.root} has ${LOCAL_DIR}/ or .bridge/ but no usable selection record`,
+        SETUP_STEP,
+      );
+    }
+    return {
+      root: identity.root,
+      identity,
+      runtime,
+      pristine: true,
+      launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
+    };
   }
   const applied = record.value.runtime.id;
   if (applied !== declaredId) {
@@ -123,7 +143,49 @@ export async function decide({ cwd, declaration, runtimePath }) {
     );
   }
 
-  return { root: identity.root, identity, runtime, launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER) };
+  return {
+    root: identity.root,
+    identity,
+    runtime,
+    pristine: false,
+    launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
+  };
+}
+
+/**
+ * Write this worktree's own selection, the first time a call would mutate.
+ *
+ * It is the ordinary wave12 `init` plan: the same ownership hashes, symlink refusal, copied-record
+ * refusal, `mcp_servers.bridge` conflict rules, active-use check and resumable journal. This
+ * process is excluded from the active-use check by `findActiveUse`'s own `selfPid` rule, and a
+ * client sitting in the worktree is not a blocking kind for `init`.
+ *
+ * A refusal here refuses the mutating call: the worktree is left exactly as it was.
+ */
+export function materialiseSelection({ home, identity, runtime }) {
+  return () => {
+    // Recompute under the call: another process may have prepared this worktree meanwhile.
+    if (readRecord(identity.root, identity).kind === "valid") return;
+    const plan = planChange({ action: "init", home, identity, target: runtime, profile: "dispatcher" });
+    if (!plan.ok) {
+      const first = plan.refusals[0] ?? plan.conflicts[0];
+      throw new BridgeSelectionRefused(
+        first?.code ?? "SETUP_REFUSED",
+        `this worktree could not take its own bridge selection: ${first?.message ?? "refused"}`,
+        first?.nextStep ?? SETUP_STEP,
+      );
+    }
+    if (plan.changed) applyPlan(plan);
+  };
+}
+
+/** Refusal raised inside a mutating call, so the call fails and nothing is written. */
+export class BridgeSelectionRefused extends Error {
+  constructor(code, message, nextStep) {
+    super(`${code}: ${message}${nextStep ? ` (next: ${nextStep})` : ""}`);
+    this.code = code;
+    this.nextStep = nextStep;
+  }
 }
 
 function parse(argv) {
@@ -155,6 +217,12 @@ export async function launch({ cwd = process.cwd(), argv = [], declaration, runt
     throw error;
   }
   const options = parse(argv);
+  if (decision.pristine) {
+    // Registered, not run: the handshake and every read still write nothing.
+    setPendingSelection(
+      materialiseSelection({ home: runtimeHome(runtimePath), identity: decision.identity, runtime: decision.runtime }),
+    );
+  }
   process.argv = [
     process.argv[0],
     decision.launcher,
@@ -168,6 +236,11 @@ export async function launch({ cwd = process.cwd(), argv = [], declaration, runt
   process.chdir(decision.root);
   await import(pathToFileURL(decision.launcher).href);
   return { launched: true, workspace: decision.root, runtime_id: decision.runtime.id };
+}
+
+/** `<home>` of an installed runtime at `<home>/runtimes/<id>`. */
+function runtimeHome(runtimePath) {
+  return join(runtimePath, "..", "..");
 }
 
 function defaultRuntimePath() {
