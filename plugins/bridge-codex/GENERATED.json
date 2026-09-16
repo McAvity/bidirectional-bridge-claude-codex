@@ -30,7 +30,7 @@
     },
     {
       "path": "scripts/bridge.mjs",
-      "sha256": "8565682c81d1b2323ee63232531731d982939af9537ba8d317d062693fe7c5af"
+      "sha256": "6d80bc6df3d6095340498fad6b6a900eb21f344c02160d4920b4976ca2cb56ba"
     },
     {
       "path": "scripts/diagnostics/collect.mjs",

@@ -16,15 +16,15 @@ const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Co
   install   [--source <bridge clone>] [--ref <commit>]
             build the runtime of one commit into <home>/runtimes/<id>, beside older ones
   runtimes  list installed runtimes
-  init      --workspace <worktree> [--runtime <id>] [--keep-local] [--with-preference] [--yes]
-  update    --workspace <worktree> --runtime <id> [--keep-local] [--with-preference] [--yes]
+  init      --workspace <worktree> [--runtime <id>] [--keep-local] [--yes]
+  update    --workspace <worktree> --runtime <id> [--keep-local] [--yes]
   rollback  --workspace <worktree> [--to <id>] [--keep-local] [--yes]
             plan (and with --yes apply) the MCP configuration, instructions and runtime
             selection of one worktree; without --yes nothing is written.
-            --with-preference also records the short collaboration preference in the project's
-            AGENTS.md, between the managed markers. It is never written without that flag, the
-            rest of the file is preserved, and a locally edited block is a conflict, not a
-            rewrite. The plan prints the exact diff first.
+            --with-preference is accepted but refused here (PREFERENCE_REQUIRES_DISPATCHER):
+            this CLI prepares the per-worktree shape, and the preference block names
+            .bridge-project/entry.mjs, which only the dispatcher profile installs. Record it
+            with the bridge setup skill instead; AGENTS.md is never read or written here.
   doctor    --workspace <worktree> [--codex-profile <name>] [--no-handshake]
             check tools, setup, configuration, state and a real MCP handshake; no models
   diagnose  --workspace <worktree> [--feature <id> | --task <id> [--attempt <n>] | --since <30m|6h|ISO>]
