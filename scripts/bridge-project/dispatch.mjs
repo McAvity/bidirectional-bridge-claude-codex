@@ -102,45 +102,56 @@ export async function decide({ cwd, declaration, runtimePath }) {
     throw new LaunchRefusal("SETUP_RECORD_INVALID", `.bridge-runtime/install.json cannot be used: ${record.detail}`, "inspect the file; it is never rewritten automatically");
   }
   if (record.kind === "absent") {
-    // Two states may still serve, and both are materialised by the first authorised mutation:
+    // One rule decides whether this worktree may finish preparing itself:
     //
-    //  - *pristine*: inherited from an enabled project with none of its own local state, because
-    //    local state is never inherited;
-    //  - *resumable*: this worktree's own interrupted apply, proven by a journal that records this
-    //    exact worktree and the declared runtime. Completing it is finishing what this worktree
-    //    started, not adopting anything.
+    //   it may, when its local state is *explained* as this worktree's own and nothing
+    //   contradicts that explanation.
     //
-    // Everything else — a journal naming another worktree, an unreadable or runtime-mismatched
-    // one, a selection directory with neither, a database with neither — is unexplained partial
-    // state and is refused with nothing written.
+    // Explained means one of the two records this worktree writes about itself says so: the
+    // selection journal (`classifyPending`) or the runtime's own state marker
+    // (`classifyNativeState`). Contradicted means either of those names another worktree or cannot
+    // be read, or `.bridge-runtime/current` exists as something other than a symlink.
+    //
+    // The bare existence of `.bridge-runtime/` is not a contradiction: an interrupted apply creates
+    // that directory before it writes anything into it, and discarding valid native evidence just
+    // because the directory exists is what left the pre-journal boundary unrecoverable
+    // (review W14-R2-07). Unknown files inside it are neither evidence nor contradiction; the plan
+    // never removes them.
+    //
+    // This waives nothing else. A foreign or invalid record, a pin mismatch, a symlinked managed
+    // path, the native identity guard and the ordinary conflict rules all still apply, above and
+    // inside `planChange`.
     const local = localPaths(identity.root);
     const journal = classifyPending(identity.root, identity, declaredId);
     const native = classifyNativeState(identity.root, identity);
-    const pristine = !existsSync(local.dir) && native.kind === "absent";
-    const resumable = journal.kind === "own";
-    // A reservation the runtime itself made for *this* worktree, before the selection journal
-    // existed: the marker is the runtime's own record of ownership, so the state is explained and
-    // this worktree may finish what it started (review W14-R2-07, boundary before the first
-    // `.bridge-runtime` write). A copied or unexplained state directory is still refused.
-    const reserved = !existsSync(local.dir) && native.kind === "own";
-    if (!pristine && !resumable && !reserved) {
-      const unexplained = journal.kind === "absent" ? native : journal;
+    const explained = journal.kind === "own" || native.kind === "own";
+    const contradicted =
+      journal.kind === "foreign" ||
+      journal.kind === "unexplained" ||
+      native.kind === "foreign" ||
+      native.kind === "unexplained" ||
+      selection.kind === "not-symlink";
+    const pristine = !existsSync(local.dir) && native.kind === "absent" && !explained;
+
+    if (contradicted || (!pristine && !explained)) {
+      const problem = [journal, native].find((state) => state.kind === "foreign" || state.kind === "unexplained");
       throw new LaunchRefusal(
         "SETUP_STATE_PARTIAL",
-        journal.kind === "absent" && native.kind === "absent"
-          ? `${identity.root} has ${LOCAL_DIR}/ but no usable selection record and no journal of its own`
-          : `${identity.root} has partial state that is not this worktree's own: ${unexplained.detail ?? "unexplained"}`,
-        unexplained.kind === "foreign"
-          ? `remove the copied state from this worktree after checking it; it is never adopted`
+        problem
+          ? `${identity.root} has partial state that is not this worktree's own: ${problem.detail}`
+          : `${identity.root} has ${LOCAL_DIR}/ but no usable selection record and nothing that explains it`,
+        problem?.kind === "foreign"
+          ? "remove the copied state from this worktree after checking it; it is never adopted"
           : SETUP_STEP,
       );
     }
+
     return {
       root: identity.root,
       identity,
       runtime,
       pristine,
-      resuming: resumable || reserved,
+      resuming: explained,
       launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
     };
   }
