@@ -54,3 +54,37 @@ Dowody: odczyt pełnego diffu kodu/instrukcji/testów; izolowane próby Node pla
 oraz locate.status na rzeczywistym runtime, bez modelu i bez zmian jego plików.
 Paczka, diff check PASS. Testy wykonawcy: 6 entry/plugin + 3 preference PASS;
 nie pokrywają powyższych przypadków. Pełna walidacja po korektach.
+
+## Review korekt i W15-03 — 2026-09-16, task_ztxwvbm7ez
+
+REWORK wyłącznie w dowodach C2 i I6; 02ced395dc13e9f09722b8ad8707e3d040dab299.
+Paczka r03 integrity/range PASS, 30 plików w scope, czysty worktree.
+I1: resolved — niezależna próba zwraca PREFERENCE_REQUIRES_DISPATCHER i ok=false.
+I2: resolved — previous=Buffer.alloc(0) daje diff dla nowego pliku; testuje brak/pusty.
+I3: resolved — niezależna próba zwraca pin-commit-mismatch i instructions=null;
+plugin i entry współdzielą klasyfikację, test porównuje oba wejścia.
+I4: resolved — blok zakazujący delegacji daje modified, authoritative=false;
+instrukcje nakazują odczytać rzeczywiste AGENTS, nie traktować flagi jako zgody.
+I5: resolved — plugin odsyła klasyfikację do przypiętego role skill; nowy entry
+sprawdza describe zamiast wywołać launch starszego runtime; granica wersji opisana.
+
+## W15-I6 — dowód no-handle nie sprawdza deklarowanej granicy (blocker wiarygodności)
+
+wave15-continuation.test.ts przypadek „dead server” utrzymuje aktywny gated adapter;
+nie zabija procesu, nie usuwa żywego lease, akceptuje błąd /lease|persisted execution handle/.
+Także po usunięciu guardu brakującego handle test nadal przejdzie dzięki lease. Ledger
+W15-03/01 nazywa to martwym serwerem i deklaruje stop na brakującym handle — ponad dowód.
+Korekta: syntetycznie utworzyć stan osieroconej próby bez handle i BEZ żywego lease,
+bez uruchomionego adaptera, po odtworzeniu bazy żądać dokładnego błędu no-handle
+oraz niezmienionych tasków/prób/historii. Można użyć kontrolowanego crash hook lub
+jawnie syntetycznego stanu trwałego; nie potrzeba realnego procesu modelu.
+Nie twierdzić, że drugi connection/reopen jest realnym restartem procesu. Nazwać
+wprost granicę dowodu i zachować starszy ledger, dodając korektę w nowym.
+Scenariusz „waiting_user, foreign, closed” nie testuje closed; skorygować nazwę/opis
+lub dodać właściwą asercję (bez sugerowania empirycznego foreign Codex thread,
+który jest pokryty osobnymi istniejącymi testami identity).
+
+Następna runda: wąskie testy C2/I6, brak semantycznych zmian runtime, W15-04 raport
+z pokryciem AC i proponowanym pinem. Pełne npm test uruchomione niezależnie przez
+koordynatora; wynik jeszcze oczekiwany. Python46 i pilot140 PASS na niezmienionych
+obszarach. Smoke pozostaje niezlecony, zachowanie modeli unverified.

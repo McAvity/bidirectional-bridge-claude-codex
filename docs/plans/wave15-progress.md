@@ -66,3 +66,15 @@ markery nie są zgodą, cienkie wejście pluginu. Niezależne próby potwierdzi�
 Wykonawca: build, 6 entry/plugin + 3 preference, packages i links PASS.
 Następny krok: te poprawki wraz z W15-03; trzecie sprawdzenie C2/C4 wymaga step-back.
 Nie zmieniono aktywnego runtime, projektu .bridge-project ani globalnej konfiguracji.
+
+## Runda 3 i step-back — 02ced39
+
+W15-03 + korekty: 59b808e, 02ced39; task_ztxwvbm7ez DONE, paczka r03 PASS.
+I1-I5 oraz C4 resolved. C2: step-back przy trzecim review — zachowano proste
+intent JSON + istniejące replay, bez helpera/nowego API. Lokalizacja już poprawna;
+pozostał dowód rzeczywistego odczytu requestu z pliku po przerwie. I6: test no-handle
+musi wykluczyć żywy lease i nie udawać śmierci procesu. Następny krok: wąska korekta
+testów i W15-04 raport w tej samej sesji, potem końcowe review.
+Wykonawca: build, 9 continuation + 12 entry + 2 legacy, packages/links PASS.
+Koordynator uruchomił pełne npm test (wynik oczekiwany); wcześniejsze Python46/pilot140
+pozostają ważne dla niezmienionych obszarów. Bez smoke/push/merge/deployment.

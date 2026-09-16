@@ -17,7 +17,7 @@
   ],
   "latest_review": "docs/features/F-W15-natural-workflow/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W15-natural-workflow/decisions/01.md",
-  "next_action": "Runda 3: C2/C4 i I1-I5, W15-03; potem step-back/review i pełna walidacja.",
+  "next_action": "Runda 4: domknięcie dowodów C2/I6 i raport W15-04, następnie końcowe review i dostawa.",
   "bridge": {
     "feature_id": "F-W15-natural-workflow",
     "parent_task_id": "task_7zykhr76zt"

@@ -79,3 +79,22 @@ Paczka r02 integrity/range PASS, SHA256 5a2cd2a68ef93ac3cdb651ef8f1f2efddd5e6693
 To drugie review C2/C4. Przy następnym sprawdzeniu obowiązuje step-back niezależnie
 od postępu. Prostszy kierunek: jeden plik intencji w istniejącej przestrzeni wymiany,
 jedna kanoniczna tabela replay, żadnej nowej maszyny stanów ani zmian protokołu.
+
+## Trzecie review C2/C4 — step-back, 2026-09-16, task_ztxwvbm7ez
+
+Zakres 6df44ce..02ced395dc13e9f09722b8ad8707e3d040dab299; paczka r03 PASS,
+SHA256 1b5da79db04dd554b5535ed8e5d5c2698fb7dfc4a0d8b3a3a835f15171b2ac16.
+
+Step-back: celem jest odzyskać dokładne żądanie po przerwie, bez duplikacji i bez
+naruszenia bootstrapu. Prostsze rozwiązanie to jeden plik intencji w istniejącej
+przestrzeni exchange i istniejące replay; nie potrzeba helpera, nowej bazy ani API.
+Kierunek został zachowany. Test rzeczywistego bootstrapu po zapisie poza repo oraz
+odmowa zapisu do .bridge potwierdzają poprawkę lokalizacji.
+C2: progress; projekt jest poprawny, lecz testy replay używają nadal f.request z pamięci
+(mimo komentarza „intent file exists”). Domknąć dowód: utrwalić dokładny request
+atomowo w pliku, po przerwie używać wyłącznie nowo sparsowanych argumentów, sprawdzić
+key/contract/budget/task/attempt counts także po powtórnym przerwaniu. Nie dodawać
+produkcyjnej maszyny stanów. To wąska poprawka testów, bez kolejnego rozwiązania.
+C4: resolved; sprzeczne zalecenia usunięto z głównej tabeli. Test też skorygował
+błędne wcześniejsze twierdzenie o WORKING->WORKING. Naprawić tylko brak separatora
+kolumn w wierszu Root task (atomowość/odczyt), bez nowej zmiany semantycznej.
