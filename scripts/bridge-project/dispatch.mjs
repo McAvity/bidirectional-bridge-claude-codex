@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { canonical, run } from "../setup/common.mjs";
 import { LAUNCHER, loadRuntimeAt, verifyRuntime } from "../setup/runtime.mjs";
 import { LOCAL_DIR } from "../setup/common.mjs";
-import { PROJECT_FORMAT, applyPlan, localPaths, planChange, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
+import { PROJECT_FORMAT, applyPlan, classifyPending, localPaths, planChange, readRecord, readSelection, resolveIdentity } from "../setup/workspace.mjs";
 import { setPendingSelection } from "./pending-selection.mjs";
 
 /** Resolved from the working directory the host gave us, never from `PWD`. */
@@ -90,15 +90,6 @@ export async function decide({ cwd, declaration, runtimePath }) {
     throw new LaunchRefusal(error.code ?? "WORKSPACE_UNRESOLVED", error.message, error.nextStep ?? SETUP_STEP);
   }
 
-  // A worktree inherited from an enabled project is *pristine*: the committed declaration and
-  // entry point are there, and none of its own local state is, because local state is never
-  // inherited. Such a worktree may serve reads immediately; its selection is materialised by the
-  // first call that actually mutates (see `materialiseSelection`). Any other absence — a selection
-  // without a record, or a state directory without either — is partial state and is refused.
-  const local = localPaths(identity.root);
-  const pristine =
-    !existsSync(local.dir) && !existsSync(join(identity.root, ".bridge"));
-
   const record = readRecord(identity.root, identity);
   if (record.kind === "foreign") {
     throw new LaunchRefusal(
@@ -111,18 +102,38 @@ export async function decide({ cwd, declaration, runtimePath }) {
     throw new LaunchRefusal("SETUP_RECORD_INVALID", `.bridge-runtime/install.json cannot be used: ${record.detail}`, "inspect the file; it is never rewritten automatically");
   }
   if (record.kind === "absent") {
-    if (!pristine) {
+    // Two states may still serve, and both are materialised by the first authorised mutation:
+    //
+    //  - *pristine*: inherited from an enabled project with none of its own local state, because
+    //    local state is never inherited;
+    //  - *resumable*: this worktree's own interrupted apply, proven by a journal that records this
+    //    exact worktree and the declared runtime. Completing it is finishing what this worktree
+    //    started, not adopting anything.
+    //
+    // Everything else — a journal naming another worktree, an unreadable or runtime-mismatched
+    // one, a selection directory with neither, a database with neither — is unexplained partial
+    // state and is refused with nothing written.
+    const local = localPaths(identity.root);
+    const journal = classifyPending(identity.root, identity, declaredId);
+    const pristine = !existsSync(local.dir) && !existsSync(join(identity.root, ".bridge"));
+    const resumable = journal.kind === "own";
+    if (!pristine && !resumable) {
       throw new LaunchRefusal(
         "SETUP_STATE_PARTIAL",
-        `${identity.root} has ${LOCAL_DIR}/ or .bridge/ but no usable selection record`,
-        SETUP_STEP,
+        journal.kind === "absent"
+          ? `${identity.root} has ${LOCAL_DIR}/ or .bridge/ but no usable selection record and no journal of its own`
+          : `${identity.root} has an interrupted setup that is not this worktree's own: ${journal.detail}`,
+        journal.kind === "foreign"
+          ? `remove ${LOCAL_DIR}/ from this worktree after checking it; a copied journal is never resumed`
+          : SETUP_STEP,
       );
     }
     return {
       root: identity.root,
       identity,
       runtime,
-      pristine: true,
+      pristine,
+      resuming: resumable,
       launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
     };
   }
@@ -148,6 +159,7 @@ export async function decide({ cwd, declaration, runtimePath }) {
     identity,
     runtime,
     pristine: false,
+    resuming: false,
     launcher: join(runtimePath, runtime.manifest.mcp?.launcher ?? LAUNCHER),
   };
 }
@@ -166,7 +178,16 @@ export function materialiseSelection({ home, identity, runtime }) {
   return () => {
     // Recompute under the call: another process may have prepared this worktree meanwhile.
     if (readRecord(identity.root, identity).kind === "valid") return;
-    const plan = planChange({ action: "init", home, identity, target: runtime, profile: "dispatcher" });
+    // `insideGuardedMutation`: the native identity guard has already authorised exactly one caller
+    // for this worktree, so its own other processes must not veto it through the process scan.
+    const plan = planChange({
+      action: "init",
+      home,
+      identity,
+      target: runtime,
+      profile: "dispatcher",
+      insideGuardedMutation: true,
+    });
     if (!plan.ok) {
       const first = plan.refusals[0] ?? plan.conflicts[0];
       throw new BridgeSelectionRefused(
@@ -217,7 +238,7 @@ export async function launch({ cwd = process.cwd(), argv = [], declaration, runt
     throw error;
   }
   const options = parse(argv);
-  if (decision.pristine) {
+  if (decision.pristine || decision.resuming) {
     // Registered, not run: the handshake and every read still write nothing.
     setPendingSelection(
       materialiseSelection({ home: runtimeHome(runtimePath), identity: decision.identity, runtime: decision.runtime }),

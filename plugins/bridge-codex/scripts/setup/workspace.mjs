@@ -275,6 +275,32 @@ export function readPending(root) {
   return parsed.kind === "absent" ? null : parsed.kind === "valid" ? parsed.value : { invalid: parsed.detail };
 }
 
+/**
+ * Classify an interrupted apply's journal.
+ *
+ * `own` means it provably belongs to this worktree and this runtime, so completing it is a resume
+ * of work this worktree itself started. Anything else — a journal naming another worktree, another
+ * runtime, an unreadable one, or one written before the journal recorded its workspace — is
+ * `unexplained` and is never resumed automatically.
+ */
+export function classifyPending(root, identity, runtimeId) {
+  const pending = readPending(root);
+  if (pending === null) return { kind: "absent" };
+  if (pending.invalid) return { kind: "unexplained", detail: pending.invalid };
+  if (pending.format !== PENDING_FORMAT) return { kind: "unexplained", detail: `unknown format ${pending.format}` };
+  const workspace = pending.workspace;
+  if (!workspace || typeof workspace.root !== "string") {
+    return { kind: "unexplained", detail: "the journal does not record which worktree it belongs to" };
+  }
+  if (workspace.root !== identity.root || (workspace.git_dir ?? null) !== identity.git_dir) {
+    return { kind: "foreign", detail: `the journal belongs to ${workspace.root}` };
+  }
+  if (runtimeId && pending.runtime_id !== runtimeId) {
+    return { kind: "unexplained", detail: `the journal selects runtime ${pending.runtime_id}, not ${runtimeId}` };
+  }
+  return { kind: "own", value: pending };
+}
+
 /** Schema version of this worktree's database, read-only; never migrates or creates anything. */
 export function readStateSchema(root) {
   let database = join(root, ".bridge", "bridge.db");
@@ -667,7 +693,25 @@ const comparableRecord = (record) =>
  * Compute what `action` would change. `target` is a loaded runtime. Nothing is written.
  * `plan.ok` is false when anything conflicts or is refused; such a plan is never applied.
  */
-export function planChange({ action, home, identity, target, keepLocal = false, profile = "legacy", env = process.env }) {
+export function planChange({
+  action,
+  home,
+  identity,
+  target,
+  keepLocal = false,
+  profile = "legacy",
+  /**
+   * True when this plan runs inside the bridge's own authorised native mutation for this worktree.
+   *
+   * The native identity guard is the authoritative critical section there: exactly one caller is
+   * inside it, and a second one is refused as a foreign manager. The process scan must therefore
+   * not veto that caller because *another* bridge process of the same worktree holds the database
+   * open — which is precisely what two simultaneous first uses produce (review W14-R2-06). Every
+   * other refusal, and every ordinary `init`/`update`/`rollback` from the CLI, is unchanged.
+   */
+  insideGuardedMutation = false,
+  env = process.env,
+}) {
   const root = identity.root;
   const paths = localPaths(root);
   const recordRead = readRecord(root, identity);
@@ -782,8 +826,14 @@ export function planChange({ action, home, identity, target, keepLocal = false, 
     plan.refusals.push(...compatibilityRefusals(target, root, env));
     const use = findActiveUse(root, { env });
     // A worktree that never selected a runtime cannot run one; only its state files matter then.
-    const blocking = currentId === null ? ["bridge-mcp", "state-open"] : ["bridge-mcp", "state-open", "client"];
-    if (!use.supported) {
+    const blocking = insideGuardedMutation
+      ? []
+      : currentId === null
+        ? ["bridge-mcp", "state-open"]
+        : ["bridge-mcp", "state-open", "client"];
+    if (blocking.length === 0) {
+      // The guard already serialised this call; there is nothing for the scan to decide.
+    } else if (!use.supported) {
       refuse("ACTIVE_USE_UNKNOWN", `cannot tell whether this worktree is in use: ${use.reason}`, "run the command outside a sandbox on Linux");
     } else {
       const active = use.entries.filter((entry) => entry.kinds.some((kind) => blocking.includes(kind)));
@@ -833,6 +883,9 @@ export function applyPlan(plan, { env = process.env } = {}) {
     `${JSON.stringify({
       format: PENDING_FORMAT,
       action: plan.action,
+      // Whose journal this is. `.bridge-runtime/` is never inherited, but it can be *copied*, and
+      // a resume must be able to tell its own interrupted apply from someone else's leftovers.
+      workspace: { kind: plan.identity.kind, root: plan.root, git_dir: plan.identity.git_dir },
       runtime_id: plan.target.id,
       tag,
       started_at: new Date().toISOString(),

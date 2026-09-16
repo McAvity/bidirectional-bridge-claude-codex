@@ -77,7 +77,7 @@ function targetRuntimeId(report, options, release) {
  * makes a second worktree, and an offline machine that has already installed the release, need
  * no source at all.
  */
-function ensureRuntime({ home, runtimeId, commit, options }) {
+function ensureRuntime({ home, runtimeId, commit, options, apply }) {
   if (runtimeId) {
     try {
       return { runtime: loadRuntime(home, runtimeId), installed: false, source: null };
@@ -93,6 +93,10 @@ function ensureRuntime({ home, runtimeId, commit, options }) {
     const installed = listRuntimes(home).find((candidate) => candidate.manifest?.source.commit === commit);
     if (installed) return { runtime: installed, installed: false, source: null };
   }
+  // Acquiring and building are writes — of a source cache and of an immutable runtime, both under
+  // the bridge home. A plan must not perform them (review W14-R2-08), so without `--yes` the run
+  // stops here and reports what applying would install.
+  if (!apply) return { runtime: null, installed: false, source: null, wouldInstall: { runtime_id: runtimeId ?? null, commit } };
   const release = readRelease(join(HERE, "release.json"));
   const source = acquireSource({
     home,
@@ -174,7 +178,47 @@ export async function main(argv, { cwd = process.cwd(), env = process.env } = {}
 
   const release = readRelease(join(HERE, "release.json"));
   const wanted = targetRuntimeId(current, options, release);
-  const { runtime, installed, source } = ensureRuntime({ home, runtimeId: wanted.runtimeId, commit: wanted.commit, options });
+  const apply = Boolean(options.yes);
+  const { runtime, installed, source, wouldInstall } = ensureRuntime({
+    home,
+    runtimeId: wanted.runtimeId,
+    commit: wanted.commit,
+    options,
+    apply,
+  });
+
+  if (!runtime) {
+    // An honest plan: the runtime is not here, and computing the file-level diff needs it. Nothing
+    // was read that would have written, and nothing under the bridge home was created.
+    const planned = {
+      ok: true,
+      applied: false,
+      changed: true,
+      action: command,
+      workspace: current.workspace.root,
+      runtime: { id: wouldInstall.runtime_id, commit: wouldInstall.commit, path: null },
+      would_install_runtime: wouldInstall,
+      changes: [{ kind: "runtime", path: `<bridge home>/runtimes/`, action: "install" }],
+      kept_local: [],
+      conflicts: [],
+      refusals: [],
+      notes: [
+        "Plan only: nothing was written, in this worktree or under the bridge home.",
+        "The pinned runtime is not installed here, so the per-file plan cannot be computed yet.",
+        "Re-run with --yes to acquire the pinned commit, build it and prepare this worktree.",
+      ],
+      runtime_installed_now: false,
+      source: null,
+      declaration: null,
+    };
+    report(planned, asJson, (r) => [
+      `plan: ${r.workspace}`,
+      `runtime:  ${r.would_install_runtime.commit} would be installed (${r.would_install_runtime.runtime_id ?? "new runtime id"})`,
+      ...r.notes.map((note) => `note:     ${note}`),
+      "result:   dry run, nothing written; re-run with --yes",
+    ]);
+    return 0;
+  }
 
   // `init` for a worktree that has no selection yet, `update`/`rollback` when it has one: the
   // wave12 action decides which refusals apply, including the active-session one.

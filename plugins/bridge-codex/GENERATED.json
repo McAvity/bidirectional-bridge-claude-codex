@@ -14,7 +14,7 @@
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
-      "sha256": "d7241d33e4a5481b5f7ce48da17f152344acfcd9d72e6608de95396c596e7dda"
+      "sha256": "cd90d03bee4ba773d21885f74abc792f1109d5f333982e74239f139486d83b60"
     },
     {
       "path": "scripts/bridge-project/entry-template.mjs",
@@ -38,7 +38,7 @@
     },
     {
       "path": "scripts/plugin-packages/bridge-plugin.mjs",
-      "sha256": "1dd2e2236f498110e9cdc3a37f6c9ec0660ec20741c96431e6e0b911173ca165"
+      "sha256": "43bd3b9c8beaffc5b3802ed4570e14abf548a5c30ea522dc635e3fd49a0f92e2"
     },
     {
       "path": "scripts/plugin-packages/release.json",
@@ -70,7 +70,7 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "bbb0162d00c88ce947c431022471b37053b33fb7c9b1b881bf2b4949617fd18b"
+      "sha256": "6565f2358fec57135048a3bc75ed1fbf315712a64f3b68c8f19963e3d8d4fa4a"
     },
     {
       "path": "skills/bridge/SKILL.md",
