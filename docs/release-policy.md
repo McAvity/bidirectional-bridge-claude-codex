@@ -53,7 +53,9 @@ certification manifest describes the upstream 0.2.0 checkpoint and is not a curr
 fork certification. Its mismatch is recorded, not repaired by relabelling old evidence.
 Fork validation follows AGENTS.md plus package equivalence and documentation checks.
 
-## Upstream certification checklist (historical reference)
+## Release checklist
+
+Historical upstream certification procedure (see the fork checkpoint rules above).
 
 A checkpoint is only prepared after these gates pass locally, with real exit codes:
 

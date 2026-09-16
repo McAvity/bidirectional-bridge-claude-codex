@@ -637,7 +637,10 @@ describe("native project MCP launcher", () => {
       expect(sequence.every((value, index) => index === 0 || value > sequence[index - 1]!)).toBe(true);
 
       const start = records.find((record) => record["event"] === "start")!;
-      expect(start).toMatchObject({ op: "process", role: "codex", source: "0.2.0" });
+      expect(start).toMatchObject({
+        op: "process", role: "codex",
+        source: JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).version,
+      });
       expect(start["workspace"]).toMatch(/^ws_[0-9a-f]{16}$/u);
       expect(start["pid"]).toBeGreaterThan(0);
       expect(start["details"]["deferred_records"]).toBeGreaterThan(0);

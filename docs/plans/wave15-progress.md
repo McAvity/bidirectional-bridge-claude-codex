@@ -114,3 +114,18 @@ packages, linki i diff PASS. Bez zmiany kodu, stanu bridge'a lub runtime.
 Review zapisane wyłącznie na branchu wave15-coordinator-review; worktree wave15 nietknięty.
 Następny krok: decyzja o osobnym smoke z prawdziwymi modelami; odbiór użytkownika
 nadal pending. Nie potrzeba kolejnej ogólnej rundy review ani wykonawcy.
+
+## Wydanie przed smoke — 2026-09-17
+
+Użytkownik zlecił integrację, publikację, bump0.3.0 i przełączenie przed smoke.
+[Decyzja02](../features/F-W15-natural-workflow/decisions/02.md),
+[plan wydania i wznowienia](wave15-release.md). Dostawa b64b858 + review10eb3ed,
+runtime2611d1e, pin dystrybucji1c75a70. Runtime zainstalowany obok obecnego;
+plan aktualizacji bez konfliktów, ACTIVE_SESSION poprawnie blokuje zastosowanie.
+Feature nie jest accepted; q-01 i sesja oryginalnego managera nietknięte.
+
+Walidacja integracyjna: npm ci/build PASS; pełne JS564/565 ujawniło jedyne stare
+oczekiwanie source=0.2.0 w teście logu. Po porównaniu z package.json: cały launcher
+16/16 PASS. Python46/pilot140, packages, linki168 i diff PASS. Ostateczny pełny
+przebieg po tej korekcie wykona CI. Zmiana wyłącznie testowa, pin runtime2611d1e
+pozostaje właściwy. Starego runtime i sesji wave15 nie zmieniano.
