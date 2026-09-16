@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Committed project entry point of the bridge. Deliberately minimal: it holds no workflow, no
-// setup logic and no policy — only enough to find the pinned installed runtime and let *its* code
-// take over in this same process. Everything generic lives in the installation, never here.
+// Committed project entry point of the bridge. Deliberately minimal: no workflow, no setup logic
+// and no policy — only enough to find the pinned installed runtime and let *its* code take over in
+// this same process. Everything generic lives in the installation, never here.
 //
 // Written by the bridge; edit `.bridge-project/bridge.json` instead. A hand edited copy is
 // detected and refused rather than overwritten.
@@ -11,8 +11,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// `fileURLToPath`, not `.pathname`: a project directory may contain spaces, which a URL
-// percent-encodes and the filesystem does not.
+// `fileURLToPath`, not `.pathname`: a project directory may contain spaces.
 const here = fileURLToPath(new URL(".", import.meta.url));
 
 function bridgeHome() {
@@ -25,8 +24,7 @@ function bridgeHome() {
 }
 
 // `--status` / `--instructions`: report this project's pin and the instruction paths of the
-// runtime it selects, then exit. Purely a read, and the answer stays useful when the runtime is
-// missing, so a manager is never left guessing which workflow version a project expects.
+// runtime it selects, then exit. A pure read, still useful when the runtime is missing.
 const argv = process.argv.slice(2);
 const reading = argv.includes("--status") || argv.includes("--instructions");
 
@@ -58,9 +56,9 @@ if (declaration.enabled === false && !reading) {
 }
 
 const dispatcher = join(bridgeHome(), "runtimes", runtimeId, "scripts", "bridge-project", "dispatch.mjs");
-let launch;
+let gate;
 try {
-  ({ launch } = await import(pathToFileURL(dispatcher).href));
+  gate = await import(pathToFileURL(dispatcher).href);
 } catch (error) {
   fail(
     "RUNTIME_NOT_INSTALLED",
@@ -68,4 +66,13 @@ try {
     "ask the bridge setup skill to set this project up; it installs exactly this pinned runtime",
   );
 }
-await launch({ cwd: process.cwd(), argv, declaration });
+if (reading) {
+  // An older runtime would ignore the flag and start serving MCP: refuse instead of launching.
+  if (typeof gate.describe !== "function") fail("RUNTIME_WITHOUT_STATUS",
+    `the pinned runtime ${runtimeId} has no read-only status mode`,
+    "use the bridge plugin's `status`, or move the pin to a runtime that supports this flag");
+  const report = gate.describe({ cwd: process.cwd(), declaration });
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  process.exit(report.ok ? 0 : 1);
+}
+await gate.launch({ cwd: process.cwd(), argv, declaration });

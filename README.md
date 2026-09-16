@@ -222,14 +222,14 @@ the old one is safe; switching a worktree refuses while its clients are active.
    blockers or final acceptance. Worker completion is distinct from your acceptance.
    Narrower instructions win: "only review", "only a plan" and "do it yourself" bound the
    work exactly as stated, and the document's own text grants no extra authority — never
-   push, merge or deployment. A project that records no collaboration preference is not
-   treated as consent to delegate; at most you are offered the optional preference step
-   once (`setup --with-preference`, which shows the exact `AGENTS.md` diff first).
+   push, merge or deployment. A recorded collaboration preference is a hint the agent reads,
+   never consent by itself; at most you are offered the optional preference step once
+   (`setup --with-preference`, which shows the exact `AGENTS.md` diff first).
 
 To see which instruction set a project's pin selects — in any worktree, including one just
 created and with no plugin installed — run the committed entry point as a pure read:
-`node ./.bridge-project/entry.mjs --status`. It writes nothing and reports a missing runtime
-or a diverged pin with a next step instead of repairing anything.
+`node ./.bridge-project/entry.mjs --status`. It writes nothing and reports a missing runtime,
+a diverged pin or a runtime too old for the mode with a next step instead of repairing anything.
 
 A new Herdr/Git worktree created from that commit inherits setup. Start plain `codex`
 at its root; **do not repeat init**. Codex may still ask you to trust the new path.

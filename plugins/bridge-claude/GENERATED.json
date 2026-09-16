@@ -8,7 +8,7 @@
     ".claude/skills/using-bridge",
     "docs/features/README.md"
   ],
-  "source_digest": "81767b56cf24bec0da1d4e0ec353f0fa74d8f556d00527c812598167b7f69ef4",
+  "source_digest": "88033e683be2c1e222e13474438a9a96baa8c63a9d32dff7609abe64602a1983",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -52,7 +52,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "99b942ca8971e8c4fe6e1dbb08e1a7ecdad84b6c393d38d83a74c7a58a94e3c5"
+      "sha256": "1d8983d3262c447c386e0f441e786c64786cfe894b2a74c7b7ff5585601b8c4a"
     },
     {
       "path": "skills/feature-plan/SKILL.md",

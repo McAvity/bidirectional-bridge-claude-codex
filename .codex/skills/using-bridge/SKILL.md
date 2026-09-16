@@ -76,10 +76,17 @@ instruction set of the runtime this project pins.
 ### When the project states no preference
 
 `enabled: true` in `.bridge-project/bridge.json` means the bridge may run here. It is not a
-standing instruction to delegate. When a project has no recorded preference
-(`preference.declared: false`), do the requested work under the ordinary delegation checkpoint
-and, at most once, offer to record the preference with the setup skill's explicit optional step.
-A declined offer is not repeated, and "do it yourself" always wins.
+standing instruction to delegate.
+
+The status read reports `preference.managed_block` — whether the project's `AGENTS.md` carries
+the exact block the setup writes (`known`), a block whose text was changed (`modified`), or none
+(`absent`). That flag is an observation, never authorization: it is reported with
+`authoritative: false` for a reason. Read `AGENTS.md` yourself. A rewritten block may say the
+opposite of a preference, a perfectly valid preference may be written in ordinary prose with no
+markers at all, and the user's own instruction outranks both — "do it yourself" and any
+prohibition always win. When no preference is recorded, do the requested work under the ordinary
+delegation checkpoint and, at most once, offer the setup skill's explicit optional step. A
+declined offer is not repeated.
 
 The split of roles does not change: the manager coordinates, reviews and owns the user channel;
 a Claude round executes its own contract and never runs the manager workflow or delegates further.
@@ -165,6 +172,21 @@ rounds makes them bounded exchanges, not the continuous conversation excluded ab
 
 In a repository with the `feature-*` workflow, drive the loop with its `feature-execute`
 reference `bridge-loop.md`; otherwise follow `docs/feature-workflow.md` of the bridge.
+
+## Continuing after an interruption
+
+"Continue" is a complete instruction. After capacity, a lost response, a disconnect or a restart,
+read before you write: your own Git state and intent files, then `bridge_manager_status`,
+`bridge_feature_get` and `bridge_get_task` — all pure reads that need no manager instance. Then:
+a running attempt means wait, a finished one means collect and review, and genuine uncertainty
+about whether your call arrived means re-sending the **identical** request with the same key and
+arguments. Never a new key, never a probe call, never a task picked by objective or scope.
+
+Losing your response is not proof that the server or the worker died; only a dead server leaves
+an attempt open with nothing driving it. `waiting_user`, a foreign manager, an ambiguous session
+and an exhausted budget are not suspended by "continue": report them and ask. Do not ask the user
+for identifiers that durable state already holds. `bridge-loop.md` has the full table, including
+the bootstrap steps and the intent file that keeps the exact request.
 
 ## Worktree and manager identity
 

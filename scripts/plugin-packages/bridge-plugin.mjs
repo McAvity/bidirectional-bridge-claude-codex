@@ -44,7 +44,8 @@ Options:
   --offline                     never fetch; fail if no local checkout has the pinned commit
   --with-preference             also record the short collaboration preference in the project's
                                 AGENTS.md (setup/update only). Never written without this flag;
-                                the plan shows the exact diff and the rest of the file is kept.
+                                the plan shows the exact diff, including for a project that has
+                                no AGENTS.md yet, and the rest of the file is kept.
 `;
 
 const VALUE_FLAGS = new Set(["--to", "--source", "--commit", "--home"]);
@@ -190,11 +191,13 @@ export async function main(argv, { cwd = process.cwd(), env = process.env } = {}
   if (command === "status") {
     report(current, asJson, (r) => [
       `state:        ${r.state}`,
+      ...(r.next_step ? [`next:         ${r.next_step}`] : []),
       `workspace:    ${r.workspace.root}`,
       `pin:          ${r.declaration.pinned?.runtime_id ?? "<none declared>"}`,
       `runtime:      ${r.runtime.state}${r.runtime.path ? ` (${r.runtime.path})` : ""}`,
       `selection:    ${r.selection.runtime_id ?? r.selection.kind}`,
       `instructions: ${r.instructions ? r.instructions.root : "<unavailable: run setup>"}`,
+      `preference:   ${r.preference.managed_block} (a marker is not consent; read ${r.preference.path})`,
     ]);
     return current.state === "ready" ? 0 : 1;
   }

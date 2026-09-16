@@ -6,7 +6,7 @@
   "canonical_sources": [
     ".codex/skills/using-bridge"
   ],
-  "source_digest": "81767b56cf24bec0da1d4e0ec353f0fa74d8f556d00527c812598167b7f69ef4",
+  "source_digest": "88033e683be2c1e222e13474438a9a96baa8c63a9d32dff7609abe64602a1983",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -14,15 +14,15 @@
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
-      "sha256": "47475d60f221e1f6f13a66165b2bcd74b659e3c2bd3a30a427b2e8c03f93a0f6"
+      "sha256": "ce3ee912997cd4e4790e99d5ee05c663877d66ea231ec82db21a205669e1efdc"
     },
     {
       "path": "scripts/bridge-project/entry-template.mjs",
-      "sha256": "e7d139b7484ab3d783a6eaa8aeaf9c41ccfed6649e912adc4377df63cb6d5d97"
+      "sha256": "41e2b94b4b348842d4a879ab77aa0cdc98a166ad8c2f375dde77a16541ddd9af"
     },
     {
       "path": "scripts/bridge-project/locate.mjs",
-      "sha256": "65e542afa48b0dd1ccdeab3373d24f372560f9dee5950c885e6f9d6c759418c2"
+      "sha256": "1859ad681a351b0eed1b39b657923b19a6300612794b91f3f5872523999079f2"
     },
     {
       "path": "scripts/bridge-project/pending-selection.mjs",
@@ -54,7 +54,7 @@
     },
     {
       "path": "scripts/plugin-packages/bridge-plugin.mjs",
-      "sha256": "cf9c455eadf8afc108af00d647053d050b84c1cdb7834cbc16846d9470efc255"
+      "sha256": "c3b0544b1a798b4418e60f3d355f88bfb4146fe38b5cd78c5b72d897076d4b2f"
     },
     {
       "path": "scripts/plugin-packages/release.json",
@@ -86,11 +86,11 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "8b9c20106c52e2fe4d9ee959e4ec506b364c8c891e9532e7b802b8753f248720"
+      "sha256": "2e2b8f5baad7ccf4eceddfaf84e29eb774630d5abf72b7b40b8a67117a864b0e"
     },
     {
       "path": "skills/bridge/SKILL.md",
-      "sha256": "0240243390b8724f0690c55ce14a6ce9100b02a51bf6a0b848c1ff0856b97294"
+      "sha256": "86fe1d01cdb81ac4921272769ff159171cdf94baa7444bf6d1e5e4150ecaaa7b"
     }
   ]
 }

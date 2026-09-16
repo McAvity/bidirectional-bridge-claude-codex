@@ -64,14 +64,13 @@ and applies the rest. An existing `mcp_servers.bridge` definition outside the ma
 always a conflict. If an apply is interrupted, run the same command again: it completes the
 change from what is on disk.
 
-`--with-preference` additionally records the short collaboration preference in the project's own
-`AGENTS.md`, inside a managed block: feature implementations run through the bridge unless you ask
-otherwise, narrower instructions win, and a document's own text grants no authority. It is written
-only with that flag — `init`, `update` and `rollback` otherwise never read or write `AGENTS.md`, so
-no update can introduce a policy. Without `--yes` the plan prints the exact diff. The rest of the
-file is preserved, a second run changes nothing, a block edited by hand is `PREFERENCE_MODIFIED`,
-duplicated markers are `PREFERENCE_CONFLICT`, and a symlinked `AGENTS.md` is refused like every
-other managed path.
+`--with-preference` is **refused here**, by name. This CLI prepares the per-worktree (wave12)
+shape, and the preference block points at `.bridge-project/entry.mjs`, which only the dispatcher
+profile installs; writing it from `init` would leave an instruction naming a file this worktree
+will never have. The refusal is `PREFERENCE_REQUIRES_DISPATCHER` and nothing is written. Record the
+preference where the entry point actually exists — see
+[plugin-distribution.md](plugin-distribution.md). `init`, `update` and `rollback` never read or
+write `AGENTS.md` in any case, so no update can introduce a policy.
 
 ## 3. Start the manager
 

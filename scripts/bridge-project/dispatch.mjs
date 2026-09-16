@@ -239,17 +239,13 @@ export class BridgeSelectionRefused extends Error {
 }
 
 function parse(argv) {
-  const out = { caller: "codex", delegation: "allow", read: false };
+  const out = { caller: "codex", delegation: "allow" };
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === "--caller") out.caller = argv[index + 1];
     else if (argv[index] === "--delegation") out.delegation = argv[index + 1];
-    else if (READ_FLAGS.has(argv[index])) out.read = true;
   }
   return out;
 }
-
-/** Flags that ask the entry point to report instead of serving. Shared with the entry template. */
-export const READ_FLAGS = new Set(["--status", "--instructions"]);
 
 /**
  * Read-only report of this worktree, resolved from the pin alone (W15-C1).
@@ -261,53 +257,38 @@ export const READ_FLAGS = new Set(["--status", "--instructions"]);
  *
  *   - it is pure. It resolves no identity, opens no database, takes no lease, claims no manager
  *     and writes nothing, in any state;
- *   - it derives the instruction paths from the runtime directory this module was loaded from,
- *     which the pin already selected, never from the local selection symlink;
+ *   - the classification is `status()`'s, unchanged, so this entry point and the plugin can never
+ *     disagree about a pin — including a pin whose commit does not match (review W15-I3);
+ *   - the instruction paths come from the runtime directory this module was loaded from, which
+ *     the pin already selected, never from the local selection symlink;
  *   - it is not an installer. It reports what is missing and the next step; it repairs nothing.
  */
 export function describe({ cwd = process.cwd(), declaration, runtimePath = defaultRuntimePath(), env = process.env } = {}) {
   const report = status(cwd, env);
-  const declaredId = declaration?.pinned?.runtime_id ?? null;
-  const declaredCommit = declaration?.pinned?.commit ?? null;
+  const usable = report.runtime.state === "ok";
   let runtime = null;
-  let problem = null;
-  try {
-    runtime = loadRuntimeAt(runtimePath, declaredId ?? undefined);
-    const problems = verifyRuntime(runtime);
-    if (problems.length > 0) problem = { code: "RUNTIME_INCOMPLETE", detail: problems.join("; ") };
-    else if (declaredCommit && runtime.manifest.source.commit !== declaredCommit) {
-      problem = {
-        code: "PIN_COMMIT_MISMATCH",
-        detail: `the project pins commit ${declaredCommit} but this runtime was built from ${runtime.manifest.source.commit}`,
-      };
+  if (usable) {
+    try {
+      runtime = loadRuntimeAt(runtimePath, declaration?.pinned?.runtime_id ?? undefined);
+    } catch {
+      runtime = null;
     }
-  } catch (error) {
-    problem = { code: "RUNTIME_UNUSABLE", detail: error.message };
   }
   return {
     format: "claude-codex-bridge.project-entry/v1",
-    ok: problem === null,
-    // `status` classifies the worktree; `inherited-pristine` is a usable state, not an error.
-    state: problem ? problem.code.toLowerCase() : report.state,
+    ok: usable && runtime !== null,
+    state: report.state,
     workspace: report.workspace,
     declaration: report.declaration,
-    runtime: problem
-      ? { state: problem.code, runtime_id: declaredId, commit: null, path: runtimePath, detail: problem.detail }
-      : { state: "ok", runtime_id: runtime.id, commit: runtime.manifest.source.commit, path: runtime.path, detail: null },
+    runtime: report.runtime,
     selection: report.selection,
     preference: report.preference,
-    instructions: problem ? null : instructionPaths(runtime),
-    next_step: problem ? SETUP_STEP : nextStep(report.state),
+    instructions: runtime ? instructionPaths(runtime) : null,
+    next_step: runtime
+      ? report.next_step
+      : report.next_step ?? `this entry point was loaded from ${runtimePath}, which does not answer to the declared pin`,
     reads_only: true,
   };
-}
-
-/** What a manager should do about a worktree in this state. Never a repair performed for them. */
-function nextStep(state) {
-  if (state === "ready" || state === "inherited-pristine") return null;
-  if (state === "not-enabled") return "this project has no bridge declaration; ask the bridge setup skill to enable it";
-  if (state === "project-disabled") return "the bridge is disabled for this project in .bridge-project/bridge.json";
-  return SETUP_STEP;
 }
 
 /**
@@ -318,14 +299,6 @@ function nextStep(state) {
  * refusal, and this function never returns while the server runs.
  */
 export async function launch({ cwd = process.cwd(), argv = [], declaration, runtimePath = defaultRuntimePath() } = {}) {
-  // The read-only mode answers before the launch gate: a refused worktree must still be able to
-  // say which instructions its pin selects, and reporting must never reserve or repair anything.
-  if (parse(argv).read) {
-    const report = describe({ cwd, declaration, runtimePath });
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-    if (!report.ok) process.exitCode = 1;
-    return { launched: false, report };
-  }
   let decision;
   try {
     decision = await decide({ cwd, declaration, runtimePath });

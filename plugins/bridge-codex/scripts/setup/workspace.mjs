@@ -729,7 +729,19 @@ function planPreference(plan) {
   }
   const blockSha = sha256(rendered);
   if (existing === null) {
-    plan.ops.push({ kind: "file", path: AGENTS_FILE, action: "create", before: null, after: sha256(rendered), content: Buffer.from(rendered), mode: 0o644 });
+    // `previous` is what both CLIs diff against. An empty buffer — not a missing field — is what
+    // makes a project without AGENTS.md show the proposed text instead of only a file name
+    // (review W15-I2). It is not `userFile`: there are no bytes of the user's to back up yet.
+    plan.ops.push({
+      kind: "file",
+      path: AGENTS_FILE,
+      action: "create",
+      before: null,
+      after: sha256(rendered),
+      content: Buffer.from(rendered),
+      previous: Buffer.alloc(0),
+      mode: 0o644,
+    });
     return blockSha;
   }
   const text = existing.toString("utf8");
@@ -962,6 +974,19 @@ export function planChange({
   planGitignore(plan, env);
   // Explicit only: without `--with-preference` the project's AGENTS.md is never read or written,
   // so no plugin or runtime update can introduce a collaboration policy on its own.
+  //
+  // The block names `.bridge-project/entry.mjs`, which only the dispatcher profile installs, so a
+  // legacy worktree would be told to read an entry point that does not exist there (review
+  // W15-I1). That is refused by name before anything is planned, rather than repaired by
+  // installing the dispatcher or re-pinning the project behind the user's back.
+  if (preference && profile !== "dispatcher") {
+    refuse(
+      "PREFERENCE_REQUIRES_DISPATCHER",
+      `the collaboration preference names ${PROJECT_ENTRY}, which the ${profile} profile does not install`,
+      "prepare this project with the bridge setup skill (dispatcher profile), then record the preference there",
+    );
+    return finish(plan);
+  }
   const preferenceBlock = preference ? planPreference(plan) : null;
 
   const selects = selection.kind !== "ok" || canonical(resolve(dirname(paths.selection), selection.target)) !== canonical(target.path);

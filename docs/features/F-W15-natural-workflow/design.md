@@ -3,7 +3,8 @@
 Źródło wymagań: [plan wave15](../../plans/wave15.md) (AC-01…AC-09) i [brief](brief.md).
 Autoryzacja: [decisions/01.md](decisions/01.md). Zadanie: [W15-01](../../../work-items/W15-01.md).
 Baza pierwszej wersji: `895cc99606893b96fc205a9bf7804a9bd30749e4`.
-Korekta W15-C1…C4 po review [01-contracts](reviews/01-contracts.md), runda 2.
+Korekta W15-C1…C4 po review [01-contracts](reviews/01-contracts.md), rundy 2 i 3;
+korekty W15-I1…I5 po [02-implementation](reviews/02-implementation.md) opisuje §7.
 
 Ten dokument jest lokalną bramką techniczną dla W15-02…04. Nie zmienia AC ani zakresu planu
 i nie zmienia publicznego protokołu. Wszystkie stwierdzenia o zachowaniu bridge'a pochodzą
@@ -81,42 +82,46 @@ Mechanika zapisu — **istniejąca**, nie nowa:
 
 ## 3. Checkpoint intencji przed mutacją
 
-> Korekta W15-C2: pierwotna wersja mieszała ledger wykonawcy z zapisami managera, wymagała
-> lease przed utworzeniem roota (który jest potrzebny, żeby ten lease w ogóle wziąć) i
-> dopuszczała sam hash żądania jako zapis intencji. Poniżej wersja obowiązująca.
+> Korekta W15-C2 (runda 2 i 3): checkpoint nie może mieszać ledgera wykonawcy z zapisami
+> managera, nie może wymagać lease przed istnieniem roota i **nie może leżeć w `.bridge/`**.
+> Katalog `.bridge` bez `workspace.json` jest dla `classifyNativeState` stanem „unexplained",
+> a `assertPristineStateDirectory` odrzuca nieznane pliki — zapis intencji przed bootstrapem
+> zablokowałby właśnie ten bootstrap. Poniżej wersja obowiązująca.
 
 Checkpoint ma **dwa nośniki o różnych rolach**, i żaden z nich nie jest drugą bazą stanu bridge'a:
 
-| Nośnik | Kiedy powstaje | Co zawiera | Status |
+| Nośnik | Gdzie | Kiedy powstaje | Co zawiera |
 | --- | --- | --- | --- |
-| **Lokalny plik intencji** — `.bridge/intent/<op>-<key>.json`, katalog ignorowany przez Git | **przed pierwszą mutacją** danej operacji, zanim istnieje root task, ownership i lease | dokładne argumenty wywołania w postaci, w jakiej zostaną wysłane; klucz; ścieżka i SHA-256 kontraktu; ścieżka autoryzacji; baza Git; budżet; odczytany `predecessor` | roboczy, prywatny, nietrwały dla review |
-| **Ledger koordynatora** — `docs/features/<id>/execution/coordination/NN.md` | **dopiero po uzyskaniu własności i lease** na zakres managera, gdy żadna runda nie jest otwarta | odwołanie do wpisu intencji (nazwa pliku + SHA-256), klucz, ścieżki i hashe kontraktu/autoryzacji, baza Git, budżet, zwrócone `task_id`/`attempt`, wynik | commitowany dowód intencji i zgody |
+| **Plik intencji** | `<namespace>/intents/<op>-<klucz>.json` w **istniejącej prywatnej przestrzeni wymiany tego worktree** (`~/tmp/bridge-exchange/ws_<16 hex>/`, tej samej, którą wypisuje `feature_exchange.py namespace` — czysty odczyt) | **przed pierwszą mutacją** danej operacji, zanim istnieje root task, ownership i lease | dokładne argumenty wywołania w postaci, w jakiej zostaną wysłane; klucz; ścieżka i SHA-256 kontraktu; ścieżka autoryzacji; baza Git; budżet; odczytany `predecessor` |
+| **Ledger koordynatora** | `docs/features/<id>/execution/coordination/NN.md` | **dopiero po uzyskaniu własności i lease**, gdy żadna runda nie jest otwarta | odwołanie do pliku intencji (nazwa + SHA-256), klucz, ścieżki i hashe kontraktu/autoryzacji, baza Git, budżet, zwrócone `task_id`/`attempt`, wynik |
 
 Zasady, które z tego wynikają:
 
+- **Nigdy `.bridge/` ani `.bridge-runtime/` przed bootstrapem.** Oba katalogi należą do runtime
+  i do setupu; obcy plik w nich zmienia klasyfikację worktree i jest odmawiany, a nie ignorowany.
+  Przestrzeń wymiany jest już prywatna dla worktree, leży poza repozytorium, nie jest commitowana
+  i jest wyliczana istniejącym mechanizmem — nie dokładamy więc żadnej nowej lokalizacji ani
+  nowego formatu konfiguracji. Żaden guard nie jest osłabiany.
+- **Jeden plik, atomowo, przed wysłaniem.** Zapis przez `write` do pliku tymczasowego w tym samym
+  katalogu i `rename` — trwały i niepodzielny. Plik zostaje do zamknięcia operacji.
+  **Brak pliku albo plik nieczytelny to blokada**: manager zatrzymuje operację i prosi
+  o rozstrzygnięcie, zamiast rekonstruować żądanie z pamięci albo z hasha.
 - **Kolejność jest wymuszona przez bridge, nie przez ten dokument.** Root task trzeba utworzyć,
   zanim istnieje cokolwiek, na czym manager może wziąć lease; dlatego zapis intencji dla
-  `root-task` musi być lokalny i bezcommitowy. Reguła „zapisy koordynatora tylko przy zamkniętej
-  rundzie i pod lease" obowiązuje wyłącznie dla ledgera w repozytorium.
+  `root-task` musi być poza repozytorium i bezcommitowy. Reguła „zapisy koordynatora tylko przy
+  zamkniętej rundzie i pod lease" obowiązuje wyłącznie dla ledgera w repozytorium.
 - **Ledger wykonawcy pozostaje wyłącznie jego.** Koordynator nigdy nie dopisuje do
-  `execution/<TASK-ID>/NN.md`; sposób checkpointowania nie zmienia zakresu paczki rundy, bo
-  pliki koordynatora leżą poza `scope.paths` kontraktu.
-- **Hash nie odtwarza argumentów.** Plik intencji przechowuje argumenty dosłownie, bo replay
-  wymaga bajtowo tego samego żądania (§4). SHA-256 służy do wykrycia rozbieżności, nie do
-  rekonstrukcji. **Brak dokładnych danych jest blokadą**: manager zatrzymuje operację i prosi
-  o rozstrzygnięcie, zamiast zgadywać żądanie z hasha albo dobierać task po podobieństwie.
-- **Aktualizacja identyfikatorów w trakcie `running`.** Zwrócone `task_id`/`attempt` dopisuje
-  się najpierw do pliku intencji — to zapis lokalny, więc nie łamie zakazu commitowania w
-  otwartej rundzie i nie wprowadza zmian managera do paczki wykonawcy. Do ledgera w repozytorium
-  trafiają dopiero po zamknięciu rundy, jednym wpisem razem z wynikiem.
-- **Granice danych.** W commicie: identyfikatory, ścieżki, hashe, budżety, stany — tak jak w logu
-  diagnostycznym bridge'a, gdzie klucz idempotencji jest referencją po digeście, a treść
-  argumentów nie jest logowana (`shared/mcp-server-core/src/tools.ts:1130-1160`). **Nigdy w
+  `execution/<TASK-ID>/NN.md`; sposób checkpointowania nie zmienia zakresu paczki rundy.
+- **Aktualizacja identyfikatorów w trakcie `running`** idzie do pliku intencji — zapis poza
+  repozytorium, więc nie łamie zakazu commitowania w otwartej rundzie i nie wprowadza zmian
+  managera do paczki wykonawcy. Do ledgera trafiają po zamknięciu rundy, jednym wpisem.
+- **Granice danych.** W commicie: identyfikatory, ścieżki, hashe, budżety, stany. **Nigdy w
   commicie**: pełne kontrakty rund z prywatną treścią, surowe odpowiedzi użytkownika,
-  transkrypty, `execution_handle`, zawartość `termination_evidence`. Te dane zostają w
-  ignorowanym stanie lokalnym (`.bridge/`, `.gitignore:10`); ledger zapisuje ścieżkę i fakt.
+  transkrypty, `execution_handle`, zawartość `termination_evidence` — te zostają w pliku intencji
+  i w stanie lokalnym runtime.
 - **Plik intencji nie orzeka o przyjęciu operacji.** O tym mówi wyłącznie bridge (§4). Wpis
   intencji bez potwierdzenia w stanie bridge'a znaczy „nie wiem", nie „nie wykonano".
+  Nie ma tu żadnej maszyny stanów: jeden plik i istniejący replay.
 
 ## 4. Tabela rozliczenia: odczyty i idempotencja per operacja
 
@@ -139,10 +144,10 @@ Wspólne fakty:
 
 | Operacja / narzędzie | Idempotencja w kodzie | Atomowość | Odczyt rozstrzygający po przerwie | Reguła powtórzenia | Powtórne przerwanie |
 | --- | --- | --- | --- | --- | --- |
-| **Root task** — `bridge_create_task` | Tylko z `idempotency_key`: `runIdempotent`, operacja `task.create`, hash po `{spec, created_by, run_id, parent_task_id, delegation_depth}` (`task-service.ts:80-95`). **Bez klucza powtórzenie tworzy drugi task z nowym ID.** | Wstawienie taska + event w jednej transakcji (`task-service.ts:162-184`); zapis rekordu idempotencji w tej samej transakcji (`idempotency.ts:66-80`) | `bridge_list_tasks({owner:"codex"})` i porównanie `objective`+`scope` z checkpointem; `bridge_read_events({task_id})` pokazuje `idempotency_key` przy `task.created` (`task-service.ts:179`), ale wymaga już znanego `task_id` | Ponów **ten sam** wywołanie z tym samym kluczem i bajtowo tym samym `spec` | Bezpieczne bez ograniczeń: replay zwraca oryginalny task |
-| **Claim + WORKING** — `bridge_claim_task`, `bridge_set_state` | `claim` jest naturalnie idempotentny dla tego samego agenta poza `PENDING` (`task-service.ts:311`). `set_state` **nie jest**: `WORKING→WORKING` nie ma w `ALLOWED_TRANSITIONS` (`shared/protocol/src/types.ts:42`) → `ILLEGAL_TRANSITION` bez klucza | transakcja per operacja | `bridge_get_task(task_id).task.state` | `claim` ponawiaj wprost; `set_state` **zawsze z `idempotency_key`** | Bezpieczne z kluczem |
+| **Root task** — `bridge_create_task` | Tylko z `idempotency_key`: `runIdempotent`, operacja `task.create`, hash po `{spec, created_by, run_id, parent_task_id, delegation_depth}` (`task-service.ts:80-95`). **Bez klucza powtórzenie tworzy drugi task z nowym ID.** | Wstawienie taska + event w jednej transakcji (`task-service.ts:162-184`); zapis rekordu idempotencji w tej samej transakcji (`idempotency.ts:66-80`) **Nie ma odczytu rozstrzygającego** — i nie wolno go udawać. Root utracony przed `claim` ma `owner: null`, więc nie pojawia się w `bridge_list_tasks({owner:"codex"})`, a `objective`+`scope` nie są tożsamością. Rozstrzyga **wyłącznie ponowne wysłanie identycznego wywołania z zapisanym kluczem**: replay zwróci oryginalny task albo operacja wykona się pierwszy raz | Ponów **ten sam** wywołanie z tym samym kluczem i bajtowo tym samym `spec` | Bezpieczne bez ograniczeń: replay zwraca oryginalny task |
+| **Claim + WORKING** — `bridge_claim_task`, `bridge_set_state` | Oba są naturalnie idempotentne dla tego samego agenta i tego samego celu: `claim` zwraca task poza `PENDING` (`task-service.ts:311`), a `transition` ma jawne `if (task.state === input.to) return task` **przed** kontrolą legalności (`task-service.ts:445`), więc `WORKING→WORKING` nie jest odmawiane. **Korekta W15-03**: wcześniejsza wersja tego wiersza wywodziła `ILLEGAL_TRANSITION` z samej tabeli `ALLOWED_TRANSITIONS`; regresja na rzeczywistym stanie pokazała, że to nieprawda | transakcja per operacja | `bridge_get_task(task_id).task.state` | Ponawiaj wprost; klucz jest dodatkowym zabezpieczeniem, nie warunkiem | Bezpieczne; historia zawiera jedną zmianę stanu niezależnie od liczby powtórzeń |
 | **Feature** — `bridge_feature_create` | **Brak argumentu `idempotency_key`** (`tools.ts:282`), ale operacja jest naturalnie idempotentna po `feature_id`: istniejący rekord z tym samym managerem i rodzicem jest zwracany, inny rodzic → `IDEMPOTENCY_MISMATCH` (`feature-workflow.ts:122-127`) | jedna transakcja (`:120`) | `bridge_feature_get({feature_id})` → `NOT_FOUND` znaczy „nie utworzono" | Ponów wprost | Bezpieczne bez ograniczeń |
-| **Runda** — `bridge_feature_run` | Klucz wymagany. Rekord pod `feature.round:[feature_id, idempotency_key]`, hash po **całym** obiekcie żądania (`feature-workflow.ts:160-168`). Replay zwraca `{replayed:true}` **bez uruchamiania workera** (`:167-168`, `:222`) | **Silna**: utworzenie taska, aktualizacja wiersza featura (`latest_task_id`, `task_ids`, `active_task_id`, `state="running"`) i zapis rekordu idempotencji dzieją się w jednej transakcji (`orchestrator.ts:154-171` wołające `onTaskCreated` z `feature-workflow.ts:186-213`) | `bridge_feature_get` → `task_ids`/`latest_task_id`: **równe `predecessor` z checkpointu ⇒ rezerwacja się nie zapisała**; nowe ID ⇒ runda przyjęta. Dalej `state`: `running` → czekaj; `awaiting_review` → `bridge_get_task`; `blocked` → `bridge_get_task` + ścieżka recovery | Ponów z **tym samym** kluczem i identycznymi argumentami. **Nigdy nie licz `N = len(task_ids)+1` ponownie** — po zapisanej rezerwacji da to nowy klucz i zdublowaną rundę | Bezpieczne: odczyt czysty, ponowienie replayuje. Replay **nie czeka** na workera — zwraca bieżący stan |
+| **Runda** — `bridge_feature_run` | Klucz wymagany. Rekord pod `feature.round:[feature_id, idempotency_key]`, hash po **całym** obiekcie żądania (`feature-workflow.ts:160-168`). Replay zwraca `{replayed:true}` **bez uruchamiania workera** (`:167-168`, `:222`) | **Silna**: utworzenie taska, aktualizacja wiersza featura (`latest_task_id`, `task_ids`, `active_task_id`, `state="running"`) i zapis rekordu idempotencji dzieją się w jednej transakcji (`orchestrator.ts:154-171` wołające `onTaskCreated` z `feature-workflow.ts:186-213`) `bridge_feature_get` → `task_ids`/`latest_task_id`. **Nowe ID ⇒ runda na pewno przyjęta**; `task_ids` równe `predecessor` z checkpointu to tylko obserwacja z jednej chwili, nie dowód braku rezerwacji — przerwane żądanie mogło jeszcze trwać. W obu przypadkach rozstrzyga ten sam ruch: identyczny replay. Gdy runda jest przyjęta, `state` mówi co dalej: `running` → czekaj; `awaiting_review` → `bridge_get_task`; `blocked` → `bridge_get_task` + ścieżka recovery | Ponów z **tym samym** kluczem i identycznymi argumentami. **Nigdy nie licz `N = len(task_ids)+1` ponownie** — po zapisanej rezerwacji da to nowy klucz i zdublowaną rundę | Bezpieczne: odczyt czysty, ponowienie replayuje. Replay **nie czeka** na workera — zwraca bieżący stan |
 | **Recovery** — `bridge_resume_delegated_task` / `bridge_resume_task` | Klucz **opcjonalny w ogóle**, ale **wymagany** z `message` i z `recover_timeout` (`orchestrator.ts:1359-1377`). Hash po `{task_id, requested_by, authorization_kind, message?, recover_timeout?, deadline_ms?, max_turns?}` (`:1277-1296`). Bez klucza działa tylko deduplikacja w pamięci procesu (`:559-577`), tracona przy restarcie | **Silna**: event `recovery.requested`, lease, zamknięcie poprzedniej próby, `beginRecovery`, `startResumed`, event `resume.attempted` i rekord idempotencji w jednej transakcji (`orchestrator.ts:613-837`) | `bridge_get_task(task_id)` → `task.attempt`, `attempts[]` (`ended_at`, `outcome`, `execution_handle`), `termination_evidence`. **`bridge_read_events({task_id})` jest tu jedynym odczytem pokazującym sam klucz**: `recovery.requested` i `resume.attempted` niosą `idempotency_key` (`orchestrator.ts:757`, `:805`) | Ponów z tym samym kluczem. Odpowiedź rozstrzyga: `ILLEGAL_TRANSITION` „recovery attempt N is already active" (`:1309-1315`) **znaczy „przyjęte i trwa"**, nie porażkę; zakończona próba → migawka wyniku (`replayRecovery`) | Bezpieczne z kluczem. **Bez klucza**: powtórzenie w trakcie jest odrzucane przez żywy lease (`SCOPE_CONFLICT`, `:700-706`), ale powtórzenie **po** zakończeniu próby tworzy prawdziwą nową próbę i zjada budżet |
 
 Dodatkowe reguły wynikające z kodu, potrzebne do AC-04…AC-06:
@@ -150,13 +155,12 @@ Dodatkowe reguły wynikające z kodu, potrzebne do AC-04…AC-06:
 1. **Przerwanie przed wysłaniem** (checkpoint zapisany, wywołania nie było): `bridge_feature_get`
    pokazuje `predecessor` bez zmian; wysyłamy operację pierwszy raz. Liczba tasków nie rośnie.
 2. **Przerwanie po przyjęciu, przed odpowiedzią**: wiersz featura już się zmienił, bo rezerwacja
-   jest atomowa. Odczyt to widzi; ponowienie replayuje. To jest właśnie przypadek „przerwa może
-   nastąpić po rezerwacji zadania, zanim manager pozna jego ID" (plan, wiersz 54) — rozwiązuje go
-   `feature.task_ids`, nie żaden nowy zapis. **Uwaga (W15-C4)**: niezmieniony `predecessor` jest
-   obserwacją z jednej chwili, a nie dowodem, że operacja się nie wykonała — przerwane żądanie
-   mogło być jeszcze w locie i zatwierdzić rezerwację zaraz po odczycie. Dlatego jedyną
-   dozwoloną reakcją jest **identyczny replay tym samym kluczem**, który rozstrzyga oba
-   przypadki; nigdy nowy klucz i nigdy dobieranie taska po podobieństwie.
+   jest atomowa, i odczyt to widzi — rozwiązuje ten przypadek `feature.task_ids`, nie żaden nowy
+   zapis (plan, wiersz 54). Odczyt nie rozstrzyga jednak przypadku odwrotnego: **niezmieniony
+   `predecessor` niczego nie dowodzi**, bo przerwane żądanie mogło zatwierdzić rezerwację zaraz
+   po nim. Dlatego po każdej przerwie obowiązuje jeden ruch — **identyczny replay tym samym
+   kluczem i tymi samymi argumentami** — który jest poprawny w obu przypadkach. Nigdy nowy klucz
+   i nigdy dobieranie taska po podobieństwie.
 3. **Przerwanie w trakcie pracy Claude'a**: `state="running"`. Czekać, nie delegować. `bridge_feature_run`
    i tak odmówi nowej rundy przy ustawionym `active_task_id` (`feature-workflow.ts:169-170`).
 4. **Przerwanie po zakończeniu, przed odebraniem wyniku**: `awaiting_review`/`blocked` + kompletny

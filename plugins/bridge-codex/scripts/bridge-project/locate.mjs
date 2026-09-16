@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { LOCAL_DIR, canonical, readJson, readOptional, run } from "../setup/common.mjs";
 import { loadRuntime, verifyRuntime } from "../setup/runtime.mjs";
-import { AGENTS_FILE, PROJECT_DECLARATION, PROJECT_ENTRY, PROJECT_FORMAT, findBlock, readRecord, readSelection } from "../setup/workspace.mjs";
+import { AGENTS_FILE, PREFERENCE_BLOCK, PROJECT_DECLARATION, PROJECT_ENTRY, PROJECT_FORMAT, findBlock, readRecord, readSelection } from "../setup/workspace.mjs";
 
 export const HOME_ENV = "CLAUDE_CODEX_BRIDGE_HOME";
 
@@ -65,7 +65,16 @@ export function status(cwd = process.cwd(), env = process.env) {
     try {
       runtime = loadRuntime(home, pin.runtime_id);
       const problems = verifyRuntime(runtime);
-      runtimeState = problems.length === 0 ? "ok" : "runtime-incomplete";
+      // The pin names a commit as well as an id. A runtime that answers to the id but was built
+      // from another commit is a different instruction set, so it is classified here rather than
+      // only in the launch gate — otherwise a manager would be handed the wrong workflow while
+      // the entry point refuses to serve the same worktree (review W15-I3).
+      runtimeState =
+        problems.length > 0
+          ? "runtime-incomplete"
+          : pin.commit && runtime.manifest?.source?.commit !== pin.commit
+            ? "pin-commit-mismatch"
+            : "ok";
     } catch (error) {
       runtimeState = error.code === "RUNTIME_NOT_INSTALLED" ? "runtime-missing" : "runtime-unusable";
     }
@@ -116,10 +125,55 @@ export function status(cwd = process.cwd(), env = process.env) {
       current: selection.kind,
     },
     instructions: runtimeState === "ok" ? instructionPaths(runtime) : null,
-    // Whether this project states a default collaboration preference. A project without one is
-    // never treated as consent to delegate: at most it earns a single proposal to record one.
-    preference: { declared: hasPreference(workspace.root), path: AGENTS_FILE },
+    preference: preferenceState(workspace.root),
+    next_step: nextStep(state, runtimeState, pin, runtime),
     reads_only: true,
+  };
+}
+
+/** What to do about a worktree in this state. A sentence, never a repair performed for the user. */
+export function nextStep(state, runtimeState, pin, runtime) {
+  if (state === "ready" || state === "inherited-pristine") return null;
+  if (state === "not-enabled") return "this project has no bridge declaration; ask the bridge setup skill to enable it";
+  if (state === "project-disabled") return `the bridge is disabled for this project in ${PROJECT_DECLARATION}`;
+  if (runtimeState === "pin-commit-mismatch") {
+    return `the project pins commit ${pin?.commit} but runtime ${pin?.runtime_id} was built from ` +
+      `${runtime?.manifest?.source?.commit ?? "an unknown commit"}; install the pinned commit or move the pin with the setup skill`;
+  }
+  if (runtimeState === "runtime-missing") return "the pinned runtime is not installed here; ask the bridge setup skill to set this project up";
+  return "ask the bridge setup skill to prepare this worktree; it never adopts state it did not write";
+}
+
+/**
+ * What the project's `AGENTS.md` says about collaboration, as an observation — never as consent.
+ *
+ * A marker pair proves only that some text sits between two comments; the block may have been
+ * rewritten to say the opposite, and a project may state a perfectly valid preference in ordinary
+ * prose with no markers at all. So this reports whether the *exact* block this runtime writes is
+ * present and nothing more (review W15-I4). Authority comes from reading the file and from the
+ * user's instruction, in that order, and a narrower instruction or a prohibition always wins.
+ */
+export function preferenceState(root) {
+  let existing;
+  try {
+    existing = readOptional(join(root, AGENTS_FILE));
+  } catch {
+    existing = null;
+  }
+  const found = existing === null ? { kind: "none" } : findBlock(existing.toString("utf8"));
+  const managed_block =
+    found.kind !== "found" ? (existing === null ? "absent" : found.kind === "malformed" ? "malformed" : "absent")
+      : found.block === PREFERENCE_BLOCK ? "known"
+      : "modified";
+  return {
+    path: AGENTS_FILE,
+    managed_block,
+    // The one thing this flag must never be read as.
+    authoritative: false,
+    note:
+      "A technical marker is not authorization. Read AGENTS.md and follow the user's instruction: " +
+      "a narrower request or a prohibition always wins, a rewritten block may say the opposite, " +
+      "and a preference written outside the markers is equally valid.",
   };
 }
 
@@ -141,17 +195,6 @@ export function instructionPaths(runtime) {
     claude_executor_package: join(runtime.path, "plugins/bridge-claude"),
     set_sha256: runtime.manifest?.instructions?.set_sha256 ?? null,
   };
-}
-
-/** True when the project's AGENTS.md carries the bridge's managed preference block. A pure read. */
-function hasPreference(root) {
-  let existing;
-  try {
-    existing = readOptional(join(root, AGENTS_FILE));
-  } catch {
-    return false;
-  }
-  return existing !== null && findBlock(existing.toString("utf8")).kind === "found";
 }
 
 export { readFileSync };

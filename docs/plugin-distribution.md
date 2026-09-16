@@ -70,8 +70,13 @@ node ./.bridge-project/entry.mjs --status      # or --instructions
 That is a pure read: it resolves the project's pin itself, prints the `instructions` paths of the
 pinned runtime, and writes nothing. It needs no `.bridge-runtime/current`, so it answers in a
 worktree just created from the project, and a missing runtime, an unrecognised declaration or a
-diverged pin come back as a code and a next step rather than a repair. It installs nothing; the
-plugin's `setup` remains the only way to install or prepare anything.
+diverged pin — including a pin whose *commit* does not match the installed runtime — come back as
+a code and a next step rather than a repair, classified exactly as `status` classifies them. It
+installs nothing; the plugin's `setup` remains the only way to install or prepare anything.
+
+The mode requires a runtime that ships it. A project pinned to an older runtime answers
+`RUNTIME_WITHOUT_STATUS` and exits instead of serving, so the flag never silently starts an MCP
+server; use the plugin's `status` there.
 
 ## Enabling a project
 
@@ -112,11 +117,19 @@ no authority. It names the portable read above and carries no user path, runtime
 
 It is written only with that flag. Plain `setup`, `update` and `rollback` never read or write
 `AGENTS.md`, so delivering a new plugin version or moving a pin cannot introduce or change a
-project's policy. The plan shows the exact diff first; content outside the markers is preserved, a
-second run changes nothing, a block edited by hand is refused as `PREFERENCE_MODIFIED`, duplicated
-markers as `PREFERENCE_CONFLICT`, and a symlinked `AGENTS.md` like any other managed path. A
-project without the preference is never treated as consent to delegate: `status` reports
-`preference.declared: false`, and the entry skill may offer the step once.
+project's policy. The plan shows the exact diff first — including for a project that has no
+`AGENTS.md` yet, where the diff is the whole proposed block. Content outside the markers is
+preserved, a second run changes nothing, a block edited by hand is refused as
+`PREFERENCE_MODIFIED`, duplicated markers as `PREFERENCE_CONFLICT`, and a symlinked `AGENTS.md`
+like any other managed path. The legacy per-worktree profile refuses the option outright
+(`PREFERENCE_REQUIRES_DISPATCHER`), because the block names an entry point that profile does not
+install.
+
+A recorded block is never consent by itself. `status` reports `preference.managed_block` as
+`known`, `modified` or `absent` together with `authoritative: false`: only the exact block this
+runtime writes is recognised, a rewritten one may say the opposite, a preference written in prose
+outside the markers is equally valid, and the user's own instruction outranks all of it. The entry
+skill may offer the step once and reads `AGENTS.md` itself rather than trusting the flag.
 
 **Two host steps remain, and they are the host's, not the bridge's.** Codex reads a project
 `.codex/config.toml` only for a project you have trusted, and a client reads its MCP server list at

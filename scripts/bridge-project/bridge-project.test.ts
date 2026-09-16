@@ -8,7 +8,7 @@
 
 import { createHash } from "node:crypto";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -156,7 +156,11 @@ beforeEach(() => {
   env = { CLAUDE_CODEX_BRIDGE_HOME: sharedHome };
 });
 
+/** Exchange namespaces live outside the sandbox, so anything created there is removed by hand. */
+const cleanupIntents: string[] = [];
+
 afterEach(() => {
+  for (const path of cleanupIntents.splice(0)) rmSync(path, { recursive: true, force: true });
   if (root) removeTree(root);
 });
 
@@ -722,24 +726,37 @@ describe("the project entry point reports without serving (W15-C1)", () => {
     for (const key of ["workflow_skills", "codex_role_skill", "exchange_helper", "claude_executor_package"]) {
       expect(existsSync(report.json.instructions[key]), key).toBe(true);
     }
-    expect(report.json.preference).toEqual({ declared: false, path: "AGENTS.md" });
+    expect(report.json.preference).toMatchObject({ path: "AGENTS.md", managed_block: "absent", authoritative: false });
     // A read is a read: no selection, no database, no state of any kind.
     expect(listing(external)).toEqual(before);
     expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
     expect(existsSync(join(external, ".bridge"))).toBe(false);
   }, 180_000);
 
-  it("reports a prepared worktree and a declared preference the same way", () => {
+  // W15-I4: a marker pair proves nothing about consent. Only the exact block this runtime writes
+  // is recognised, and even that is reported as an observation, never as authorization.
+  it("never presents a marker pair as consent, and flags a rewritten block as modified", () => {
     setup();
     expect(entryStatus(project).json.state).toBe("ready");
+
+    // Markers around text that says the opposite of the preference.
     writeFileSync(
       join(project, "AGENTS.md"),
-      "# rules\n\n# >>> claude-codex-bridge managed block >>>\nimplementacje prowadzi manager\n# <<< claude-codex-bridge managed block <<<\n",
+      "# rules\n\n# >>> claude-codex-bridge managed block >>>\nNever delegate implementation.\n# <<< claude-codex-bridge managed block <<<\n",
     );
-    const declared = entryStatus(project, {}, "--instructions");
-    expect(declared.code).toBe(0);
-    expect(declared.json.preference.declared).toBe(true);
-    expect(declared.json.instructions.root).toBe(runtimePath);
+    const contradiction = entryStatus(project, {}, "--instructions");
+    expect(contradiction.code).toBe(0);
+    expect(contradiction.json.preference.managed_block).toBe("modified");
+    expect(contradiction.json.preference.authoritative).toBe(false);
+    expect(contradiction.json.preference.note).toMatch(/prohibition always wins/iu);
+    expect(contradiction.json.preference).not.toHaveProperty("declared");
+    expect(contradiction.json.instructions.root).toBe(runtimePath);
+
+    // The exact block the setup writes is the only thing reported as known.
+    expect(setup(project, ["--with-preference", "--keep-local"]).code).toBe(1); // a modified block is refused
+    writeFileSync(join(project, "AGENTS.md"), "# rules\n");
+    expect(setup(project, ["--with-preference"]).code).toBe(0);
+    expect(entryStatus(project).json.preference.managed_block).toBe("known");
   }, 180_000);
 
   it("reports the absence of the pinned runtime instead of serving or installing it", () => {
@@ -766,7 +783,7 @@ describe("the project entry point reports without serving (W15-C1)", () => {
     );
     const mismatch = entryStatus(project);
     expect(mismatch.code).toBe(1);
-    expect(mismatch.json.state).toBe("pin_commit_mismatch");
+    expect(mismatch.json.state).toBe("pin-commit-mismatch");
     expect(mismatch.json.instructions).toBeNull();
 
     writeFileSync(join(project, PROJECT_DECLARATION), `${JSON.stringify({ format: "something/else" }, null, 2)}\n`);
@@ -783,7 +800,7 @@ describe("the project entry point reports without serving (W15-C1)", () => {
     // The ordinary path never touches it, so a plugin update cannot introduce a policy.
     expect(setup().code).toBe(0);
     expect(readFileSync(join(project, "AGENTS.md"), "utf8")).toBe(own);
-    expect(entryStatus(project).json.preference.declared).toBe(false);
+    expect(entryStatus(project).json.preference.managed_block).toBe("absent");
 
     const planned = plugin(project, ["setup", "--with-preference", "--json", "--source", REPO, "--commit", runtimeCommit], env);
     expect(planned.code, planned.stdout + planned.stderr).toBe(0);
@@ -799,12 +816,128 @@ describe("the project entry point reports without serving (W15-C1)", () => {
     expect(written).toContain("entry.mjs --status");
     expect(written).not.toContain(sharedHome);
     expect(written).not.toContain(runtimeId);
-    expect(entryStatus(project).json.preference.declared).toBe(true);
+    expect(entryStatus(project).json.preference.managed_block).toBe("known");
 
     // Idempotent, and the plain path still leaves it alone.
     expect(((setup(project, ["--with-preference"]).json as any).changes as { path: string }[]).some((c) => c.path === "AGENTS.md")).toBe(false);
     expect(setup().code).toBe(0);
     expect(readFileSync(join(project, "AGENTS.md"), "utf8")).toBe(written);
+  }, 180_000);
+
+  // W15-I2: a project with no AGENTS.md, or an empty one, must still see the proposed text.
+  it("shows the proposed preference as a diff when AGENTS.md is absent or empty", () => {
+    for (const [name, seed] of [["absent", null], ["empty", ""]] as [string, string | null][]) {
+      const fresh = makeRepo(join(root, `a ${name} agents project`));
+      expect(plugin(fresh, ["setup", "--yes", "--json", "--source", REPO, "--commit", runtimeCommit], env).code).toBe(0);
+      if (seed !== null) writeFileSync(join(fresh, "AGENTS.md"), seed);
+      const planned = plugin(fresh, ["setup", "--with-preference", "--json", "--source", REPO, "--commit", runtimeCommit], env);
+      expect(planned.code, planned.stdout + planned.stderr).toBe(0);
+      const change = ((planned.json as any).changes as { path: string; action: string; diff?: string }[])
+        .find((c) => c.path === "AGENTS.md");
+      expect(change, `${name}: ${JSON.stringify((planned.json as any).changes)}`).toBeTruthy();
+      expect(change!.action).toBe(seed === null ? "create" : "append");
+      expect(change!.diff, `${name}: no diff`).toContain("+## Bridge");
+      expect(change!.diff).toContain("+`node ./.bridge-project/entry.mjs --status`");
+      expect(existsSync(join(fresh, "AGENTS.md"))).toBe(seed !== null); // a plan writes nothing
+    }
+  }, 300_000);
+
+  // W15-I1: the preference names an entry point, so the entry point must exist and answer.
+  it("writes a preference whose named entry point really runs", () => {
+    setup();
+    expect(setup(project, ["--with-preference"]).code).toBe(0);
+    const block = readFileSync(join(project, "AGENTS.md"), "utf8");
+    const named = block.match(/`node (\.\/[^`]+?) --status`/u);
+    expect(named, block).toBeTruthy();
+    expect(existsSync(join(project, named![1]))).toBe(true);
+    const run = spawnSync(process.execPath, [named![1], "--status"], { cwd: project, encoding: "utf8", env: childEnv(env), timeout: 60_000 });
+    expect(run.status, run.stdout + run.stderr).toBe(0);
+    expect(JSON.parse(run.stdout).instructions.root).toBe(runtimePath);
+  }, 180_000);
+
+  // W15-I3: one classification. A pin whose commit does not match must look the same from the
+  // plugin and from the entry point, and must hand out no instructions from either.
+  it("classifies a pin commit mismatch identically in the plugin and the entry point", () => {
+    setup();
+    const declaration = JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8"));
+    writeFileSync(
+      join(project, PROJECT_DECLARATION),
+      `${JSON.stringify({ ...declaration, pinned: { runtime_id: runtimeId, commit: "0".repeat(40) } }, null, 2)}\n`,
+    );
+    const before = listing(project);
+
+    const fromPlugin = plugin(project, ["status", "--json"], env);
+    expect(fromPlugin.code).toBe(1);
+    expect((fromPlugin.json as any).state).toBe("pin-commit-mismatch");
+    expect((fromPlugin.json as any).runtime.state).toBe("pin-commit-mismatch");
+    expect((fromPlugin.json as any).instructions).toBeNull();
+    expect((fromPlugin.json as any).next_step).toMatch(/pins commit/u);
+
+    const fromEntry = entryStatus(project);
+    expect(fromEntry.code).toBe(1);
+    expect(fromEntry.json.state).toBe("pin-commit-mismatch");
+    expect(fromEntry.json.instructions).toBeNull();
+    expect(fromEntry.json.next_step).toBe((fromPlugin.json as any).next_step);
+    expect(listing(project)).toEqual(before);
+  }, 180_000);
+
+  // W15-I5: the shipped entry skill stays a trigger plus setup boundaries. The workflow itself
+  // must come from the pinned runtime, so the package must not carry its own copy of it.
+  it("ships a thin entry skill that defers to the pinned instructions", () => {
+    const skill = readFileSync(join(REPO, "plugins", "bridge-codex", "skills", "bridge", "SKILL.md"), "utf8");
+    expect(skill).toContain("instructions.codex_role_skill");
+    expect(skill).toMatch(/requires a runtime that ships it|RUNTIME_WITHOUT_STATUS/u);
+    // No second, unpinned copy of the classification the role skill owns.
+    expect(skill).not.toMatch(/a finished plan or design does not need to be redesigned/u);
+    expect(skill).not.toMatch(/unapproved proposal is a subject for a decision/u);
+  });
+
+  // W15-C2: the pre-bootstrap intent file must live in this worktree's own exchange namespace.
+  // Writing it into `.bridge/` would make the very bootstrap it precedes refuse to run.
+  it("lets a real bootstrap proceed with an intent file in the exchange namespace", async () => {
+    const external = inherit("an intent bearing worktree");
+    const exchange = spawnSync(
+      "python3",
+      [join(REPO, ".agents/skills/feature-exchange/scripts/feature_exchange.py"), "namespace", "--repo", external],
+      { encoding: "utf8", env: childEnv(env) },
+    );
+    expect(exchange.status, exchange.stderr).toBe(0);
+    const space = JSON.parse(exchange.stdout);
+    expect(space.namespace.startsWith(external)).toBe(false); // outside the repository
+
+    // One file, written atomically, before any mutation of this worktree.
+    const intents = join(space.namespace, "intents");
+    mkdirSync(intents, { recursive: true });
+    const intentPath = join(intents, "root-task-F-W15-root.json");
+    const intent = JSON.stringify({ op: "root-task", key: "F-W15:root", request: { objective: "Coordinate F-W15" } });
+    writeFileSync(`${intentPath}.tmp`, intent);
+    renameSync(`${intentPath}.tmp`, intentPath);
+    cleanupIntents.push(intents);
+
+    // The bootstrap is untouched by it: a read still writes nothing, and the first authorised
+    // mutation prepares this worktree exactly as it does without an intent file.
+    const before = listing(external);
+    const readOnly = await launchEntry(external, { frames: HANDSHAKE });
+    expect(readOnly.replies.find((f: any) => f.id === 1)?.result?.tools?.length, readOnly.stderr).toBeGreaterThan(10);
+    expect(listing(external)).toEqual(before);
+    readOnly.child.kill("SIGKILL");
+
+    const run = await launchEntry(external, { frames: [...HANDSHAKE, authorizedMutation("w15-intent")] });
+    const reply = run.replies.find((f: any) => f.id === 2);
+    expect(reply?.result?.isError, JSON.stringify(reply) + run.stderr.slice(-400)).toBeFalsy();
+    expect(JSON.parse(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8")).workspace.root).toBe(external);
+    expect(readFileSync(intentPath, "utf8")).toBe(intent); // the manager's file, untouched
+    run.child.kill("SIGKILL");
+  }, 180_000);
+
+  it("would have blocked that same bootstrap had the intent gone into .bridge/", async () => {
+    const external = inherit("a misplaced intent worktree");
+    mkdirSync(join(external, ".bridge"), { recursive: true });
+    writeFileSync(join(external, ".bridge/root-task-F-W15-root.json"), '{"op":"root-task"}\n');
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.stderr).toContain("SETUP_STATE_PARTIAL");
+    expect(run.replies).toEqual([]);
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
   }, 180_000);
 
   it("still reports for a disabled project, which refuses to serve", async () => {

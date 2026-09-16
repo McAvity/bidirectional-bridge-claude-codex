@@ -55,7 +55,9 @@ on it alone:
   and a 75-minute round needs roughly 200 — an undersized ceiling ends the round early.
 - `idempotency_key`: `<feature-id>:round-<N>`, N = `len(task_ids) + 1` read from
   `bridge_feature_get` in state `ready` or `awaiting_review` after the previous round was
-  reviewed.
+  reviewed. Choose it **once**, write it to the round's intent file before the call (below), and
+  after any interruption take it from that file — recomputing the count after a reservation has
+  landed yields a new key and a duplicated round.
 
 Put only contract material in the round. Ordinary conversation with the user, questions
 addressed to the user, and your own commentary are never round input. The bridge appends
@@ -160,16 +162,87 @@ changes instead, record the decision and run the next round; the feature stays
 changed goal), record that decision and submit the root as `PARTIAL` or `FAILED` with the
 reason; never accept it.
 
-## Interruptions, retries and restart
+## Interruptions, retries and restart: "continue"
+
+After capacity, a lost response, a disconnect or a restart, the user may simply say *continue*.
+That is enough. Do not ask them for task, attempt or session identifiers that are already in
+durable state, and do not require a phrase or a skill name.
+
+### Before writing the first mutation of an operation
+
+Persist the intent first, so a later "continue" has the exact request to replay:
+
+- one file per operation, in this worktree's own exchange namespace, beside the packages:
+  `<namespace>/intents/<op>-<key>.json`, where `<namespace>` comes from
+  `feature_exchange.py namespace --repo <worktree>` (a pure read). Never in `.bridge/` or
+  `.bridge-runtime/`: an unexplained file there is refused by the setup and identity guards and
+  would block the very bootstrap you are about to do;
+- write it atomically (temp file in the same directory, then rename) before the call leaves;
+- record the exact arguments, the idempotency key, the contract path and its SHA-256, the
+  authorization path, the Git base, the budget, and the `latest_task_id` you read just before;
+- after the call returns, add the ids it gave you. That is a write outside the repository, so it
+  does not commit during an open round and does not enter the executor's package;
+- it is not a second state store. It records intent, never acceptance. **The bridge is the only
+  authority on whether an operation was accepted.** A missing or unreadable intent file is a
+  blocker: say so and ask, rather than reconstructing a request from memory or from a hash.
+
+### On "continue": read before you write
+
+1. **Read your own work**: `git log <git_base>..HEAD`, `git status --porcelain`, and whether the
+   round's package already exists in the exchange namespace. A summary that scrolled away is not
+   evidence that a commit or an export did not happen.
+2. **Read the intent files** for this feature: which operation was in flight, with which key.
+3. **Read the bridge**: `bridge_feature_get`, then `bridge_get_task` for the latest task. These
+   are pure reads; they need no manager instance and write nothing, so a further interruption
+   here costs nothing.
+4. Only then act, and only through the table below.
+
+| What the state says | Do | Never |
+|---|---|---|
+| `running`, attempt open | Wait and poll, as above. Report that a round is in flight. | Start a round, recover, ask, or "check" with a new key. |
+| `awaiting_review` | Collect the result (`bridge_get_task`) and review it. | Treat retrieval as a new round. |
+| `blocked` | Read the blocker; resume the same task with its key. | Create a sibling or a replacement task. |
+| `waiting_user` | Show the pending question and wait for a real answer. | Treat "continue" as the answer, or run around it. |
+| Uncertain whether your call arrived | Re-send the **identical** request: same key, same arguments. | A new key, a "probe" call, or picking a task by objective or scope. |
+| A foreign manager or an ambiguous session | Ask which context is meant. | A silent takeover, or choosing the newest session. |
+| Budget or attempts exhausted | Report it and ask. | Renew a deadline or a turn ceiling because the work is unfinished. |
+
+### Why the identical replay is the only move
+
+An unchanged `latest_task_id` is an observation from one moment, not proof that your call was
+lost: an interrupted request may commit its reservation immediately after you read. Re-sending
+the identical request is correct in both cases — it replays when the reservation exists and
+performs the operation once when it does not. A recomputed key (`len(task_ids) + 1` after a
+reservation already landed) is what actually duplicates a round, so take the key from the intent
+file, never from a fresh count.
+
+The same rule covers the bootstrap steps, not only rounds: `bridge_create_task` with the
+persisted key is the *only* way to tell whether a root task was created — one that was lost
+before `bridge_claim_task` has no owner and will not appear in `bridge_list_tasks({owner:
+"codex"})`. `bridge_claim_task` and `bridge_set_state` are safe to repeat for the same owner and
+target state. `bridge_feature_create` is idempotent per feature id and refuses a different parent
+rather than creating a second feature. `bridge_resume_delegated_task` needs its key: without one,
+a repeat after the attempt ended really does spend another attempt.
+
+### Losing a response is not the worker dying
+
+If your call was interrupted but the MCP server survived, the round is very likely still running
+and will finish normally: wait and collect. Only the server process dying leaves an attempt open
+with nothing driving it. Distinguish them before acting — `bridge_feature_get` plus
+`bridge_get_task` show whether the attempt ended, and the pure `bridge_recover` reports live and
+expirable leases. If an orphaned attempt never persisted an execution handle, strict resume has
+nothing to resume: that is a real limit. Stop, report the task, attempt, reason and evidence, and
+ask. Never start a fresh Claude session, a replacement task or a new feature id to get around it.
+
+### Ordinary rules that "continue" does not suspend
 
 - After any timeout, error or restart, call `bridge_feature_get` before another mutating call.
-- Repeat an interrupted operation with the same key and identical arguments. A new key means
-  a new operation; never use one to retry.
-- A client tool timeout on `bridge_feature_run` or `bridge_resume_delegated_task` does not
-  stop the work. Read the state: `running` → wait; `awaiting_review` or `blocked` →
-  `bridge_get_task` for the result.
-- After your own restart: read `feature.json` (`bridge`, `next_action`), the latest review
-  and decision, then `bridge_feature_get`. If the latest review does not name
-  `latest_task_id`, review that round before anything else.
-- A `running` state that outlives its deadline may be a stranded worker. Do not clear it or
-  start around it; confirm the old worker has stopped, then use recovery, or report it.
+- A client tool timeout on `bridge_feature_run` or `bridge_resume_delegated_task` does not stop
+  the work.
+- After your own restart: read `feature.json` (`bridge`, `next_action`), the latest review and
+  decision, then the bridge. If the latest review does not name `latest_task_id`, review that
+  round before anything else.
+- A `running` state that outlives its deadline may be a stranded worker. Do not clear it or start
+  around it; confirm the old worker stopped, then use recovery, or report it.
+- Mutating again after a crash needs authority back: the same Codex thread resumes with
+  `bridge_manager_resume_instance`; a different thread needs an explicit takeover with a reason.
