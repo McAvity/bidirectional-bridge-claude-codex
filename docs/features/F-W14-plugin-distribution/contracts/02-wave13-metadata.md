@@ -1,6 +1,13 @@
 # Contract: distribution metadata (W14-01 proposal, W14-02 doctor implementation)
 
-Status: **revision 3**. Two clearly separated parts:
+Status: **revision 4 — integrated locally**. Revision 3 below records the historical independent-delivery boundary.
+
+Integration with accepted wave13 e5ec270 implements §4 in `doctor.json.distribution`
+through `projectDistribution`. Unknown observations and pin divergence remain null;
+unknown fields are omitted, typed fields validated, known credential patterns rejected.
+The collector uses its own code, with bounded no-symlink reads for added metadata.
+
+Historical revision 3: two clearly separated parts:
 
 - **§1–3 are implemented** as the bridge's own doctor metadata
   (`scripts/setup/distribution.mjs`, emitted by `bridge.mjs doctor --json`). This is AC-08's

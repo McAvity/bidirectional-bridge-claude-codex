@@ -2,8 +2,8 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.2.0",
   "pinned": {
-    "commit": "87cceed8d08c298ce2976aa3ce9bec771dea31fe",
-    "describe": "wave14 W14-03 runtime with the unified recovery rule"
+    "commit": "dbc724b4f4bbedda5d2b72346fcb2d882302a75b",
+    "describe": "Integrated wave13 diagnostics and wave14 distribution"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [

@@ -1,8 +1,7 @@
 // Distribution metadata: which integration this worktree actually uses, and which versions.
 //
-// This is the bridge's own doctor metadata. It is **not** a wave13 diagnose integration: wave13
-// owns logging, retention and export and is absent from this baseline, so nothing here writes a
-// log, opens a sink or claims that a diagnose report consumed it.
+// Doctor produces this descriptive metadata. The diagnostics exporter separately projects it
+// through its privacy boundary; this module writes no log and opens no diagnostic sink.
 //
 // Privacy rules, from review finding W14-R1-04:
 //   - no absolute path leaves this module. A path becomes a stable location *class* plus a
@@ -107,7 +106,7 @@ export function distributionMetadata({
     notes: [
       "Locations are classes and digests, never paths.",
       "Observed fields are null unless a real run reported them; configured values are never copied into them.",
-      "Wave13 owns logging, retention and diagnose; this block is doctor metadata only.",
+      "The diagnostics exporter applies its own typed projection to this doctor metadata.",
     ],
   };
 }
