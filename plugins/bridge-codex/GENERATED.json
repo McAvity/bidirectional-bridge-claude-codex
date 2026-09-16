@@ -6,35 +6,71 @@
   "canonical_sources": [
     ".codex/skills/using-bridge"
   ],
-  "source_digest": "580e56d35719ff1c673dda403334a522052fe050c9df91126dc628ee14b8bbf0",
+  "source_digest": "a58cd5178bdcad9248abf995d9a02fa78ef9aa7c1385feae59db4e89489bc426",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
       "sha256": "5fdc77db81bf36791f63bf9927604194ea332a61c5b2b67182f07e00f90f00ad"
     },
     {
-      "path": "bridge-project/bootstrap.mjs",
-      "sha256": "2b4d007769d18b9397e19ba7706d9aa4c50d885adf62fd3c812b503c3f8ef52f"
+      "path": "scripts/bridge-project/dispatch.mjs",
+      "sha256": "0a5f43e0b589dddc0283570309b4994de9b4f6b9c8b9216a2eb38f75d6b22efa"
     },
     {
-      "path": "bridge-project/dispatch.mjs",
-      "sha256": "eeb703a4e2aebd743d8a9d415b9a634203a71fc115053a1d8f358cfc1c6959e1"
+      "path": "scripts/bridge-project/entry-template.mjs",
+      "sha256": "e246208d81da8257cc9266ed33bc26cbae6fe2c555f5b8ec2d8dfc80b5ed3da3"
     },
     {
-      "path": "bridge-project/facade.mjs",
-      "sha256": "26f016b72269b305caa51ebfa145aed7628f57451efe755f5757a6ebbd60ea63"
+      "path": "scripts/bridge-project/locate.mjs",
+      "sha256": "ff7851984701b2dc943de600931cb9027f7c665d43771c4bce1a439a17856f76"
     },
     {
-      "path": "bridge-project/locate.mjs",
-      "sha256": "33d23018ad8be0873be4530ed3e4f6dd76c211e00e2c133fed3aa6cb88fb7fa0"
+      "path": "scripts/bridge.mjs",
+      "sha256": "2a014162d27c330d883260145bf954270f0be54b7654f67a7b1ef553eff3d7c5"
     },
     {
-      "path": "scripts/bridge-plugin.mjs",
-      "sha256": "34ec6dff5224c639953c4fb57e3b7ddbbeda4698c76b0ef251586dd0f09afaae"
+      "path": "scripts/plugin-packages/acquire.mjs",
+      "sha256": "8cd0e4e6260884d15a80dd4e56083da0d28e7f25978b989b6b197fff9245803c"
+    },
+    {
+      "path": "scripts/plugin-packages/bridge-plugin.mjs",
+      "sha256": "e600444e9653284630e410a6306508aca2eac61c9fe34fd734ff3551a37d4517"
+    },
+    {
+      "path": "scripts/plugin-packages/release.json",
+      "sha256": "80b94193d6871b5bcaa35e640dc6e392c3b93680c08882e14fef5b10d2738b59"
+    },
+    {
+      "path": "scripts/setup/common.mjs",
+      "sha256": "1afc28abba6bb0c7b347ca49e0b85ab904b6a0f8d2f473f5bc02cf516d6e2695"
+    },
+    {
+      "path": "scripts/setup/diff.mjs",
+      "sha256": "bdf5ffd6e30856b335bb51a48338caab16f43fd0fec81616e09095f9b683d822"
+    },
+    {
+      "path": "scripts/setup/distribution.mjs",
+      "sha256": "a7c7f9a8d2aa689f223f11ddf12d530b7d008cc6a2e625aa145e62d70fd49acd"
+    },
+    {
+      "path": "scripts/setup/doctor.mjs",
+      "sha256": "f9cafd7f19dfc5f223966dbfcc273b9e7ed22fec9397f6aa73ffae7c75f4be08"
+    },
+    {
+      "path": "scripts/setup/processes.mjs",
+      "sha256": "d2ec6768375e9e60f9dd50c2fef5b8a375d69b014aabd9060b6007eba951574d"
+    },
+    {
+      "path": "scripts/setup/runtime.mjs",
+      "sha256": "4e740542e4920439d3987a0f89d9a44b68d2f7f5d0e245ceba328ad280be5a03"
+    },
+    {
+      "path": "scripts/setup/workspace.mjs",
+      "sha256": "e0272f04b23cef4490bc8f464e9cd85f5ff66e781b240737f0055329d7a0d480"
     },
     {
       "path": "skills/bridge/SKILL.md",
-      "sha256": "0f462b9b07ab9e3311f4a80e4ad21ed48a1286e1b2c3349667a3e33a603cc0ec"
+      "sha256": "a047c30e70ce259710346b846806c1430940960d00ceea5737af571190dc5836"
     }
   ]
 }

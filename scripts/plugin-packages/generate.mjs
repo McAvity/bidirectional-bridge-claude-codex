@@ -32,6 +32,24 @@ export const CLAUDE_MARKETPLACE = ".claude-plugin/marketplace.json";
 export const MARKETPLACE_NAME = "claude-codex-bridge";
 
 const AUTHOR = "claude-codex-bridge";
+
+/** Everything the package needs to acquire, install and select a pinned runtime by itself. */
+export const INSTALLER_FILES = [
+  "scripts/bridge.mjs",
+  "scripts/setup/common.mjs",
+  "scripts/setup/diff.mjs",
+  "scripts/setup/doctor.mjs",
+  "scripts/setup/distribution.mjs",
+  "scripts/setup/processes.mjs",
+  "scripts/setup/runtime.mjs",
+  "scripts/setup/workspace.mjs",
+  "scripts/bridge-project/dispatch.mjs",
+  "scripts/bridge-project/entry-template.mjs",
+  "scripts/bridge-project/locate.mjs",
+  "scripts/plugin-packages/acquire.mjs",
+  "scripts/plugin-packages/bridge-plugin.mjs",
+  "scripts/plugin-packages/release.json",
+];
 const skipGenerated = (_rel, entry) =>
   entry.name === "node_modules" || entry.name === "__pycache__" || entry.name.endsWith(".pyc");
 
@@ -81,7 +99,9 @@ export function scanForbidden(root) {
   const bad = [];
   for (const rel of walkFiles(root, skipGenerated)) {
     if (rel === GENERATED_MARKER) continue;
-    if (!/\.(md|yaml|yml|json|py|mjs)$/u.test(rel)) continue;
+    // Instruction text only. Shipped code resolves its own paths and is not rewritten.
+    if (rel.startsWith("scripts/")) continue;
+    if (!/\.(md|yaml|yml)$/u.test(rel)) continue;
     const text = readFileSync(join(root, rel), "utf8");
     for (const needle of FORBIDDEN_REFERENCES) {
       let index = text.indexOf(needle);
@@ -99,6 +119,15 @@ export function scanForbidden(root) {
 // payloads
 // ---------------------------------------------------------------------------
 
+/**
+ * Files whose *text* is instruction content and may be rewritten.
+ *
+ * Code is never transformed. Review W14-R2-02 found the generator rewriting a Python string
+ * literal into `${CLAUDE_PLUGIN_ROOT}/...`, which Python does not expand, breaking the shipped
+ * exporter. A helper resolves its own installed resources deliberately instead.
+ */
+const REWRITABLE = /\.(md|yaml|yml)$/u;
+
 function copyTree(fromRoot, from, toRoot, to, transform) {
   const out = [];
   const source = join(fromRoot, from);
@@ -106,7 +135,7 @@ function copyTree(fromRoot, from, toRoot, to, transform) {
     const text = readFileSync(join(source, rel));
     const target = join(toRoot, to, rel);
     mkdirSync(dirname(target), { recursive: true });
-    const content = transform ? Buffer.from(transform(text.toString("utf8")), "utf8") : text;
+    const content = transform && REWRITABLE.test(rel) ? Buffer.from(transform(text.toString("utf8")), "utf8") : text;
     writeFileSync(target, content, { mode: (statSync(join(source, rel)).mode & 0o111) !== 0 ? 0o755 : 0o644 });
     out.push(`${to}/${rel}`);
   }
@@ -144,17 +173,14 @@ function codexPackage(root, version) {
   writeFileSync(join(root, "skills", "bridge", "SKILL.md"), THIN_ENTRY());
   files.push("skills/bridge/SKILL.md");
 
-  mkdirSync(join(root, "scripts"), { recursive: true });
-  const entry = readFileSync(join(REPO_ROOT, "scripts", "plugin-packages", "bridge-plugin.mjs"));
-  writeFileSync(join(root, "scripts", "bridge-plugin.mjs"), entry, { mode: 0o755 });
-  files.push("scripts/bridge-plugin.mjs");
-
-  // `scripts/bridge-plugin.mjs` imports `../bridge-project/...`, which resolves to this
-  // directory in the package exactly as it resolves to `scripts/bridge-project/` in the repo.
-  mkdirSync(join(root, "bridge-project"), { recursive: true });
-  for (const name of ["dispatch.mjs", "bootstrap.mjs", "facade.mjs", "locate.mjs"]) {
-    writeFileSync(join(root, "bridge-project", name), readFileSync(join(REPO_ROOT, "scripts", "bridge-project", name)), { mode: 0o644 });
-    files.push(`bridge-project/${name}`);
+  // The installer travels with the package, mirroring the repository layout so every relative
+  // import keeps resolving. This is what lets the setup skill install a pinned runtime with no
+  // clone and no runtime id, and it is why a marketplace is never asked to build anything.
+  for (const rel of INSTALLER_FILES) {
+    const target = join(root, rel);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, readFileSync(join(REPO_ROOT, rel)), { mode: rel.endsWith("bridge.mjs") ? 0o755 : 0o644 });
+    files.push(rel);
   }
   return files.sort(byString);
 }

@@ -33,6 +33,43 @@ def safe_path(value):
     return value
 
 
+WORKFLOW_GUIDE = 'docs/features/README.md'
+WORKFLOW_GUIDE_ENV = 'BRIDGE_WORKFLOW_GUIDE'
+# The copy that travels with this helper. It resolves from this file's own location, so the
+# installed helper works from an installed runtime or a plugin package without any rewriting of
+# this source; in a bridge checkout it is simply the repository's own guide.
+def _shipped_workflow_guides():
+    here = Path(__file__).resolve()
+    return [
+        # A bridge checkout or an installed runtime: <root>/docs/features/README.md
+        here.parents[4] / WORKFLOW_GUIDE,
+        # The generated Claude Code package: <plugin>/workflow/README.md
+        here.parents[3] / 'workflow' / 'README.md',
+    ]
+
+
+def resolve_workflow_guide(root, explicit=None):
+    """Locate the shared workflow guide: the target repository first, then the installation.
+
+    Returns ``(path, origin)`` or ``None``. ``origin`` is recorded in the manifest so a reader can
+    tell a repository's own guide from the one that travelled with the installed helper. Only a
+    real file outside the repository is accepted for ``installed``; the archive name stays the
+    canonical one either way, and the repository path still goes through ``local_path``.
+    """
+    in_repo = root / WORKFLOW_GUIDE
+    if in_repo.is_file() and not in_repo.is_symlink():
+        return local_path(root, WORKFLOW_GUIDE), 'worktree'
+    candidates = [explicit, os.environ.get(WORKFLOW_GUIDE_ENV)]
+    candidates.extend(_shipped_workflow_guides())
+    for candidate in candidates:
+        if not candidate:
+            continue
+        path = Path(candidate).resolve()
+        if path.is_file():
+            return path, 'installed'
+    return None
+
+
 def local_path(root, name):
     safe_path(name)
     path = root / name
@@ -196,7 +233,17 @@ def export(args):
         blobs[name] = data
         records[name] = {'sha256': sha(data), 'size': len(data), 'source': source}
 
-    selected = set(tasks + context + ['${CLAUDE_PLUGIN_ROOT}/workflow/README.md'])
+    selected = set(tasks + context)
+    # The shared workflow guide belongs in every package under its canonical archive name. It is
+    # taken from the target repository when that repository carries it, and otherwise from the
+    # installed instruction set this helper was shipped with, so exporting from a repository that
+    # only holds feature documents works without copying the guide into it.
+    guide_source = resolve_workflow_guide(root, getattr(args, 'workflow_guide', None))
+    if guide_source is None:
+        fail('Missing selected file: ' + WORKFLOW_GUIDE + ' (pass --workflow-guide <path to the installed guide>)')
+    guide_path, guide_origin = guide_source
+    if guide_origin == 'worktree':
+        selected.add(WORKFLOW_GUIDE)
     for p in directory.rglob('*'):
         if p.is_symlink():
             fail('Feature contains symlink: ' + str(p))
@@ -206,6 +253,8 @@ def export(args):
             if p.suffix.lower() == '.zip':
                 fail('Move ZIP files outside the feature directory before export')
             selected.add(p.relative_to(root).as_posix())
+    if guide_origin == 'installed':
+        add(WORKFLOW_GUIDE, guide_path.read_bytes(), 'installed')
     for name in sorted(selected):
         p = local_path(root, name)
         if not p.is_file():
@@ -391,6 +440,9 @@ def main():
     exp.add_argument('--purpose', required=True, choices=['plan-review', 'contract-review', 'implementation-review', 'decision', 'corrections-review'])
     exp.add_argument('--output', help='Explicit new ZIP path, used literally; ~ is expanded')
     exp.add_argument('--name', help='Archive file name placed in this worktree\'s namespace packages/ directory')
+    exp.add_argument('--workflow-guide', dest='workflow_guide',
+                     help='Shared workflow guide to include when the target repository has none '
+                          '(default: the copy shipped with this helper, or $' + WORKFLOW_GUIDE_ENV + ')')
     exp.add_argument('--base')
     exp.add_argument('--head')
     exp.set_defaults(run=export)
