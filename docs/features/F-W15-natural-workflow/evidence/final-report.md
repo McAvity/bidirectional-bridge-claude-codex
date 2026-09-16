@@ -12,9 +12,9 @@ design [design.md](../design.md) · authority [decisions/01.md](../decisions/01.
 | Task | Delivered | Ledgers |
 | --- | --- | --- |
 | W15-01 | Repository-grounded design: entry in both installation modes, the preference, the intent checkpoint, the read/idempotency table and the interruption scenarios; corrected three times (C1…C4) | [01](../execution/W15-01/01.md), [02](../execution/W15-01/02.md), [03](../execution/W15-01/03.md) |
-| W15-02 | Natural-request recognition in the pinned instructions, a portable read-only entry mode, the optional `AGENTS.md` preference through the existing plan/apply, docs and regenerated packages; corrected for I1…I5 | [01](../execution/W15-02/01.md), [02](../execution/W15-02/02.md) |
+| W15-02 | Natural-request recognition in the pinned instructions, a portable read-only entry mode, the optional `AGENTS.md` preference through the existing plan/apply, docs and regenerated packages; corrected for I1…I5 and for I8 | [01](../execution/W15-02/01.md), [02](../execution/W15-02/02.md), [03](../execution/W15-02/03.md) |
 | W15-03 | "Continue" in the canonical manager loop and the Codex role skill, the intent file, and the interruption regressions on real bridge state; corrected for C2, I6 and I7 | [01](../execution/W15-03/01.md), [02](../execution/W15-03/02.md) |
-| W15-04 | This report | [01](../execution/W15-04/01.md) |
+| W15-04 | This report | [01](../execution/W15-04/01.md), [02](../execution/W15-04/02.md) |
 
 No public MCP protocol change, no new helper, no new state machine, no new configuration format,
 and no change to the release pin.
@@ -39,21 +39,25 @@ produced and the reason is stated.
 
 ## 3. What was verified, on what, and with which commands
 
-Code under test: commit `0b563baec4d9bfae878cf1cfc718fcea0d880bef` — the last commit of this
-feature that changes code or tests; everything after it in the round is documentation. The
-packaged range is recorded in the round's bridge summary.
+Code under test: commit `756ada274fcba8c1ceabcebafae35159c3c7e722` — the last commit of this
+feature that changes code or tests; everything after it is ledgers. The packaged range is recorded
+in the round's bridge summary.
 
 | Check | Command | Result |
 | --- | --- | --- |
+| W15-I8 refusal regression | `npx vitest run scripts/bridge-project/bridge-project.test.ts -t "cannot serve it"` | exit 0 — 2 passed |
 | Build | `npm run build` | exit 0 |
-| Full JS suite | `npm test` | exit 0 — 37 files, 563 passed, 0 failed, 283.30s |
+| Full JS suite | `npm test` | exit 0 — 37 files, 565 passed, 0 failed, 287.75s |
 | Package equivalence | `npm run packages:check` | exit 0 |
-| Documentation links | `node docs/tools/check-doc-links.mjs` | exit 0 — 162 files |
+| Documentation links | `node docs/tools/check-doc-links.mjs` | exit 0 — 164 files |
 | Whitespace and diff hygiene | `git diff --check` | exit 0, no output |
 
-Evidence retained from the coordinator, not re-run in this round: the Python suite (46 passed)
-and the pilot suite (140 passed), executed independently on inputs this wave did not change. They
-are cited as retained evidence; **this round did not re-run them.**
+Evidence retained from the coordinator, not re-run here: the Python suite (46 passed), the pilot
+suite (140 passed) — both executed independently on inputs this wave did not change — and the
+manual reproduction of the W15-I8 case (a current plugin against the older declared runtime wrote
+an `AGENTS.md` naming an entry point that then ended at EOF with exit 0 and empty stdout). All
+three are cited as retained evidence; **this round did not re-run them**, it encoded the third as
+a regression instead.
 
 ## 4. Limitations that must travel with this delivery
 
@@ -83,13 +87,19 @@ are cited as retained evidence; **this round did not re-run them.**
 5. **No manager code writes intent files.** The intent file is a documented convention for the
    coordinator with a placement regression; a coordinator that ignores it still loses the exact
    request on an interruption.
-6. **`RUNTIME_WITHOUT_STATUS` is asserted through the guard and the shipped package text**, not by
-   installing a genuinely older runtime and invoking the flag against it.
+6. **The preference's runtime precondition is a source check.** `servesProjectEntryStatus` reads
+   the target runtime's entry template and dispatcher rather than executing them, so a future
+   runtime that implements the mode under different names would be refused as unsupported. That is
+   the safe direction: a false refusal costs a message, a false acceptance writes an instruction
+   that does not work. The W15-I8 regression does install a genuinely older runtime and shows its
+   entry point answering with no status JSON, so this limitation is about future names, not about
+   the case that was reported.
 
 ## 5. Proposed pin
 
-Proposed **code pin for later integration**: `0b563baec4d9bfae878cf1cfc718fcea0d880bef`, or the
-head of this round once its documentation commits are included — they change no behaviour.
+Proposed **code pin for later integration**: `756ada274fcba8c1ceabcebafae35159c3c7e722`, or the
+head of this round once its ledger commits are included — they change no behaviour. (It moved from
+`0b563bae` when the W15-I8 correction landed.)
 
 This is a proposal to the coordinator, not an action. Specifically:
 
