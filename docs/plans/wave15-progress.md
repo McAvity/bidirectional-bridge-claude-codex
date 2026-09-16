@@ -92,3 +92,15 @@ Nowe I8 z rzeczywistej próby: plugin --with-preference z przypiętym ff225e5 za
 blok wskazujący STARE entry bez --status. Wąska odmowa tej kombinacji potrzebna przed
 dostawą. Step-back klasy problemu wejścia: sprawdzać target runtime i odmówić, bez
 fallbacków/nowego instalatora/zmiany pinu. Następna runda tylko I8 i raport/validation.
+
+## Dostawa końcowa — 2026-09-16
+
+Runda5 task_8prrdyndtz DONE; kod756ada2, raport292cb14, paczka r05 verified PASS.
+I8 resolved niezależną próbą na rzeczywistym ff225e5: odmowa bez zapisów.
+Cały zakres W15-01–04 technical PASS, C1-C4/I1-I8 closed. Pełne JS565/37 files
+(wykonawca); focused12/Python46/pilot140 (koordynator, retained), build/packages/links/diff PASS.
+Pięć rund Claude bez recovery; testy bez modeli, smoke nadal niewykonany.
+Finalny [handoff](../features/F-W15-natural-workflow/handoff.md) zawiera commity,
+ograniczenia i punkt wznowienia. Eksport F-W15-final-01.zip, potem q-01 odbiór użytkownika.
+Nie uruchamiać kolejnej rundy; root pozostaje otwarty do rzeczywistej decyzji.
+Brak push/merge/deploy; aktywny runtime/piny/konfiguracja nietknięte.

@@ -1,5 +1,14 @@
 # Current handoff
 
+## Wave15 — local delivery ready for acceptance
+
+All authorized tasks implemented and independently reviewed: technical PASS.
+Final code756ada2, executor report292cb14; JS565, Python46, pilot140 PASS.
+See [delivery](features/F-W15-natural-workflow/handoff.md) and [progress](plans/wave15-progress.md)
+for commits, evidence, limitations and resume point. User acceptance q-01 pending.
+No model smoke, push, merge, deployment or supervising runtime change.
+Earlier implementation/planning entries are historical.
+
 ## Wave15 — implementation authorized
 
 Whole wave15 authorized in worktree wave15: Claude implementation through bridge,

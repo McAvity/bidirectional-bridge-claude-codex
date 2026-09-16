@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W15-natural-workflow",
-  "phase": "corrections",
+  "phase": "decision",
   "brief": "docs/features/F-W15-natural-workflow/brief.md",
   "design": "docs/features/F-W15-natural-workflow/design.md",
   "tasks": [
@@ -17,7 +17,7 @@
   ],
   "latest_review": "docs/features/F-W15-natural-workflow/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W15-natural-workflow/decisions/01.md",
-  "next_action": "Runda 5: I8 compatibility guard, final-report wording/evidence, focused+full validation; then final handoff.",
+  "next_action": "Technical PASS; final handoff ready. Await user acceptance (q-01); no new round, smoke, push, merge or deployment authorized.",
   "bridge": {
     "feature_id": "F-W15-natural-workflow",
     "parent_task_id": "task_7zykhr76zt"

@@ -138,3 +138,27 @@ dotyczy TESTÓW/smoke, a implementację rzeczywiście wykonały rundy Claude prz
 Skorygować aktualny final-report, zachować historyczne ledgery i dodać sprostowanie
 w nowym W15-04 ledgerze. Uwzględnić powyższe dodatkowe dowody koordynatora, bez claimu
 własnego rerun. Pozostałe findingi zamknięte; tylko I8 wymaga korekty kodu.
+
+## Final review — PASS, 2026-09-16
+
+Runda 5 task_8prrdyndtz DONE, revision 292cb1455ad40b8b31fedf3861c0525cf26d8b0d.
+Paczka r05: SHA256 a41aed28bd779c6a655a51f7522c5c307fcbb5e6548376c7700490f4dfd025e3;
+koordynator zweryfikował integralność, provenance, zakres 11 plików i czysty worktree.
+I8 resolved: capability czytane z target runtime, odmowa przed zapisami, bez uruchamiania
+obcego kodu lub zmiany pinu. Niezależna próba koordynatora z rzeczywistym ff225e5:
+PREFERENCE_UNSUPPORTED_RUNTIME, exit1/applied=false, identyczna deklaracja i lista plików,
+AGENTS nie powstał. Regresja wykonawcy obejmuje publiczny setup historycznego runtime
+i działający wspierany target. Review kodu potwierdza precondition przed planPreference.
+
+Wykonawca: pełne JS565/37 plików PASS, build/packages/links/diff PASS; focused I8 2 PASS.
+Koordynator: retained focused continuation/role12, Python46/pilot140, niezależne próby
+opisane wyżej; końcowe build/packages/links/diff PASS. Nie przypisujemy koordynatorowi
+własnego pełnego JS565 rerun. Raport poprawnie rozróżnia Claude implementation od
+testów bez modeli. C1-C4 i I1-I8 resolved. Step-back doprowadził do prostego intent JSON
+z istniejącym replay oraz do odmowy niewspieranego targetu, bez nowego protokołu.
+
+PASS dla całego zleconego zakresu implementacji. Behawioralne AC-01/02/07 wymagające
+model smoke pozostają nieweryfikowane zgodnie z wyłączeniem użytkownika; to nie claim
+pełnego real-agent acceptance. Ograniczenia capability source-check, no-handle strict
+stop i brak automatycznej naprawy historycznych bloków są jawne w raporcie/handoff.
+Odbiór użytkownika nadal pending; review nie jest zgodą na publikację ani wdrożenie.
