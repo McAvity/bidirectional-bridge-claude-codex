@@ -1,9 +1,11 @@
 # Current handoff
 
-Next planned work: user acceptance of [wave12 — setup, updates and doctor](plans/wave12.md) and
-the merge decision. Implemented locally on branch `wave12`; not merged or published. Report:
-[wave12](plans/wave12-report.md), review: [wave12](plans/wave12-review.md), progress:
-[wave12](plans/wave12-progress.md).
+Next planned work: coordinator integration of [wave12 — setup, updates and doctor](plans/wave12.md)
+into `feature-workflow`, including `init` in each bridge worktree before a client starts there.
+The user accepted wave12 on 2026-09-16; it is implemented locally on branch `wave12` and not
+merged or published. Smoke evidence and the smoke project's Codex trust entry stay untouched until
+integration finishes. Report: [wave12](plans/wave12-report.md), review:
+[wave12](plans/wave12-review.md), progress: [wave12](plans/wave12-progress.md).
 
 ## Wave12 — setup, updates and doctor implemented locally, 2026-09-15
 

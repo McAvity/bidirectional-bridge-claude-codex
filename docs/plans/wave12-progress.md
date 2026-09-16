@@ -152,3 +152,28 @@ wymiany `ws_db4c662348c78b0b`; wpis zaufania zostaje do odbioru.
 
 Następny krok: odbiór wave12 przez użytkownika i decyzja o merge; po odbiorze sprzątanie dowodów
 smoke i wpisu zaufania.
+
+## 2026-09-16 — odbiór użytkownika
+
+Użytkownik odebrał wave12 (wiadomość z 2026-09-16, 05:46). To odbiór użytkownika, odrębny od
+syntetycznej akceptacji featura `F-001-add` w smoke AC-08.
+
+Zakres odbioru: `scripts/bridge.mjs` i `scripts/setup/`, konfiguracje repo na
+`.bridge-runtime/current`, dokumentacja ([setup.md](../setup.md),
+[setup-layout.md](../setup-layout.md)), poprawka W12-R1 (`cb6cf1a`, review zamknięte w
+`e087245`) oraz wynik smoke AC-08 (`a1ceb58`). Bez dodatkowych testów i review na tym etapie.
+
+Merge do `feature-workflow`, przygotowanie głównego checkoutu (`node scripts/bridge.mjs init`
+w każdym worktree bridge przed startem klienta) i wdrożenie przejmuje koordynator. Ta sesja nie
+wykonuje merge, push ani wdrożenia.
+
+Dowody smoke, jednorazowy projekt i wpis zaufania projektu smoke w
+`~/.codex/profile-ubuntu.config.toml` zostają nietknięte do zakończenia integracji:
+`~/tmp/wave12-smoke-20260915/`, rollouty Codexa z 2026-09-15 i przestrzeń wymiany
+`~/tmp/bridge-exchange/ws_db4c662348c78b0b/`.
+
+Stan końcowy: branch `wave12`, worktree czysty, ten commit jest HEAD. Poprzednie commity:
+`a1ceb58` (raport smoke), `7420344` (pin i kryteria smoke), `e087245` (zamknięcie review).
+
+Następny krok (koordynator): integracja `wave12` do `feature-workflow`; po integracji sprzątanie
+dowodów smoke i wpisu zaufania.
