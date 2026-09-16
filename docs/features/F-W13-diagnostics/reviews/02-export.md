@@ -168,3 +168,62 @@ architektury ani ponownego otwierania zamkniętych ustaleń. Przy trzecim review
 problemu zastosować step-back: jedna wspólna kontrola ścieżek przed I/O i bezpośrednie
 fault-injection tests są prostsze niż kolejne lokalne wyjątki. Autoryzacja decyzja01;
 bez nowego pytania produktowego. AC-07 nadal wymagane; pozostałe dowody zachowane.
+
+
+## 2026-09-16 — re-review rundy 4 i końcowy wynik lokalny: PASS
+
+**Cały autoryzowany zakres lokalny wave13 jest gotowy do odbioru.** Brak otwartych
+wymaganych ustaleń. Jest to rekomendacja Codexa, niezależnego od implementatora Claude,
+lecz odpowiedzialnego za koordynację; nie akceptacja użytkownika. Integracja do
+feature-workflow, CI i wdrożenie nie były wykonywane zgodnie z zakazem push/merge/deploy.
+
+Task `task_xgpwasb532` DONE. Przejrzany zakres korekty:
+`921e7a6c104fa71127c2b7780e2c2a5380e915b7..79b104dd5f4feefdfe41b915ad74d8d30549c801`.
+Paczka F-W13-round-4.zip verify PASS; SHA-256
+`4ef51b541eb5ef60f3ea44001a94a17784e7e27f3769a8d7d4af779727645596`.
+8 ścieżek zgodnych z kontraktem, czysty worktree, brak zmian dokumentów koordynatora.
+Sprawdzono rzeczywisty kod kontroli ścieżek, writer ZIP, asercje regresji i nowe
+ledgery W13-02/03.md oraz W13-03/03.md.
+
+| Finding | Dyspozycja końcowa | Dowód |
+| --- | --- | --- |
+| R2-02 | resolved | Jedna kontrola istniejących komponentów od zaufanej kotwicy przed mkdir; niezależna reprodukcja namespace/packages/staging/source-no-db → UNSAFE i puste outside w każdym wariancie. |
+| R2-05 | resolved | Test rzeczywistego rename/replace/unlink pomiędzy odczytem i końcową kontrolą wymaga właściwego changed/removed gap, nazwy pliku i flagi cutoffs; PASS. |
+| R2-06 | resolved | Deterministyczny ENOSPC po realnym zapisie1KiB oraz podczas fsync: odmowa, brak paczki/stagingu, niezmienione źródło, kolejny eksport działa; PASS. |
+| R2-01/03/04 | resolved (retained) | Regresje prywatności, zakresu i zaufanego importu nadal PASS w pełnym zestawie eksportu. |
+| R1-01/02/03 | resolved (retained) | Review01 i jego dowody zachowane; brak zmiany unieważniającej te ustalenia. |
+
+Step-back przy trzecim sprawdzeniu problemu: wspólne `assertSafeDescent` sprawdza
+istniejącą część ścieżki PRZED pierwszym I/O; wcześniejsze pominięcie samego root
+jest usunięte w namespace i źródle. Bez dodatkowej architektury. Bezpośrednie
+wstrzyknięcie dwóch operacji I/O domyka dowód błędu zapisu; nie wymaga pełnego urządzenia.
+
+### Walidacja i pokrycie całego lokalnego zakresu
+
+Na kodzie `79b104dd5f4feefdfe41b915ad74d8d30549c801`:
+- Claude: npm ci --ignore-scripts, build, npm test **481/34**, Python **32**,
+  pilot-tooling **140**, kontrola dokumentów i diff PASS, zapisane w deliverable bridge.
+- Codex niezależnie: **24/24** testy eksportu PASS, cztery reprodukcje symlinków PASS,
+  dokumentacja **116** plików PASS, diff/zakres i integralność paczki PASS.
+- W poprzednim niezmienionym zakresie Codex niezależnie30 testów loggera/launchera,
+  30 eksport/setup, retencja115 rotacji →2 pliki, Python29 i pilot140 PASS.
+- Środowisko: Node24.15.0, Python3.12.3. Dokumentacja repo wymienia Python3.11;
+  testu na3.11 nie wykonano w tej sesji.
+
+Pełna macierz AC-01–AC-09: [W13-03/03](../execution/W13-03/03.md), z zachowaniem
+pierwotnych ledgera01 i korekty02. Review potwierdza lokalne spełnienie tych kryteriów;
+wcześniejsze błędne twierdzenia nie są traktowane jako dowody. Integracja między
+komponentami została zbadana we wspólnym checkout przez launcher/CLI/SQLite/testy.
+Brak publikacji, merge, CI i real-agent smoke jest jawny, nie oznaczony PASS.
+W pełnej lokalnej dostawie baza `67957034a2a48b5d3d82a5fdef22e5e6e4f5d2fa` obejmuje
+logowanie, retencję, eksport, dokumentację i wszystkie poprawki.
+
+### Granice i przekazanie
+
+Testy używają syntetycznego wykonawcy, nie płatnych modeli. ENOSPC jest deterministyczną
+iniekcją przy rzeczywistym zapisie, nie zapełnionym urządzeniem. Twardy kill może
+pozostawić prywatny staging. Baza i log nie mają wspólnej atomowej migawki; cutoffs
+oraz gaps są jawne. Rozszerzona surowa baza/evidence pozostaje prywatnym materiałem.
+Nie zmieniono przypiętego runtime nadzorującego tę pracę. Następny krok: jedna paczka
+implementation-review całego zakresu i decyzja użytkownika o lokalnym odbiorze;
+żadna dalsza zwykła poprawka nie pozostaje otwarta.

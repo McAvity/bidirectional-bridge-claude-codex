@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W13-diagnostics",
-  "phase": "corrections",
+  "phase": "implementation-review",
   "brief": "docs/features/F-W13-diagnostics/brief.md",
   "design": "docs/features/F-W13-diagnostics/design.md",
   "tasks": [
@@ -19,7 +19,7 @@
   ],
   "latest_review": "docs/features/F-W13-diagnostics/reviews/02-export.md",
   "latest_decision": "docs/features/F-W13-diagnostics/decisions/01.md",
-  "next_action": "Runda 4 tej samej sesji: R2-02 namespace przed zapisem oraz deterministyczne dowody R2-05/06; następnie wąskie re-review.",
+  "next_action": "Lokalny zakres kompletny, review PASS. Odbiór użytkownika na podstawie F-W13-final-implementation.zip; bez push/merge/deploy. Integracja i CI niewykonane.",
   "bridge": {
     "feature_id": "F-W13-diagnostics",
     "parent_task_id": "task_0zpsfj1g59"

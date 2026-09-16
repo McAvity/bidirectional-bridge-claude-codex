@@ -71,3 +71,22 @@ packages/staging poza nim (niezależna syntetyczna reprodukcja). R2-05/06 progre
 potrzebny test rzeczywistej rotacji/podmiany i deterministyczna iniekcja ENOSPC.
 Zachowano wcześniejsze ledgery. Następny krok: runda4 tej samej sesji, wąski zakres
 z review02, testy i ponowna weryfikacja. Bez push/merge/deploy i bez zmiany supervisora.
+
+## 2026-09-16 — lokalna dostawa gotowa, review PASS
+
+Runda4 task_xgpwasb532 DONE, kod `79b104dd5f4feefdfe41b915ad74d8d30549c801`.
+Paczka F-W13-round-4.zip verify PASS, SHA-256
+4ef51b541eb5ef60f3ea44001a94a17784e7e27f3769a8d7d4af779727645596.
+R2-02/05/06 resolved; wszystkie wymagane findingi R1/R2 zamknięte. W13-01–03 done
+lokalnie, bez oznaczania featura jako accepted. Końcowe review i granice w review02.
+Claude: npm ci/build,481 JS/34 pliki,32 Python,140 pilot,docs/diff PASS.
+Codex:24 testy eksportu,4 niezależne warianty reprodukcji symlinków,docs116,
+verify i zakres PASS. Node24.15.0,Python3.12.3; testy bez modeli, brak CI/real-agent.
+ENOSPC symulowany deterministycznie po częściowym zapisie i przy fsync; prawdziwy
+rename/replace/unlink logu podczas eksportu potwierdza gaps. Wcześniejsze wyniki zachowane.
+Lokalne commity implementacji: c894d5c,59b3de3,cf2365c,6c4059a,79b104d;
+commity dokumentów i ledgera pozostają w historii bez squash/reset.
+Końcowa paczka: F-W13-final-implementation.zip w namespace worktree packages/;
+zakres od67957034a2a48b5d3d82a5fdef22e5e6e4f5d2fa do końcowego commita dokumentów.
+Następny krok: weryfikacja tej paczki i lokalny odbiór użytkownika. Integracja do
+feature-workflow,CI,push/merge/deploy niewykonane; runtime supervisora nietknięty.

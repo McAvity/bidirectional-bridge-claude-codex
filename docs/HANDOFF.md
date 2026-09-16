@@ -280,3 +280,16 @@ root symlink and direct rotation/ENOSPC evidence). Independent focused tests30 P
 worker reports477 JS,32 Python,140 pilot/build/docs PASS. Next: round4 in the same
 bridge feature/session. See `docs/plans/wave13-progress.md` and review02. Local only;
 no push, merge, deployment or supervising runtime changes.
+
+
+## Wave13 local delivery ready (2026-09-16)
+
+Supersedes the correction checkpoint above: code `79b104d`, round4 task DONE,
+independent review02 PASS, all R1/R2 findings resolved, W13-01–03 locally done.
+Claude final checks:481 JS/34 files,32 Python,140 pilot-tooling,build/docs PASS.
+Codex:24 export tests plus four namespace/source symlink reproductions PASS;
+package provenance and docs116 PASS. Model-free only; ENOSPC injected at write/fsync.
+Final full-range packet: F-W13-final-implementation.zip, worktree exchange namespace.
+Progress and complete limitations: `docs/plans/wave13-progress.md`; recommendation:
+local acceptance. User acceptance remains pending. No integration merge, CI, push,
+deployment or changes to the pinned supervising runtime.
