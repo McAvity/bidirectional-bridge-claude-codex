@@ -7,7 +7,8 @@ import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { LOCAL_DIR, SetupError, canonical, newTag, run, sha256 } from "./common.mjs";
+import { LOCAL_DIR, SetupError, canonical, newTag, readJson, readOptional, run, sha256 } from "./common.mjs";
+import { distributionMetadata } from "./distribution.mjs";
 import { findActiveUse } from "./processes.mjs";
 import { TOOL_TIMEOUT_SEC, knownInstructionHashes, listRuntimes, verifyRuntime } from "./runtime.mjs";
 import {
@@ -630,6 +631,8 @@ export async function runDoctor({ home, workspace, codexProfile, handshake: doHa
   const open = checks.filter((check) => check.status === "unknown" || check.status === "skipped");
   const status = errors.length > 0 ? "problems" : open.length > 0 ? "incomplete" : "ok";
   const first = errors[0] ?? open[0] ?? null;
+  // Which integration this worktree uses and which versions, with no path disclosed.
+  const declaration = readProjectDeclaration(root);
   return {
     format: DOCTOR_FORMAT,
     generated_at: new Date().toISOString(),
@@ -637,7 +640,36 @@ export async function runDoctor({ home, workspace, codexProfile, handshake: doHa
     status,
     next_step: first ? first.next_step ?? `resolve ${first.code}` : null,
     checks,
+    distribution: distributionMetadata({
+      home,
+      worktree: root,
+      runtime,
+      declaration,
+      selection: record.kind === "valid" ? { runtime_id: record.value.runtime?.id ?? null } : null,
+      integrationSource: integrationSourceOf(root),
+    }),
   };
+}
+
+/** The committed project declaration, when this project has one. Read-only. */
+function readProjectDeclaration(root) {
+  const parsed = readJson(join(root, ".bridge-project", "bridge.json"));
+  return parsed.kind === "valid" ? parsed.value : null;
+}
+
+/**
+ * How the bridge server reaches this worktree.
+ *
+ * A project that declares the portable dispatcher uses `project-dispatcher`; a worktree still
+ * carrying only the wave12 per-worktree launcher uses `project-config`. Both are project-scoped:
+ * W14-01 measured that a plugin-hosted MCP server cannot learn its workspace on Codex 0.154.0,
+ * so `plugin` is never reported for the bridge server itself.
+ */
+function integrationSourceOf(root) {
+  if (existsSync(join(root, ".bridge-project", "dispatch.mjs"))) return "project-dispatcher";
+  const toml = readOptional(join(root, CODEX_CONFIG));
+  if (toml && definesBridge(toml.toString("utf8"))) return "project-config";
+  return "unknown";
 }
 
 export function formatDoctor(report) {

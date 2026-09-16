@@ -1,0 +1,17 @@
+{
+  "name": "bridge-codex",
+  "version": "0.2.0",
+  "description": "Manager-side entry point for the Claude Code <-> Codex bridge.",
+  "author": {
+    "name": "claude-codex-bridge"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Bridge (Codex)",
+    "shortDescription": "Drive Claude Code rounds from Codex.",
+    "longDescription": "Enables a project or worktree to use the Claude Code <-> Codex bridge and points the manager at the instruction set of the runtime that worktree selected.",
+    "developerName": "claude-codex-bridge",
+    "category": "Productivity"
+  }
+}

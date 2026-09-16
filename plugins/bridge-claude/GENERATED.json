@@ -1,0 +1,102 @@
+{
+  "format": "claude-codex-bridge.generated-package/v1",
+  "plugin": "bridge-claude",
+  "version": "0.2.0",
+  "generator": "scripts/plugin-packages/generate.mjs",
+  "canonical_sources": [
+    ".agents/skills",
+    ".claude/skills/using-bridge",
+    "docs/features/README.md"
+  ],
+  "source_digest": "580e56d35719ff1c673dda403334a522052fe050c9df91126dc628ee14b8bbf0",
+  "files": [
+    {
+      "path": ".claude-plugin/plugin.json",
+      "sha256": "870daa97251450010527eba7f3860d836540fada167ac186421da39e64817b36"
+    },
+    {
+      "path": "skills/feature-decide/SKILL.md",
+      "sha256": "4b1188ee2785289d46cc714a1c03fff550084d39f73165decf5b2246bfc0f4a4"
+    },
+    {
+      "path": "skills/feature-decide/agents/openai.yaml",
+      "sha256": "9e40c65c0b5602f11641732431df31ed17401c0839dbba09848bbb8e9ebe2b17"
+    },
+    {
+      "path": "skills/feature-design/SKILL.md",
+      "sha256": "d2f41fcb5d2f65ee137abffeee3bfaa0438ea294e3c663b904c64a5a83bf6e3a"
+    },
+    {
+      "path": "skills/feature-design/agents/openai.yaml",
+      "sha256": "a05d136a42900fab623f77d74b468e0efd05885d59156c24643cc896669d8d28"
+    },
+    {
+      "path": "skills/feature-exchange/SKILL.md",
+      "sha256": "aec3d174766aa1dccaed1a22e9e25dd270e2b980cf906b83086433c70fa3a2b8"
+    },
+    {
+      "path": "skills/feature-exchange/agents/openai.yaml",
+      "sha256": "f0c45536e2c35597f70d727497a55f7c5282d5f7c3a3547ebb13a3ec548e4f2a"
+    },
+    {
+      "path": "skills/feature-exchange/scripts/feature_exchange.py",
+      "sha256": "032db16466b9b891ddd77a7f1af6bc300511e58133e20f2e1ddba503723f80ec"
+    },
+    {
+      "path": "skills/feature-execute/SKILL.md",
+      "sha256": "daa34e8ea5f89a2fda0ac0755b85a35c3e4e9ab1a22c6272b557a427b39a8a86"
+    },
+    {
+      "path": "skills/feature-execute/agents/openai.yaml",
+      "sha256": "dd32ef41c92a5703d312c0edd4e66e7611ee844fd0196bb6c3e1a44e033b6b80"
+    },
+    {
+      "path": "skills/feature-execute/references/bridge-loop.md",
+      "sha256": "99b942ca8971e8c4fe6e1dbb08e1a7ecdad84b6c393d38d83a74c7a58a94e3c5"
+    },
+    {
+      "path": "skills/feature-plan/SKILL.md",
+      "sha256": "81a9f07f37a5ebfefd264bcf99d5d71fdd4690977422eae0d9776717b6798c36"
+    },
+    {
+      "path": "skills/feature-plan/agents/openai.yaml",
+      "sha256": "3cd76093a506bc38da723234b0cad94d3509347b14478e9f66d1cf85cdb55c28"
+    },
+    {
+      "path": "skills/feature-review/SKILL.md",
+      "sha256": "1e39bf698e5b1bdc6004d4afd47d3b5a639f1cc442d97d2aae03b4d0ca5e6ebc"
+    },
+    {
+      "path": "skills/feature-review/agents/openai.yaml",
+      "sha256": "d2fbb52200c9dd7e610da952c04deb555269460945ef0a606183c26e6a4581b9"
+    },
+    {
+      "path": "skills/using-bridge/SKILL.md",
+      "sha256": "4aece196f17a2b3442dd8c7079ff91b734e14c0d937200008b2207d67290f0a4"
+    },
+    {
+      "path": "skills/using-bridge/agents/openai.yaml",
+      "sha256": "30908ec6b5b4646ba8af7ca76e07fa121e415d7e05da765e785ccf572da04472"
+    },
+    {
+      "path": "skills/using-bridge/references/contracts.md",
+      "sha256": "76953be26a1cbee2a470aee7a666bb9bfc135f029a7e8395af41645778699db2"
+    },
+    {
+      "path": "skills/using-bridge/references/recovery-and-failures.md",
+      "sha256": "f8287d08c7d1636cd7ac15cad7ae4de6828a13f7e520b5968b752da7205436e1"
+    },
+    {
+      "path": "skills/using-bridge/references/routing-policy.md",
+      "sha256": "2746acffbe75f15a119ad1a0908877961e1c14909b4f8b0c243aa288bf4068b1"
+    },
+    {
+      "path": "skills/using-bridge/references/tool-map.md",
+      "sha256": "5fceff7dc337e56b9fc5c1187cbeb4307d1855028d02102399b3e9e97f393955"
+    },
+    {
+      "path": "workflow/README.md",
+      "sha256": "e0a71675481ed0e948b15eeadf21f646052717158a397c6bea53e89f84ca9ab5"
+    }
+  ]
+}

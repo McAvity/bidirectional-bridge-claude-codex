@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { realpathSync, statSync } from "node:fs";
+import { existsSync, realpathSync, statSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -137,8 +137,16 @@ export async function runNativeBridge(args) {
   ]);
 
   const log = (line) => core.stderrLog(`[bridge-native:${args.caller}] ${line}`);
+  // The executor package generated from this runtime's own canonical skills. It ships inside the
+  // runtime, so a plugin cache refresh cannot take it away from a round already under way.
+  const executorPackage = new URL("../plugins/bridge-claude", import.meta.url);
+  const executorPackagePath = existsSync(fileURLToPath(new URL("./.claude-plugin/plugin.json", `${executorPackage.href}/`)))
+    ? fileURLToPath(executorPackage)
+    : undefined;
+
   const claudeRunner = new claudeSide.ClaudeCodeRunner({
     permissionMode: "acceptEdits",
+    ...(executorPackagePath ? { pluginDir: executorPackagePath } : {}),
     // ClaudeCodeRunner owns the protected opus/high profile and conservative bounded
     // default. A validated TaskSpec.max_turns may raise or lower only the turn ceiling.
     // Delegated Claude runs are non-interactive, so permission prompts cannot be answered.
