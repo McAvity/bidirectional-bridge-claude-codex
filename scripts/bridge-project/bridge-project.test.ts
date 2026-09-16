@@ -379,7 +379,9 @@ describe("the launch gate", () => {
     expect(run.replies.find((frame: any) => frame.id === 0)?.result?.serverInfo?.name, run.stderr).toBe("bridge-native-project");
     expect(run.replies.find((frame: any) => frame.id === 1)?.result?.tools?.length).toBeGreaterThan(10);
     expect(run.stderr).toContain(`workspace=${project}`);
-    expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(true);
+    expect(run.stderr).toContain(`db=${join(project, ".bridge/bridge.db")}`);
+    // A handshake and a tool listing are reads: they bind this worktree and create no state.
+    expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(false);
     run.child.kill("SIGKILL");
   }, 60_000);
 
@@ -488,9 +490,10 @@ describe("an inherited worktree", () => {
     git(project, "worktree", "add", "-q", "-b", "second", external);
     setup(external);
     const run = await launchEntry(external, { frames: HANDSHAKE });
+    // Its own workspace and its own database path, not the checkout it was created from.
     expect(run.stderr, run.stderr).toContain(`workspace=${real(external)}`);
-    expect(existsSync(join(external, ".bridge/bridge.db"))).toBe(true);
-    expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(false);
+    expect(run.stderr).toContain(`db=${join(real(external), ".bridge/bridge.db")}`);
+    expect(run.stderr).not.toContain(`db=${join(project, ".bridge/bridge.db")}`);
     run.child.kill("SIGKILL");
   }, 120_000);
 });
