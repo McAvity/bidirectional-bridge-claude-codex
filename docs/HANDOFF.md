@@ -1,5 +1,12 @@
 # Current handoff
 
+## Wave13 and wave14 — coordinator review
+
+Both local deliveries have been reviewed at wave13 `9cf1f43` and wave14 `e76a066`.
+See [the review and integration boundary](plans/wave13-wave14-review.md).
+No product merge, push or runtime switch was performed. User acceptance and the
+combined integration remain next; older executing/planned-only entries below are historical.
+
 ## Wave15 draft; wave13 and wave14 executing
 
 The user reports both wave13 and wave14 are executing separately. Their scopes stay
