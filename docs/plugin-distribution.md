@@ -106,8 +106,9 @@ removed local state is refused too instead of being silently re-created.
 
 Two clients opening the same worktree at once are fine: the bridge's own identity guard admits one
 of them and refuses the other as a foreign manager, and the loser writes nothing. If a first use is
-interrupted part-way, the next client serves reads as usual and the next authorised call finishes
-what that worktree started — there is nothing to run by hand. A half-finished setup that is *not*
+interrupted part-way — before any local file is written, mid-write, or after the record but before
+the journal is cleared — the next client serves reads as usual and the next authorised call finishes
+what that worktree started. There is nothing to run by hand. A half-finished setup that is *not*
 this worktree's own, for example a `.bridge-runtime/` copied from elsewhere, is refused instead.
 
 Codex's own per-path trust prompt still applies to the new path.
@@ -116,7 +117,19 @@ Codex's own per-path trust prompt still applies to the new path.
 
 The project declaration is the authoritative pin. A worktree records what it actually applied; a
 difference is reported as `pin-diverged` and is resolved by an explicit `update` or `rollback`,
-never by a silent switch. Delivering a new plugin version changes the distribution, not the pin:
+never by a silent switch.
+
+```sh
+node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" update --to <runtime id> --yes
+node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" rollback --yes          # previous runtime
+node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" rollback --to <id> --yes
+```
+
+`rollback` reads this worktree's own selection history, so the plain form returns to the runtime it
+used before the last change; a worktree that has only ever selected one runtime refuses
+`ROLLBACK_NO_PREVIOUS` rather than pretending. Both commands move the committed declaration and the
+local selection together, both refuse while the worktree is in use, and neither restores a database
+— only the runtime selection moves. Delivering a new plugin version changes the distribution, not the pin:
 the entry point keeps loading the declared runtime.
 
 If the declared runtime is not installed on this machine, the entry point refuses with a named code

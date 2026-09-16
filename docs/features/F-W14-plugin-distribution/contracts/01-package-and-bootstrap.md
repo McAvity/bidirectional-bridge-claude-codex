@@ -1,6 +1,6 @@
 # Contract: plugin packages, marketplace and worktree setup (W14-01…W14-03)
 
-Status: **revision 5 — implemented**. Revision 1 was proposed design; revision 2 described what
+Status: **revision 6 — implemented**. Revision 1 was proposed design; revision 2 described what
 W14-02 built, and `reviews/02-implementation.md` returned REWORK with W14-R2-01…05. This revision
 records the architecture those findings forced, which is *smaller* than revision 2's: the parallel
 setup implementation is gone and the wave12 machinery does the work.
@@ -12,6 +12,11 @@ an installation-supplied document as missing.
 Revision 5 resolves the **boundary between the native guard and the wave12 selection journal**,
 which is where W14-R2-06…08 landed. No new framework, lock protocol or facade: three narrow
 changes, described in §3b.
+
+Revision 6 completes that boundary at the two remaining interruption points and fixes rollback
+(W14-R2-07, W14-R2-09), still with no new protocol: the runtime's own state marker becomes the
+authority for an explained reservation, an own unfinished journal is completed even when the record
+already exists, and the plugin shares the wave12 CLI's history-based rollback resolver.
 
 Evidence: [`evidence/W14-03/`](../evidence/W14-03/README.md). The superseded W14-02 matrix is
 corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host facts also come from
@@ -32,6 +37,8 @@ corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host f
 | W14-R2-06 | two first uses of the *same* worktree both refused `ACTIVE_SESSION` naming the other's open database; neither ever took the selection | `insideGuardedMutation` removes the process scan's veto for a caller already inside the guard's critical section (§3b) |
 | W14-R2-07 | an interrupted automatic preparation refused `SETUP_STATE_PARTIAL` forever and needed a manual `setup` | the journal records its worktree and runtime; a provably own interrupted apply serves and resumes at the next authorised mutation (§3b) |
 | W14-R2-08 | `setup` without `--yes` installed the runtime while reporting `applied=false` | acquisition and build happen only under `--yes`; the plan is honest about what it cannot compute yet (§3b) |
+| W14-R2-07 (remaining boundaries) | a crash before the first `.bridge-runtime` write refused forever; a crash after the record write left `pending.json` behind forever | `classifyNativeState` reads the runtime's own marker as the authority for an explained own reservation, and an own unfinished journal is completed even with a valid record (§3b) |
+| W14-R2-09 | the plugin's `rollback` resolved its target from the declared pin, i.e. the current runtime, and always refused `ROLLBACK_SAME_RUNTIME` | the wave12 CLI's history-based `rollbackTarget` is extracted and shared verbatim; explicit `--to`, compatibility and active-session guards unchanged (§7) |
 
 ## 1. Host constraints this design obeys
 
@@ -122,8 +129,12 @@ there and a second is refused as a foreign manager. Every other refusal is untou
 `init`, `update` and `rollback` from the CLI keep the full scan — including the `ACTIVE_SESSION`
 refusal while a server is serving.
 
-**An interrupted automatic preparation resumes itself.** The journal now records the worktree and
-the runtime it belongs to, so a resume can prove ownership. The launch gate serves a worktree whose
+**An interrupted automatic preparation resumes itself, at every boundary.** Three states count as
+this worktree's own unfinished work, and nothing else does: a journal that records this worktree and
+runtime; a `.bridge/workspace.json` marker naming this worktree with no selection directory yet —
+the runtime's own reservation, read with the database untouched; and a valid record whose journal
+was never removed. The last two are the boundaries W14-R2-07 left open. The journal now records the
+worktree and the runtime it belongs to, so a resume can prove ownership. The launch gate serves a worktree whose
 partial state is *provably its own* interrupted apply and completes it at the next authorised
 mutation through the existing resumable journal. A journal naming another worktree, an unreadable
 one, one for a different runtime, or one written before the journal recorded its workspace stays
@@ -224,7 +235,10 @@ the plugin — installs it.
 
 The committed declaration is the authoritative pin; `.bridge-runtime/install.json` records what the
 worktree actually applied. `update --to` and `rollback` move both together through the wave12
-actions, so both refuse while the worktree is in use. Delivering a new plugin version never moves a
+actions, so both refuse while the worktree is in use. `rollback` resolves its target from this
+worktree's own selection history — the wave12 CLI's resolver, shared verbatim — so the default
+returns to the previous runtime rather than to the declared pin; an explicit `--to` overrides it and
+a worktree with no history refuses `ROLLBACK_NO_PREVIOUS`. Rolling back does not restore a database. Delivering a new plugin version never moves a
 pin: `setup` prefers the project's declared pin over the distribution's release pin.
 
 A wave12 worktree keeps working unchanged; `doctor --json` reports `integration_source` as

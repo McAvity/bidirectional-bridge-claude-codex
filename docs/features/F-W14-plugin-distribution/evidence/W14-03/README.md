@@ -6,6 +6,71 @@ lives under a temporary root; the operator's own configuration is never read for
 written. **No test mutates a file of this repository** — generator drift is proven on a throwaway
 git worktree.
 
+## Round 5 — the remaining interruption boundaries and rollback (W14-R2-07, R2-09)
+
+Reproduced at `f3bba25…` with an explicit temporary runtime home asserted before every mutating
+call, then fixed and re-proven against the refreshed default pin `ba4025b1…`. Nothing ran in the
+operator's own bridge home, and no unrelated runtime was inspected or removed.
+
+### W14-R2-07, boundary before the first `.bridge-runtime` write
+
+**Reproduced** with the reviewer's one-shot preload, which kills the process at the first
+`.bridge-runtime` creation — after the runtime has made its own native reservation:
+
+```
+A_crash:        exit=-9  state_dir=true  marker=true  local_dir=false
+A_restart_read: served=false   ("…it never adopts state it did not write")
+A_recover:      no reply        record=false
+```
+
+**Fixed.** `.bridge/workspace.json` is the runtime's own record of which worktree that state
+belongs to, so it is the existing authority for "explained and mine". `classifyNativeState` reads
+it — read-only, no database opened — and an `own` reservation with no selection directory now
+serves reads and is completed by the next authorised mutation:
+
+```
+A_restart_read: served=true, 35 tools, tree unchanged
+A_recover:      isError=null   record=true
+```
+
+### W14-R2-07, boundary after the record write
+
+**Reproduced** with `CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER=2`: the record is written before the
+journal is removed, so `pending.json` survived, and a later successful mutation left it in place
+forever (`pending_still_there: true`) because `decide` reported `resuming=false` for a valid record
+and the materialiser returned early on one.
+
+**Fixed.** An *own* unfinished journal is work to complete even when the record is valid;
+`planChange` picks it up as `plan.pending` exactly as the CLI does. `pending_still_there: false`.
+
+### W14-R2-09 — default rollback selected the current runtime
+
+**Reproduced:** after a real `update`, `rollback --yes` refused `ROLLBACK_SAME_RUNTIME` naming the
+runtime it was supposed to leave, because the resolver treated rollback like setup and read the
+declared pin.
+
+**Fixed** by extracting the wave12 CLI's history-based `rollbackTarget` into
+`scripts/setup/workspace.mjs` and sharing it verbatim:
+
+```
+update   --to 0.2.0-242330778de4  -> ok
+rollback --yes                    -> ok, runtime 0.2.0-ba4025b1425d
+declaration_now = selection_now   = 0.2.0-ba4025b1425d      db_preserved = true
+```
+
+Explicit `--to` still wins; the compatibility and active-session guards are the plan's own.
+
+### Independent host evidence cited, not re-run
+
+The coordinator's review records a plain interactive Codex 0.154.0 TUI in an isolated profile, with
+a trusted pristine inherited worktree, a provider pointed at a closed local port and the installed
+repository marketplace plugin: `/mcp` shows **bridge connected (35 tools)** and `/skills` shows
+**bridge (bridge-codex)**, exit 0, with no `.bridge-runtime` or `.bridge` created and no model
+session events. That observation is on runtime `6b483b2e…`. It establishes normal TUI startup and
+instruction discovery — **not** a real delegation, and not the recovery behaviour of the later
+runtimes. It is cited here as the coordinator's evidence; this round did not re-run it and no model
+was used.
+
 ## Round 4 — the guard/journal boundary (W14-R2-06…08)
 
 The reviewer reproduced three defects on the shipped runtime `6b483b2e…`. All three are reproduced
@@ -85,7 +150,7 @@ declaration and a 54-line entry point, and a launch gate refuses before anything
 | --- | --- |
 | `npm ci --ignore-scripts` | exit 0 |
 | `npm run build` | exit 0 |
-| `npm test` | 33 files, 475 tests, exit 0 (41 of them the distribution suite) |
+| `npm test` | 33 files, 482 tests, exit 0 (48 of them the distribution suite) |
 | `npm run packages:check` | exit 0 |
 | `python3 -m unittest discover -s tests -v` | 43 tests, OK |
 | `python3 -m unittest discover -s tools/pilot/tests -v` | 140 tests, OK (1 skipped) |
@@ -234,10 +299,12 @@ worktree had a space in its path.
 ## What is still not evidenced
 
 - **No model ran.** No Astra → Claude round. Every "met" is a mechanism measured on a host.
-- **The interactive Codex TUI is untested.** All Codex evidence is `codex exec`. Codex does not
-  forward an MCP server's stderr, so the host test proves (a) the host resolves the inherited block
-  and starts a session, and (b) the same committed entry point serves a real 35-tool bridge bound
-  to that worktree — it does not observe the server inside the TUI.
+- **TUI evidence is startup only, and is the coordinator's.** Its review observed `/mcp` connected
+  with 35 tools and `/skills` listing the plugin on runtime `6b483b2e…`, with no state created and
+  no model turn. This round's own Codex evidence is `codex exec`; Codex does not forward an MCP
+  server's stderr, so the host test proves the host resolves the inherited block and that the same
+  committed entry point serves a real 35-tool bridge bound to that worktree. Neither is a real
+  delegation, and neither covers the later runtimes' recovery behaviour inside the TUI.
 - **One host, one OS, one version of each client.**
 - **Wave13 is deferred by `decisions/02.md`.** The metadata block is doctor output only; joint
   diagnose/logging validation stays an open item, not a passing check.
