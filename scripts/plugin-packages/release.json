@@ -2,8 +2,8 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.2.0",
   "pinned": {
-    "commit": "242330778de4c72f49ddb6b02a9f0e047c7ea2e6",
-    "describe": "wave14 W14-03 runtime with the R2-06..08 corrections"
+    "commit": "ba4025b1425d4a2c4fa71f5725b415f13069c760",
+    "describe": "wave14 W14-03 runtime with the R2-06..09 corrections"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
