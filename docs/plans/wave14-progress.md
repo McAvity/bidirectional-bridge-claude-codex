@@ -21,3 +21,17 @@ Runtime prowadzący pracę: osobny niezmienny `0.2.0-860e2e77d95f`.
 Codex 0.154.0, Claude Code 2.1.273. Sandbox bwrap nie startuje; odczyty przez zatwierdzoną eskalację.
 Wave13 ma lokalnie przejrzane logowanie i trwa implementacja diagnose; brak odebranego interfejsu w tej bazie. Nie zmieniono jego worktree.
 Następny krok: W14-01, trzy próby bez modeli i propozycja granicy integracyjnej. Testy produktu jeszcze niewykonane.
+
+## 2026-09-16 — próby W14-01 i review
+
+Claude: `dd1e694` próby/kontrakty, `c958204` ledger wznowienia. Task `task_cct6fr9gkc`
+zatrzymał się na max_turns; wznowiony dokładnie w tej samej sesji zakończył DONE.
+Paczka F-W14-round-1-resumed.zip zweryfikowana: SHA-256
+`4e84ff8c2c8d2706a166b7d1cd30efda2ddf2cd58be4cf1b1f87bc624b735e8e`.
+Codex niezależnie: 19 testów harnessu PASS, osiem prób hosta MCP bez modeli PASS
+w sensie potwierdzenia obserwacji: pluginowy MCP nie otrzymuje wiarygodnego worktree.
+Claude potwierdził instrukcje przez --plugin-dir i usuwanie starego cache Codexa przy update.
+[Review 01](../features/F-W14-plugin-distribution/reviews/01-contracts.md): REWORK
+propozycji, zachowane dowody prób. Poprawki: instrukcje poza projektem, działający
+bootstrap nowego worktree, dowód konkurencji, prywatność metadanych diagnose.
+Następny krok W14-02 w istniejącej zgodzie. Brak implementacji produktu i pełnych testów JS.

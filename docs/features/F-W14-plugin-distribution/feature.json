@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W14-plugin-distribution",
-  "phase": "execution",
+  "phase": "corrections",
   "brief": "docs/features/F-W14-plugin-distribution/brief.md",
   "design": "docs/plans/wave14.md",
   "tasks": [
@@ -14,9 +14,9 @@
     "docs/plans/wave14.md",
     "docs/setup-layout.md"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W14-plugin-distribution/reviews/01-contracts.md",
   "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/01.md",
-  "next_action": "W14-01: model-free feasibility probes and proposed interfaces, then coordinator review.",
+  "next_action": "W14-02: resolve W14-R1-01..04 and implement shared-source distribution/bootstrap; diagnose integration remains gated.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"
