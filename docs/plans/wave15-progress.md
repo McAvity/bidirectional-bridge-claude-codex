@@ -27,3 +27,13 @@ miejsce preferencji, W15-01…04, AC-01…09 i oddzielny, niezlecony smoke.
 Autoryzacja użytkownika: publikacja bieżących zmian/CI oraz dopracowanie planu,
 wyraźnie bez implementacji. Nie zmieniono skilli, kodu, konfiguracji ani runtime;
 nie uruchamiano modeli. Następny krok: osobne zlecenie wykonania planu.
+
+## Publikacja i walidacja
+
+Plan: abdbbde. Publikacja feature-workflow: 38367c8.
+[CI35130755901](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/35130755901): SUCCESS,
+łącznie z build, pakietami, dokumentacją i testami JS/Python/pilot.
+Pierwszy przebieg wykrył nieaktualne oczekiwanie konfiguracji repo w teście launchera;
+38367c8 dostosował wyłącznie test do migracji dispatchera (lokalnie 16/16).
+Nie jest to implementacja wave15. Runtime ff225e5 pozostał bez zmian.
+Kontrola dokumentów i git diff --check: PASS. Następny krok: osobne zlecenie wykonania.

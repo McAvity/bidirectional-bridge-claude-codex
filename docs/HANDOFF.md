@@ -5,7 +5,8 @@
 User completed the dispatcher update. Commit e721aa4 selects runtime ff225e5;
 coordinator doctor confirms ok after resume. Migration/fix commits are published.
 [Wave15](plans/wave15.md) now has a bounded plan, tasks and acceptance criteria;
-implementation and model smoke are NOT authorized. Earlier pending activation and
+implementation and model smoke are NOT authorized. CI35130755901 SUCCESS on 38367c8
+validates the published migration, doctor correction and aligned configuration test. Earlier pending activation and
 wave15 draft entries are historical. See [progress](plans/wave15-progress.md).
 
 ## Dispatcher migration — diagnostic correction
