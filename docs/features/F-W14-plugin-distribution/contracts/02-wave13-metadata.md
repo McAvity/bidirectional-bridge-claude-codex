@@ -1,14 +1,14 @@
 # Contract: distribution metadata (W14-01 proposal, W14-02 doctor implementation)
 
-Status: **revision 2**. Two clearly separated parts:
+Status: **revision 3**. Two clearly separated parts:
 
 - **§1–3 are implemented** as the bridge's own doctor metadata
   (`scripts/setup/distribution.mjs`, emitted by `bridge.mjs doctor --json`). This is AC-08's
   "doctor recognises the installation and versions" and nothing more.
-- **§4 remains a proposal** for wave13's diagnose report. Wave13 owns logging, retention, export,
-  aliasing and any allowlist; it is absent from this baseline, so **no diagnose integration is
-  claimed, implied or merged**. If the executing wave13 has chosen different names, wave13's names
-  win and this section is rewritten to match.
+- **§4 remains a proposal**, and joint integration is **deferred by `decisions/02.md` until
+  wave13 is accepted**. Wave13 owns logging, retention, export, aliasing and any allowlist. **No
+  diagnose integration is claimed, implied or merged**, and this round reads and changes no wave13
+  file, worktree or runtime. Deferred is not PASS.
 
 Revision 1 was returned by `reviews/01-contracts.md` as W14-R1-04: it emitted raw
 `instructions.source_path` and `executor.plugin_dir`, and reported a statically configured value
@@ -63,9 +63,17 @@ W14-01 measured that a plugin-hosted MCP server cannot learn its workspace on Co
 
 ## 4. Proposed for wave13 — not implemented, not merged
 
-When wave13's diagnose interface exists, the smallest useful reconciliation is that a diagnose
-report may embed the object of §1–3 verbatim under a `distribution` key, subject to wave13's own
-rules:
+`decisions/02.md` fixes the *working* boundary from wave13's frozen exporter code and its own
+review, without importing anything: `runDiagnose` projects doctor checks through a projector that
+keeps `id`/`status`/`code`/aliased `summary`/`next_step` and **drops arbitrary top-level doctor
+additions**. Therefore `doctor.distribution` on its own is explicitly *not* diagnose integration,
+and this contract must not be read as claiming it is.
+
+When wave13's interface is accepted, the smallest useful reconciliation is that its corrected
+projector explicitly allowlists a small distribution object — preferring package name and version,
+the canonical runtime id and commit, the instruction digest and the declared/applied pin, with
+unknowns `null` and configured facts kept distinct from observed ones, which is exactly the shape
+§1–3 already emits. Nothing is embedded verbatim or unvalidated. The remaining rules:
 
 1. **Additive only.** No existing wave13 field changes meaning; absence of the object is valid.
 2. **Wave13 owns the channel.** It decides retention, redaction, aliasing and where the export
@@ -76,5 +84,6 @@ rules:
 5. **Null over guessing.** A runtime that did not export a field reports `null`; a version is never
    reconstructed from a directory name.
 
-The concrete next step is a coordinator-level reconciliation with the executing wave13 once its
-interface exists. Nothing in this round depends on it.
+The concrete next step is a coordinator-level reconciliation once wave13 is accepted — the user
+deferred it, so it is an open item, not a passing check. Nothing in this round depends on it, and
+no wave14 behaviour changes when it happens.

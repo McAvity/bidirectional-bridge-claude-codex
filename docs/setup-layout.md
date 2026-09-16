@@ -15,6 +15,7 @@ The user procedure is in [setup.md](setup.md).
 | `<home>/runtimes/<id>/runtime-manifest.json` | Manifest, format `claude-codex-bridge.runtime/v1`. |
 | `<home>/runtimes/<id>/install.log` | Output of the install commands. |
 | `<home>/runtimes/.staging-<id>-<nonce>/` | An install in progress or an interrupted one; never selected. |
+| `<home>/sources/bridge.git` | Cache of the pinned distribution source, fetched by commit and verified by hash before any build. Never selected and never read as a runtime. |
 
 A new version is installed beside the old ones and never overwrites a runtime. Worktrees may
 share a runtime directory because it is read-only; they never share anything else.
@@ -35,15 +36,16 @@ Manifest fields:
 
 Two shapes exist. **Wave12** selects the runtime with a per-worktree `.bridge-runtime/current`
 symlink, which a new worktree does not inherit. **Wave14** commits a portable declaration and a
-dispatcher instead, so a worktree created from an enabled project resolves its runtime by itself;
+minimal entry point instead, so a worktree created from an enabled project resolves its runtime by
+itself and needs only its own local selection;
 see [plugin-distribution.md](plugin-distribution.md). Both are supported; wave12 remains the
 fallback for environments without plugins.
 
 | Path | In Git | Written by | Contents |
 | --- | --- | --- | --- |
-| `.bridge-project/bridge.json` | committed | prepare (wave14) | Portable project declaration, format `claude-codex-bridge.project/v1`: `enabled` and the authoritative `pinned.runtime_id` |
-| `.bridge-project/{dispatch,locate,bootstrap,facade}.mjs` | committed | prepare (wave14) | The portable dispatcher: resolves the real worktree and the pin at startup and hands over to the pinned installed runtime, or serves the static setup facade |
-| `.codex/config.toml`, managed `[mcp_servers.bridge]` block | may be committed | init, update, prepare | Portable MCP definition. Wave12 writes the relative launcher path under `.bridge-runtime/current`; wave14 writes `./.bridge-project/dispatch.mjs` with `required = false` and `env_vars = ["CLAUDE_CODEX_BRIDGE_HOME", "XDG_DATA_HOME"]`. Neither contains a user path |
+| `.bridge-project/bridge.json` | committed | setup (wave14) | Portable project declaration, format `claude-codex-bridge.project/v1`: `enabled` and the authoritative `pinned.runtime_id` |
+| `.bridge-project/entry.mjs` | committed | setup (wave14) | 54-line entry point: reads the pin, loads the pinned runtime's launch gate in its own process. No workflow, no setup logic, no policy |
+| `.codex/config.toml`, managed `[mcp_servers.bridge]` block | may be committed | init, update, setup | Portable MCP definition. Wave12 writes the relative launcher path under `.bridge-runtime/current`; wave14 writes `./.bridge-project/entry.mjs` with `required = false` and `env_vars = ["CLAUDE_CODEX_BRIDGE_HOME", "XDG_DATA_HOME"]`. Neither contains a user path |
 | `.agents/skills/feature-*`, `.codex/skills/using-bridge/`, `.claude/skills/using-bridge/`, `docs/features/README.md` | may be committed | init, update, rollback | Instruction set of the selected runtime |
 | `.gitignore`, managed block | may be committed | init | Ignores `.bridge/` and `.bridge-runtime/` |
 | `.bridge-runtime/current` | never | init, update, rollback | Symlink to `<home>/runtimes/<id>` — the runtime selection |
@@ -51,11 +53,11 @@ fallback for environments without plugins.
 | `.bridge-runtime/pending.json`, `.bridge-runtime/backup/` | never | init, update, rollback | Journal and backups of an apply in progress; present only after an interruption |
 | `.bridge/` | never | bridge runtime | Database, markers, lock and termination `evidence/` ([manager-identity](manager-identity.md), [recovery](recovery.md)) |
 | `.bridge/logs/` | never | reserved for wave13 | Local runtime logs; already an explained entry of the state directory |
-| `.bridge/bootstrap.lock` | never | prepare (wave14) | Exclusive claim of one worktree's bootstrap; removed when it finishes, broken and reported when older than ten minutes |
 
 `install.json` records the worktree `root` and `git_dir`, the selected runtime and its commit,
 the hash of every managed file as last written, and a history of `init`/`update`/`rollback`
-selections. A record naming another worktree is a copy and is refused, never adopted.
+selections. A record naming another worktree is a copy and is refused, never adopted — by the setup plan and,
+in the wave14 profile, again by the launch gate before any server starts.
 The selection of one worktree is never read by another: a new Herdr or Git worktree starts
 without `.bridge-runtime/` and `.bridge/` and needs its own `init`.
 
@@ -66,7 +68,10 @@ a project trusted in `CODEX_HOME/config.toml`, and it loads no project configura
 started in a subdirectory. It also starts an MCP server with a stripped environment, which is why
 the wave14 block names the two variables that can move the installation.
 
-Instructions are never written into a target repository by the wave14 path. The instruction set of
+Both profiles are written by the same `planChange`/`applyPlan`, so ownership hashes, the symlink
+refusal, the copied-record refusal, the `mcp_servers.bridge` conflict rules, the active-session
+refusal and the resumable journal apply identically. Instructions are never written into a target
+repository by the wave14 path. The instruction set of
 the selected runtime stays in `<home>/runtimes/<id>/`, and the delegated executor is given
 `<home>/runtimes/<id>/plugins/bridge-claude` through `--plugin-dir`.
 

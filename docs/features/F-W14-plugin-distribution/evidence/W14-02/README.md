@@ -1,4 +1,15 @@
-# W14-02 — implementation evidence
+# W14-02 — implementation evidence (superseded)
+
+> **Corrected and superseded by [W14-03](../W14-03/README.md).** `reviews/02-implementation.md`
+> reproduced real failures behind several claims below: a clean project could not be set up at all
+> (`NO_PIN`, manual clone), the generated exporter was broken, a diverged pin and a copied record
+> still launched, a custom `mcp_servers.bridge` was duplicated, ~635 lines of generic code were
+> copied into every project, and the dispatcher left its child alive after SIGTERM. The AC matrix
+> in this file therefore overstated coverage; the corrected matrix is in W14-03. Two concrete
+> corrections to this page's own numbers: `npm test` measured **33 files / 461 tests**, and the
+> host evidence for AC-02/AC-03/AC-05 used a recorder fixture rather than a real runtime, which is
+> why those rows are not evidence. This page is kept unaltered below as the record of what was
+> claimed at the time.
 
 What was built, how it was checked, and what is still unproven. Host versions: `codex-cli
 0.154.0`, Claude Code `2.1.273`, Node `v24.15.0`. Every host run below is model-free and uses a

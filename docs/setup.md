@@ -5,8 +5,8 @@ Install a pinned bridge runtime once, set up each worktree with one command, the
 is described in [setup-layout.md](setup-layout.md).
 
 This page is the CLI procedure, which stays supported and is the fallback for environments
-without plugins. The shorter route — install the plugin once, then ask Codex to enable a project,
-after which every worktree of that project needs nothing — is
+without plugins. The shorter route — install the plugin once, then ask Codex to enable a project, after which every
+worktree of that project needs only its own local selection and no runtime install — is
 [plugin-distribution.md](plugin-distribution.md).
 
 ## Requirements
@@ -85,9 +85,10 @@ it. A new worktree has its own runtime selection, database, exchange namespace a
 never reuses another worktree's. Never copy `.bridge/` or `.bridge-runtime/` between
 worktrees: a copied state or setup record is refused, not adopted.
 
-A project prepared the wave14 way needs no `init` here: it commits a portable declaration and a
-dispatcher that resolve the worktree and the pinned runtime when the client starts. Its local
-state still starts empty and is still never inherited. Two steps remain the host's own and are
+A project prepared the wave14 way needs no `init` here and no runtime install: it commits a
+portable declaration and an entry point that resolve the worktree and the pinned runtime when the
+client starts. Its local state still starts empty and is still never inherited, so one `setup`
+from the bridge skill writes that worktree's own `.bridge-runtime/current` and nothing else. Two steps remain the host's own and are
 not bypassed: Codex reads a project `.codex/config.toml` only for a project you have trusted, and
 it loads no project configuration at all when started in a subdirectory — start it at the
 worktree root. Enabling a project for the *first* time also costs one client restart, because a
