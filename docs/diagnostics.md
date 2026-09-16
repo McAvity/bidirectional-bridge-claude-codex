@@ -227,11 +227,15 @@ worktree chose**: the identity resolver, the doctor and every module it loads co
 own build, and `.bridge-runtime/current` of that worktree is read as data — its manifest is
 described in `versions.runtime`, and no file of it is imported.
 
-Every read goes through one boundary: no path component may be a symlink, only regular files are
-opened (with `O_NOFOLLOW`), and each read is bounded and described. A log directory, an evidence
-directory, a task directory or a database that is a link is refused and reported as a gap instead
-of being followed; `--db <path>` names a database outside the worktree deliberately, and the same
-rules then apply to it and to the evidence beside it.
+Every path goes through one boundary, **before** the first read or the first `mkdir`: starting at
+a trusted anchor — the resolved worktree root for sources, the home the namespace was derived from
+for the output — each existing component is checked, and none of them may be a symlink. Only
+regular files are opened, with `O_NOFOLLOW`, and each read is bounded and described. A state
+directory, log directory, evidence directory, task directory, database or namespace directory that
+is a link is refused; a source link is reported as a gap and a redirected namespace refuses the
+command outright, before anything is created inside whatever it points at. `--db <path>` names a
+database outside the worktree deliberately, and the same rules then apply to it and to the
+evidence beside it.
 
 ## What a package contains
 
@@ -269,8 +273,10 @@ changed while the export ran — and the export says so rather than implying one
 - inside one process, the log's `seq`/`mono_ms` order records; inside the database, `event_id`
   does. Interleaving the two in `timeline.md` is an approximation;
 - processes are not inspected at all (`cutoffs.processes.observed` is `false`);
-- a file that is rotated, truncated or deleted while the export runs is detected by re-checking
-  its identity and reported as `logs:changed_during_export` or `logs:removed_during_export`;
+- a file that is rotated, replaced, truncated or deleted while the export runs is detected by
+  re-checking its device, inode, size and mtime, and reported as `logs:changed_during_export` or
+  `logs:removed_during_export`; the records already read stay in the package, described as the
+  prefix of the inode they came from;
 - a read that hit a record limit is reported (`cutoffs.records`, and a `record_limit` gap) rather
   than silently cut; a bounded prefix that starts mid-record reports `logs:prefix_truncated`.
 

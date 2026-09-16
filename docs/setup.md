@@ -188,9 +188,11 @@ The command only reads: it takes a private consistent snapshot of the database t
 backup API (WAL included), reads the worktree's own diagnostics logs as bounded prefixes, reuses
 doctor's safe subset, and changes nothing in the worktree — no migration, no repair, no recovery,
 no claim, and no running worker is stopped. It executes nothing the diagnosed worktree selected:
-its runtime is described from its manifest, never imported. No path component it reads may be a
-symlink, and a redirected log, evidence or database path is refused and reported rather than
-followed. `--db <path>` names an external database deliberately.
+its runtime is described from its manifest, never imported. Every path is checked from a trusted
+anchor before the first read and before the first directory is created: no component may be a
+symlink, so a redirected state, log, evidence or database path is refused or reported, and a
+redirected exchange namespace refuses the command instead of creating anything inside it.
+`--db <path>` names an external database deliberately.
 
 The default package carries identifiers, states, timings and machine codes only.
 `--with-evidence` adds the termination evidence files (a redacted runtime stderr tail) and

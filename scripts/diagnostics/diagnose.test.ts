@@ -28,6 +28,7 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { fsyncSync as require_fsyncSync, writeSync as require_writeSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { readZip } from "./zip.mjs";
 
@@ -782,6 +783,97 @@ describe("incident export — review 02-export regressions", () => {
     expect(existsSync(staged), "the working copy stays for the caller to clean up").toBe(true);
   }, 60_000);
 
+  it("R2-02: a linked namespace, staging or packages is refused before anything is created", async () => {
+    // The review's reproduction: the namespace directory itself is the link, and a recursive
+    // mkdir would create `packages/` and `staging/` inside whatever it points at.
+    const { runDiagnose } = await import("./collect.mjs");
+    const { resolveWorkspaceIdentity, exchangeNamespace } = await import(
+      resolve(repoRoot, "shared/control-plane/dist/index.js") as string
+    );
+
+    const scenarios: Array<{
+      readonly name: string;
+      readonly plant: (namespace: any, outside: string) => void;
+    }> = [
+      {
+        name: "the namespace directory is a link",
+        plant: (namespace, outside) => {
+          mkdirSync(dirname(namespace.namespace), { recursive: true });
+          symlinkSync(outside, namespace.namespace);
+        },
+      },
+      {
+        name: "staging is a link with an absent child",
+        plant: (namespace, outside) => {
+          mkdirSync(namespace.namespace, { recursive: true });
+          symlinkSync(outside, namespace.staging);
+        },
+      },
+      {
+        name: "packages is a link with an absent child",
+        plant: (namespace, outside) => {
+          mkdirSync(namespace.namespace, { recursive: true });
+          symlinkSync(outside, namespace.packages);
+        },
+      },
+      {
+        name: "an ancestor of the namespace is a link",
+        plant: (namespace, outside) => {
+          mkdirSync(dirname(dirname(namespace.namespace)), { recursive: true });
+          symlinkSync(outside, dirname(namespace.namespace));
+        },
+      },
+    ];
+
+    for (const scenario of scenarios) {
+      const root = temporary("bridge-diag-ns-root-");
+      const home = temporary("bridge-diag-ns-home-");
+      const outside = temporary("bridge-diag-ns-outside-");
+      writeFileSync(join(outside, "keep.txt"), "untouched");
+      const env = { ...process.env, HOME: home };
+      const namespace = exchangeNamespace(resolveWorkspaceIdentity(root), env);
+      scenario.plant(namespace, outside);
+
+      let refusal: any;
+      await runDiagnose({ workspace: root, home: join(home, "bridge-home"), env }).then(
+        () => undefined,
+        (error: any) => {
+          refusal = error;
+        },
+      );
+      expect(refusal, `${scenario.name}: the export must refuse`).toBeDefined();
+      expect(refusal.code, scenario.name).toBe("DIAGNOSE_OUTPUT_UNSAFE");
+      // Nothing was created through the link, and what was there is untouched.
+      expect(readdirSync(outside), scenario.name).toEqual(["keep.txt"]);
+      expect(readFileSync(join(outside, "keep.txt"), "utf8")).toBe("untouched");
+    }
+  }, 120_000);
+
+  it("R2-02: a linked state directory is refused even when the database is absent or external", async () => {
+    const fixture = await incident("r2-02-state");
+    const outside = temporary("bridge-diag-state-outside-");
+    mkdirSync(join(outside, "logs"), { recursive: true });
+    writeFileSync(
+      join(outside, "logs", "bridge-20260101T000000Z-aaaabbbbccccdddd-00.jsonl"),
+      `{"schema":"claude-codex-bridge.log/v1","ts":"2026-01-01T00:00:00.000Z","seq":1,"op":"tool","event":"call.finished","details":{"reason":"${SECRETS.detail}"}}\n`,
+    );
+    // Move the database out and replace the whole state directory with a link: with no database
+    // of its own, nothing else would have looked at `.bridge` — the skipped-root pattern.
+    const externalDb = join(outside, "moved.db");
+    renameSync(join(fixture.root, ".bridge", "bridge.db"), externalDb);
+    rmSync(join(fixture.root, ".bridge"), { recursive: true, force: true });
+    symlinkSync(outside, join(fixture.root, ".bridge"));
+
+    const absentDatabase = diagnose(fixture, ["--since", "1h"]);
+    expect(absentDatabase.status).toBe(1);
+    expect(absentDatabase.stderr).toContain("DIAGNOSE_PATH_UNSAFE");
+    const external = diagnose(fixture, ["--since", "1h", "--db", externalDb]);
+    expect(external.status).toBe(1);
+    expect(external.stderr).toContain("DIAGNOSE_PATH_UNSAFE");
+    expect(packagesOf(fixture)).toEqual([]);
+    expect(readdirSync(join(outside, "logs"))).toHaveLength(1);
+  }, 90_000);
+
   it("R2-03: one scope covers every source, and an unknown selector is refused", async () => {
     const fixture = await incident("r2-03", { secondIncident: true });
     // A second attempt of the same task, so `--attempt` has something to exclude.
@@ -965,6 +1057,101 @@ describe("incident export — review 02-export regressions", () => {
     const gaps = (pkg.manifest.gaps as Array<{ part: string; reason: string; count?: number }>);
     expect(gaps.some((gap) => gap.part === "events" && gap.reason === "record_limit" && gap.count === 5000)).toBe(true);
   }, 120_000);
+
+  it("R2-05: a log renamed, replaced or unlinked during the export is reported as such", async () => {
+    // Deterministic timing without a product hook: the export reads the logs, then asks doctor
+    // for its safe subset, which runs `codex --version`. A stand-in `codex` on PATH performs the
+    // rotation at exactly that moment — after the read, before the final identity check.
+    for (const kind of ["rename", "replace", "unlink"] as const) {
+      const fixture = await incident(`r2-05-${kind}`);
+      const logDirectory = join(fixture.root, ".bridge", "logs");
+      const logFile = readdirSync(logDirectory).filter((name) => name.endsWith(".jsonl")).sort().pop()!;
+      const rotated = logFile.replace(/-(\d{2,6})\.jsonl$/u, "-99.jsonl");
+      const bin = temporary(`bridge-diag-rotate-${kind}-`);
+      const script =
+        kind === "rename"
+          ? `renameSync(${JSON.stringify(join(logDirectory, logFile))}, ${JSON.stringify(join(logDirectory, rotated))});`
+          : kind === "replace"
+            ? `renameSync(${JSON.stringify(join(logDirectory, logFile))}, ${JSON.stringify(join(logDirectory, rotated))});` +
+              `writeFileSync(${JSON.stringify(join(logDirectory, logFile))}, "");`
+            : `unlinkSync(${JSON.stringify(join(logDirectory, logFile))});`;
+      writeFileSync(
+        join(bin, "codex"),
+        `#!/bin/sh\nexec "${process.execPath}" -e '\nconst { renameSync, unlinkSync, writeFileSync } = require("node:fs");\ntry { ${script} } catch {}\nconsole.log("codex-cli 0.154.0");\n'\n`,
+        { mode: 0o755 },
+      );
+
+      const report = diagnoseJson(fixture, ["--feature", fixture.featureId], {
+        PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
+      });
+      expect(report.status, kind).toBe(0);
+      const gaps = report.json.gaps as Array<{ part: string; reason: string; file?: string }>;
+      const reported = gaps.find(
+        (gap) => gap.part === "logs" && (gap.reason === "changed_during_export" || gap.reason === "removed_during_export"),
+      );
+      expect(reported, `${kind}: the rotation must be reported`).toBeDefined();
+      expect(reported!.file).toBe(logFile);
+      expect(reported!.reason).toBe(kind === "replace" ? "changed_during_export" : "removed_during_export");
+      const pkg = open(report.json.package as string);
+      const file = (pkg.manifest.cutoffs.logs.files as Array<Record<string, any>>).find((entry) => entry.file === logFile)!;
+      expect(file.changed_during_export, kind).toBe(true);
+      // The records that were read are still there, described as a prefix of the inode that was.
+      expect(pkg.manifest.counts.log_records).toBeGreaterThan(0);
+      // The rotation itself is the worktree's own; the export did not touch the other file.
+      if (kind !== "unlink") expect(existsSync(join(logDirectory, rotated))).toBe(true);
+    }
+  }, 180_000);
+
+  it("R2-06: a disk that fills mid-package, or fails on fsync, publishes nothing", async () => {
+    const { runDiagnose } = await import("./collect.mjs");
+    for (const kind of ["partial-write", "fsync"] as const) {
+      const fixture = await incident(`r2-06-${kind}`);
+      const before = fingerprint(fixture.root);
+      // A deterministic I/O failure, the shape a full device produces: a short write after real
+      // progress, or an error when the data is flushed. No mount and no privilege needed.
+      const failing = {
+        write: (fd: number, buffer: Buffer, offset: number, length: number) => {
+          if (kind === "fsync") return require_writeSync(fd, buffer, offset, length);
+          if (offset === 0) return require_writeSync(fd, buffer, 0, Math.min(1024, length));
+          const error: NodeJS.ErrnoException = new Error("no space left on device");
+          error.code = "ENOSPC";
+          throw error;
+        },
+        fsync: (fd: number) => {
+          if (kind !== "fsync") return require_fsyncSync(fd);
+          const error: NodeJS.ErrnoException = new Error("no space left on device");
+          error.code = "ENOSPC";
+          throw error;
+        },
+      };
+
+      let refusal: any;
+      await runDiagnose({
+        workspace: fixture.root,
+        home: join(fixture.home, "bridge-home"),
+        env: { ...process.env, HOME: fixture.home },
+        feature: fixture.featureId,
+        io: failing,
+      }).then(
+        () => undefined,
+        (error: any) => {
+          refusal = error;
+        },
+      );
+      expect(refusal, `${kind}: the export must refuse`).toBeDefined();
+      expect(refusal.code, kind).toBe("DIAGNOSE_OUTPUT_UNWRITABLE");
+      expect(String(refusal.message)).toContain("ENOSPC");
+      // Nothing published, no working copy left behind, and the worktree is untouched.
+      expect(packagesOf(fixture), kind).toEqual([]);
+      expect(stagingOf(fixture), kind).toEqual([]);
+      expect(fingerprint(fixture.root), kind).toEqual(before);
+
+      // The same worktree exports normally once the device recovers.
+      const recovered = diagnoseJson(fixture, ["--feature", fixture.featureId]);
+      expect(recovered.status, kind).toBe(0);
+      expect(packagesOf(fixture)).toHaveLength(1);
+    }
+  }, 180_000);
 
   it("R2-06: an interrupted export publishes nothing and damages nothing", async () => {
     const fixture = await incident("r2-06-kill");

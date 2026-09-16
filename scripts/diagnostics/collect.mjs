@@ -25,6 +25,7 @@
 
 import { existsSync, linkSync, mkdirSync, readFileSync, rmSync, statSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SetupError, newTag, sha256 } from "../setup/common.mjs";
@@ -48,7 +49,15 @@ import {
   projectField,
   projectRecord,
 } from "./project.mjs";
-import { UnsafePathError, assertUnderRoot, fileIdentity, identityChanged, readBounded, safeListDirectory } from "./safe-read.mjs";
+import {
+  UnsafePathError,
+  assertSafeDescent,
+  assertUnderRoot,
+  fileIdentity,
+  identityChanged,
+  readBounded,
+  safeListDirectory,
+} from "./safe-read.mjs";
 import { MAX_ENTRY_BYTES, readZip, writeZip } from "./zip.mjs";
 
 const require_ = createRequire(import.meta.url);
@@ -393,13 +402,13 @@ function collectAvailable(snapshot, gaps) {
  * itself produced. Each file is read as a bounded prefix of a known inode and the result records
  * which byte range was read, so the manifest describes a cutoff instead of implying a whole file.
  */
-function collectLogs(stateDirectory, scope, gaps) {
+function collectLogs(sourceAnchor, stateDirectory, scope, gaps) {
   const directory = join(stateDirectory, "logs");
   const files = [];
   const records = [];
   let entries;
   try {
-    entries = safeListDirectory(stateDirectory, directory);
+    entries = safeListDirectory(sourceAnchor, directory);
   } catch (error) {
     gaps.addUnsafe("logs", error);
     return { files, records, read_at: Date.now() };
@@ -417,7 +426,7 @@ function collectLogs(stateDirectory, scope, gaps) {
     if (!LOG_FILE.test(entry.name)) continue;
     let read;
     try {
-      read = readBounded(stateDirectory, join(directory, entry.name), { maxBytes: MAX_LOG_BYTES, from: "end" });
+      read = readBounded(sourceAnchor, join(directory, entry.name), { maxBytes: MAX_LOG_BYTES, from: "end" });
     } catch (error) {
       gaps.addUnsafe("logs", error, entry.name);
       continue;
@@ -484,12 +493,14 @@ function inScope(record, scope) {
 }
 
 /** Termination-evidence metadata; the files themselves only with the explicit extension. */
-function collectEvidence(evidenceRoot, scope, gaps, { include }) {
+function collectEvidence(sourceAnchor, evidenceRoot, scope, gaps, { include }) {
   const index = [];
   const files = [];
   let root;
   try {
-    root = assertUnderRoot(dirname(evidenceRoot), evidenceRoot);
+    // Anchored at the worktree (or at the parent of a deliberately external database), so the
+    // directory that holds the evidence is itself checked, not assumed.
+    root = assertUnderRoot(sourceAnchor, evidenceRoot);
   } catch (error) {
     if (!(error instanceof UnsafePathError) || error.reason !== "absent") gaps.addUnsafe("evidence", error);
     return { index, files };
@@ -709,6 +720,20 @@ export async function runDiagnose(options) {
   }
   const root = identity.root;
   const stateDirectory = join(root, ".bridge");
+  const unsafe = (error, what) =>
+    new SetupError("DIAGNOSE_PATH_UNSAFE", `refusing to ${what} ${error?.path ?? "this path"}: ${error?.reason ?? "unsafe"}`, {
+      nextStep: "bridge state must be real files and directories; inspect that path by hand",
+    });
+
+  // The state directory is checked once, from the worktree root, before anything below it is
+  // read. Anchoring the later reads at `.bridge` would trust the very component a link would
+  // redirect — the skipped-root pattern of review R2-02, which also bites when the database is
+  // absent or `--db` points elsewhere and nothing else would have looked at `.bridge` at all.
+  try {
+    assertSafeDescent(root, stateDirectory);
+  } catch (error) {
+    throw unsafe(error, "read");
+  }
 
   // The database: the worktree's own by default (no component may be a link), or an external one
   // the operator named deliberately, which is then checked on its own terms.
@@ -718,18 +743,13 @@ export async function runDiagnose(options) {
     if (options.db) {
       externalDatabase = true;
       const candidate = resolve(options.db);
-      databasePath = assertUnderRoot(dirname(candidate), candidate);
+      databasePath = assertSafeDescent(dirname(candidate), candidate).path;
     } else {
-      databasePath = assertUnderRoot(root, join(stateDirectory, "bridge.db"));
+      // A missing database is normal; a redirected one is not, and the walk separates them.
+      databasePath = assertSafeDescent(root, join(stateDirectory, "bridge.db")).path;
     }
   } catch (error) {
-    if (error instanceof UnsafePathError && error.reason === "absent") {
-      databasePath = options.db ? resolve(options.db) : join(stateDirectory, "bridge.db");
-    } else {
-      throw new SetupError("DIAGNOSE_PATH_UNSAFE", `refusing to read ${error?.path ?? "this path"}: ${error?.reason ?? "unsafe"}`, {
-        nextStep: "bridge state must be real files and directories; inspect that path by hand",
-      });
-    }
+    throw unsafe(error, "read");
   }
 
   const namespace = controlPlane.exchangeNamespace(identity, env);
@@ -773,19 +793,28 @@ export async function runDiagnose(options) {
   };
 
   // Publication target: inside this worktree's namespace, with no link on the way.
+  //
+  // The check runs **before the first mkdir**. A recursive mkdir would otherwise create
+  // `packages/` and `staging/` inside whatever a symlinked ancestor — the namespace directory
+  // itself included — points at, which is what review R2-02 reproduced. The anchor is the home
+  // the namespace was derived from: the user's own directory, trusted by definition; every
+  // component below it is walked, and components that do not exist yet are what we may create.
+  const namespaceAnchor = env.HOME && env.HOME.length > 1 ? env.HOME : homedir();
   const staging = join(namespace.staging, `diagnose-${newTag()}`);
+  try {
+    for (const path of [namespace.namespace, namespace.packages, namespace.staging, staging]) {
+      assertSafeDescent(namespaceAnchor, path);
+    }
+  } catch (error) {
+    throw new SetupError("DIAGNOSE_OUTPUT_UNSAFE", `refusing to publish through ${error?.path ?? namespace.namespace}: ${error?.reason ?? "unsafe"}`, {
+      nextStep: "the exchange namespace must be real directories; inspect it by hand",
+    });
+  }
   try {
     mkdirSync(namespace.staging, { recursive: true, mode: 0o700 });
     mkdirSync(namespace.packages, { recursive: true, mode: 0o700 });
-    assertUnderRoot(namespace.namespace, namespace.staging);
-    assertUnderRoot(namespace.namespace, namespace.packages);
     mkdirSync(staging, { recursive: false, mode: 0o700 });
   } catch (error) {
-    if (error instanceof UnsafePathError) {
-      throw new SetupError("DIAGNOSE_OUTPUT_UNSAFE", `refusing to publish through ${error.path}: ${error.reason}`, {
-        nextStep: "the exchange namespace must be real directories; inspect it by hand",
-      });
-    }
     throw new SetupError("DIAGNOSE_OUTPUT_UNWRITABLE", `cannot prepare ${namespace.namespace}: ${error.code ?? error.message}`, {
       nextStep: "check the permissions of the exchange namespace",
     });
@@ -796,7 +825,7 @@ export async function runDiagnose(options) {
 
     if (request.kind === "summary") {
       const available = collectAvailable(snapshot, gaps);
-      const logs = collectLogs(stateDirectory, { task_ids: [], feature_id: null, attempt: null, from: now, to: now }, gaps);
+      const logs = collectLogs(root, stateDirectory, { task_ids: [], feature_id: null, attempt: null, from: now, to: now }, gaps);
       return {
         format: DIAGNOSTICS_FORMAT,
         mode: "summary",
@@ -828,11 +857,12 @@ export async function runDiagnose(options) {
       from: Math.min(spanFrom, now),
       to: now,
     };
-    const logs = collectLogs(stateDirectory, logScope, gaps);
+    const logs = collectLogs(root, stateDirectory, logScope, gaps);
     if (logs.truncated) gaps.add("logs", "record_limit", { count: MAX_RECORDS });
     const versions = collectVersions(root, aliases, gaps);
     const evidenceRoot = join(dirname(databasePath), "evidence");
-    const evidence = collectEvidence(evidenceRoot, scope, gaps, { include: Boolean(options.withEvidence) });
+    const evidenceAnchor = externalDatabase ? dirname(dirname(databasePath)) : root;
+    const evidence = collectEvidence(evidenceAnchor, evidenceRoot, scope, gaps, { include: Boolean(options.withEvidence) });
 
     let doctor = null;
     try {
@@ -1047,7 +1077,13 @@ export async function runDiagnose(options) {
     const temporary = join(staging, "package.zip");
     let written;
     try {
-      written = writeZip(temporary, [manifestEntry, ...entries].sort((a, b) => (a.name < b.name ? -1 : 1)), { mode: 0o600, at: now });
+      written = writeZip(temporary, [manifestEntry, ...entries].sort((a, b) => (a.name < b.name ? -1 : 1)), {
+        mode: 0o600,
+        at: now,
+        // Defaults to the real filesystem; a test injects a failing pair to prove that a disk
+        // that fills mid-package publishes nothing (review R2-06).
+        ...(options.io ? { io: options.io } : {}),
+      });
     } catch (error) {
       // A package that could not be written whole is never published: the working copy dies with
       // the staging directory and the command says what happened (review R2-06).

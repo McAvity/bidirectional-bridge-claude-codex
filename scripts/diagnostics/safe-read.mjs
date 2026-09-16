@@ -46,32 +46,61 @@ function errnoReason(error) {
 }
 
 /**
- * Check every component of `target` below `root`: none may be a symlink, and the parents must be
- * directories. `root` itself is resolved once by the caller and trusted from there on.
+ * Walk `target` component by component below a **trusted anchor**, checking what already exists.
  *
- * Returns the absolute target. Throws `UnsafePathError` with a machine reason otherwise.
+ * This is the one pre-I/O check: it runs before a read *and* before the first `mkdir`, because a
+ * recursive `mkdir` that runs first will happily create directories inside whatever a symlinked
+ * ancestor points at — the hole review R2-02 reproduced through the exchange namespace. The
+ * anchor is the deepest path the caller is entitled to trust (the resolved worktree root, the
+ * user's own home); it is never itself inspected, everything below it is.
+ *
+ * Components that do not exist yet end the walk: their parents were checked, so creating them is
+ * safe. Returns `{ path, existing, missing }` — the absolute target, the deepest component that
+ * exists, and how many components below it are still missing.
  */
-export function assertUnderRoot(root, target) {
-  const base = resolve(root);
+export function assertSafeDescent(anchor, target) {
+  const base = resolve(anchor);
   const absolute = resolve(target);
   if (absolute !== base && !absolute.startsWith(`${base}${sep}`)) {
     throw new UnsafePathError(UNSAFE.OUTSIDE_ROOT, absolute);
   }
   const parts = relative(base, absolute).split(sep).filter((part) => part.length > 0);
   let cursor = base;
+  let existing = base;
+  let missing = 0;
   for (let index = 0; index < parts.length; index += 1) {
     cursor = join(cursor, parts[index]);
+    if (missing > 0) {
+      // Everything below the first absent component is absent too; nothing to check.
+      missing += 1;
+      continue;
+    }
     let stat;
     try {
       stat = lstatSync(cursor);
     } catch (error) {
+      if (error?.code === "ENOENT") {
+        missing = 1;
+        continue;
+      }
       throw new UnsafePathError(errnoReason(error), cursor, error?.code ?? null);
     }
     if (stat.isSymbolicLink()) throw new UnsafePathError(UNSAFE.SYMLINK, cursor);
     const last = index === parts.length - 1;
     if (!last && !stat.isDirectory()) throw new UnsafePathError(UNSAFE.NOT_DIRECTORY, cursor);
+    existing = cursor;
   }
-  return absolute;
+  return { path: absolute, existing, missing };
+}
+
+/**
+ * The same walk for something that must already be there: every component below `root` exists and
+ * none of them is a link. Returns the absolute target.
+ */
+export function assertUnderRoot(root, target) {
+  const descent = assertSafeDescent(root, target);
+  if (descent.missing > 0) throw new UnsafePathError(UNSAFE.ABSENT, descent.path);
+  return descent.path;
 }
 
 /** List a directory that must be a real directory below `root`. Entries are not followed. */
