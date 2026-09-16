@@ -1,5 +1,17 @@
 # Current handoff
 
+## Wave14 — independent local delivery accepted; final session checkpoint, 2026-09-16
+
+The user accepted independent delivery `e76a06626046be6798ecde3bd57348605079e731`.
+Coordinator review PASS is recorded in `0109643ca570acf989ec83139871a1ff5f1748be`
+on `waves13-14-review` (`docs/plans/wave13-wave14-review.md`).
+[Actual user decision](features/F-W14-plugin-distribution/decisions/03.md).
+The whole wave14 feature remains open: integration with final wave13 and validation
+of the combined result belong to the coordinator. W14-03 remains open; no
+`feature_accept` is called. This session ends after the documentation-only local
+commit and SHA handoff. No new review, tests, merge, push or deployment. Existing
+evidence and packages are preserved unchanged; prior checkpoints below are historical.
+
 ## Wave14 — independent local delivery, review PASS, 2026-09-16
 
 Code `1880b3914f4dd3bffe2a618e01f43b4d6281ac81`; generated distribution pins runtime

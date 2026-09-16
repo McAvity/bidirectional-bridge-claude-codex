@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W14-plugin-distribution",
-  "phase": "review",
+  "phase": "execution",
   "brief": "docs/features/F-W14-plugin-distribution/brief.md",
   "design": "docs/plans/wave14.md",
   "tasks": [
@@ -18,8 +18,8 @@
     "docs/plans/wave14-progress.md"
   ],
   "latest_review": "docs/features/F-W14-plugin-distribution/reviews/02-implementation.md",
-  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/02.md",
-  "next_action": "Independent wave14 delivery reviewed PASS; handoff ready. Await wave13 acceptance, then freeze accepted interface and perform combined diagnostics/logging validation. No user acceptance, publication, deployment or model pilot inferred.",
+  "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/03.md",
+  "next_action": "User accepted independent local delivery e76a066; coordinator review PASS at 0109643 on waves13-14-review. Whole feature remains open: integration coordinator must integrate final wave13 and validate the combined result. This session ends after documentation checkpoint; no feature_accept, new review/tests, merge, push or deployment.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"

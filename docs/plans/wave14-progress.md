@@ -1,5 +1,9 @@
 # Wave14 — postęp
 
+Aktualny status: **niezależna dostawa odebrana przez użytkownika; cały wave14 nadal otwarty**.
+Integracja z finalnym wave13 i walidacja wspólnego wyniku pozostają zadaniem koordynatora.
+Końcowy checkpoint sesji znajduje się na końcu dokumentu.
+
 ## 2026-09-16 — plan zapisany
 
 Plan: [wave14.md](wave14.md). Baza: feature-workflow `6795703`.
@@ -117,3 +121,24 @@ metadanych i sprawdzić wspólną integrację. Robocze cf2365c/review853302c nie
 Bez push,merge,wdrożenia i osobnego repo marketplace.
 
 Pakiet końcowy: `F-W14-local-delivery.zip` (`implementation-review`), baza `1cd1be78e3c18d5155b45d9dd95c27bd2a663c14`, namespace exchange tego worktree. Końcowy commit koordynatora obejmuje handoff, review i ten zapis; dokładny head/hash paczki zapisuje manifest i wynik verify.
+
+
+## 2026-09-16 — rzeczywisty odbiór niezależnej dostawy i końcowy checkpoint
+
+Użytkownik jawnie zaakceptował niezależny lokalny zakres dostarczony w
+`e76a06626046be6798ecde3bd57348605079e731`. Review koordynatora: PASS,
+`0109643ca570acf989ec83139871a1ff5f1748be`, branch `waves13-14-review`,
+`docs/plans/wave13-wave14-review.md`. [Decyzja 03](../features/F-W14-plugin-distribution/decisions/03.md)
+zapisuje rzeczywistą zgodę i jej granice; wcześniejsze wpisy o braku odbioru są historyczne.
+
+Cały wave14 pozostaje otwarty. W14-03 nie zostaje zamknięty: integracja z finalnym
+wave13, uzgodnienie projekcji metadanych i walidacja wspólnego wyniku należą do
+koordynatora integracji. Nie wywołano feature_accept ani nie uznano odbioru wave13
+na podstawie tej decyzji. Nie uruchomiono nowych rund Claude’a, review ani testów.
+
+Checkpoint obejmuje wyłącznie dokumentację i lokalny commit, którego SHA zostaje
+przekazane użytkownikowi na zakończenie. Paczki i dowody pozostają bez zmian;
+F-W14-local-delivery.zip nadal opisuje e76a066, SHA-256
+`6e1ba156931230dced4e84eb73a0f12d5ce95a621a2dee8e77e061e0ef015abb`.
+Bez merge, push, wdrożenia, dodatkowych pilotów i zmian worktree/runtime wave13.
+Sesja kończy się po przekazaniu SHA; dalsza integracja nie jest wykonywana tutaj.

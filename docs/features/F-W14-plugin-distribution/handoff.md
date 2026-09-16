@@ -1,6 +1,6 @@
 # Wave14 — lokalna dostawa zakresu niezależnego
 
-Status: **review PASS; zakres niezależny gotowy lokalnie**. Nie oznacza odbioru całego wave14 ani wave13. Wspólna integracja diagnose/logów pozostaje odroczona zgodnie z [decyzją 02](decisions/02.md).
+Status: **niezależna lokalna dostawa odebrana przez użytkownika** w `e76a06626046be6798ecde3bd57348605079e731`; [decyzja 03](decisions/03.md). Review koordynatora PASS: `0109643ca570acf989ec83139871a1ff5f1748be` na `waves13-14-review`. Cały wave14 pozostaje otwarty: integracja z finalnym wave13 i walidacja wspólnego wyniku należą do koordynatora. Nie wywołano feature_accept.
 
 Kod dostawy: `1880b3914f4dd3bffe2a618e01f43b4d6281ac81`. Dystrybucja przypina runtime `87cceed8d08c298ce2976aa3ce9bec771dea31fe`. Implementacja: Claude przez jedną sesję bridge; niezależny review i reprodukcje: Codex. [Review i zamknięte znaleziska](reviews/02-implementation.md), [dowody walidacji](reviews/manager-validation.json), [postęp](../../plans/wave14-progress.md).
 
@@ -33,6 +33,6 @@ Osobny zakres: izolowana instalacja pluginu, nowe repo, jedno włączenie skille
 
 Proponowany budżet: do 20 minut, jedna runda Claude’a do 12 tur, do 10 USD kosztu raportowanego przez runtime dla całej próby; operator kończy po pierwszym osiągniętym limicie. Raport runtime nie jest potwierdzeniem faktycznego rozliczenia. Wymaga osobnej zgody na ten zakres i budżet; obecne zlecenie jej nie udziela.
 
-Wszystkie commity są lokalne. Bez push, merge, wdrożenia, zmiany worktree wave13 lub przełączenia aktywnego runtime. Odbiór użytkownika i wspólne testy wave13 pozostają następnymi etapami.
+Wszystkie commity są lokalne. Bez push, merge, wdrożenia, zmiany worktree wave13 lub przełączenia aktywnego runtime. Niezależna dostawa jest odebrana; integracja i wspólne testy finalnego wave13 pozostają do wykonania przez koordynatora. Końcowy checkpoint tej sesji jest wyłącznie dokumentacyjny, bez nowych review i testów; dowody i paczki zachowano.
 
 Końcowy pakiet: `F-W14-local-delivery.zip`, cel `implementation-review`, baza kodu `1cd1be78e3c18d5155b45d9dd95c27bd2a663c14`; zapisany w namespace exchange tego worktree. Manifest pakietu identyfikuje końcowy commit koordynatora i hashe dokumentów.
