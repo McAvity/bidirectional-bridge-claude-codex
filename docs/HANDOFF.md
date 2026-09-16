@@ -1,5 +1,12 @@
 # Current handoff
 
+## Wave15 draft; wave13 and wave14 executing
+
+The user reports both wave13 and wave14 are executing separately. Their scopes stay
+unchanged. [Wave15 DRAFT](plans/wave15.md) records natural feature requests and
+candidate usability improvements; refine only after both waves are accepted and
+integrated. No wave15 implementation is authorized. [Progress](plans/wave15-progress.md).
+
 ## Wave14 planned; wave13 executing
 
 The user reports wave13 is executing in a separate worktree. Earlier planned-only
