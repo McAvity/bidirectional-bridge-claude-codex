@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W14-plugin-distribution",
-  "phase": "corrections",
+  "phase": "review",
   "brief": "docs/features/F-W14-plugin-distribution/brief.md",
   "design": "docs/plans/wave14.md",
   "tasks": [
@@ -12,11 +12,14 @@
   "context_files": [
     "AGENTS.md",
     "docs/plans/wave14.md",
-    "docs/setup-layout.md"
+    "docs/setup-layout.md",
+    "docs/setup.md",
+    "docs/plugin-distribution.md",
+    "docs/plans/wave14-progress.md"
   ],
   "latest_review": "docs/features/F-W14-plugin-distribution/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/02.md",
-  "next_action": "One focused R2-07 correction: own native reservation must recover across mkdir/pre-journal boundary without waiving conflicting-state guards. Refresh pin, final validation/review/handoff. Wave13 deferred.",
+  "next_action": "Independent wave14 delivery reviewed PASS; handoff ready. Await wave13 acceptance, then freeze accepted interface and perform combined diagnostics/logging validation. No user acceptance, publication, deployment or model pilot inferred.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"

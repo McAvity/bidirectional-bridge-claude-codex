@@ -1,5 +1,25 @@
 # Current handoff
 
+## Wave14 — independent local delivery, review PASS, 2026-09-16
+
+Code `1880b3914f4dd3bffe2a618e01f43b4d6281ac81`; generated distribution pins runtime
+`87cceed8d08c298ce2976aa3ce9bec771dea31fe`. Claude implemented in one bridge session;
+Codex independently reviewed and closed all implementation findings. Both plugins and
+marketplaces remain in this repository, generated from shared sources.
+
+Independent clean-clone validation: npm ci/build, 486 JS, 43 Python, 140 pilot-tooling tests
+and packages check PASS. Actual runtime: five interruption/recovery boundaries, same-worktree
+owner race, pure reads and plain Codex TUI (35 tools and plugin skill) PASS, without model inference.
+[Delivery handoff](features/F-W14-plugin-distribution/handoff.md),
+[progress](plans/wave14-progress.md). No active Claude round; no user acceptance inferred.
+
+Joint diagnostics/logging validation is deliberately deferred until wave13 acceptance.
+Working interface refs are cf2365c/review853302c, not accepted wave13 commits. No wave13
+worktree or active runtime was changed; supervisor remains 0.2.0-860e2e77d95f.
+Local commits only: no push, merge, deployment or additional model pilot. The optional
+bounded smoke proposal is recorded in the handoff and requires separate authorization.
+Earlier status sections below are historical.
+
 ## Wave14 execution authorized; wave13 executing
 
 The user reports wave13 is executing in a separate worktree. Earlier planned-only

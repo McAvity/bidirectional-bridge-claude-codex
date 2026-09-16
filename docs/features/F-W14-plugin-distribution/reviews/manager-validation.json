@@ -1,0 +1,140 @@
+{
+  "reviewed_delivery_commit": "1880b3914f4dd3bffe2a618e01f43b4d6281ac81",
+  "independent_suite_snapshot": "a01fbb645b99b08a2e965c6d88ac98f8d27c53fe",
+  "snapshot_difference": "1880b39 only updates measured counts in two evidence/ledger documents; no code/test changes",
+  "runtime_commit": "87cceed8d08c298ce2976aa3ce9bec771dea31fe",
+  "environment": {
+    "node": "24.15.0",
+    "python": "3.12.3",
+    "codex": "0.154.0",
+    "claude": "2.1.273"
+  },
+  "checks": [
+    {
+      "command": "npm ci --ignore-scripts",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "files": 33,
+      "tests": 486
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "exit_code": 0,
+      "tests": 43
+    },
+    {
+      "command": "python3 -m unittest discover -s tools/pilot/tests -v",
+      "exit_code": 0,
+      "tests": 140,
+      "skipped": 0
+    },
+    {
+      "command": "npm run packages:check",
+      "exit_code": 0
+    }
+  ],
+  "independent_log_sha256": {
+    "npm-ci": "5139cecc3f1f4b1b87e781193b3f210f3f92bcf899a4645d0c3cba20be90a48d",
+    "build": "d53b22e26761b33c41fde61a846411dc62c2ec41cbd1283052517dea1c42c306",
+    "js": "7943015b9c01e289b60c66dd0d90ad37be12d4f37cf987befb9492c175a1ea30",
+    "python": "639579aeb01bca9f93e37a07914ce98b6214aea89da9f580b75b298d1f51bb8c",
+    "pilot": "c757e1fcb9bebfe72787d1007def26b7be3c59858e80512d7b1670811938c8aa",
+    "packages": "ffd8ebe083641608dc4d76b19a209a78c5a93b325d6d19ca902e6c41184e4090"
+  },
+  "recovery_matrix": {
+    "runtime_commit": "87cceed8d08c298ce2976aa3ce9bec771dea31fe",
+    "cases": [
+      {
+        "case": "before-mkdir",
+        "injected_exit": -9,
+        "read_bytes_unchanged": true,
+        "changed_on_read": [],
+        "task_created": true,
+        "record": true,
+        "pending": false,
+        "error": null
+      },
+      {
+        "case": "after-mkdir",
+        "injected_exit": -9,
+        "read_bytes_unchanged": true,
+        "changed_on_read": [],
+        "task_created": true,
+        "record": true,
+        "pending": false,
+        "error": null
+      },
+      {
+        "case": "before-journal",
+        "injected_exit": -9,
+        "read_bytes_unchanged": true,
+        "changed_on_read": [],
+        "task_created": true,
+        "record": true,
+        "pending": false,
+        "error": null
+      },
+      {
+        "case": "after-selection",
+        "injected_exit": -9,
+        "read_bytes_unchanged": true,
+        "changed_on_read": [],
+        "task_created": true,
+        "record": true,
+        "pending": false,
+        "error": null
+      },
+      {
+        "case": "after-record",
+        "injected_exit": -9,
+        "read_bytes_unchanged": true,
+        "changed_on_read": [],
+        "task_created": true,
+        "record": true,
+        "pending": false,
+        "error": null
+      }
+    ]
+  },
+  "tui": {
+    "runtime_commit": "87cceed8d08c298ce2976aa3ce9bec771dea31fe",
+    "client": "codex 0.154.0",
+    "isolated_profile": true,
+    "provider": "closed localhost port",
+    "plain_tui_no_mcp_flags": true,
+    "mcp_ui": "bridge: connected (35 tools)",
+    "skills_ui": "bridge (bridge-codex)",
+    "model_task_sent": false,
+    "exit_code": 0,
+    "local_selection_exists": false,
+    "domain_state_exists": false,
+    "session_record_types": {},
+    "event_types": {},
+    "startup_warning": "Existing host bubblewrap/user namespace restriction; bridge connected normally. No sandbox policy changed."
+  },
+  "same_worktree_race": {
+    "runtime_commit": "87cceed8d08c298ce2976aa3ce9bec771dea31fe",
+    "handshake_creates_no_state": true,
+    "successful_owners": 1,
+    "other_result": "MANAGER_FOREIGN_THREAD",
+    "pending_journal": false
+  },
+  "scope_audit": {
+    "changed_files_at_audit": 104,
+    "runtime_databases_transcripts_or_node_modules_in_diff": false,
+    "operator_home_in_changed_text_files": false
+  },
+  "limits": [
+    "Synthetic native metadata in protocol tests; no real model delegation pilot.",
+    "One Linux host and the recorded client versions.",
+    "Wave13 combined diagnostics/logging validation deferred by user decision02.",
+    "Public publication and network availability of local commits not tested or authorized."
+  ]
+}

@@ -92,3 +92,28 @@ rekordzie PASS. Ścieżka fetch z niezależnego lokalnego Git pobiera dokładny 
 Pozostał jeden wariant R2-07: przerwanie po mkdir, jeszcze przed journalem. Ta sama własna
 rezerwacja native jest błędnie ignorowana przez warunek istnienia katalogu. Wąska poprawka
 ma ujednolicić tę regułę, zachowując odmowy obcego/niewyjaśnionego stanu; potem finalny handoff.
+
+## 2026-09-16 — niezależny zakres dostarczony, końcowy review PASS
+
+Runda6 `task_6fs329c20d` DONE, head `1880b3914f4dd3bffe2a618e01f43b4d6281ac81`,
+pin runtime `87cceed8d08c298ce2976aa3ce9bec771dea31fe`. Paczka wewnętrzna
+F-W14-round-6.zip zweryfikowana: `7fe62d0ff751c6f2bb19ecec7ba09a6b3697460887404cb34a359852143a1410`.
+Wszystkie wymagane znaleziska R1/R2 zamknięte w granicy niezależnego zakresu.
+Codex wykonał pełną niezależną walidację na czystej kopii a01fbb6: instalacja zależności,
+build,486 JS/33 pliki,43 Python,140 narzędzi pilota (bez pominięć w tej kopii),
+packages:check PASS. Późniejszy1880b39 aktualizuje tylko dwa zapisy wyników.
+Pięć rzeczywistych przerwań na finalnym pinie, odczyt bez zmiany bajtów, odzyskanie
+przy autoryzowanej mutacji, konkurencja jednego worktree i finalny TUI35tools/skill PASS.
+Walidacja bez tury modeli; wszystkie dodatkowe runtime testowe izolowane.
+
+[Handoff](../features/F-W14-plugin-distribution/handoff.md) zawiera zakres, wersje,
+[końcowy review](../features/F-W14-plugin-distribution/reviews/02-implementation.md),
+dowody i propozycję osobnego smoke (nieuruchomionego). Oba pluginy i marketplace pozostają
+w tym repo, generowane ze wspólnych źródeł. Brak aktywnej próby Claude’a; feature czeka na review,
+nie oznaczono akceptacji użytkownika. Nadzorca nadal0.2.0-860e2e77d95f.
+
+Następny etap: po odbiorze wave13 zapisać jego zaakceptowany commit, uzgodnić finalny projector
+metadanych i sprawdzić wspólną integrację. Robocze cf2365c/review853302c nie są jego odbiorem.
+Bez push,merge,wdrożenia i osobnego repo marketplace.
+
+Pakiet końcowy: `F-W14-local-delivery.zip` (`implementation-review`), baza `1cd1be78e3c18d5155b45d9dd95c27bd2a663c14`, namespace exchange tego worktree. Końcowy commit koordynatora obejmuje handoff, review i ten zapis; dokładny head/hash paczki zapisuje manifest i wynik verify.
