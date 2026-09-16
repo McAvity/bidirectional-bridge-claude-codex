@@ -10,9 +10,18 @@
  * Each case asserts what a duplicate would disturb — task count, attempt count, worker launches,
  * identity, the key, the contract that reached the worker, the event history and the budget —
  * rather than only that a call returned.
+ *
+ * Two boundaries of this evidence, stated so nothing here is read as more than it is:
+ *
+ *   - **Reopening the store is not a process kill.** It is a second connection to the same
+ *     durable state, which is what a restarted manager sees. No case here kills an MCP server, a
+ *     runtime or a model process, and none claims to.
+ *   - **Replays are rebuilt from disk.** After an interruption every call is reconstructed from a
+ *     re-parsed intent file, never from a value the test still held in memory, because carrying
+ *     the request across the interruption would prove nothing about recovering it.
  */
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -99,20 +108,46 @@ function fixture() {
   env.cp.tasks.claim(parent.task_id, "codex");
   env.flow.create("feature", "codex", parent.task_id);
 
-  /** Exactly what a manager persists before sending: the key and the arguments, unchanged. */
-  const intent = {
-    op: "round" as const,
+  /**
+   * The intent file, as the design specifies it: one file per operation, written atomically
+   * before the call leaves, holding the exact arguments.
+   *
+   * The directory here stands in for this worktree's exchange namespace — where it belongs is
+   * proved separately, by the real bootstrap regression in `bridge-project.test.ts`. What these
+   * cases prove is the discipline: after an interruption the request is read back **from disk**
+   * and nothing is carried over in memory.
+   */
+  const intents = join(dir, "intents");
+  function persist(name: string, value: unknown): string {
+    mkdirSync(intents, { recursive: true });
+    const path = join(intents, `${name}.json`);
+    writeFileSync(`${path}.tmp`, `${JSON.stringify(value, null, 2)}\n`);
+    renameSync(`${path}.tmp`, path);
+    return path;
+  }
+  /** Re-read and re-parse. Nothing from before the interruption survives in memory. */
+  function reload(path: string): { key: string; request: Record<string, unknown> } {
+    return JSON.parse(readFileSync(path, "utf8"));
+  }
+  const roundIntent = persist("round-F-W15-round-1", {
+    op: "round",
     key: "F-W15:round-1",
-    request: { feature_id: "feature", manager: "codex", spec, input_artifacts: [] as string[], deadline_ms: 5000 },
-  };
-  const request = { ...intent.request, idempotency_key: intent.key };
+    request: { feature_id: "feature", manager: "codex", spec, input_artifacts: [], deadline_ms: 5000 },
+  });
+  /** The first send may use memory; every later one must come from `reload`. */
+  const request = { ...reload(roundIntent).request, idempotency_key: reload(roundIntent).key } as never;
 
   const counts = (cp = env.cp) => ({
     tasks: cp.tasks.list({}).length,
     launches: seen.length,
   });
 
-  return { ...env, dir, open, seen, behavior, parent, intent, request, counts };
+  return { ...env, dir, open, seen, behavior, parent, roundIntent, persist, reload, request, counts };
+}
+
+/** Build a call from a re-parsed intent file, never from a value held across the interruption. */
+function fromIntent(intent: { key: string; request: Record<string, unknown> }) {
+  return { ...intent.request, idempotency_key: intent.key } as never;
 }
 
 const settle = () => new Promise((done) => setTimeout(done, 20));
@@ -120,16 +155,20 @@ const settle = () => new Promise((done) => setTimeout(done, 20));
 describe("continuing after an interruption", () => {
   it("sends once when the interruption came before the call (nothing reserved)", async () => {
     const f = fixture();
-    // The intent file exists; the call never left. The bridge is the authority on that.
+    // The intent file is on disk; the call never left. The bridge is the authority on that.
     const before = f.open().flow.get("feature", "codex");
     expect(before.task_ids).toEqual([]);
     expect(before.state).toBe("ready");
     expect(f.counts()).toEqual({ tasks: 1, launches: 0 });
 
-    const sent = await f.open().flow.run(f.request);
+    // Everything below is built from the re-parsed file, not from the value written above.
+    const recovered = f.reload(f.roundIntent);
+    expect(recovered.key).toBe("F-W15:round-1");
+    expect((recovered.request as { deadline_ms: number }).deadline_ms).toBe(5000);
+    const sent = await f.open().flow.run(fromIntent(recovered));
     expect(sent.replayed).toBe(false);
     expect(f.counts()).toEqual({ tasks: 2, launches: 1 });
-    expect(f.seen[0]?.spec.objective).toBe(spec.objective);
+    expect(f.seen[0]?.spec).toEqual((recovered.request as { spec: TaskSpec }).spec);
     expect(f.seen[0]?.spec.max_turns).toBe(32);
     expect(f.flow.get("feature", "codex").task_ids).toEqual([sent.task.task_id]);
   });
@@ -151,21 +190,25 @@ describe("continuing after an interruption", () => {
       expect(during.task_ids).toHaveLength(1);
       const reserved = during.active_task_id!;
 
-      // The only admissible reaction: the identical key with the identical arguments.
-      const replayed = await resumed.flow.run(f.request);
+      // The only admissible reaction, and it is built from the file, not from memory.
+      const recovered = f.reload(f.roundIntent);
+      expect(recovered.key).toBe("F-W15:round-1");
+      const replayed = await resumed.flow.run(fromIntent(recovered));
       expect(replayed.replayed).toBe(true);
       expect(replayed.task.task_id).toBe(reserved);
       expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
+      // The contract and the budget the worker got are the ones the file holds.
+      expect(f.seen[0]?.spec).toEqual((recovered.request as { spec: TaskSpec }).spec);
 
       // A different key while a round is active cannot start anything either.
-      await expect(resumed.flow.run({ ...f.request, idempotency_key: "F-W15:round-2" })).rejects.toThrow(
-        /cannot start a round/u,
-      );
+      await expect(
+        resumed.flow.run({ ...fromIntent(recovered), idempotency_key: "F-W15:round-2" } as never),
+      ).rejects.toThrow(/cannot start a round/u);
       expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
       // Same key, different arguments is a caller bug, not a retry.
-      await expect(resumed.flow.run({ ...f.request, deadline_ms: 9000 })).rejects.toMatchObject({
-        code: "IDEMPOTENCY_MISMATCH",
-      });
+      await expect(
+        resumed.flow.run({ ...fromIntent(recovered), deadline_ms: 9000 } as never),
+      ).rejects.toMatchObject({ code: "IDEMPOTENCY_MISMATCH" });
     } finally {
       release();
       await inFlight;
@@ -177,12 +220,17 @@ describe("continuing after an interruption", () => {
   it("survives repeated interruption while reconciling, and keeps one identity", async () => {
     const f = fixture();
     const first = await f.flow.run(f.request);
-    // Three restarts in a row, each followed by the same identical replay.
+    // Three restarts in a row. Each one re-reads the file and uses only what it parsed.
     for (let round = 0; round < 3; round += 1) {
       const resumed = f.open();
-      const replayed = await resumed.flow.run(f.request);
+      const recovered = f.reload(f.roundIntent);
+      expect(recovered.key).toBe("F-W15:round-1");
+      const replayed = await resumed.flow.run(fromIntent(recovered));
       expect(replayed.replayed).toBe(true);
       expect(replayed.task.task_id).toBe(first.task.task_id);
+      // Key, contract and budget survive every reconciliation unchanged.
+      expect(f.seen[0]?.spec).toEqual((recovered.request as { spec: TaskSpec }).spec);
+      expect(f.cp.attempts.list(first.task.task_id)).toHaveLength(1);
     }
     expect(f.counts()).toEqual({ tasks: 2, launches: 1 });
     expect(f.cp.attempts.list(first.task.task_id)).toHaveLength(1);
@@ -203,13 +251,37 @@ describe("continuing after an interruption", () => {
     expect(resumed.cp.deliverables.get(first.task.task_id)?.status).toBe(DeliverableStatus.COMPLETE);
     expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
 
-    // Retrieval is a read: replaying the same key after DONE still starts nothing.
-    expect((await resumed.flow.run(f.request)).replayed).toBe(true);
+    // Retrieval is a read: the key re-parsed from the file after DONE still starts nothing.
+    const recovered = f.reload(f.roundIntent);
+    expect((await resumed.flow.run(fromIntent(recovered))).replayed).toBe(true);
     expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
 
     // The counterexample the rule exists for: after DONE a *recomputed* key really does duplicate.
-    await resumed.flow.run({ ...f.request, idempotency_key: "F-W15:round-2" });
+    await resumed.flow.run({ ...fromIntent(recovered), idempotency_key: "F-W15:round-2" } as never);
     expect(f.counts(resumed.cp)).toEqual({ tasks: 3, launches: 2 });
+  });
+
+  it("starts nothing once the feature is accepted and closed", async () => {
+    const f = fixture();
+    await f.flow.run(f.request);
+    const resumed = f.open();
+    expect(resumed.flow.get("feature", "codex").state).toBe("awaiting_review");
+    expect(resumed.flow.accept("feature", "codex").state).toBe("accepted");
+
+    // A resumed session that replays its stored key gets the original round back and starts
+    // nothing — the replay is answered before any state check, which is what makes a late,
+    // duplicated "continue" harmless.
+    const recovered = f.reload(f.roundIntent);
+    const replayed = await resumed.flow.run(fromIntent(recovered));
+    expect(replayed.replayed).toBe(true);
+    expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
+
+    // A *new* key is refused: an accepted feature admits no further rounds.
+    await expect(
+      resumed.flow.run({ ...fromIntent(recovered), idempotency_key: "F-W15:round-2" } as never),
+    ).rejects.toThrow(/cannot start a round/u);
+    expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
+    expect(resumed.flow.get("feature", "codex").state).toBe("accepted");
   });
 
   it("keeps the recovery of a blocked round to one attempt when its response is lost", async () => {
@@ -219,20 +291,27 @@ describe("continuing after an interruption", () => {
     expect(first.task.state).toBe(TaskState.BLOCKED);
     expect(f.cp.attempts.list(first.task.task_id)).toHaveLength(1);
 
-    const key = `${first.task.task_id}:resume-1`;
-    const message = "The user chose option B.";
+    // The recovery request is persisted atomically before it is sent, exactly like a round.
+    const recoveryIntent = f.persist(`recovery-${first.task.task_id}`, {
+      op: "recovery",
+      key: `${first.task.task_id}:resume-1`,
+      request: {
+        task_id: first.task.task_id,
+        requested_by: "codex",
+        message: "The user chose option B.",
+        max_turns: 48,
+      },
+    });
+    const sending = f.reload(recoveryIntent);
     let release!: () => void;
     f.behavior.gate = new Promise<void>((resolve) => {
       release = resolve;
     });
     f.behavior.partial = false;
     const inFlight = f.orchestrator.resumeDelegatedTask({
-      task_id: first.task.task_id,
-      requested_by: "codex",
-      idempotency_key: key,
-      message,
-      max_turns: 48,
-    });
+      ...(sending.request as Record<string, never>),
+      idempotency_key: sending.key,
+    } as never);
     let resumed: ReturnType<typeof f.open>;
     try {
       await settle();
@@ -240,14 +319,14 @@ describe("continuing after an interruption", () => {
       // While the recovery attempt is open, the feature reads as running, and the same key is
       // reported as already active rather than starting a second attempt.
       expect(resumed.flow.get("feature", "codex").state).toBe("running");
+      // Re-parsed from disk after the interruption; nothing carried over in memory.
+      const afterInterruption = f.reload(recoveryIntent);
+      expect(afterInterruption.key).toBe(`${first.task.task_id}:resume-1`);
       await expect(
         resumed.orchestrator.resumeDelegatedTask({
-          task_id: first.task.task_id,
-          requested_by: "codex",
-          idempotency_key: key,
-          message,
-          max_turns: 48,
-        }),
+          ...(afterInterruption.request as Record<string, never>),
+          idempotency_key: afterInterruption.key,
+        } as never),
       ).rejects.toMatchObject({ code: "ILLEGAL_TRANSITION" });
       expect(resumed.cp.attempts.list(first.task.task_id)).toHaveLength(2);
     } finally {
@@ -255,14 +334,12 @@ describe("continuing after an interruption", () => {
       await inFlight;
     }
 
-    // After it ends, the identical key replays the same reservation: no third attempt.
+    // After it ends, the identical request — re-parsed again — replays the same reservation.
+    const secondInterruption = f.reload(recoveryIntent);
     const replay = await resumed!.orchestrator.resumeDelegatedTask({
-      task_id: first.task.task_id,
-      requested_by: "codex",
-      idempotency_key: key,
-      message,
-      max_turns: 48,
-    });
+      ...(secondInterruption.request as Record<string, never>),
+      idempotency_key: secondInterruption.key,
+    } as never);
     expect(replay.recovered_attempt).toBe(1);
     expect(resumed!.cp.attempts.list(first.task.task_id)).toHaveLength(2);
     expect(f.counts(resumed!.cp)).toEqual({ tasks: 2, launches: 2 });
@@ -270,13 +347,14 @@ describe("continuing after an interruption", () => {
     // Budget and contract: the recovery ceiling applies to that attempt only and the stored task
     // spec is untouched, so a replay cannot quietly renew anything.
     expect(f.seen[1]?.spec.max_turns).toBe(48);
-    expect(f.seen[1]?.manager_message).toBe(message);
+    expect(f.seen[1]?.spec.max_turns).toBe((secondInterruption.request as { max_turns: number }).max_turns);
+    expect(f.seen[1]?.manager_message).toBe((secondInterruption.request as { message: string }).message);
     expect(resumed!.cp.tasks.get(first.task.task_id).spec.max_turns).toBe(32);
     const requested = resumed!.cp
       .events({ task_id: first.task.task_id })
       .filter((event) => event.type === EventType.RECOVERY_REQUESTED);
     expect(requested).toHaveLength(1);
-    expect(requested[0]?.idempotency_key).toBe(key);
+    expect(requested[0]?.idempotency_key).toBe(secondInterruption.key);
   });
 
   it("shows why a recovery without a key is not a retry", async () => {
@@ -305,8 +383,7 @@ describe("continuing after an interruption", () => {
     ).rejects.toMatchObject({ code: "ILLEGAL_TRANSITION" });
   });
 
-  it("separates a lost response from a dead server, and stops at the no-handle limit", async () => {
-    // A lost response with a live server: the worker finishes and the round is simply collectable.
+  it("treats a lost response as collectable work, not as a dead worker", async () => {
     const live = fixture();
     const inFlight = live.flow.run(live.request);
     await settle();
@@ -314,35 +391,85 @@ describe("continuing after an interruption", () => {
     const collected = live.open().flow.get("feature", "codex");
     expect(collected.state).toBe("awaiting_review");
     expect(live.counts()).toEqual({ tasks: 2, launches: 1 });
-
-    // A dead server during the round, with no session persisted yet: strict resume has nothing to
-    // resume, and that is a real limit, not a reason to start anything new.
-    const dead = fixture();
-    dead.behavior.handle = null;
-    let stuck!: () => void;
-    dead.behavior.gate = new Promise<void>((resolve) => {
-      stuck = resolve;
-    });
-    const abandoned = dead.flow.run(dead.request);
-    await settle();
-    const after = dead.open();
-    const orphan = after.flow.get("feature", "codex");
-    expect(orphan.state).toBe("running");
-    const task = orphan.active_task_id!;
-    expect(after.cp.attempts.list(task)[0]?.execution_handle ?? null).toBeNull();
-
-    await expect(
-      after.orchestrator.resumeDelegatedTask({ task_id: task, requested_by: "codex", idempotency_key: `${task}:resume-1` }),
-    ).rejects.toThrow(/lease|persisted execution handle/u);
-    // Nothing was invented to work around it: same task, same attempt, same launch count.
-    expect(dead.counts(after.cp)).toEqual({ tasks: 2, launches: 1 });
-    expect(after.cp.attempts.list(task)).toHaveLength(1);
-    expect(after.flow.get("feature", "codex").task_ids).toEqual([task]);
-    stuck();
-    await abandoned;
+    expect(live.cp.attempts.list(collected.latest_task_id!)).toHaveLength(1);
   });
 
-  it("does not let a resumed session walk past waiting_user, a foreign manager or a closed feature", async () => {
+  /**
+   * The strict-resume boundary, and exactly what this proves (review W15-I6).
+   *
+   * The durable precondition under test is: a recoverable task whose last attempt persisted **no
+   * execution handle**, with **no live lease** and **no adapter running**. That state is produced
+   * here by the product's own path — a round whose runtime never reported a session id — and then
+   * asserted, so the refusal cannot come from a lease conflict or from a worker still holding the
+   * task. The assertion is the exact no-handle message, not a pattern that a lease conflict would
+   * also satisfy.
+   *
+   * What this does **not** reproduce: an operating-system process death. Reopening the store is a
+   * second connection to the same durable state, which is what a restarted manager sees; it is not
+   * a kill, and no claim about killing a real MCP server or model process is made here. An
+   * attempt row left open by a crash is a further variant this case does not construct: the guard
+   * under test reads the persisted handle of the task's current attempt and fires before the lease
+   * check either way.
+   */
+  it("refuses strict resume with the exact no-handle error when nothing is running", async () => {
+    const f = fixture();
+    f.behavior.handle = null; // the runtime never reported a session id
+    f.behavior.partial = true; // ... and left the task recoverable
+    const first = await f.flow.run(f.request);
+
+    // The precondition, asserted rather than assumed.
+    const task = first.task.task_id;
+    expect(f.cp.tasks.get(task).state).toBe(TaskState.BLOCKED); // recoverable
+    expect(f.cp.attempts.list(task)).toHaveLength(1);
+    expect(f.cp.attempts.list(task)[0]?.execution_handle ?? null).toBeNull(); // no handle
+    expect(f.cp.leases.listLive().filter((lease) => lease.task_id === task)).toEqual([]); // no live lease
+    expect(f.behavior.gate).toBeUndefined(); // no adapter in flight
+
+    // A restarted manager: a new connection to the same durable state.
+    const resumed = f.open();
+    const before = {
+      counts: f.counts(resumed.cp),
+      attempts: resumed.cp.attempts.list(task).length,
+      events: resumed.cp.events({ task_id: task }).length,
+      state: resumed.cp.tasks.get(task).state,
+      feature: resumed.flow.get("feature", "codex").task_ids,
+    };
+
+    await expect(
+      resumed.orchestrator.resumeDelegatedTask({
+        task_id: task,
+        requested_by: "codex",
+        idempotency_key: `${task}:resume-1`,
+        message: "continue",
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_ARGUMENT",
+      message: `task ${task} attempt 0 has no persisted execution handle`,
+    });
+
+    // Nothing was invented to work around it, and nothing was recorded either.
+    expect({
+      counts: f.counts(resumed.cp),
+      attempts: resumed.cp.attempts.list(task).length,
+      events: resumed.cp.events({ task_id: task }).length,
+      state: resumed.cp.tasks.get(task).state,
+      feature: resumed.flow.get("feature", "codex").task_ids,
+    }).toEqual(before);
+
+    // Repeating the refusal changes nothing either: it is a boundary, not a transient failure.
+    await expect(
+      resumed.orchestrator.resumeDelegatedTask({
+        task_id: task,
+        requested_by: "codex",
+        idempotency_key: `${task}:resume-1`,
+        message: "continue",
+      }),
+    ).rejects.toThrow(/has no persisted execution handle/u);
+    expect(resumed.cp.attempts.list(task)).toHaveLength(1);
+    expect(f.counts(resumed.cp)).toEqual({ tasks: 2, launches: 1 });
+  });
+
+  it("does not let a resumed session walk past waiting_user or another manager's feature", async () => {
     const f = fixture();
     f.behavior.partial = true;
     const first = await f.flow.run(f.request);
@@ -359,7 +486,9 @@ describe("continuing after an interruption", () => {
         message: "go on",
       }),
     ).rejects.toThrow();
-    // Another manager cannot read or drive this feature at all.
+    // A different manager identity cannot read or drive this feature. This is the ownership rule
+    // in the feature workflow itself; the native Codex thread/takeover guards are a separate
+    // mechanism with their own identity suites, and nothing here stands in for them.
     expect(() => resumed.flow.get("feature", "someone-else")).toThrow(/another manager/u);
     await expect(
       resumed.orchestrator.resumeDelegatedTask({ task_id: first.task.task_id, requested_by: "claude" }),

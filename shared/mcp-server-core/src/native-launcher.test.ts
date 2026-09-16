@@ -397,15 +397,55 @@ describe("native project MCP launcher", () => {
     expect(externalCombined).not.toContain("scripts/native-bridge-mcp.mjs");
   });
 
-  it("keeps the Claude and Codex using-bridge skill mirrors byte-identical", () => {
+  /**
+   * The two `using-bridge` skills used to be required byte-identical. Wave15 deliberately gave
+   * the Codex manager an entry the executor must not carry — continuing a feature after an
+   * interruption — so byte equality would now be satisfied only by copying the manager workflow
+   * into the worker's copy, which is the opposite of what that separation is for. The contract
+   * this replaces it with is the one that still has to hold:
+   *
+   *   1. the shared material stays one thing, not two drifting copies;
+   *   2. both packages carry the same file inventory, so neither loses a reference;
+   *   3. both keep the role-neutral guards, including the guard that stops a delegated worker
+   *      from acting as a manager;
+   *   4. the manager-only entry exists exactly once, on the manager side.
+   */
+  it("keeps the shared using-bridge material coherent and the two roles separate", () => {
     const codexSkill = join(repoRoot, ".codex", "skills", "using-bridge");
     const claudeSkill = join(repoRoot, ".claude", "skills", "using-bridge");
     const codexFiles = recursiveFileHashes(codexSkill);
     const claudeFiles = recursiveFileHashes(claudeSkill);
-    expect(codexFiles).toEqual(claudeFiles);
+
+    // 2. Same inventory on both sides; nothing is shipped to one role only by accident.
+    expect(claudeFiles.map((entry) => entry.path)).toEqual(codexFiles.map((entry) => entry.path));
     expect(codexFiles.map((entry) => entry.path)).toEqual(
       expect.arrayContaining(["SKILL.md", "agents/openai.yaml", "references/routing-policy.md"]),
     );
+
+    // 1. Everything except the role entry point is shared material and must stay byte-identical.
+    const shared = (files: typeof codexFiles) => files.filter((entry) => entry.path !== "SKILL.md");
+    expect(shared(codexFiles).length).toBeGreaterThan(1);
+    expect(shared(claudeFiles)).toEqual(shared(codexFiles));
+
+    const codexEntry = readFileSync(join(codexSkill, "SKILL.md"), "utf8");
+    const claudeEntry = readFileSync(join(claudeSkill, "SKILL.md"), "utf8");
+
+    // 3. The role-neutral guards hold on both sides.
+    for (const [role, entry] of [["codex", codexEntry], ["claude", claudeEntry]] as const) {
+      expect(entry, role).toContain("If this session is already a delegated worker");
+      expect(entry, role).toContain("Do not create a new root or delegate again");
+      expect(entry, role).toContain("As the Claude worker of a round, complete that contract; do not delegate or call bridge tools.");
+      expect(entry, role).toContain("Never delegate to an agent already in the active ancestor chain.");
+    }
+
+    // 4. The manager-only continuation entry exists once, on the manager side.
+    expect(codexEntry).toContain("## Continuing after an interruption");
+    expect(claudeEntry).not.toContain("## Continuing after an interruption");
+    // The rest of the manager material is deliberately still shared: a Claude session may itself
+    // be the manager of a Codex child. What must not be duplicated is the wave15 feature-round
+    // continuation entry, which belongs to the Codex manager that owns `bridge_feature_*`.
+    expect(codexEntry).toContain("bridge_feature_*` (Codex manager only)");
+    expect(claudeEntry).toContain("bridge_feature_*` (Codex manager only)");
   });
 
   it("starts from an external workspace without a local scripts tree and stores state there", async () => {
