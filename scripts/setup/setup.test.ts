@@ -518,7 +518,9 @@ describe("bridge setup CLI", () => {
       const change = planned.json.changes.find((entry: { path: string }) => entry.path === AGENTS);
       expect(change, JSON.stringify(planned.json.changes)).toBeTruthy();
       expect(change.action).toBe("append");
-      expect(change.diff).toContain(`+${marker}`);
+      expect(change.diff).toContain(`--- ${AGENTS}`);
+      expect(change.diff).toContain(`+## ${marker}`);
+      expect(change.diff).toContain("+# >>> claude-codex-bridge managed block >>>");
       expect(readAgents(project)).toBe(original); // a plan writes nothing
 
       const applied = bridgeJson(["init", "--workspace", project, "--runtime", runtimeA.id, "--with-preference", "--yes"]);
