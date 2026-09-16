@@ -153,8 +153,8 @@ Details: [docs/architecture.md](docs/architecture.md). Normative wire contract:
 ### Recommended: the repository marketplace
 
 For the Astra (Codex) → Claude workflow, install the Codex plugin once on your machine.
-Use Linux, Git, Node.js24, npm and Python3.11 or newer, with Codex and Claude Code
-installed and logged in. The current native identity adapter supports **Codex0.154.0**;
+Use Linux, Git, Node.js 24, npm and Python 3.11 or newer, with Codex and Claude Code
+installed and logged in. The current native identity adapter supports **Codex 0.154.0**;
 `doctor` refuses an unverified version. No separate bridge server or API key is needed.
 
 Run these as **two consecutive commands in a normal terminal**, not in the Codex prompt:

@@ -48,3 +48,26 @@ fast-forward; nie oznacza to wdrożenia ani publikacji.
 Odbiór niezależnej części wave14 jest zachowany; nie zastępuje odbioru wspólnego wyniku.
 Nie wywoływać feature_accept z innego managera w bazie oryginalnego wave14.
 Wave15 nadal DRAFT; nie implementowano jego zakresu.
+
+## Wydanie i aktywacja — 2026-09-16
+
+Użytkownik odebrał wspólny wynik i jawnie autoryzował publikację na publicznym
+McAvity/bidirectional-bridge-claude-codex, branch feature-workflow.
+Opublikowane ca9895a zawiera README z instalacją przez marketplace i poprawiony
+workflow CI: pełna historia do testów starszych runtime, Codex0.154.0 do kontroli
+CLI bez logowania/inferencji, sprawdzanie wygenerowanych pakietów i dokumentów.
+Wcześniejszy CI35119998820 na ab8ce87 nie przeszedł m.in. z powodu płytkiego klonu,
+który nie zawierał rodzica używanego przez testy rollbacku. To poprawiono w ca9895a.
+
+Nowy runtime0.2.0-187fd3b29206 zainstalowany obok starego. Plan update dla bieżącego
+projektu ma jedną zmianę — current — i zero konfliktów. Aktualizację blokuje
+ACTIVE_SESSION: istnieją działające klienty oraz procesy bridge’a z otwartą bazą.
+Wybrany runtime nadal0.2.0-860e2e77d95f. Przygotowano lokalny, nieśledzony skrypt
+aktywacji: update --yes, potem doctor; do wykonania po normalnym zamknięciu klientów.
+Brak podmiany działającego runtime, resetu bazy lub zmian innych projektów.
+
+CI na opublikowanym ca9895a: **SUCCESS**,
+[GitHub Actions35120711465](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/35120711465).
+Build, wszystkie testy JS/Python/pilot, pakiety i dokumentacja przeszły.
+Końcowy commit statusów jest wyłącznie dokumentacyjny i nie zmienia testowanego kodu;
+nie uruchamia ponownie identycznego zestawu CI.

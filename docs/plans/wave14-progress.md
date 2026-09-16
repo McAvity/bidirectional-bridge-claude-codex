@@ -159,3 +159,12 @@ wave14 ma ukończoną integrację, gotową do finalnego odbioru użytkownika.
 zintegrowanego wyniku ab8ce87 i zgodę na push,CI,README oraz aktywację runtime
 w tym projekcie. Publikacja i CI w toku; aktywacja wymaga normalnego zamknięcia
 klientów, bo działające procesy blokują zmianę wersji. Brak przejęcia obcego managera.
+
+## Publikacja zakończona
+
+ca9895a opublikowane na feature-workflow. CI35120711465 SUCCESS: build, testy JS,
+Python, pilot-tooling, pakiety, dokumentacja. Runtime187fd3b zainstalowany lokalnie,
+ale current pozostaje860e2e7 z powodu aktywnych klientów. Plan aktualizacji:
+jedna zmiana wyboru wersji, zero konfliktów. Aktywacja po zamknięciu klientów
+przez przygotowany lokalny skrypt, potem doctor. To jedyny pozostały krok wdrożenia;
+wave14 jest odebrane, wave15 pozostaje DRAFT.

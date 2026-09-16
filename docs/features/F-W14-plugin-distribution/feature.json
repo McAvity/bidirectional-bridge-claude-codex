@@ -19,7 +19,7 @@
   ],
   "latest_review": "docs/features/F-W14-plugin-distribution/reviews/03-integration.md",
   "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/04.md",
-  "next_action": "Final user acceptance recorded. Publish feature-workflow, verify CI, then activate runtime after normal client closure. Original manager database untouched; wave15 remains draft.",
+  "next_action": "Accepted and published at ca9895a; CI35120711465 SUCCESS. Runtime187fd3b installed; activate this project after normal client closure, then doctor. Original manager database untouched. Wave15 remains draft.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"

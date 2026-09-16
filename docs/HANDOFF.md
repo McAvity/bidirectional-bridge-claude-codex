@@ -1,5 +1,17 @@
 # Current handoff
 
+## Release accepted and published — wave13/wave14
+
+The user accepted the combined wave14 delivery and authorized publication and activation
+in this project. Published code/docs/CI: ca9895a. The runtime187fd3b is installed
+beside wave12; the current project still selects860e2e7 because live clients
+and bridge processes trigger ACTIVE_SESSION. No bypass or process termination.
+After normally closing this checkout’s clients, use the supported update command
+from [setup](setup.md) to select0.2.0-187fd3b29206, then doctor.
+README now documents the repository marketplace and first-project/worktree steps.
+CI35120711465 SUCCESS on published ca9895a. Result is recorded in the final section of [the integration report](plans/wave13-wave14-integration.md).
+Wave15 remains DRAFT. Older pending-acceptance/publication entries below are historical.
+
 ## Current: wave13/wave14 integration
 
 Wave13 e5ec270 and wave14 50458be are integrated locally for feature-workflow.
