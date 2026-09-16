@@ -1,0 +1,502 @@
+{
+  "cases": [
+    {
+      "case": "default-manifest/no-env_vars",
+      "codex_exit_code": 1,
+      "declared_env_vars": null,
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "forwarded_PWD": null,
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "shell",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.1.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-default-manifest__no-env_vars.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.1.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": null,
+      "workspace_root_matches_expected": false
+    },
+    {
+      "case": "env_vars-PWD/plain-root",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "forwarded_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "shell",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.2.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__plain-root.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.2.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "workspace_root_matches_expected": true
+    },
+    {
+      "case": "env_vars-PWD/path-with-spaces",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "forwarded_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "shell",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.3.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__path-with-spaces.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.3.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "workspace_root_matches_expected": true
+    },
+    {
+      "case": "env_vars-PWD/subdirectory",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "forwarded_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces/sub dir",
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces/sub dir",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "shell",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.4.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__subdirectory.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.4.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "workspace_root_matches_expected": true
+    },
+    {
+      "case": "env_vars-PWD/external-git-worktree",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/herdr-like/external worktree",
+      "forwarded_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/herdr-like/external worktree",
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/herdr-like/external worktree",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "shell",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.5.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__external-git-worktree.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.5.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/herdr-like/external worktree",
+      "workspace_root_matches_expected": true
+    },
+    {
+      "case": "env_vars-PWD/--cd-elsewhere",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "forwarded_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces/sub dir",
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces/sub dir",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "shell",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.6.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__--cd-elsewhere.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.6.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/project with spaces",
+      "workspace_root_matches_expected": false
+    },
+    {
+      "case": "env_vars-PWD/PWD-unset-in-parent",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "forwarded_PWD": null,
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "unset",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.7.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__PWD-unset-in-parent.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.7.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": null,
+      "workspace_root_matches_expected": false
+    },
+    {
+      "case": "env_vars-PWD/PWD-stale-from-other-repo",
+      "codex_exit_code": 1,
+      "declared_env_vars": [
+        "PWD"
+      ],
+      "expected_workspace_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "forwarded_PWD": "<home>/.herdr/worktrees/bridge/wave14",
+      "forwarded_env_names": [
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "LOGNAME",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "TERM",
+        "USER"
+      ],
+      "initialize_params": {
+        "capabilities": {
+          "elicitation": {
+            "form": {},
+            "url": {}
+          },
+          "experimental": {
+            "codex/auth-change": {}
+          }
+        },
+        "clientInfo": {
+          "name": "codex-mcp-client",
+          "title": "Codex",
+          "version": "0.154.0"
+        },
+        "protocolVersion": "2025-06-18"
+      },
+      "launch_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/plain-project",
+      "mcp_methods": [
+        "initialize",
+        "notifications/initialized",
+        "tools/list"
+      ],
+      "model_request_skipped": true,
+      "parent_PWD": "<home>/.herdr/worktrees/bridge/wave14",
+      "server_argv": [
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.8.0/recorder_mcp.mjs",
+        "--record",
+        "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__PWD-stale-from-other-repo.jsonl"
+      ],
+      "server_cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.8.0",
+      "server_cwd_is_project": false,
+      "server_started": true,
+      "workspace_root_from_PWD": "<home>/.herdr/worktrees/bridge/wave14",
+      "workspace_root_matches_expected": false
+    }
+  ],
+  "conclusion": "Codex 0.154.0 gives a plugin-declared MCP server no supported channel for the project or worktree directory: cwd resolves inside the version-pinned plugin cache, the environment is stripped to an allowlist, `env_vars` only re-exports whatever the parent process had, and the MCP initialize handshake advertises no roots capability.",
+  "findings": {
+    "PWD_absent_when_parent_does_not_export_it": true,
+    "PWD_diverges_from_codex_working_root_with_--cd": true,
+    "env_is_stripped_without_env_vars": true,
+    "env_vars_PWD_forwards_the_parent_PWD_verbatim": true,
+    "every_session_was_model_free": true,
+    "mcp_initialize_carries_no_roots_capability": true,
+    "server_cwd_is_never_the_project": true,
+    "stale_parent_PWD_points_at_a_foreign_repository": true,
+    "workspace_root_recoverable_only_when_parent_PWD_is_the_worktree": true
+  },
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.273 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.154.0"
+    }
+  },
+  "installed_paths": [
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.1.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.2.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.3.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.4.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.5.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.6.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.7.0",
+    "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.8.0"
+  ],
+  "marketplace_added": true,
+  "probe": "codex-plugin-mcp-cwd",
+  "question": "Does a Codex plugin MCP server receive the project/worktree directory?",
+  "resolved_mcp_config": [
+    {
+      "auth_status": "unsupported",
+      "disabled_reason": null,
+      "enabled": true,
+      "name": "probe",
+      "startup_timeout_sec": null,
+      "tool_timeout_sec": null,
+      "transport": {
+        "args": [
+          "./recorder_mcp.mjs",
+          "--record",
+          "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/record-env_vars-PWD__PWD-stale-from-other-repo.jsonl"
+        ],
+        "command": "node",
+        "cwd": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428/codex-home/plugins/cache/w14probe/w14-probe/0.8.0/.",
+        "env": null,
+        "env_vars": [
+          "PWD"
+        ],
+        "type": "stdio"
+      }
+    }
+  ],
+  "run_root": "<home>/tmp/w14-01-probes/codex-mcp-cwd-20260916-094307-536428"
+}

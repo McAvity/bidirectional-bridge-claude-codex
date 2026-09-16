@@ -1,0 +1,117 @@
+{
+  "claude": {
+    "cache_dirs_after_update": [
+      "w14probe",
+      "w14probe/w14-probe",
+      "w14probe/w14-probe/1.0.0",
+      "w14probe/w14-probe/1.0.0/.claude-plugin",
+      "w14probe/w14-probe/1.0.0/skills",
+      "w14probe/w14-probe/1.0.0/skills/probe-skill",
+      "w14probe/w14-probe/1.1.0",
+      "w14probe/w14-probe/1.1.0/.claude-plugin",
+      "w14probe/w14-probe/1.1.0/skills",
+      "w14probe/w14-probe/1.1.0/skills/probe-skill"
+    ],
+    "cache_dirs_before_update": [
+      "w14probe",
+      "w14probe/w14-probe",
+      "w14probe/w14-probe/1.0.0",
+      "w14probe/w14-probe/1.0.0/.claude-plugin",
+      "w14probe/w14-probe/1.0.0/skills",
+      "w14probe/w14-probe/1.0.0/skills/probe-skill"
+    ],
+    "cache_is_version_keyed": true,
+    "host": "claude",
+    "install_exit_code": 0,
+    "install_output": "{\"command\":\"install\",\"outcome\":\"ok\",\"plugin\":\"w14-probe@w14probe\",\"pluginId\":\"w14-probe@w14probe\",\"scope\":\"user\",\"message\":\"Successfully installed plugin: w14-probe@w14probe (scope: user)\"}\n",
+    "marketplace_add_exit_code": 0,
+    "previous_version_retained": true,
+    "update_exit_code": 0,
+    "update_output": "{\"command\":\"update\",\"outcome\":\"ok\",\"plugin\":\"w14-probe@w14probe\",\"pluginId\":\"w14-probe@w14probe\",\"scope\":\"user\",\"message\":\"Plugin \\\"w14-probe\\\" updated from 1.0.0 to 1.1.0 for scope user. Restart to apply changes.\",\"updateOutcome\":\"updated\",\"oldVersion\":\"1.0.0\",\"newVersion\":\"1.1.0\"}\n"
+  },
+  "codex": {
+    "after_restart": {
+      "manager_skill_paths": [
+        "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.1.0/skills/probe-skill/SKILL.md"
+      ],
+      "mcp_cwd": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.1.0",
+      "mcp_cwd_under_v2_cache": true,
+      "resolved_mcp_config": [
+        {
+          "auth_status": "unsupported",
+          "disabled_reason": null,
+          "enabled": true,
+          "name": "probe",
+          "startup_timeout_sec": null,
+          "tool_timeout_sec": null,
+          "transport": {
+            "args": [
+              "./recorder_mcp.mjs",
+              "--record",
+              "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/record.jsonl"
+            ],
+            "command": "node",
+            "cwd": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.1.0/.",
+            "env": null,
+            "env_vars": [
+              "PWD"
+            ],
+            "type": "stdio"
+          }
+        }
+      ]
+    },
+    "after_update": {
+      "cache_versions_present": [
+        "1.1.0"
+      ],
+      "v1_cache_dir_still_present": false,
+      "v1_skill_file_still_readable": false,
+      "v1_skill_sha256_after_update": null,
+      "v1_skill_sha256_before_update": "48425e6a3fb71be3e575d19c1f2fd608b11ef2240da93f67bf51adcfe9b77777"
+    },
+    "cache_dir_after_remove_exists": false,
+    "cache_path_is_version_keyed": true,
+    "host": "codex",
+    "installed_path_v1": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.0.0",
+    "installed_path_v2": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.1.0",
+    "outside_runtime": {
+      "path": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/outside-runtime/0.2.0-deadbeefcafe",
+      "sha256_after": "2f4d00df905de3bda7f92a0dfd46fc49dca083da84981ff076350a983779296f",
+      "sha256_before": "2f4d00df905de3bda7f92a0dfd46fc49dca083da84981ff076350a983779296f",
+      "survived_update_and_remove": true
+    },
+    "plugin_remove_exit_code": 0,
+    "session_v1": {
+      "manager_skill_paths": [
+        "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.0.0/skills/probe-skill/SKILL.md"
+      ],
+      "mcp_cwd": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768/codex-home/plugins/cache/w14probe/w14-probe/1.0.0",
+      "mcp_cwd_under_v1_cache": true,
+      "model_request_skipped": true
+    }
+  },
+  "conclusion": "The plugin cache is not a safe home for a pinned runtime: Codex keys the cache by version and the documented update flow removes the previous version's directory, so a feature that recorded an absolute path inside it cannot resume after an update. A runtime and instruction set stored outside the plugin cache is untouched.",
+  "findings": {
+    "claude_previous_version_retained": true,
+    "codex_cache_is_version_keyed": true,
+    "codex_restart_moves_runtime_and_instructions_together": true,
+    "codex_runtime_outside_the_cache_survives": true,
+    "codex_update_deletes_the_previous_version": true
+  },
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.273 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.154.0"
+    }
+  },
+  "probe": "plugin-cache-update-restart",
+  "question": "Does refreshing the plugin cache preserve the runtime and instruction set a running feature is pinned to, across a client restart?",
+  "run_root": "<home>/tmp/w14-01-probes/plugin-cache-update-20260916-094313-538768"
+}
