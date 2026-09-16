@@ -88,3 +88,14 @@ Następna runda: wąskie testy C2/I6, brak semantycznych zmian runtime, W15-04 r
 z pokryciem AC i proponowanym pinem. Pełne npm test uruchomione niezależnie przez
 koordynatora; wynik jeszcze oczekiwany. Python46 i pilot140 PASS na niezmienionych
 obszarach. Smoke pozostaje niezlecony, zachowanie modeli unverified.
+
+## W15-I7 — pełna walidacja: stary kontrakt identycznych skilli
+
+Pełne npm test uruchomione przez koordynatora na kodzie 38dd547 (kolejne zmiany do
+02ced39 dotyczą dokumentacji/pomocy, bez zmiany badanych zachowań): 560 PASS, 1 FAIL,
+37 plików, 283.16s. native-launcher.test.ts:405 wymaga byte-identical SKILL.md obu ról.
+Wave15 wprost rozdziela role; nie kopiować manager workflow do wykonawcy tylko po to,
+aby test przeszedł. Dostosować regresję do nowego kontraktu: wspólne zasoby pozostają
+spójne, entry skille są poprawne dla swoich ról, Claude executor nie przejmuje managera.
+Zachować meaningful assertions, nie usuwać kontroli całego pakietu.
+To konieczna korekta walidacji w istniejącym zakresie, nie nowa decyzja produktowa.

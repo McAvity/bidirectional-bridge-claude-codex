@@ -78,3 +78,7 @@ testów i W15-04 raport w tej samej sesji, potem końcowe review.
 Wykonawca: build, 9 continuation + 12 entry + 2 legacy, packages/links PASS.
 Koordynator uruchomił pełne npm test (wynik oczekiwany); wcześniejsze Python46/pilot140
 pozostają ważne dla niezmienionych obszarów. Bez smoke/push/merge/deployment.
+
+Pełne JS zakończone: 560 PASS, 1 FAIL (native-launcher: stare oczekiwanie identycznych
+skilli obu ról). Finding I7: dostosować test do jawnego podziału manager/executor,
+zachowując kontrolę wspólnych zasobów. Włączone do następnej rundy korekt/W15-04.
