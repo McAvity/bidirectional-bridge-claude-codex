@@ -16,7 +16,7 @@
   ],
   "latest_review": "docs/features/F-W14-plugin-distribution/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/02.md",
-  "next_action": "Same Claude session: finish R2-07 recovery before local journal and after record, fix R2-09 default rollback via wave12 history. Final isolated validation and independent review; wave13 deferred.",
+  "next_action": "One focused R2-07 correction: own native reservation must recover across mkdir/pre-journal boundary without waiving conflicting-state guards. Refresh pin, final validation/review/handoff. Wave13 deferred.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"

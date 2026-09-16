@@ -81,3 +81,14 @@ Dodatkowa próba TUI bez modeli: zwykły Codex pokazuje 35 narzędzi MCP i skill
 bez tworzenia stanu. Claude odnotował omyłkowy test w realnym katalogu runtime i usunięcie
 wyłącznie własnego nowego runtime; nadzorca niezmieniony. Dalsze próby tylko w jawnym /tmp.
 Następny krok: wąska korekta istniejącego recovery i wyboru rollbacku, finalne testy/review.
+
+## 2026-09-16 — runda5, rollback i trzy granice odzyskiwania PASS
+
+Task `task_vywn202z73` DONE; head `cadecb6`, runtime `ba4025b`.
+Zweryfikowana paczka F-W14-round-5.zip: `6174a633f8a73c3efe0157236178d77d7b82ff2ebbe8fee1c511142d78906bb4`.
+Claude:482 JS,43 Python,140 pilot (1 skipped), build/packages PASS. Codex niezależnie:
+rollback bez --to, jedna własność przy konkurencji, wznowienie przed mkdir/po wyborze/po
+rekordzie PASS. Ścieżka fetch z niezależnego lokalnego Git pobiera dokładny pin PASS.
+Pozostał jeden wariant R2-07: przerwanie po mkdir, jeszcze przed journalem. Ta sama własna
+rezerwacja native jest błędnie ignorowana przez warunek istnienia katalogu. Wąska poprawka
+ma ujednolicić tę regułę, zachowując odmowy obcego/niewyjaśnionego stanu; potem finalny handoff.
