@@ -2,7 +2,7 @@
 
 ## Current integration — wave12, 2026-09-16
 
-Accepted wave12 delivery `860e2e7` is integrated for publication on feature-workflow.
+Accepted wave12 delivery `860e2e7` is integrated and published on feature-workflow; CI 35053428452 passed.
 A separate immutable runtime pinned to `860e2e77d95fb5e1d7c5f25ddc0909cfead13c6f`
 is installed locally. No active runtime has been rebuilt or switched.
 Main-checkout activation is deferred until its current Codex/bridge session exits.

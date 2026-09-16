@@ -191,3 +191,14 @@ Dowody i wpis zaufania smoke zachowane; inne worktree i runtime nietknięte.
 Walidacja integracji: build, 434 JS, 29 exchange i 140 pilot PASS. Poprawiono dwa
 odsyłacze do nagłówka smoke; bez zmiany kodu produktu. Kontrola dokumentacji
 i diff są częścią tego checkpointu. Pozostają publikacja/CI i lokalny init po quit.
+
+
+## Publikacja — 2026-09-16
+
+Integracja opublikowana: `073975d7dabb660a1e08e65cb58394cfdecc832c`.
+[CI 35053428452](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/35053428452)
+SUCCESS. Kod wave12 przyjęty, zintegrowany i opublikowany.
+Plan init głównego checkoutu: brak konfliktów, jedyna odmowa ACTIVE_SESSION
+od istniejącego procesu bridge. Lokalna aktywacja pozostaje do wykonania po quit;
+komendy zapisane w HANDOFF. Nie obchodzono odmowy i nie kończono cudzych procesów.
+Przypięty runtime 0.2.0-860e2e77d95f gotowy. Dowody smoke zachowane.
