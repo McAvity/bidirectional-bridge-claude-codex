@@ -34,3 +34,12 @@ or database modifications were needed for this correction.
 npm ci --ignore-scripts, build, all JavaScript tests, 46 exchange/Python tests,
 140 pilot tests, generated packages and documentation links pass.
 No model calls were made. Runtime activation remains a post-shutdown step.
+
+## Publication CI follow-up
+
+CI35130019847 on migrated project e721aa4 found one stale repository-configuration
+assertion (537/538 tests passed): native-launcher.test.ts still expected legacy
+Codex init output. The isolated doctor correction had passed before the repository
+migration was combined with it. Update that assertion and explicit argv to the
+dispatcher profile. Claude's unchanged configuration remains checked as before.
+This is a test alignment with the committed migration, not wave15 implementation.

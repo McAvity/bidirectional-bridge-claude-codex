@@ -333,9 +333,9 @@ describe("native project MCP launcher", () => {
   it("uses portable project configurations that select the worktree's pinned runtime", async () => {
     const setup = await import("../../../scripts/setup/workspace.mjs");
     const codexText = readFileSync(join(repoRoot, ".codex", "config.toml"), "utf8");
-    // The repository's own Codex configuration is exactly the block `scripts/bridge.mjs init` writes,
-    // so a bridge worktree never starts the build it is editing.
-    expect(codexText).toBe(setup.renderCodexBlock(null));
+    // This repository now uses the inherited dispatcher profile, not legacy init.
+    // Both profiles must keep the selected runtime separate from the edited build.
+    expect(codexText).toBe(setup.renderCodexBlock(null, "dispatcher"));
     const claudePath = join(repoRoot, ".mcp.json");
     expect(existsSync(claudePath), ".mcp.json must be produced by the delegated Claude task").toBe(true);
     const claudeText = readFileSync(claudePath, "utf8");
@@ -352,13 +352,11 @@ describe("native project MCP launcher", () => {
     expect(claudeEntry?.command).toBe("node");
     expect(claudeEntry?.args?.[0]).toBe("${CLAUDE_PROJECT_DIR:-.}/.bridge-runtime/current/scripts/native-bridge-mcp.mjs");
     expect(codexArgs).toEqual([
-      ".bridge-runtime/current/scripts/native-bridge-mcp.mjs",
+      "./.bridge-project/entry.mjs",
       "--caller",
       "codex",
       "--delegation",
       "allow",
-      "--workspace",
-      ".",
     ]);
     expect(claudeEntry?.args).toEqual(
       expect.arrayContaining(["--caller", "claude", "--delegation", "allow"]),
