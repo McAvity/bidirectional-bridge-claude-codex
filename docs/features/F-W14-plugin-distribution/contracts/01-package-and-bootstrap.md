@@ -1,13 +1,17 @@
 # Contract: plugin packages, marketplace and worktree setup (W14-01…W14-03)
 
-Status: **revision 4 — implemented**. Revision 1 was proposed design; revision 2 described what
+Status: **revision 5 — implemented**. Revision 1 was proposed design; revision 2 described what
 W14-02 built, and `reviews/02-implementation.md` returned REWORK with W14-R2-01…05. This revision
 records the architecture those findings forced, which is *smaller* than revision 2's: the parallel
 setup implementation is gone and the wave12 machinery does the work.
 
-Revision 4 corrects three things revision 3 got wrong or left undone: the release pin named a
-commit that does not exist, an inherited worktree still required a manual `setup`, and the exchange
-verifier reported an installation-supplied document as missing.
+Revision 4 corrected three things revision 3 got wrong: a release pin naming a commit that does not
+exist, an inherited worktree still requiring a manual `setup`, and the exchange verifier reporting
+an installation-supplied document as missing.
+
+Revision 5 resolves the **boundary between the native guard and the wave12 selection journal**,
+which is where W14-R2-06…08 landed. No new framework, lock protocol or facade: three narrow
+changes, described in §3b.
 
 Evidence: [`evidence/W14-03/`](../evidence/W14-03/README.md). The superseded W14-02 matrix is
 corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host facts also come from
@@ -25,6 +29,9 @@ corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host f
 | W14-R2-04 | The dispatcher spawned the runtime as a child, which survived SIGTERM to the dispatcher | There is no child. The entry point imports the launcher in its own process (§6) |
 | W14-R2-05 | The matrix claimed AC-02/03/05/06/07 from recorder fixtures, and a test mutated the canonical skill tree | Every claim is re-derived against a real installed runtime; generator drift is proven on a temporary git worktree, so no repository file is mutated by a test |
 | W14-R1-01…04 | see revision 2 | Carried forward and now actually enforced by the wave12 guards rather than by a parallel implementation |
+| W14-R2-06 | two first uses of the *same* worktree both refused `ACTIVE_SESSION` naming the other's open database; neither ever took the selection | `insideGuardedMutation` removes the process scan's veto for a caller already inside the guard's critical section (§3b) |
+| W14-R2-07 | an interrupted automatic preparation refused `SETUP_STATE_PARTIAL` forever and needed a manual `setup` | the journal records its worktree and runtime; a provably own interrupted apply serves and resumes at the next authorised mutation (§3b) |
+| W14-R2-08 | `setup` without `--yes` installed the runtime while reporting `applied=false` | acquisition and build happen only under `--yes`; the plan is honest about what it cannot compute yet (§3b) |
 
 ## 1. Host constraints this design obeys
 
@@ -102,6 +109,30 @@ Consequences:
 - the delegated executor is given `--plugin-dir <runtime>/plugins/bridge-claude` by the runtime
   itself (**C2**), so it reads the pinned set with no user installation, and **C3** cannot take it
   away mid-round.
+
+## 3b. The guard and the selection journal (W14-R2-06…08)
+
+**The native identity guard is the authoritative critical section.** Two entry processes in one
+pristine worktree both complete the handshake, so both hold that worktree's database open. The
+setup plan's process scan then saw the *other* bridge process as `state-open` and refused both with
+`ACTIVE_SESSION`, so neither could ever take the selection. `planChange` gains one option,
+`insideGuardedMutation`, used only by the materialiser: it drops the `bridge-mcp`/`state-open` veto
+for a caller that is already inside the guard's critical section, because exactly one caller is
+there and a second is refused as a foreign manager. Every other refusal is untouched, and ordinary
+`init`, `update` and `rollback` from the CLI keep the full scan — including the `ACTIVE_SESSION`
+refusal while a server is serving.
+
+**An interrupted automatic preparation resumes itself.** The journal now records the worktree and
+the runtime it belongs to, so a resume can prove ownership. The launch gate serves a worktree whose
+partial state is *provably its own* interrupted apply and completes it at the next authorised
+mutation through the existing resumable journal. A journal naming another worktree, an unreadable
+one, one for a different runtime, or one written before the journal recorded its workspace stays
+`SETUP_STATE_PARTIAL` with nothing written. No manual setup, no extra restart, no adoption.
+
+**A plan writes nothing.** Acquiring a source and building a runtime are writes under the bridge
+home; they now happen only under `--yes`. Without it, a worktree whose pinned runtime is not
+installed gets an honest plan naming the commit that would be installed and no invented file diff;
+when the runtime *is* installed the full reviewable per-file plan is produced as before.
 
 ## 3a. An inherited worktree serves as it is (AC-03)
 

@@ -69,7 +69,9 @@ node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" status --json   # pure
 node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" setup --yes     # the only write
 ```
 
-`setup` is needed once per *project*, not once per worktree. It installs the pinned runtime if this
+Without `--yes` this is a plan and writes nothing at all — not in the project and not under the
+bridge home, so a plan never installs a runtime. `setup` is needed once per *project*, not once per
+worktree. It installs the pinned runtime if this
 machine lacks it — the pin comes from the package's own `release.json`, so no commit or runtime id
 is typed — then writes:
 
@@ -101,6 +103,12 @@ block through Git, and the entry point serves there straight away — `status` c
 native guard authorises to mutate creates that worktree's own selection, record and database. Local
 state is never inherited, a copied `.bridge-runtime/` is refused rather than adopted, and half-
 removed local state is refused too instead of being silently re-created.
+
+Two clients opening the same worktree at once are fine: the bridge's own identity guard admits one
+of them and refuses the other as a foreign manager, and the loser writes nothing. If a first use is
+interrupted part-way, the next client serves reads as usual and the next authorised call finishes
+what that worktree started — there is nothing to run by hand. A half-finished setup that is *not*
+this worktree's own, for example a `.bridge-runtime/` copied from elsewhere, is refused instead.
 
 Codex's own per-path trust prompt still applies to the new path.
 

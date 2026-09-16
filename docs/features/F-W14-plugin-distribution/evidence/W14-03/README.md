@@ -6,7 +6,61 @@ lives under a temporary root; the operator's own configuration is never read for
 written. **No test mutates a file of this repository** — generator drift is proven on a throwaway
 git worktree.
 
-## Corrected again after the bridge review of this round
+## Round 4 — the guard/journal boundary (W14-R2-06…08)
+
+The reviewer reproduced three defects on the shipped runtime `6b483b2e…`. All three are reproduced
+here and fixed; the evidence below is from real runtimes, model-free.
+
+### W14-R2-06 — two first uses of the same worktree
+
+**Reproduced** with the reviewer's own script at `6b483b2e…`: both processes returned
+`INTERNAL/ACTIVE_SESSION` naming the other's `state-open` descriptor, `record_exists: false`.
+
+**Fixed.** The same script against the corrected runtime `2423307…`:
+
+```
+outcomes: ["OWNER", "MANAGER_FOREIGN_THREAD"]
+record_exists: true   pending_exists: false
+record_root: <this worktree>
+reads_after: [true, true]
+```
+
+Exactly one owner; the loser is refused by the native guard itself and writes nothing; neither
+process is wedged. Regression: `two first uses of the SAME worktree (W14-R2-06)`. The ordinary CLI
+`ACTIVE_SESSION` refusal while a server is serving is re-asserted in the same block.
+
+### W14-R2-07 — interrupted automatic preparation
+
+**Reproduced:** with `CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER=1` the first authorised mutation exits
+`-9` leaving `pending.json` and the state directory; the restart refused `SETUP_STATE_PARTIAL`.
+
+**Fixed.** Against the corrected runtime:
+
+```
+interrupted_exit: -9        after_crash: record=false pending=true state_dir=true
+restart_read:  served=true  tree_unchanged=true          (no setup, no writes)
+recovered:     isError=null record=true  pending=false   record_root=<this worktree>
+```
+
+Regression: `an interrupted automatic first use (W14-R2-07)`, plus three refusal cases — a journal
+copied from another worktree, an unreadable one, one naming another runtime, and one with no
+workspace recorded — each leaving the file byte-identical and serving nothing.
+
+### W14-R2-08 — the plan installed a runtime
+
+**Reproduced:** `setup` without `--yes` returned `applied=false, runtime_installed_now=true`. Worse
+than reported: with no `CLAUDE_CODEX_BRIDGE_HOME` set it installed
+`0.2.0-6b483b2e1a23` into the operator's **real** `~/.local/share/claude-codex-bridge/runtimes/`.
+That runtime was removed immediately after the reproduction, by hash-confirming it was the one the
+dry run created; the supervisor runtime `0.2.0-860e2e77d95f` beside it was not touched and no
+`sources/` cache was created.
+
+**Fixed.** The same command now reports `applied=false`, `runtime_installed_now=false` and
+`would_install_runtime.commit`, and creates neither the bridge home nor anything in the project.
+Regression: `the setup plan is read-only (W14-R2-08)`, which also asserts the reviewable per-file
+plan is still produced when the runtime *is* installed.
+
+## Corrected in the previous attempt of this round
 
 Three concrete defects were found in the first W14-03 attempt and are fixed here:
 
@@ -31,7 +85,7 @@ declaration and a 54-line entry point, and a launch gate refuses before anything
 | --- | --- |
 | `npm ci --ignore-scripts` | exit 0 |
 | `npm run build` | exit 0 |
-| `npm test` | 33 files, 468 tests, exit 0 (34 of them the distribution suite) |
+| `npm test` | 33 files, 475 tests, exit 0 (41 of them the distribution suite) |
 | `npm run packages:check` | exit 0 |
 | `python3 -m unittest discover -s tests -v` | 43 tests, OK |
 | `python3 -m unittest discover -s tools/pilot/tests -v` | 140 tests, OK (1 skipped) |
@@ -172,7 +226,7 @@ worktree had a space in its path.
 | AC-03 a new external worktree works with no manual init, with its own state | The inherited worktree runs **no bridge command at all**: it serves reads with a byte-identical tree and creates its own record, selection and database on the first authorised mutation, bound to its own database path. Partial and copied state are refused. See the AC-03 table above | **met**, with the host trust decision for the new path stated explicitly |
 | AC-04 Astra delegates with the right instructions and no executor setup in the project | `ClaudeHost.test_a_delegated_executor_loads_the_package_with_no_install` (empty profile, no project `.claude/`, ≥6 workflow skills, zero tokens) plus the runner passing `--plugin-dir <runtime>/plugins/bridge-claude` | **met at the mechanism level.** No real delegation ran |
 | AC-05 a plugin update does not change a running feature's version | The pin is the committed declaration and the runtime lives outside any plugin cache; deleting a whole plugin cache leaves the instruction set byte-identical; a pin that differs from the applied selection is refused at launch, not switched; and `update` is refused with `ACTIVE_SESSION` while the worktree is served, moving neither the declaration nor the selection | **met for the pin, the instruction set, the launch and the in-use refusal.** "A feature mid-round survives" was not exercised with a live delegated round |
-| AC-06 handshake/read/foreign refusal mutate nothing; concurrent preparation is safe | `status` compares full directory listings; a real MCP handshake and `tools/list` create no database; two racing `setup` processes leave one consistent result and no `pending.json`; a real interrupted apply is completed by the next run | **met** |
+| AC-06 handshake/read/foreign refusal mutate nothing; concurrent preparation is safe | `status` compares full directory listings; a real MCP handshake and `tools/list` create no database; **two first uses of the same worktree** yield one owner and one `MANAGER_FOREIGN_THREAD` with no writes from the loser; an interrupted automatic preparation resumes at the next authorised mutation after a pure read; copied, unreadable, runtime-mismatched and workspace-less journals are refused unchanged; two racing `setup` CLI processes leave one consistent result | **met** |
 | AC-07 migration preserves data and custom settings, no double MCP, CLI fallback | Migration keeps the user's `config.toml` neighbours, `.gitignore` entries and their own `.agents/skills/` file, and leaves exactly one `[mcp_servers.bridge]`; the plugin declares no MCP server of its own; wave12 `init`/`update`/`rollback` are unchanged and still pass their suite | **met** |
 | AC-08 doctor recognises installation and versions | `doctor --json` emits `distribution` with `integration_source`, package/runtime/instruction identities, configured-vs-observed executor identity and tri-state `pin.diverged`, with no path disclosed | **doctor part met.** `diagnose` is wave13's and is deferred by `decisions/02.md`: **not** claimed |
 | AC-09 documentation covers install, new project/worktree, update, migration, rollback, removal | `docs/plugin-distribution.md`, plus the wave14 sections of `docs/setup.md` and `docs/setup-layout.md` | **met** |
@@ -192,3 +246,9 @@ worktree had a space in its path.
   whose first call is one of those stays pristine.
 - **The release pin is reachable only locally** until this branch is published, so the fetch path
   stays unexercised while `--source` and the cache are proven.
+- **Recovery is proven at one write boundary** (`CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER=1`, the first
+  write of the apply). Later boundaries are covered by the same journal but were not each injected
+  individually.
+- **`insideGuardedMutation` is used by exactly one caller**, the materialiser. It removes only the
+  process-scan veto; if a future caller passed it from outside the guard, the ordinary
+  active-session protection would not apply to that caller.
