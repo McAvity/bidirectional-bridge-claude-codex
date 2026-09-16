@@ -76,7 +76,7 @@ export interface BridgeServerOptions {
    * Used by the project entry point for a worktree inherited from an enabled project, which has
    * the committed declaration but no local selection of its own. See `ToolContext`.
    */
-  readonly beforeFirstMutation?: () => void | Promise<void>;
+  readonly beforeFirstMutation?: () => void;
 }
 
 export class BridgeMcpServer {

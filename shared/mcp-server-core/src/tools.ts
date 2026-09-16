@@ -112,10 +112,11 @@ export interface ToolContext {
    * materialises that worktree's own selection through the ordinary setup plan. Reads, the
    * handshake and a foreign refusal therefore still write nothing.
    *
-   * It runs before the identity guard's mutation, so a failure here refuses the call and leaves
-   * the worktree exactly as it was.
+   * It runs *inside* the guarded mutation, after the identity guard has authorised the caller, so
+   * an unauthenticated or foreign call never reaches it. A throw here fails that call and leaves
+   * the worktree exactly as it was. It must be synchronous: the guard's transaction is.
    */
-  readonly beforeFirstMutation?: () => void | Promise<void>;
+  readonly beforeFirstMutation?: () => void;
 }
 
 export type DelegationPolicy = "allow" | "deny";
@@ -212,37 +213,42 @@ async function executeTool(
     identity.requireReadableState();
     return tool.handler(args, ctx);
   }
-  // Everything below mutates. Materialise a pristine inherited worktree's own local state first,
-  // once, before any ownership is taken.
-  await runFirstMutationHook(ctx);
   if (tool.name === "bridge_manager_resume_instance" || tool.name === "bridge_manager_takeover") {
-    // These tools drive the guard themselves; the class is carried for documentation.
+    // These tools drive the guard themselves; the class is carried for documentation. They manage
+    // identity rather than domain state, and deliberately do not trigger materialisation.
     return tool.handler(args, ctx);
   }
   if (ASYNC_MUTATORS.has(tool.name)) {
     return identity.runMutationAsync(nativeMeta, tool.name, async (authorize, onReserved) =>
-      tool.handler(args, { ...ctx, authorize, onReserved }),
+      tool.handler(args, {
+        ...ctx,
+        // Materialise the moment the guard authorises, never before it.
+        authorize: () => {
+          authorize();
+          runFirstMutationHook(ctx);
+        },
+        onReserved,
+      }),
     );
   }
   return identity.runMutation(
     nativeMeta,
     "mutate",
-    (managerSession, managerRegistry) => tool.handler(args, { ...ctx, managerSession, managerRegistry }),
+    (managerSession, managerRegistry) => {
+      runFirstMutationHook(ctx);
+      return tool.handler(args, { ...ctx, managerSession, managerRegistry });
+    },
     tool.name,
   );
 }
 
-/** `beforeFirstMutation` runs at most once per process, even under concurrent first calls. */
-const FIRST_MUTATION = new WeakMap<ToolContext, Promise<void>>();
+/** `beforeFirstMutation` runs at most once per process, and only from inside a guarded mutation. */
+const FIRST_MUTATION_DONE = new WeakSet<ToolContext>();
 
-async function runFirstMutationHook(ctx: ToolContext): Promise<void> {
-  if (!ctx.beforeFirstMutation) return;
-  let pending = FIRST_MUTATION.get(ctx);
-  if (!pending) {
-    pending = Promise.resolve().then(() => ctx.beforeFirstMutation?.());
-    FIRST_MUTATION.set(ctx, pending);
-  }
-  await pending;
+function runFirstMutationHook(ctx: ToolContext): void {
+  if (!ctx.beforeFirstMutation || FIRST_MUTATION_DONE.has(ctx)) return;
+  ctx.beforeFirstMutation();
+  FIRST_MUTATION_DONE.add(ctx);
 }
 
 export const TOOLS: readonly ToolDefinition[] = [
