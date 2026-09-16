@@ -69,7 +69,9 @@ node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" status --json   # pure
 node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" setup --yes     # the only write
 ```
 
-`setup` installs the pinned runtime if this machine lacks it, then writes:
+`setup` is needed once per *project*, not once per worktree. It installs the pinned runtime if this
+machine lacks it — the pin comes from the package's own `release.json`, so no commit or runtime id
+is typed — then writes:
 
 - `.bridge-project/bridge.json` — the portable declaration: enabled, and the pinned runtime id and
   commit;
@@ -93,10 +95,12 @@ worktree root.
 
 ## A new worktree
 
-A worktree created from an enabled project inherits `.bridge-project/` and the managed block
-through Git. One `setup` there writes only its own `.bridge-runtime/current`: no reinstall, no
-configuration rewrite, no instruction copy. Local state is never inherited and a copied
-`.bridge-runtime/` is refused, never adopted.
+Nothing. A worktree created from an enabled project inherits `.bridge-project/` and the managed
+block through Git, and the entry point serves there straight away — `status` calls it
+`inherited-pristine`. A handshake and every read leave it byte-identical; the first call that the
+native guard authorises to mutate creates that worktree's own selection, record and database. Local
+state is never inherited, a copied `.bridge-runtime/` is refused rather than adopted, and half-
+removed local state is refused too instead of being silently re-created.
 
 Codex's own per-path trust prompt still applies to the new path.
 

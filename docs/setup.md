@@ -87,8 +87,9 @@ worktrees: a copied state or setup record is refused, not adopted.
 
 A project prepared the wave14 way needs no `init` here and no runtime install: it commits a
 portable declaration and an entry point that resolve the worktree and the pinned runtime when the
-client starts. Its local state still starts empty and is still never inherited, so one `setup`
-from the bridge skill writes that worktree's own `.bridge-runtime/current` and nothing else. Two steps remain the host's own and are
+client starts. Its local state still starts empty and is still never inherited: the worktree
+serves reads as it is, and its own selection and record are written by its first authorised
+mutation, through the same plan `init` uses. Two steps remain the host's own and are
 not bypassed: Codex reads a project `.codex/config.toml` only for a project you have trusted, and
 it loads no project configuration at all when started in a subdirectory — start it at the
 worktree root. Enabling a project for the *first* time also costs one client restart, because a

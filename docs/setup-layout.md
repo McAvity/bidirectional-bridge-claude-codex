@@ -37,7 +37,8 @@ Manifest fields:
 Two shapes exist. **Wave12** selects the runtime with a per-worktree `.bridge-runtime/current`
 symlink, which a new worktree does not inherit. **Wave14** commits a portable declaration and a
 minimal entry point instead, so a worktree created from an enabled project resolves its runtime by
-itself and needs only its own local selection;
+itself, serves reads immediately and creates its own local selection on its first authorised
+mutation;
 see [plugin-distribution.md](plugin-distribution.md). Both are supported; wave12 remains the
 fallback for environments without plugins.
 
@@ -49,7 +50,7 @@ fallback for environments without plugins.
 | `.agents/skills/feature-*`, `.codex/skills/using-bridge/`, `.claude/skills/using-bridge/`, `docs/features/README.md` | may be committed | init, update, rollback | Instruction set of the selected runtime |
 | `.gitignore`, managed block | may be committed | init | Ignores `.bridge/` and `.bridge-runtime/` |
 | `.bridge-runtime/current` | never | init, update, rollback | Symlink to `<home>/runtimes/<id>` — the runtime selection |
-| `.bridge-runtime/install.json` | never | init, update, rollback | Selection record, format `claude-codex-bridge.workspace-install/v1` |
+| `.bridge-runtime/install.json` | never | init, update, rollback, first authorised mutation | Selection record, format `claude-codex-bridge.workspace-install/v1` |
 | `.bridge-runtime/pending.json`, `.bridge-runtime/backup/` | never | init, update, rollback | Journal and backups of an apply in progress; present only after an interruption |
 | `.bridge/` | never | bridge runtime | Database, markers, lock and termination `evidence/` ([manager-identity](manager-identity.md), [recovery](recovery.md)) |
 | `.bridge/logs/` | never | reserved for wave13 | Local runtime logs; already an explained entry of the state directory |

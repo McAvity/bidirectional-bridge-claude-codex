@@ -1,9 +1,13 @@
 # Contract: plugin packages, marketplace and worktree setup (W14-01…W14-03)
 
-Status: **revision 3 — implemented**. Revision 1 was proposed design; revision 2 described what
+Status: **revision 4 — implemented**. Revision 1 was proposed design; revision 2 described what
 W14-02 built, and `reviews/02-implementation.md` returned REWORK with W14-R2-01…05. This revision
 records the architecture those findings forced, which is *smaller* than revision 2's: the parallel
 setup implementation is gone and the wave12 machinery does the work.
+
+Revision 4 corrects three things revision 3 got wrong or left undone: the release pin named a
+commit that does not exist, an inherited worktree still required a manual `setup`, and the exchange
+verifier reported an installation-supplied document as missing.
 
 Evidence: [`evidence/W14-03/`](../evidence/W14-03/README.md). The superseded W14-02 matrix is
 corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host facts also come from
@@ -13,9 +17,9 @@ corrected in place at [`evidence/W14-02/`](../evidence/W14-02/README.md). Host f
 
 ## 0. Disposition of the review findings
 
-| Finding | Revision 2 did | Revision 3 does |
+| Finding | Revision 2 did | Revisions 3–4 do |
 | --- | --- | --- |
-| W14-R2-01 | `prepare` wrote a declaration only; a clean project returned `NO_PIN`, the skill told the user to clone a bridge and install a runtime by hand, and no local selection was ever written | The Codex package carries the installer and a pinned release descriptor. `setup` acquires the pinned commit (hash-verified), installs it as an immutable runtime and writes this worktree's own `install.json` and `current`. No clone, no runtime id, no manual step (§2, §4) |
+| W14-R2-01 | `prepare` wrote a declaration only; a clean project returned `NO_PIN`, the skill told the user to clone a bridge and install a runtime by hand, and no local selection was ever written | The Codex package carries the installer and a pinned release descriptor naming a commit this repository actually has. `setup` with no `--commit` acquires that pin (hash-verified), installs it as an immutable runtime and writes this worktree's own `install.json` and `current`. No clone, no runtime id, no manual step (§2, §4) |
 | W14-R2-02 | The generator rewrote a Python string literal, so the shipped exporter failed with `Missing selected file: ${CLAUDE_PLUGIN_ROOT}/workflow/README.md` | Code is never rewritten; the helper resolves the shared guide from the target repository and otherwise from its own installation. Export **and** verify are proven in a foreign repository from both installed paths (§3) |
 | W14-R2-03 | A parallel `bootstrap.mjs` checked only the copied record path; a diverged pin and a foreign record still launched; an existing custom `mcp_servers.bridge` was preserved *and* a second table appended | The parallel implementation is deleted. Writes go through wave12 `planChange`/`applyPlan`; the launch gate validates the declaration, manifest, pinned commit, resolved identity, record and selection before the server is imported (§5, §6) |
 | W14-R2-04 | The dispatcher spawned the runtime as a child, which survived SIGTERM to the dispatcher | There is no child. The entry point imports the launcher in its own process (§6) |
@@ -67,7 +71,8 @@ what broke the exporter in revision 2.
 
 **Reproducible acquisition without npm publish.** `scripts/plugin-packages/release.json` is a
 *source* file — the generator copies it verbatim, so the pin does not move when the repository
-does. It names a full commit and a repository. `acquireSource()` resolves that commit from, in
+does. It names a full commit **that this repository actually contains** (a test runs
+`git cat-file -e` on it; revision 3 shipped a hash that was never a commit) and a repository. `acquireSource()` resolves that commit from, in
 order: an explicit `--source`, `CLAUDE_CODEX_BRIDGE_SOURCE`, a cache under `<home>/sources/`, then
 a `git fetch` of exactly that commit. Every path verifies the resolved hash before anything is
 built, so no unpinned `HEAD` is ever installed, and the first three need no network.
@@ -88,11 +93,41 @@ Consequences:
 - the exchange helper works from an installation. It selects the target repository's own
   `docs/features/README.md` when that repository has one and otherwise the copy shipped beside it,
   recorded in the manifest as `source: installed`. Archive naming and the safe path rules are
-  unchanged. Both the runtime helper and the generated Claude package helper are proven to export
-  **and** verify in a foreign repository;
+  unchanged. **Verification honours that provenance**: a document recorded as `installed` is
+  reported under `documents.supplied_by_installation` rather than as missing, while a document taken
+  from the target must still be present and still match — real drift and a real deletion are still
+  reported. Both the runtime helper and the generated Claude package helper are proven to export
+  **and** verify in a foreign repository, and the report semantics are asserted, not just the exit
+  code;
 - the delegated executor is given `--plugin-dir <runtime>/plugins/bridge-claude` by the runtime
   itself (**C2**), so it reads the pinned set with no user installation, and **C3** cannot take it
   away mid-round.
+
+## 3a. An inherited worktree serves as it is (AC-03)
+
+Revision 3 required a `setup` call in every worktree, because the launch gate refused a worktree
+with no local record. That is the manual per-worktree step AC-03 forbids, and it was the third time
+the same requirement came back, so the design stepped back instead of being patched again.
+
+A worktree inherited from an enabled project is **pristine** by construction: it has the committed
+declaration and entry point and none of its own local state, because local state is never
+inherited. The gate now lets such a worktree serve, and registers what its first mutating call must
+write. The server runs that **once, inside the guarded mutation, after the identity guard has
+authorised the caller** — the existing mutation boundary in `runTool`, not a new one. Therefore:
+
+- the handshake, `tools/list` and every class-R read leave the worktree byte-identical;
+- a call the native guard refuses (no or malformed native context, a foreign session) writes
+  nothing at all;
+- the first authorised mutation materialises the worktree's own `install.json`, `current` and
+  database through the ordinary wave12 `init` plan — same lock, journal, ownership hashes, symlink
+  and copied-record refusals, and active-use check. A refusal there fails that call and leaves the
+  worktree untouched;
+- **partial** local state is still refused: a `.bridge-runtime/` or `.bridge/` without a usable
+  record is `SETUP_STATE_PARTIAL`, and divergent, invalid, disabled and foreign cases are unchanged.
+
+Known limit: `bridge_manager_resume_instance` and `bridge_manager_takeover` drive the guard
+themselves and deliberately do not trigger materialisation. They manage identity rather than domain
+state; a pristine worktree whose very first call is one of those stays pristine.
 
 ## 4. Setting a project up
 
@@ -110,10 +145,10 @@ The dispatcher profile writes `.bridge-project/bridge.json` (the portable pin),
 worktree's own `.bridge-runtime/install.json` and `current`.
 
 A worktree created later from an enabled project inherits the declaration, the entry point and the
-managed block through Git. Its **local state is never inherited**: one `setup` there writes only
-`.bridge-runtime/current` — no reinstall, no configuration rewrite, no instruction copy. Enabling a
-project the first time additionally costs one host trust decision and one client restart (**C5**);
-that is stated in the skill and the documentation rather than engineered away.
+managed block through Git, and needs **no** bridge command of its own: see §3a. Its local state is
+still never inherited — it is created by that worktree's own first authorised mutation. Enabling a
+project the first time costs one host trust decision and one client restart (**C5**); that is stated
+in the skill and the documentation rather than engineered away.
 
 ## 5. Every write goes through the wave12 guards
 

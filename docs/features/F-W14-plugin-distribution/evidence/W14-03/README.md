@@ -6,6 +6,19 @@ lives under a temporary root; the operator's own configuration is never read for
 written. **No test mutates a file of this repository** — generator drift is proven on a throwaway
 git worktree.
 
+## Corrected again after the bridge review of this round
+
+Three concrete defects were found in the first W14-03 attempt and are fixed here:
+
+1. **The release pin named a commit that does not exist.** `git cat-file -e` rejected it. The pin
+   is now a real commit of this repository that carries the corrected runtime, and a test runs
+   `git cat-file -e` on whatever the package ships.
+2. **AC-03 was still not met.** The launch gate refused a worktree with no local record, so every
+   inherited worktree needed a manual `setup` — and the tests hid it by calling `setup` themselves.
+   Fixed by the step back described below.
+3. **`verify` reported an installation-supplied document as missing**, because it resolved every
+   manifest entry against the target repository regardless of provenance.
+
 ## The correction in one line
 
 The parallel setup implementation is gone. `setup` installs a pinned runtime through the wave12
@@ -18,9 +31,9 @@ declaration and a 54-line entry point, and a launch gate refuses before anything
 | --- | --- |
 | `npm ci --ignore-scripts` | exit 0 |
 | `npm run build` | exit 0 |
-| `npm test` | 33 files, 462 tests, exit 0 (28 of them the distribution suite) |
+| `npm test` | 33 files, 468 tests, exit 0 (34 of them the distribution suite) |
 | `npm run packages:check` | exit 0 |
-| `python3 -m unittest discover -s tests -v` | 42 tests, OK |
+| `python3 -m unittest discover -s tests -v` | 43 tests, OK |
 | `python3 -m unittest discover -s tools/pilot/tests -v` | 140 tests, OK (1 skipped) |
 | `git diff --check` | clean |
 | relative-link scan over `docs/**/*.md` and `*.md` | no broken links |
@@ -101,6 +114,41 @@ runtime's existing close behaviour is unchanged.
 Proven by: `closing the client` — `pgrep -P <entry pid>` is empty while serving, SIGTERM closes the
 process, and no process matching the entry point remains.
 
+### AC-03 — the step back
+
+Requiring `setup` in each worktree was the third appearance of the same requirement, so the design
+stepped back instead of being patched a third time.
+
+A worktree inherited from an enabled project is pristine by construction: committed declaration and
+entry point, none of its own local state. The gate now serves it, and registers what its first
+mutating call must write. The server runs that **once, inside the guarded mutation, after the
+identity guard authorises the caller** — the existing boundary in `runTool`, not a new one. There is
+no second setup facade, no hand-written project code and no per-worktree command or restart.
+
+Proven end to end against a real runtime, in `an inherited worktree serves without any manual step`:
+
+| Case | Assertion |
+| --- | --- |
+| pristine | declaration and entry point inherited, `.bridge-runtime/` and `.bridge/` absent, status `inherited-pristine` |
+| handshake and reads | `serverInfo` answered, >10 tools listed, and a full directory listing is byte-identical before and after — **no setup call** |
+| first authorised mutation | `bridge_create_task` succeeds; the worktree's own `install.json` (naming itself), `current` (pointing at the pinned runtime) and `bridge.db` appear, in the same process |
+| unauthorised mutation | `NATIVE_CONTEXT_INVALID`, and the listing is unchanged: nothing is materialised for a caller the guard refuses |
+| partial state | a `.bridge-runtime/` with an unusable record is refused and left byte-identical, never repaired |
+| own database | `db=<this worktree>/.bridge/bridge.db`, never the checkout it came from |
+| two worktrees | both materialise concurrently, each recording its own root |
+
+The mutation uses a **synthetic native turn envelope** — the `_meta` shape the host sends. The guard
+validates every field of it, so nothing is faked and no model is involved.
+
+Known limit, stated rather than hidden: `bridge_manager_resume_instance` and
+`bridge_manager_takeover` drive the guard themselves and do not trigger materialisation.
+
+### Active update and rollback
+
+`update --to <older runtime>` while a bridge server is serving the worktree is refused with
+`ACTIVE_SESSION`, and neither the committed declaration nor the applied selection moves. Proven with
+this round's own test runtime and a live server, model-free.
+
 ### W14-R2-05 — evidence overstated coverage
 
 **Fixed.** The matrix below is re-derived from the checks above. The test that edited the canonical
@@ -121,9 +169,9 @@ worktree had a space in its path.
 | --- | --- | --- |
 | AC-01 reproducible marketplace install for both hosts | `CodexHost` and `ClaudeHost` install from this repository's marketplaces into disposable homes; `GeneratedPackages` proves deterministic generation, the source-equivalence gate and its failure mode | **met** |
 | AC-02 one instruction enables a project; plain `codex` then has tools and instructions with no MCP flags | `setup` from the installed package does the whole job; `codex mcp list` resolves the inherited block with no machine path in it, and a plain `codex exec` session starts model-free with it | **met for the mechanism.** The skill invocation itself is a model action and was not exercised by a model |
-| AC-03 a new external worktree works with no manual init, with its own state | The inherited worktree has no `.bridge-runtime/`; one `setup` writes only `.bridge-runtime/current`, with no reinstall and no configuration rewrite; the entry point then serves, bound to that worktree's own database path | **met**, with the host trust decision for the new path stated explicitly |
+| AC-03 a new external worktree works with no manual init, with its own state | The inherited worktree runs **no bridge command at all**: it serves reads with a byte-identical tree and creates its own record, selection and database on the first authorised mutation, bound to its own database path. Partial and copied state are refused. See the AC-03 table above | **met**, with the host trust decision for the new path stated explicitly |
 | AC-04 Astra delegates with the right instructions and no executor setup in the project | `ClaudeHost.test_a_delegated_executor_loads_the_package_with_no_install` (empty profile, no project `.claude/`, ≥6 workflow skills, zero tokens) plus the runner passing `--plugin-dir <runtime>/plugins/bridge-claude` | **met at the mechanism level.** No real delegation ran |
-| AC-05 a plugin update does not change a running feature's version | The pin is the committed declaration and the runtime lives outside any plugin cache; deleting a whole plugin cache leaves the instruction set byte-identical; a pin that differs from the applied selection is refused at launch, not switched | **met for the pin, the instruction set and the launch.** "A feature mid-round survives" was not exercised with a live round |
+| AC-05 a plugin update does not change a running feature's version | The pin is the committed declaration and the runtime lives outside any plugin cache; deleting a whole plugin cache leaves the instruction set byte-identical; a pin that differs from the applied selection is refused at launch, not switched; and `update` is refused with `ACTIVE_SESSION` while the worktree is served, moving neither the declaration nor the selection | **met for the pin, the instruction set, the launch and the in-use refusal.** "A feature mid-round survives" was not exercised with a live delegated round |
 | AC-06 handshake/read/foreign refusal mutate nothing; concurrent preparation is safe | `status` compares full directory listings; a real MCP handshake and `tools/list` create no database; two racing `setup` processes leave one consistent result and no `pending.json`; a real interrupted apply is completed by the next run | **met** |
 | AC-07 migration preserves data and custom settings, no double MCP, CLI fallback | Migration keeps the user's `config.toml` neighbours, `.gitignore` entries and their own `.agents/skills/` file, and leaves exactly one `[mcp_servers.bridge]`; the plugin declares no MCP server of its own; wave12 `init`/`update`/`rollback` are unchanged and still pass their suite | **met** |
 | AC-08 doctor recognises installation and versions | `doctor --json` emits `distribution` with `integration_source`, package/runtime/instruction identities, configured-vs-observed executor identity and tri-state `pin.diverged`, with no path disclosed | **doctor part met.** `diagnose` is wave13's and is deferred by `decisions/02.md`: **not** claimed |
@@ -136,9 +184,11 @@ worktree had a space in its path.
   forward an MCP server's stderr, so the host test proves (a) the host resolves the inherited block
   and starts a session, and (b) the same committed entry point serves a real 35-tool bridge bound
   to that worktree — it does not observe the server inside the TUI.
-- **The network fetch path of `acquireSource` is unexercised** (see W14-R2-01 above).
 - **One host, one OS, one version of each client.**
 - **Wave13 is deferred by `decisions/02.md`.** The metadata block is doctor output only; joint
   diagnose/logging validation stays an open item, not a passing check.
-- **An in-use refusal during `update`/`rollback` is inherited from wave12**, not re-proven here with
-  a live bridge server attached to the worktree under test.
+- **`bridge_manager_resume_instance` and `bridge_manager_takeover` do not materialise** a pristine
+  worktree's local state, because they drive the identity guard themselves. A pristine worktree
+  whose first call is one of those stays pristine.
+- **The release pin is reachable only locally** until this branch is published, so the fetch path
+  stays unexercised while `--source` and the cache are proven.
