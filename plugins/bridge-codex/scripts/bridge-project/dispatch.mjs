@@ -91,6 +91,7 @@ export async function decide({ cwd, declaration, runtimePath }) {
   }
 
   const record = readRecord(identity.root, identity);
+  const selection = readSelection(identity.root);
   if (record.kind === "foreign") {
     throw new LaunchRefusal(
       "SETUP_RECORD_FOREIGN",
@@ -163,7 +164,6 @@ export async function decide({ cwd, declaration, runtimePath }) {
       "run the bridge setup skill's update, which moves the declaration and the local selection together",
     );
   }
-  const selection = readSelection(identity.root);
   if (selection.kind !== "ok" || selection.runtime.id !== declaredId) {
     throw new LaunchRefusal(
       "SELECTION_UNUSABLE",

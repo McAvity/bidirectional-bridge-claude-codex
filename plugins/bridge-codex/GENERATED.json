@@ -14,7 +14,7 @@
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
-      "sha256": "7e83ee7b0c8480dca05ba10ae786c0cf50f7074ce3d1cddd1b7023c87e20ba50"
+      "sha256": "ca781779ce6b9608a0b67538025dcf3ceff3ff0f233939602229b121b5e3e84a"
     },
     {
       "path": "scripts/bridge-project/entry-template.mjs",
