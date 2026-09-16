@@ -73,3 +73,28 @@ Default package pin, local source, fresh temporary home, setup WITHOUT --yes: ex
 ### Step back and next route
 
 At the third review of AC-03 we replaced per-worktree setup with the existing native mutation boundary. Keep that simpler direction; remaining defects are the boundary between that guard and wave12 selection/recovery, not grounds for another framework. Existing authorization covers these narrow fixes, tests, refreshed actual release pin and full validation. Next round in the same Claude session. Keep earlier ledgers; don't label concurrent/interrupted automatic preparation PASS until these reproductions pass. User-authorized wave13 deferral remains unchanged.
+
+## 2026-09-16 — round4 review, task task_cv5d1hf7qs
+
+**REWORK, narrow remaining corrections.** Task DONE at `219bfe64bdec0e6fe7aea0b5562b8326a4bdec51`; runtime pin `242330778de4c72f49ddb6b02a9f0e047c7ea2e6`. Independently verified archive F-W14-round-4.zip, SHA-256 `4b7cf11fefa256dab2c9b5c5474b6aebbf7053f0ee8120c894645cfb75be6dd1`, 15 changes, exact base `323360adcdf7efbd1cc7843ac49a20aff5c41604`, clean scope. Executor: build,475 JS,43 Python,140 pilot (1 skipped), package gate PASS.
+
+R2-06 **resolved**: exact reviewer script repeated against actual default pin now gives one successful PENDING task and one MANAGER_FOREIGN_THREAD, handshake creates no state, single record and no pending journal. Evidence `/tmp/w14-race-review-vlenqw8p/report.json`. R2-08 **resolved**: default-pin dry-run leaves project AND runtime home untouched (`/tmp/w14-dry-review-fixed-koot_ykn/result.json`). R2-07 **progress**: recovery after selection write works; two remaining boundaries below. R2-01/03/05 remain progress pending these boundaries and rollback; R2-02/04 stay resolved. No unchanged probe research was re-reviewed.
+
+### R2-07, remaining actual interruption boundaries
+
+1. SIGKILL just before the first `.bridge-runtime` mkdir, after native reservation exists: no local selection directory, own `.bridge/workspace.json` remains. Restart refuses SETUP_STATE_PARTIAL because the launch gate requires a setup journal. Actual native runtime2423307, one-shot Node fs preload `/tmp/w14-crash-before-selection.mjs` kills only this test process. Evidence `/tmp/w14-race-review-vlenqw8p/pre-selection-review.json`. This is exactly the gap between existing native recovery and setup recovery; do not require manual init for an explained own reservation.
+2. Product fault injection AFTER=2 (record write): restart plus authorized mutation succeeds but pending.json remains forever because decide returns resuming=false for a valid record and materialiseSelection immediately returns on any valid record. AFTER=1 now recovers correctly. Exact script `/tmp/w14-interruption-review.py`, evidence `/tmp/w14-race-review-vlenqw8p/interruption-review.json`.
+
+Use the existing read-only native state probe and ownership/reservation validation as the authority for explained same-worktree recovery. Do not add another recovery protocol or adopt arbitrary partial/copied state. Register completion for an own pending journal even when the record already exists; complete only after authorization. Test before local journal, after selection, after record, plus foreign/tampered state and refusal bytes. Refresh actual runtime pin after code is committed.
+
+### W14-R2-09 — documented default rollback selects the current runtime
+
+Actual isolated project updated successfully from6b483b2 to2423307. `bridge-plugin.mjs rollback --yes --json` then returns ROLLBACK_SAME_RUNTIME, pointing at2423307 instead of its previous6b483b2. Evidence `/tmp/w14-race-review-6tywvno3/rollback-review.json`. targetRuntimeId treats rollback like setup; the wave12 CLI already has history-based rollbackTarget. Reuse/extract that resolver for the plugin, preserving explicit --to and active/compatibility guards. Prove default rollback after update restores declaration+selection, no DB restoration, and no-history/active refusal; document the actual supported command.
+
+### Additional independent host evidence
+
+A plain interactive Codex0.154.0 TUI in an isolated profile, trusted pristine inherited worktree, custom provider at closed localhost port (no model task), and installed repository marketplace plugin shows `/mcp`: **bridge connected (35 tools)**, `/skills`: **bridge (bridge-codex)**. Exit0, no `.bridge-runtime` or `.bridge` created; no model session events. Runtime6b483b2; this verifies normal startup and instruction discovery, not a real agent delegation or updated recovery. Evidence `/tmp/w14-race-review-6tywvno3/tui-review.json`. TUI startup is no longer wholly untested; keep its exact revision and limits.
+
+Executor ledger03 discloses one manual reproduction accidentally used the operator runtime home and then removed only its newly created test runtime; the supervising runtime was not changed. Future reproduction commands must assert an explicit temporary runtime home before every mutating call. This is an isolation correction, not permission to inspect or clean unrelated runtimes.
+
+Next: one narrow same-session correction for R2-07 boundaries and R2-09, then final validation/review. No publication request: user explicitly authorized local delivery only. Wave13 integration remains deferred by decision02; no new product decision.

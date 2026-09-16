@@ -16,7 +16,7 @@
   ],
   "latest_review": "docs/features/F-W14-plugin-distribution/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W14-plugin-distribution/decisions/02.md",
-  "next_action": "Same Claude session: fix R2-06 concurrent same-worktree first use, R2-07 automatic interruption recovery, R2-08 pure dry-run; refresh real release pin and full validation. Wave13 joint integration remains deferred.",
+  "next_action": "Same Claude session: finish R2-07 recovery before local journal and after record, fix R2-09 default rollback via wave12 history. Final isolated validation and independent review; wave13 deferred.",
   "bridge": {
     "feature_id": "F-W14-plugin-distribution",
     "parent_task_id": "task_538nb9refm"

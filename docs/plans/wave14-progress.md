@@ -67,3 +67,17 @@ mimo opisu dry-run. [Review02](../features/F-W14-plugin-distribution/reviews/02-
 zawiera R2-06–08, dokładne commity i reprodukcje. Kolejny krok: wąska korekta na istniejącej
 granicy guarda/wyboru runtime, ponowne testy i końcowy review. Bez nowej decyzji produktowej.
 Wave13 nadal bez integracji do czasu odbioru; żadnego push,merge,wdrożenia ani pilota modeli.
+
+## 2026-09-16 — runda4, współbieżność i dry-run poprawione
+
+Task `task_cv5d1hf7qs` DONE, head `219bfe6`, runtime `2423307`.
+Paczka F-W14-round-4.zip SHA-256 `4b7cf11fefa256dab2c9b5c5474b6aebbf7053f0ee8120c894645cfb75be6dd1`
+zweryfikowana. Claude:475 JS,43 Python,140 pilot (1 skipped), build/packages PASS.
+Codex powtórzył reprodukcje: jeden właściciel i odmowa obcego managera w tym samym
+worktree PASS; plan setupu bez żadnego zapisu PASS; odzyskanie po pierwszym zapisie PASS.
+Pozostają przerwanie przed journalem i domknięcie journalu po zapisie rekordu oraz
+rollback bez --to wybierający obecną wersję. Review02 zawiera dokładne dowody R2-07/09.
+Dodatkowa próba TUI bez modeli: zwykły Codex pokazuje 35 narzędzi MCP i skill bridge,
+bez tworzenia stanu. Claude odnotował omyłkowy test w realnym katalogu runtime i usunięcie
+wyłącznie własnego nowego runtime; nadzorca niezmieniony. Dalsze próby tylko w jawnym /tmp.
+Następny krok: wąska korekta istniejącego recovery i wyboru rollbacku, finalne testy/review.
