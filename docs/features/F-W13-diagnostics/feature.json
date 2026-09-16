@@ -19,7 +19,7 @@
   ],
   "latest_review": "docs/features/F-W13-diagnostics/reviews/02-export.md",
   "latest_decision": "docs/features/F-W13-diagnostics/decisions/01.md",
-  "next_action": "Runda 3 tej samej sesji: poprawi\u0107 R2-01\u201306, nast\u0119pnie re-review eksportu i macierzy AC.",
+  "next_action": "Runda 4 tej samej sesji: R2-02 namespace przed zapisem oraz deterministyczne dowody R2-05/06; następnie wąskie re-review.",
   "bridge": {
     "feature_id": "F-W13-diagnostics",
     "parent_task_id": "task_0zpsfj1g59"

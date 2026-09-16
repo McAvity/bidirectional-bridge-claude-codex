@@ -117,3 +117,54 @@ unmet lub częściowo unverified zgodnie z findingami powyżej; PASS wykonawcy n
 jest odbiorem. AC-09: dokumenty istnieją i linki przechodzą, ale opisy bezpieczeństwa
 wymagają zgodności z korektą. Zlecić kolejną rundę tej samej sesji Claude’a na
 R2-01–06, w granicach decyzji01. Pełne testy po zmianach, następnie wąskie re-review.
+
+
+## 2026-09-16 — re-review rundy 3: REWORK
+
+Task `task_3vs67f3tg9` DONE; zakres
+`853302cdf821671020e11f2a74c2406f33a68b75..6c4059a60346f112f8b8b7adee3c56bff9a9bdea`.
+Codex koordynuje, lecz nie implementował produktu; review niezależne od wykonawcy.
+Paczka F-W13-round-3.zip verify PASS, SHA-256
+`7f6786ae47cd8ca03a9b539d5e27d66fc9bc011469d9debec03fe5dc14f03c42`.
+18 zmienionych ścieżek w zakresie, czysty worktree, bez zmian dokumentów koordynatora.
+Niezależnie `npx vitest run scripts/diagnostics/diagnose.test.ts scripts/setup/setup.test.ts`:
+30 PASS. Wykonawca: build,477 JS,32 Python,140 pilot,docs PASS.
+
+| Finding | Dyspozycja | Dowód / pozostała praca |
+| --- | --- | --- |
+| R2-01 | resolved | Jawne specy pól, odrzucanie obcych kluczy i tekstu parsera; test sentineli w kilku źródłach PASS. |
+| R2-02 | progress | Log/evidence/DB/packages symlink i kolizja naprawione, ale sam namespace jest nadal zaufany bez sprawdzenia; reprodukcja poniżej. |
+| R2-03 | resolved | Jeden scope dla attempts/telemetry/evidence/logs; nieznane i sprzeczne selektory odmawiają; regresja PASS. |
+| R2-04 | resolved | Import własnego builda, bez importu wskazanego runtime; syntetyczny marker nie powstaje w summary/package/doctor. |
+| R2-05 | progress | Ograniczony odczyt, offset/inode/limity/gaps wdrożone; faktyczna rotacja/podmiana podczas eksportu pozostaje bez dowodu, patrz R2-06. |
+| R2-06 | progress | SIGKILL eksportera i launchera oraz RLIMIT_FSIZE są rzeczywistymi testami; nadal brakuje deterministycznego ENOSPC i faktycznej rotacji/podmiany. |
+
+### R2-02: powtarzalne obejście przez katalog namespace
+
+Na finalnym commicie manager utworzył wyłącznie syntetyczne katalogi w `/tmp`:
+workspace, home, outside. `exchangeNamespace(resolveWorkspaceIdentity(root), env)`
+z HOME=home wyznaczył namespace. Jego rodzic powstał jako zwykły katalog, a sam
+namespace jako symlink do outside. `runDiagnose({workspace:root,home,env})` zwrócił
+`mode=summary`, a outside zawierał nowe `packages` i `staging`.
+`assertUnderRoot(namespace.namespace, ...)` pomija sam root, zaś recursive mkdir
+wykonuje się przed kontrolą. To naruszenie planu bez hipotetycznego wyścigu.
+Wymagane: sprawdzić istniejące komponenty namespace od zaufanej kotwicy PRZED
+pierwszym mkdir/zapisem; nie przyjmować obliczonego namespace jako już zweryfikowanego.
+Regresje: link na namespace, staging i packages, z nieistniejącym potomkiem;
+odmowa ma pozostawić całe drzewo outside bez zmian. Zachować atomowe link publication.
+Sprawdzić ten sam wzorzec pominiętego root przy źródłach, szczególnie brakującym DB.
+
+### R2-05/06: domknąć dowody zamiast utożsamiać różne scenariusze
+
+Append nie jest rotacją: potrzeba powtarzalnego rename/unlink/replacement między
+odczytem logu i końcową kontrolą, z dowodem odpowiedniego changed/removed gap.
+ENOSPC nie wymaga montowania pełnego urządzenia: dozwolona deterministyczna
+iniekcja błędu I/O w teście (również po częściowym zapisie lub na fsync), z dowodem
+braku publikacji i nienaruszonych źródeł. Zachować test RLIMIT_FSIZE jako osobny dowód.
+Zielone testy i uczciwe limitations nie zastępują tych wymaganych scenariuszy.
+
+Następny krok: mała korekta R2-02 i brakujących dowodów R2-05/06, bez rozszerzania
+architektury ani ponownego otwierania zamkniętych ustaleń. Przy trzecim review tego
+problemu zastosować step-back: jedna wspólna kontrola ścieżek przed I/O i bezpośrednie
+fault-injection tests są prostsze niż kolejne lokalne wyjątki. Autoryzacja decyzja01;
+bez nowego pytania produktowego. AC-07 nadal wymagane; pozostałe dowody zachowane.

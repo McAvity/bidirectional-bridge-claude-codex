@@ -270,3 +270,13 @@ were removed; source trees are unchanged. Original reviewed history remains in t
 | 4469246 | dfeed9c |
 | 66b6f99 | 66c7347 |
 | 70d8dd4 | e26b321 |
+
+
+## Wave13 local correction checkpoint (2026-09-16)
+
+Wave13 branch: round3 `6c4059a` delivered through Claude bridge, package verified.
+Coordinator review02 closes R2-01/03/04; R2-02/05/06 remain in progress (namespace
+root symlink and direct rotation/ENOSPC evidence). Independent focused tests30 PASS;
+worker reports477 JS,32 Python,140 pilot/build/docs PASS. Next: round4 in the same
+bridge feature/session. See `docs/plans/wave13-progress.md` and review02. Local only;
+no push, merge, deployment or supervising runtime changes.

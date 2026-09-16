@@ -60,3 +60,14 @@ przerwania/rotacji/ENOSPC mimo części twierdzeń PASS. Reprodukcje wyłącznie
 Użytkownik polecił kontynuować w tej samej sesji i najpierw rozliczyć aktywną próbę:
 sprawdzono progress, feature_get i task; brak aktywnej próby, wynik poprzedniej DONE.
 Następny krok: jedna runda korekty w istniejącej sesji Claude’a; bez duplikacji delegacji.
+
+## 2026-09-16 — runda 3 rozliczona, wąska korekta pozostała
+
+Task task_3vs67f3tg9 DONE, commit 6c4059a60346f112f8b8b7adee3c56bff9a9bdea.
+Paczka F-W13-round-3.zip verify PASS (hash w review02); czysty zakres18 plików.
+Codex:30 focused JS PASS; Claude:477 JS,32 Python,140 pilot/build/docs PASS.
+R2-01/03/04 zamknięte. R2-02 progress: symlink samego namespace nadal tworzy
+packages/staging poza nim (niezależna syntetyczna reprodukcja). R2-05/06 progress:
+potrzebny test rzeczywistej rotacji/podmiany i deterministyczna iniekcja ENOSPC.
+Zachowano wcześniejsze ledgery. Następny krok: runda4 tej samej sesji, wąski zakres
+z review02, testy i ponowna weryfikacja. Bez push/merge/deploy i bez zmiany supervisora.
