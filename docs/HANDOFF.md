@@ -1,9 +1,9 @@
 # Current handoff
 
-## Next work — wave13 planned, 2026-09-16
+## Current work — wave13 implementation, 2026-09-16
 
 [Wave13 plan](plans/wave13.md) covers automatic logging, retention and incident export.
-[Progress](plans/wave13-progress.md); implementation is not yet authorized.
+[Progress](plans/wave13-progress.md). The user authorized full implementation through Claude bridge rounds, local commits only (no push/merge/deploy). Logging/retention passed coordinator review after corrections at 59b3de3; ledgers through 50073f5. Next: incident exporter, full acceptance test matrix and integrated review. The supervising wave12 runtime remains unchanged.
 The user reports main-checkout init complete and doctor status=ok for the pinned
 wave12 runtime. Activation instructions below are historical; no need to repeat init.
 The reported database was not yet bound; this is not a real-task validation.

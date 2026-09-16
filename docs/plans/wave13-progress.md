@@ -23,3 +23,26 @@ Feature: [indeks](../features/F-W13-diagnostics/feature.json), [autoryzacja](../
 Kolejność: logowanie/retencja, eksport, walidacja i dokumentacja; review między rundami.
 Środowisko: sandbox bwrap nie startuje; odczyty shell działają przez zatwierdzoną eskalację.
 Brak zmian produktu i testów na tym checkpointcie. Następny krok: runda W13-01.
+
+## 2026-09-16 — runda 1 i lokalne review
+
+Claude: c894d5c implementacja, 5832984/10c38b4 ledger; 452 JS, 29 exchange, 140 pilot
+według wykonawcy. Codex: 26 focused JS PASS; 29 exchange i 140 pilot PASS.
+Task task_az31bjhxqv BLOCKED: eksporter wymaga work-items, a koordynator podał docs/tasks.
+Indeks/taski poprawione roboczo; commit po zamknięciu rundy, aby nie mieszać zakresu commitów.
+[Review](../features/F-W13-diagnostics/reviews/01-logging.md): REWORK R1-01 izolacja
+zapisów po uzbrojeniu, R1-02 retencja po 100 rotacjach (18 plików przy limicie 2),
+R1-03 brak wymaganych zdarzeń i nieprawdziwa deklaracja stderr.
+Następny krok: resume tego samego taska z poprawkami; bez nowej sesji i bez publikacji.
+
+## 2026-09-16 — logowanie po korekcie PASS
+
+Commity: 59b3de3 korekta, e26a6d9/50073f5 ledgery. R1-01–03 zamknięte w review.
+Codex niezależnie: 30 focused JS PASS, 115 rotacji → 2 pliki przy limicie 2.
+Claude: build, 456 JS, 29 exchange, 140 pilot PASS; bez modeli w testach.
+Dwa resume zachowały ten sam task/sesję: pierwszy poprawki i eksport, drugi wyłącznie
+naprawa formatu raportu reprodukcji (pełne identyfikatory snapshotów). Task DONE.
+Finalna paczka F-W13-round-1-report-fixed.zip zweryfikowana; SHA-256
+4e180e8ffbe04640e0960fc7ffe2f43fe80e97108ab61acec82bf4f89d425ce5.
+Pozostaje eksport i pełna macierz AC. W13-02/03 zgrupowane w jednej sekwencyjnej
+rundzie dla działającego diagnose z testami/instrukcją; potem review całości.

@@ -5,9 +5,9 @@
   "brief": "docs/features/F-W13-diagnostics/brief.md",
   "design": "docs/features/F-W13-diagnostics/design.md",
   "tasks": [
-    "docs/tasks/wave13-01.md",
-    "docs/tasks/wave13-02.md",
-    "docs/tasks/wave13-03.md"
+    "work-items/W13-01.md",
+    "work-items/W13-02.md",
+    "work-items/W13-03.md"
   ],
   "context_files": [
     "AGENTS.md",
@@ -17,9 +17,9 @@
     "docs/manager-identity.md",
     "docs/recovery.md"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W13-diagnostics/reviews/01-logging.md",
   "latest_decision": "docs/features/F-W13-diagnostics/decisions/01.md",
-  "next_action": "Claude round 1: W13-01; nast\u0119pnie niezale\u017cne review Codex.",
+  "next_action": "Runda 2: W13-02 eksport oraz W13-03 zintegrowana walidacja/instrukcja; nast\u0119pnie review ca\u0142o\u015bci.",
   "bridge": {
     "feature_id": "F-W13-diagnostics",
     "parent_task_id": "task_0zpsfj1g59"
