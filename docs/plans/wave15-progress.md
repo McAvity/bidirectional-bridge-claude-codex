@@ -104,3 +104,13 @@ Finalny [handoff](../features/F-W15-natural-workflow/handoff.md) zawiera commity
 ograniczenia i punkt wznowienia. Eksport F-W15-final-01.zip, potem q-01 odbiór użytkownika.
 Nie uruchamiać kolejnej rundy; root pozostaje otwarty do rzeczywistej decyzji.
 Brak push/merge/deploy; aktywny runtime/piny/konfiguracja nietknięte.
+
+## Review koordynatora nadrzędnego — 2026-09-17
+
+Dostawa b64b858: [review03](../features/F-W15-natural-workflow/reviews/03-coordinator-delivery.md)
+PASS dla zleconej implementacji bez smoke; brak nowych blockerów. Niezależnie:
+verify końcowej paczki, install/build, 107/107 testów zmienionych obszarów,
+packages, linki i diff PASS. Bez zmiany kodu, stanu bridge'a lub runtime.
+Review zapisane wyłącznie na branchu wave15-coordinator-review; worktree wave15 nietknięty.
+Następny krok: decyzja o osobnym smoke z prawdziwymi modelami; odbiór użytkownika
+nadal pending. Nie potrzeba kolejnej ogólnej rundy review ani wykonawcy.
