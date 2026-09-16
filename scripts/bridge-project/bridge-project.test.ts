@@ -362,6 +362,49 @@ async function launchEntry(cwd: string, { frames = [] as unknown[], waitMs = 350
   return { child, exited, stdout: out, stderr: err, replies };
 }
 
+/**
+ * A synthetic native turn envelope.
+ *
+ * The identity guard authorises on the request `_meta` a Codex host sends, so a model-free client
+ * can produce it. Nothing here fakes authorisation: the guard validates every field, and a call
+ * without this envelope is refused exactly as it was before.
+ */
+const NATIVE_THREAD = "01a0b000-0000-7000-8000-00000000abcd";
+const NATIVE_META = {
+  threadId: NATIVE_THREAD,
+  "x-codex-turn-metadata": {
+    session_id: NATIVE_THREAD,
+    thread_id: NATIVE_THREAD,
+    codex_version: "0.154.0",
+    thread_source: "cli",
+  },
+};
+
+const authorizedMutation = (key: string) => ({
+  jsonrpc: "2.0",
+  id: 2,
+  method: "tools/call",
+  params: {
+    name: "bridge_create_task",
+    _meta: NATIVE_META,
+    arguments: {
+      spec: {
+        objective: "materialise this worktree",
+        scope: { paths: ["README.md"] },
+        expected_deliverable: "nothing",
+        verification_criteria: ["none"],
+      },
+      idempotency_key: key,
+    },
+  },
+});
+
+const unauthorizedMutation = () => {
+  const { params, ...rest } = authorizedMutation("unauthorised");
+  const { _meta, ...withoutMeta } = params as Record<string, unknown>;
+  return { ...rest, params: withoutMeta };
+};
+
 const HANDSHAKE = [
   { jsonrpc: "2.0", id: 0, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "w14-test", version: "1" } } },
   { jsonrpc: "2.0", method: "notifications/initialized" },
@@ -408,13 +451,18 @@ describe("the launch gate", () => {
     expect(existsSync(join(project, ".bridge/bridge.db"))).toBe(false);
   }, 60_000);
 
-  it("refuses a worktree that was never prepared, without creating any state", async () => {
+  it("refuses a worktree whose local state is partial, without repairing it", async () => {
     setup();
+    // A selection removed while the state directory remains is not a pristine inherited worktree:
+    // it is a half-removed setup, and it is refused rather than silently re-created.
     removeTree(join(project, ".bridge-runtime"));
+    mkdirSync(join(project, ".bridge"), { recursive: true });
+    writeFileSync(join(project, ".bridge/marker"), "left behind\n");
     const run = await launchEntry(project, { frames: HANDSHAKE });
-    expect(run.stderr).toContain("SETUP_NOT_INITIALIZED");
+    expect(run.stderr).toContain("SETUP_STATE_PARTIAL");
     expect(run.replies).toEqual([]);
-    expect(existsSync(join(project, ".bridge"))).toBe(false);
+    expect(existsSync(join(project, ".bridge-runtime"))).toBe(false);
+    expect(readFileSync(join(project, ".bridge/marker"), "utf8")).toBe("left behind\n");
   }, 60_000);
 
   it("refuses a disabled project and an unrecognised declaration", async () => {
@@ -460,42 +508,126 @@ describe("closing the client", () => {
   }, 60_000);
 });
 
-describe("an inherited worktree", () => {
-  it("inherits the declaration and entry point and needs only its own local selection", () => {
+describe("an inherited worktree serves without any manual step (AC-03)", () => {
+  /** Enable the project, commit it, and hand back a worktree that inherits it untouched. */
+  function inherit(name: string): string {
     setup();
     git(project, "add", "-A");
     git(project, "commit", "-qm", "enable bridge");
-    const external = join(root, "inherited worktree");
-    git(project, "worktree", "add", "-q", "-b", "inherited", external);
+    const external = join(root, name);
+    git(project, "worktree", "add", "-q", "-b", name.replace(/\s+/gu, "-"), external);
+    return real(external);
+  }
 
+  it("inherits the declaration and entry point and none of its own local state", () => {
+    const external = inherit("an inherited worktree");
     expect(existsSync(join(external, PROJECT_DECLARATION))).toBe(true);
     expect(existsSync(join(external, PROJECT_ENTRY))).toBe(true);
     expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
     expect(existsSync(join(external, ".bridge"))).toBe(false);
-    expect(status(external, env).state).toBe("needs-selection");
+    expect(status(external, env).state).toBe("inherited-pristine");
+  }, 120_000);
 
-    const prepared = setup(external);
-    expect(prepared.code).toBe(0);
-    // Only its own selection: no reinstall, no configuration rewrite, no instruction copy.
-    expect(((prepared.json as any).changes as { path: string }[]).map((c) => c.path)).toEqual([".bridge-runtime/current"]);
-    expect((prepared.json as any).runtime_installed_now).toBe(false);
+  it("serves a handshake and reads with zero writes, with no setup call at all", async () => {
+    const external = inherit("a read only worktree");
+    const before = listing(external);
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.replies.find((f: any) => f.id === 0)?.result?.serverInfo?.name, run.stderr).toBe("bridge-native-project");
+    expect(run.replies.find((f: any) => f.id === 1)?.result?.tools?.length).toBeGreaterThan(10);
+    expect(run.stderr).toContain(`workspace=${external}`);
+    expect(listing(external)).toEqual(before);
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+    run.child.kill("SIGKILL");
+  }, 120_000);
+
+  it("materialises its own selection on the first authorised mutation, in the same process", async () => {
+    const external = inherit("a mutating worktree");
+    const run = await launchEntry(external, { frames: [...HANDSHAKE, authorizedMutation("w14-materialise")] });
+    const result = run.replies.find((f: any) => f.id === 2);
+    expect(result?.result?.isError, JSON.stringify(result)).toBeFalsy();
+    expect(JSON.parse(result.result.content[0].text).state).toBe("PENDING");
+
+    // Its own record, its own selection, its own database — written by that one call.
+    const record = JSON.parse(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8"));
+    expect(record.workspace.root).toBe(external);
+    expect(record.runtime.id).toBe(runtimeId);
+    expect(real(join(external, ".bridge-runtime/current"))).toBe(real(runtimePath));
+    expect(existsSync(join(external, ".bridge/bridge.db"))).toBe(true);
     expect(status(external, env).state).toBe("ready");
+    run.child.kill("SIGKILL");
+  }, 120_000);
+
+  it("writes nothing when a mutation is not authorised by the native guard", async () => {
+    const external = inherit("an unauthorised worktree");
+    const before = listing(external);
+    const run = await launchEntry(external, { frames: [...HANDSHAKE, unauthorizedMutation()] });
+    const result = run.replies.find((f: any) => f.id === 2);
+    expect(result?.result?.isError).toBe(true);
+    expect(result.result.content[0].text).toContain("NATIVE_CONTEXT_INVALID");
+    expect(listing(external)).toEqual(before);
+    expect(existsSync(join(external, ".bridge-runtime"))).toBe(false);
+    run.child.kill("SIGKILL");
+  }, 120_000);
+
+  it("refuses partial local state instead of materialising over it", async () => {
+    const external = inherit("a partial worktree");
+    mkdirSync(join(external, ".bridge-runtime"), { recursive: true });
+    writeFileSync(join(external, ".bridge-runtime/install.json"), "{ not json");
+    const run = await launchEntry(external, { frames: HANDSHAKE });
+    expect(run.stderr).toMatch(/SETUP_RECORD_INVALID|SETUP_STATE_PARTIAL/u);
+    expect(run.replies).toEqual([]);
+    expect(readFileSync(join(external, ".bridge-runtime/install.json"), "utf8")).toBe("{ not json");
   }, 120_000);
 
   it("binds its own database, not the one of the checkout it came from", async () => {
-    setup();
-    git(project, "add", "-A");
-    git(project, "commit", "-qm", "enable bridge");
-    const external = join(root, "second worktree");
-    git(project, "worktree", "add", "-q", "-b", "second", external);
-    setup(external);
+    const external = inherit("a second worktree");
     const run = await launchEntry(external, { frames: HANDSHAKE });
-    // Its own workspace and its own database path, not the checkout it was created from.
-    expect(run.stderr, run.stderr).toContain(`workspace=${real(external)}`);
-    expect(run.stderr).toContain(`db=${join(real(external), ".bridge/bridge.db")}`);
+    expect(run.stderr, run.stderr).toContain(`workspace=${external}`);
+    expect(run.stderr).toContain(`db=${join(external, ".bridge/bridge.db")}`);
     expect(run.stderr).not.toContain(`db=${join(project, ".bridge/bridge.db")}`);
     run.child.kill("SIGKILL");
   }, 120_000);
+
+  it("two inherited worktrees materialise independently and concurrently", async () => {
+    setup();
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const a = join(root, "worktree a");
+    const b = join(root, "worktree b");
+    git(project, "worktree", "add", "-q", "-b", "wt-a", a);
+    git(project, "worktree", "add", "-q", "-b", "wt-b", b);
+    const runs = await Promise.all([
+      launchEntry(real(a), { frames: [...HANDSHAKE, authorizedMutation("a")] }),
+      launchEntry(real(b), { frames: [...HANDSHAKE, authorizedMutation("b")] }),
+    ]);
+    for (const [index, where] of [a, b].entries()) {
+      const result = runs[index].replies.find((f: any) => f.id === 2);
+      expect(result?.result?.isError, runs[index].stderr).toBeFalsy();
+      const record = JSON.parse(readFileSync(join(real(where), ".bridge-runtime/install.json"), "utf8"));
+      expect(record.workspace.root).toBe(real(where));
+      runs[index].child.kill("SIGKILL");
+    }
+  }, 180_000);
+});
+
+describe("update and rollback while the worktree is in use", () => {
+  it("refuses to move the pin while a bridge server is serving this worktree", async () => {
+    setup();
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", "HEAD~1"), home: sharedHome, env: childEnv({}) }).runtime;
+    const run = await launchEntry(project, { frames: [...HANDSHAKE, authorizedMutation("hold-open")] });
+    expect(run.replies.find((f: any) => f.id === 2)?.result?.isError, run.stderr).toBeFalsy();
+    try {
+      const moved = plugin(project, ["update", "--to", older.id, "--yes", "--json"], env);
+      expect(moved.code).toBe(1);
+      const codes = ((moved.json as any).refusals as { code: string }[]).map((r) => r.code);
+      expect(codes).toContain("ACTIVE_SESSION");
+      // Nothing moved: the declaration and the applied selection still name the served runtime.
+      expect(JSON.parse(readFileSync(join(project, PROJECT_DECLARATION), "utf8")).pinned.runtime_id).toBe(runtimeId);
+      expect(JSON.parse(readFileSync(join(project, ".bridge-runtime/install.json"), "utf8")).runtime.id).toBe(runtimeId);
+    } finally {
+      run.child.kill("SIGKILL");
+    }
+  }, 600_000);
 });
 
 describe("the pin is independent of any plugin cache", () => {

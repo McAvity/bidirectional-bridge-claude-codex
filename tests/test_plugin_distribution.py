@@ -203,9 +203,33 @@ class InstalledExporter(unittest.TestCase):
         helper = _RUNTIME["path"] / ".agents/skills/feature-exchange/scripts/feature_exchange.py"
         report = self._export_with(helper)
         self.assertEqual(report["integrity"], "ok")
-        # The shared workflow guide travels from the installation, under its canonical name.
+        # The shared workflow guide travels from the installation, under its canonical name. The
+        # verifier must not call it missing: the target repository never claimed to have it.
         self.assertIn("docs/features/README.md", report["documents"]["files"])
+        self.assertEqual(report["documents"]["missing"], [])
+        self.assertEqual(report["documents"]["changed"], [])
+        self.assertEqual(report["documents"]["supplied_by_installation"], ["docs/features/README.md"])
         self.assertFalse((self.repo / "docs/features/README.md").exists())
+
+    def test_the_verifier_still_reports_real_drift_in_the_target(self):
+        helper = _RUNTIME["path"] / ".agents/skills/feature-exchange/scripts/feature_exchange.py"
+        self._export_with(helper)
+        # A document the exporter took from this repository, edited afterwards, is drift.
+        (self.repo / "docs/features/F-X/brief.md").write_text("# brief, edited after the export\n")
+        out = subprocess.run(
+            [sys.executable, str(helper), "verify", "--repo", str(self.repo), "--archive", str(self.root / f"{helper.parents[2].name}.zip")],
+            capture_output=True, text=True, timeout=300,
+        )
+        report = json.loads(out.stdout)
+        self.assertIn("docs/features/F-X/brief.md", report["documents"]["changed"])
+        self.assertEqual(report["documents"]["missing"], [])
+        # And a document that really is gone is still missing, not excused.
+        (self.repo / "docs/features/F-X/execution/01.md").unlink()
+        out = subprocess.run(
+            [sys.executable, str(helper), "verify", "--repo", str(self.repo), "--archive", str(self.root / f"{helper.parents[2].name}.zip")],
+            capture_output=True, text=True, timeout=300,
+        )
+        self.assertIn("docs/features/F-X/execution/01.md", json.loads(out.stdout)["documents"]["missing"])
 
     def test_the_generated_claude_package_helper_does_the_same(self):
         helper = _RUNTIME["path"] / "plugins/bridge-claude/skills/feature-exchange/scripts/feature_exchange.py"
@@ -259,11 +283,21 @@ class CodexHost(unittest.TestCase):
         self.assertEqual(json.loads(status.stdout)["state"], "not-enabled")
         self.assertEqual(sorted(str(p) for p in project.rglob("*")), before, "status must write nothing")
 
-        prepared = self.run_entry(project, ["setup", "--yes", "--json", "--source", str(REPO_ROOT), "--commit", self.commit])
+        # No --commit: the package uses the pin its own release.json carries, with only a local
+        # source supplied. Nothing is published and nothing is fetched.
+        release = json.loads((self.package / "scripts/plugin-packages/release.json").read_text())
+        pinned = release["pinned"]["commit"]
+        self.assertEqual(
+            subprocess.run(["git", "-C", str(REPO_ROOT), "cat-file", "-e", f"{pinned}^{{commit}}"], capture_output=True).returncode,
+            0,
+            f"the shipped release pin {pinned} is not a commit of this repository",
+        )
+        prepared = self.run_entry(project, ["setup", "--yes", "--json", "--source", str(REPO_ROOT)])
         self.assertEqual(prepared.returncode, 0, prepared.stdout + prepared.stderr)
         report = json.loads(prepared.stdout)
         self.assertTrue(report["applied"])
-        self.assertEqual(report["runtime"]["id"], self.runtime_id)
+        self.assertEqual(report["runtime"]["commit"], pinned)
+        self.assertEqual(report["source"]["commit"], pinned)
         self.assertEqual(json.loads(self.run_entry(project, ["status", "--json"]).stdout)["state"], "ready")
         # No instruction file was copied into the project.
         self.assertFalse((project / ".agents/skills").exists())
@@ -281,10 +315,8 @@ class CodexHost(unittest.TestCase):
         git(project, "worktree", "add", "-q", "-b", "inherited", str(external))
         self.assertTrue((external / ".bridge-project/entry.mjs").is_file())
         self.assertFalse((external / ".bridge-runtime").exists())
-        prepared = self.run_entry(external, ["setup", "--yes", "--json"])
-        self.assertEqual(prepared.returncode, 0, prepared.stdout + prepared.stderr)
-        # Only its own selection: no reinstall, no configuration rewrite.
-        self.assertEqual([c["path"] for c in json.loads(prepared.stdout)["changes"]], [".bridge-runtime/current"])
+        # No setup call here at all: an inherited worktree is pristine and serves as it is.
+        self.assertEqual(json.loads(self.run_entry(external, ["status", "--json"]).stdout)["state"], "inherited-pristine")
 
         # Codex reads a project config only for a trusted project: that consent stays explicit.
         (self.codex_home / "config.toml").write_text(f'[projects."{external}"]\ntrust_level = "trusted"\n')
@@ -326,8 +358,10 @@ class CodexHost(unittest.TestCase):
         self.assertGreater(len(tools["result"]["tools"]), 10)
         self.assertIn(f"workspace={external}", served.stderr)
         self.assertIn(f"db={external}/.bridge/bridge.db", served.stderr)
-        # Reads only: a handshake and a tool listing create no database anywhere.
+        # Reads only: a handshake and a tool listing create no database and no local state at all,
+        # in a worktree that was never prepared by hand.
         self.assertFalse((external / ".bridge/bridge.db").exists())
+        self.assertFalse((external / ".bridge-runtime").exists())
         self.assertFalse((project / ".bridge/bridge.db").exists())
 
 
