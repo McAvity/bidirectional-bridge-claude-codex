@@ -90,3 +90,19 @@ Końcowa paczka: F-W13-final-implementation.zip w namespace worktree packages/;
 zakres od67957034a2a48b5d3d82a5fdef22e5e6e4f5d2fa do końcowego commita dokumentów.
 Następny krok: weryfikacja tej paczki i lokalny odbiór użytkownika. Integracja do
 feature-workflow,CI,push/merge/deploy niewykonane; runtime supervisora nietknięty.
+
+## 2026-09-16 — odbiór użytkownika i końcowy punkt przekazania
+
+**Wave13 odebrane lokalnie; oczekuje integracji przez koordynatora.**
+Rzeczywista decyzja użytkownika: [decyzja02](../features/F-W13-diagnostics/decisions/02.md).
+Odebrana dostawa: `9cf1f4321f3686fcdf6f42a7e9a3265798385440`.
+Review koordynatora PASS: `0109643ca570acf989ec83139871a1ff5f1748be`,
+branch `waves13-14-review` (wskazane przez użytkownika, bez importu/merge brancha).
+Odpowiedź na q-01 zapisana; `bridge_feature_accept` zakończył feature stanem accepted.
+Końcowa paczka F-W13-final-implementation.zip była zweryfikowana przy dostawie:
+SHA-256 `69ebd0e2fc122f6a62df6f93c922108e6b1eca4cf0944234ba9ed3ea0951eb9a`.
+Wszystkie dowody, ledgery i paczki zachowane bez zmian. Poprzedni następny krok
+„weryfikacja paczki i odbiór” jest zakończony; nie ma dalszej pracy wykonawczej tej sesji.
+Ten checkpoint zmienia wyłącznie dokumentację i status bridge; nie wykonywano nowych
+review ani testów. Merge, push, wdrożenie i integracja niewykonane. Następny właściciel:
+koordynator integracji. Sesja kończy się po lokalnym commicie dokumentacji przekazania.

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W13-diagnostics",
-  "phase": "implementation-review",
+  "phase": "accepted",
   "brief": "docs/features/F-W13-diagnostics/brief.md",
   "design": "docs/features/F-W13-diagnostics/design.md",
   "tasks": [
@@ -18,8 +18,8 @@
     "docs/recovery.md"
   ],
   "latest_review": "docs/features/F-W13-diagnostics/reviews/02-export.md",
-  "latest_decision": "docs/features/F-W13-diagnostics/decisions/01.md",
-  "next_action": "Lokalny zakres kompletny, review PASS. Odbiór użytkownika na podstawie F-W13-final-implementation.zip; bez push/merge/deploy. Integracja i CI niewykonane.",
+  "latest_decision": "docs/features/F-W13-diagnostics/decisions/02.md",
+  "next_action": "Wave13 odebrane lokalnie na 9cf1f43; oczekuje integracji przez koordynatora. Review PASS: 0109643 na waves13-14-review. Bridge accepted. Ta sesja zakończona po przekazaniu; bez nowych review, testów, merge, push i wdrożenia.",
   "bridge": {
     "feature_id": "F-W13-diagnostics",
     "parent_task_id": "task_0zpsfj1g59"

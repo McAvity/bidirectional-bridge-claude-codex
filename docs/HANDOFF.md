@@ -293,3 +293,20 @@ Final full-range packet: F-W13-final-implementation.zip, worktree exchange names
 Progress and complete limitations: `docs/plans/wave13-progress.md`; recommendation:
 local acceptance. User acceptance remains pending. No integration merge, CI, push,
 deployment or changes to the pinned supervising runtime.
+
+
+## Wave13 accepted — awaiting coordinator integration (2026-09-16)
+
+Supersedes the pending-acceptance checkpoint: the user accepted local wave13 delivery
+`9cf1f4321f3686fcdf6f42a7e9a3265798385440`. Coordinator review PASS is recorded at
+`0109643ca570acf989ec83139871a1ff5f1748be` on `waves13-14-review`, as supplied by the user.
+The actual user decision is `docs/features/F-W13-diagnostics/decisions/02.md`.
+Bridge question q-01 answered; `bridge_feature_accept` returned accepted.
+
+Wave13 is received locally and awaits integration by the coordinator. All original
+ledgers, evidence and round/final packages are preserved. The final package still covers
+67957034..9cf1f432, SHA-256
+`69ebd0e2fc122f6a62df6f93c922108e6b1eca4cf0944234ba9ed3ea0951eb9a`.
+This closeout adds no review or tests and performs no merge, push, deployment or integration.
+No pending worker round remains. End this session after committing the documentation;
+the integration coordinator owns the next step. See `docs/plans/wave13-progress.md`.
