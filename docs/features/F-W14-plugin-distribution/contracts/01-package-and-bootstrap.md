@@ -1,227 +1,161 @@
-# Contract: plugin packages, marketplace and worktree bootstrap (W14-01)
+# Contract: plugin packages, marketplace and worktree bootstrap (W14-01, W14-02)
 
-Status: **proposed**, revision 1. No product code is implemented by this round.
-Written on `1f7d34f1d3bf1de15c2b9cef5b3b121f2c8c27c0`; host facts come from the
-model-free probes recorded in
-[`evidence/W14-01/`](../evidence/W14-01/README.md), run against
-`codex-cli 0.154.0` and Claude Code `2.1.273`.
+Status: **revision 2 — implemented**. Revision 1 was proposed design; `reviews/01-contracts.md`
+returned REWORK with W14-R1-01…04. This revision corrects those findings and describes what
+W14-02 actually built. Implementation evidence:
+[`evidence/W14-02/`](../evidence/W14-02/README.md).
 
-Inputs (SHA-256):
+Host facts come from the model-free probes of
+[`evidence/W14-01/`](../evidence/W14-01/README.md) and from the host checks in
+`tests/test_plugin_distribution.py`, both against `codex-cli 0.154.0` and Claude Code `2.1.273`.
+Codex packaging documentation was re-read at
+<https://developers.openai.com/plugins/build/plugins> (fetched by the coordinator for this round).
 
-| File | SHA-256 |
-| --- | --- |
-| `docs/plans/wave14.md` | `94d8813cc42600f1434ec8ac16e2b262dfe8d5e92a10a17799de4c9973810289` |
-| `docs/setup-layout.md` | `cc0e3d4cc44f29dfd3188f39101324efe250b9c1daf9069263b6cf7511fdca2b` |
-| `docs/features/F-W14-plugin-distribution/brief.md` | `8b320b5563e6b41a406ed89fb05f60df447e2ca13a1f7d592062070f4a09451c` |
-| `docs/features/F-W14-plugin-distribution/decisions/01.md` | `66c488ff60b7f9651104238df531cd5e2d8705ab62f5ca128389347b443439b0` |
-| `work-items/W14-01.md` | `d328699774b84aad70997ed88bafa6c194ee22e1416e41203f82f89d5cfc8ee9` |
-| `evidence/W14-01/results/codex-plugin-mcp-cwd.json` | `cd98bc21d7f7701fe0d175023fc21fe042e6622935fa1a2082e349af06cb5013` |
-| `evidence/W14-01/results/claude-delegated-instructions.json` | `3b6d1adcde6dfe0467da66430d81d38c1575aa20a29b77aa74b0916759a1d20f` |
-| `evidence/W14-01/results/plugin-cache-update-restart.json` | `4df597bdf5a0197c65d74c4916b4530e810728cf13d74a209e797f4dbc66153a` |
-| `evidence/W14-01/results/missing-runtime-startup.json` | `0fe06ea7231c1ceea6d3b68a38398cd107a714b8b5b607f3142f9e58ebc199d2` |
+## 0. What changed from revision 1
+
+| Finding | Revision 1 said | Revision 2 does |
+| --- | --- | --- |
+| W14-R1-01 | §2.4 ran wave12 `init`, copying the whole instruction set into the project, while §2.6 promised a thin pinned entry | The Codex package ships **only** a thin entry skill. No instruction file is written into a target repository at all. §3 |
+| W14-R1-02 | Every worktree started without an MCP server, ran setup, then restarted | A committed, machine-neutral **project dispatcher** resolves the worktree and the pin at startup. An inherited worktree is ready on first start; only *initial project enablement* costs a restart. §4 |
+| W14-R1-03 | Claimed the wave12 journal already covered concurrency | An `O_EXCL` lock with revalidation under it, and tests for the race, the stale lock, symlinks and copied records. §5 |
+| W14-R1-04 | Metadata emitted raw paths and reported configured values as observed | Path classes plus digests, configured and observed separated, tri-state divergence. [Contract 02](02-wave13-metadata.md) |
 
 ## 1. Constraints the probes fix
 
-These are host facts, not design preferences. Every later choice follows from
-them.
+- **C1.** A Codex plugin MCP server starts with `cwd` inside the version-pinned plugin cache and
+  an environment stripped to an allowlist; the handshake carries no project root and no `roots`
+  capability. **A plugin-declared MCP server cannot infer its workspace.**
+- **C2.** `claude -p --plugin-dir <dir|zip>` loads a plugin for one session with no profile and
+  no project install, and gives its MCP subprocess the project `cwd` and `CLAUDE_PROJECT_DIR`.
+- **C3.** Installing a new Codex plugin version **deletes** the previous version's cache
+  directory. Claude Code keeps both. The plugin cache is not a durable home for a pin.
+- **C4.** A **project-scoped** `[mcp_servers.*]` entry resolves relative `command`, `args` and
+  `cwd` against Codex's own process directory, and the child receives that directory as an
+  absolute `cwd`. This is the only mechanism that binds a server to a worktree.
+- **C5 (new, W14-02).** Codex reads a project `.codex/config.toml` **only for a trusted project**
+  (`projects."<path>".trust_level = "trusted"` in `CODEX_HOME/config.toml`), and **only when the
+  client starts at the project root** — a launch from a subdirectory loads no project config at
+  all. Both are host consent and host scope decisions; neither is bypassed.
+- **C6 (new, W14-02).** The environment is stripped for a **project**-scoped MCP server too. A
+  variable the server needs must be named in `env_vars`.
 
-- **C1.** A Codex plugin MCP server is started with `cwd` inside the
-  version-pinned plugin cache and an environment stripped to an allowlist, and
-  the MCP handshake carries no project root. `env_vars: ["PWD"]` re-exports
-  whatever the parent process had — absent under a non-shell launcher, stale
-  under an orchestrator, and divergent under `codex -C`. **A plugin-declared MCP
-  server therefore cannot infer its workspace.**
-- **C2.** `claude -p --plugin-dir <dir|zip>` loads a plugin for one session, with
-  no profile or project install, and gives its MCP subprocess the project `cwd`
-  plus `CLAUDE_PROJECT_DIR` / `CLAUDE_PLUGIN_ROOT`.
-- **C3.** The Codex plugin cache is destructive on update: installing a new
-  version deletes the previous version's directory. Claude Code keeps both. The
-  plugin cache is therefore not a durable home for anything a running feature
-  must resume against.
-- **C4.** Codex resolves relative `command`/`args`/`cwd` of a **project-scoped**
-  `[mcp_servers.*]` entry against its own process directory (wave12 contract,
-  re-confirmed by `codex mcp list --json` in the probes). That mechanism is the
-  only one that binds a bridge server to a worktree today.
-- **C5.** Under `codex exec`, a bridge server that cannot launch does not abort
-  the session even with `required = true`. TUI behaviour is **unverified**.
+## 2. One source, two generated packages, two in-repo marketplaces
 
-## 2. Decided shape
-
-### 2.1 One source, two generated packages, one in-repo marketplace
+`scripts/plugin-packages/generate.mjs` is the only writer of the packages. It reads the single
+canonical instruction set — `.agents/skills/`, the two role `using-bridge` skills and
+`docs/features/README.md` — and writes:
 
 ```text
-packages/                         # generated, committed, reproducible
-  codex/bridge/                   # Codex plugin payload
-    .codex-plugin/plugin.json
-    skills/                       # generated from .agents/skills + .codex/skills
-    scripts/                      # bootstrap entry point
-  claude/bridge-executor/         # Claude Code plugin payload
-    .claude-plugin/plugin.json
-    skills/                       # generated from .agents/skills + .claude/skills
-.agents/plugins/marketplace.json  # Codex marketplace (repo/team form)
-.claude-plugin/marketplace.json   # Claude Code marketplace
+plugins/bridge-codex/     Codex package: thin entry skill + the project scripts
+plugins/bridge-claude/    Claude Code package: the whole workflow and role authority
+.agents/plugins/marketplace.json    Codex marketplace, entry ./plugins/bridge-codex
+.claude-plugin/marketplace.json     Claude Code marketplace, entry ./plugins/bridge-claude
 ```
 
-Both payloads are **generated** from the single canonical skill set in
-`.agents/skills/` plus the role-specific `using-bridge` skills. The generator is
-the only writer of `packages/`; a check re-runs it and fails on any diff, so the
-"no manual copies" rule of the brief is enforced mechanically rather than by
-convention. Source, both packages and both marketplaces stay in this repository
-(decision 01).
+The repository root is the marketplace root for both hosts, so
+`codex plugin marketplace add <clone-or-repo>` and `claude plugin marketplace add <clone-or-repo>`
+both work with no dependency on the author's checkout (AC-01). Host checks install from it.
 
-Manifest constraints that the generator must respect, taken from the installed
-Codex `plugin-creator` reference and confirmed by installing generated fixtures:
-`.codex-plugin/plugin.json` requires real `name`, `version` (strict semver),
-`description`, `author.name` and the `interface` block
-(`displayName`, `shortDescription`, `longDescription`, `developerName`,
-`category`); `hooks` is rejected; `mcpServers` is written only when the companion
-file exists. Marketplace entries require `policy.installation`,
-`policy.authentication` and `category`, with `source.path` relative to the
-marketplace root. The Claude payload uses `.claude-plugin/plugin.json` and
-`${CLAUDE_PLUGIN_ROOT}` for every path inside `.mcp.json`.
+**Source equivalence is enforced, not documented.** `generate.mjs --check` regenerates into a
+temporary directory and compares the whole tree plus a digest of the canonical sources; editing a
+canonical skill without regenerating fails it. It is wired as `npm run packages:check`, and a test
+asserts the failure mode rather than only the success.
 
-The Codex marketplace root is the repository root (its manifest lives at
-`.agents/plugins/marketplace.json` and its entries point at `./packages/codex/…`),
-so `codex plugin marketplace add <path-or-repo>` works from a clone with no
-dependency on the author's checkout (AC-01). Neither marketplace installs Node
-dependencies for us: the payloads must run on the host's Node with no
-`npm install` step, so the plugin ships **no** `node_modules` and the runtime it
-uses is the wave12 installed runtime, not the plugin cache (C3).
+**References are rewritten.** A package is read from a plugin cache or an installed runtime, so
+`.agents/skills/...` and `../../../docs/features/README.md` would be dead there. The generator
+rewrites them to `${CLAUDE_PLUGIN_ROOT}/...` (expanded by Claude Code inside skill content) and
+refuses to emit a package that still contains a checkout-relative reference.
 
-### 2.2 The bridge MCP server stays project-scoped
+**No dependency installation is assumed.** Neither package contains a `package.json`, a lockfile
+or `node_modules`; everything they run is dependency-free Node. A marketplace is never relied on
+to build anything.
 
-Because of **C1**, the Codex plugin does **not** declare the bridge MCP server.
-It declares no MCP server at all in revision 1. The bridge server keeps the
-wave12 managed `[mcp_servers.bridge]` block with the relative launcher path and
-`--workspace .`, which **C4** shows is the only binding that actually works.
+## 3. Instructions live in the installed runtime only (W14-R1-01)
 
-The plugin's contribution is the part that does not need a workspace: the skills,
-and a bootstrap script that a skill invokes through the agent's shell — which
-*does* run in the worktree.
+The Codex package contains exactly one skill, `bridge`, and no workflow. It tells the manager to
+run `bridge-plugin.mjs status`, read `instructions.root` from the report — the **installed runtime
+this worktree selected** — and follow the skills there. Consequences:
 
-Rejected alternative, recorded with its cost: a workspace-agnostic plugin MCP
-server that receives the worktree as an explicit, validated tool argument
-(`bridge_setup(workspace=…)`). It would remove the restart in §2.4 and it fits
-the brief's rule that binding follows an instructed use rather than a handshake.
-It is rejected for revision 1 because the current server binds `--caller`,
-`--delegation` and `--workspace` for the process lifetime
-(`scripts/native-bridge-mcp.mjs`), late binding would have to be reconciled with
-the identity guard, and a mid-session tool-set change depends on
-`notifications/tools/list_changed` handling that **no probe in this round
-verified**. It should be reconsidered only with that handling measured.
+- there is never a newer instruction copy than the runtime being driven, because there is only one
+  copy and it is inside that runtime;
+- nothing generic is written into a target repository. A prepared project receives the declaration,
+  the dispatcher, the managed MCP block and the ignore block, and nothing else;
+- the delegated executor is handed `--plugin-dir <runtime>/plugins/bridge-claude` by the runtime
+  itself (**C2**), so it reads the pinned set with no user installation (AC-04), and **C3** cannot
+  take it away mid-round because it is not in a plugin cache;
+- the published Claude package keeps the full role authority for native use, which is the same
+  bytes from the same generator.
 
-### 2.3 Project declaration, separate from local state
+## 4. The portable project dispatcher (W14-R1-02)
 
-A committed, portable declaration states that the project uses the bridge and
-which set it is pinned to. It carries no host paths, no identity and no session
-state, so a new worktree inherits it through Git unchanged:
+`prepare` writes `.bridge-project/{bridge.json,dispatch.mjs,locate.mjs,bootstrap.mjs,facade.mjs}`
+and a managed block that names `./.bridge-project/dispatch.mjs` relatively. The block contains **no
+home directory, no runtime id and no machine path** — a test asserts this — so it is portable and
+inherited through Git.
 
-```json
-{
-  "format": "claude-codex-bridge.project/v1",
-  "enabled": true,
-  "pinned": { "runtime_id": "0.2.0-860e2e77d95f", "commit": "860e2e77d95f…" }
-}
-```
+At startup the dispatcher takes the working directory the host gives it (**C4**), derives the git
+top level from *that directory* (never from `PWD`, the W14-01 failure mode), reads the project's
+authoritative pin from `bridge.json`, and:
 
-Everything local stays exactly where `docs/setup-layout.md` already puts it:
-`.bridge-runtime/` for the selection, `.bridge/` for the database, markers, lock
-and logs. Nothing local is shared through the common gitdir, and a copied
-`.bridge-runtime/install.json` naming another worktree is refused, never adopted
-— the existing rule is unchanged and load-bearing here.
+- **runtime present** → hands the connection to `<home>/runtimes/<id>/scripts/native-bridge-mcp.mjs`
+  with an explicit absolute `--workspace`. The native identity guard, the delegation policy and the
+  workspace binding are the ones that runtime implements; the dispatcher adds none of its own and
+  overrides none;
+- **runtime absent** → serves the facade: a **static** two-tool catalogue (`bridge_status`,
+  `bridge_prepare_worktree`). Because the catalogue never changes, nothing depends on
+  `notifications/tools/list_changed`, the dependency that was untestable in W14-01.
 
-### 2.4 Enabling a project and preparing a new worktree
+`env_vars = ["CLAUDE_CODEX_BRIDGE_HOME", "XDG_DATA_HOME"]` is in the block because of **C6**. Both
+are variable *names*, not values, so the block stays identical for every user.
 
-1. Once per machine: add the marketplace and install the plugin.
-2. In a project: the user asks, in ordinary words, to use the bridge. The
-   `bridge-setup` skill — available from the plugin in every directory —
-   resolves root and gitdir, writes or reads the project declaration, installs or
-   reuses the pinned runtime under `<home>/runtimes/<id>/`, and writes the
-   managed block, the instruction set, the ignore block and `.bridge-runtime/`
-   idempotently. This is the existing wave12 `init`, invoked for the user instead
-   of typed by the user.
-3. In a new worktree of an enabled project: the same skill runs, reads the
-   inherited declaration, and prepares only the local state. No manual command,
-   no flags, no copying.
-4. One client restart after step 2 or 3, because the MCP server list is read at
-   session start. **C5** says the session before the restart still works under
-   `codex exec`, so the skill can run there; the TUI equivalent is an open
-   question (§4).
+**Restart honesty.** Initial project enablement costs one host restart and one host trust decision
+(**C5**): a client reads its MCP server list at startup, and Codex only reads a project config for
+a trusted project. That is a host property, stated plainly in the skill and in `docs/setup.md`. A
+worktree created later from an enabled project inherits the declaration and the dispatcher, needs
+no bridge preparation step, and is proven to hand over to the pinned runtime on an ordinary first
+start (`tests/test_plugin_distribution.py`, AC-03). Codex's own per-path trust prompt still
+applies to that worktree and is not bypassed.
 
-Concurrency and refusal rules are unchanged: detection, handshake or a read never
-assign a manager or create domain state; a foreign manager is refused with no
-mutation; two simultaneous first uses must not overwrite each other's
-configuration, which the existing `pending.json` / backup journal already covers.
+**Not covered:** a launch from a subdirectory. **C5** says Codex loads no project config at all in
+that case, so the bridge is simply absent there; the bridge does not work around it.
 
-### 2.5 The delegated executor
+## 5. Preparation is the only write, and it is exclusive (W14-R1-03)
 
-By **C2** the bridge passes `--plugin-dir <selected runtime>/packages/claude/bridge-executor`
-when it spawns `claude -p`. The executor then has the instruction set of the
-**selected** runtime — not of whatever is newest, and not of whatever the user
-happens to have installed. No Claude Code plugin install is required for
-Astra → Claude to work; the published Claude package exists so a person can use
-the same roles natively, which is a separate, optional path.
+`bridge_status`, the handshake and detection are pure: a test compares a full directory listing
+before and after. `prepare` is reached only from an instructed call, and it:
 
-The `--plugin-dir` argument sits beside the existing `--add-dir`,
-`--disallowed-tools` and `--permission-mode` arguments and was probed together
-with the further-delegation lock; it does not weaken it.
+1. resolves the real worktree, refusing a directory outside a git worktree;
+2. refuses a local record naming another worktree — a copy is never adopted and never rewritten;
+3. refuses any managed path that is, or passes through, a symlink;
+4. takes an `O_EXCL` lock under `.bridge/`, **revalidates 2 and 3 under the lock**, and writes
+   atomically. A stale lock older than ten minutes is broken deliberately and reported as
+   `broke_stale`, so an interrupted setup cannot wedge a worktree;
+5. splices only the managed block, preserving the user's own `config.toml` and `.gitignore`
+   content, their own `.agents/skills/`, and every other file;
+6. requires `confirm: true` and a `workspace` equal to the root the server itself resolved, so a
+   call cannot redirect preparation elsewhere.
 
-### 2.6 Versions, updates and removal
+Tests cover the concurrent race with two real processes, the held lock, the stale lock, the
+symlink, the copied record, idempotency, the dry run and migration from a wave12 block.
 
-The pinned set is `runtime + instructions` together, identified by the wave12
-`runtime_id`. The authoritative pin is the project declaration (§2.3); a
-worktree's `.bridge-runtime/install.json` records which pin it actually applied.
-A divergence produces a named condition and an explicit update or rollback
-operation — never a silent switch to whatever the plugin cache now holds.
+## 6. Versions, updates, rollback and migration
 
-**C3** makes this mandatory rather than stylistic: a plugin update deletes the
-previous Codex cache version, so no pin may ever point inside the plugin cache.
-The installed runtime directory is confirmed byte-identical after both a plugin
-update and a plugin removal. Removing the plugin therefore leaves features,
-databases, packages, evidence and installed runtimes in place; only the
-distribution channel goes away.
+The pin is `runtime + instructions` together, identified by the wave12 `runtime_id`, declared in
+the committed `bridge.json` and applied per worktree in `.bridge-runtime/install.json`. A
+divergence is reported as `pin-diverged`; it never becomes a silent switch. Wave12 `update` and
+`rollback` keep their guarantees and stay the way a pin is moved.
 
-Manager instructions must match the selected set for the same reason. Revision 1
-keeps a thin, stable entry skill in the plugin that reads the selected runtime
-and loads the workflow instructions from it, rather than always loading the
-newest full workflow out of the plugin cache.
+Migration is additive: a worktree still carrying the wave12 launcher block keeps working, doctor
+reports `integration_source: project-config` for it and `project-dispatcher` for a migrated one,
+and the wave12 CLI remains the supported fallback for environments without plugins. Only one
+server is ever configured, because the plugin declares none (**C1**).
 
-### 2.7 Migration and fallback
+Removing the plugin removes the distribution channel only: installed runtimes, features,
+databases, packages and evidence are untouched, and a test shows the pinned instruction set
+surviving deletion of a whole plugin cache.
 
-An existing wave12 worktree keeps working untouched until an explicit migration.
-Because the plugin declares no MCP server (§2.2) there is no double-server or
-tool-name conflict to resolve in revision 1 — a benefit worth naming, since it
-was one of the plan's risks. The wave12 CLI stays the supported fallback for
-environments without plugins, and `doctor` reports which integration source,
-which selected version and which conflict cause it sees.
+## 7. Out of scope here
 
-## 3. Path references inside the packages
-
-Every reference of the form `.agents/skills/...` must resolve from the package.
-This includes `feature-exchange`'s `scripts/feature_exchange.py`, which the
-bridge-loop instructions invoke by path, and the `docs/features/README.md`
-reference. Revision 1 requires the generator to rewrite these to package-relative
-or runtime-relative references and a check to fail on any remaining literal
-`.agents/skills/` path inside a generated package. Shipping today's files in an
-archive with dead links does not satisfy this.
-
-## 4. Open questions for W14-02
-
-1. **TUI startup with an unusable bridge server.** Only `codex exec` was probed
-   (**C5**). If the TUI refuses to start, step 4 of §2.4 breaks and the managed
-   block must be written with `required = false` until the runtime exists, or
-   kept out of Git entirely. Needs a PTY smoke like wave12 AC-08.
-2. **Whether the project declaration should also be the `required` gate**, i.e.
-   whether a worktree with a declaration but no runtime should fail loudly rather
-   than start degraded.
-3. **Late-bound plugin MCP** (§2.2 rejected alternative) — only with measured
-   `tools/list_changed` behaviour and a reconciled identity guard.
-4. **Codex vendor documentation** could not be read this round; the manifest
-   shape above rests on the installed CLI and the local `plugin-creator`
-   reference and must be re-checked before the generator is frozen.
-
-## 5. What this contract does not do
-
-It does not implement anything, does not change `docs/setup-layout.md`, does not
-touch wave13, and does not authorise publishing a plugin or a marketplace
-anywhere. It proposes; the coordinator decides.
+Wave13 owns logging, retention and diagnose and is absent from this baseline; the doctor metadata
+this round implements is described in [contract 02](02-wave13-metadata.md) and claims no diagnose
+integration. No real-agent pilot was run, so no end-to-end Astra → Claude behaviour is claimed.
