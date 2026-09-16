@@ -45,3 +45,31 @@ Correction: retain old ledgers, correct the current evidence matrix; prove new b
 ## Simplification and route
 The remaining core failure is an incomplete parallel setup implementation. Prefer reuse of immutable installation, ownership/conflict/active checks and local selection already present in wave12, with a thin portable project entry plus installed helpers. A missing-runtime facade that only writes a declaration cannot install anything and adds an unguarded mutation surface; remove it if a thin skill-driven setup suffices. The existing authorization covers these architectural corrections.
 Run one coherent correction round in the same Claude session. Final review should focus on these findings and AC gaps, not re-review unchanged probe research. Joint wave13 integration is deferred by decision02; all other independently authorized work continues.
+
+## 2026-09-16 — correction review, task task_v62rz4kag7 (attempts 0/1)
+
+**REWORK, with substantial progress.** Reviewed `f490b46e986b39ee30d5d2ede2630f564d14fcce`, runtime release `6b483b2e1a231d9db786b39f5032cbaee3d18caa`. Archive F-W14-round-3-resumed.zip verified independently: SHA-256 `b2b03c21540c1b4746c38376ccd082b395c6616e21a4de9c0ec8837b00a584aa`, base `11155278043753ac190b408b3d729d923ed83fc9`, 51 changes, no scope breach or drift. Initial attempt was BLOCKED by malformed reproduction evidence; strict same-task resume completed DONE. No duplicate delegation.
+
+Dispositions: R2-01 **progress** (real installer/default pin and successful single-worktree first mutation; race/recovery below remain); R2-02 **resolved** (installed helper export and provenance-aware verify independently reproduced, no missing target guide); R2-03 **progress** (native authorization before materialisation, pin/foreign/custom guards and live update refusal; concurrent/recovery cases below remain); R2-04 **resolved** (same-process import, no wrapper child); R2-05 **progress** (real runtime tests and corrected counts, but AC-06 still overstates automatic concurrent/recovery coverage). R1-01 resolved; R1-02/03 progress; R1-04 unchanged resolved working semantics, joint diagnose deferred.
+
+Executor reports build, 468 JS,43 Python,140 pilot (1 skipped), packages check. Independent review verifies package and installed-guide report semantics, runs default-pin local-source installation, and runs the following actual-runtime synthetic MCP probes. No models, personal profiles or active supervisor changes.
+
+### W14-R2-06 — same-worktree concurrent first use cannot progress
+
+At release commit `6b483b2e1a231d9db786b39f5032cbaee3d18caa`, start two committed entry processes in ONE pristine inherited worktree, complete initialize/tools-list on both (no writes), then send bridge_create_task with distinct valid synthetic native envelopes. Both return INTERNAL/ACTIVE_SESSION naming the other's state-open file. Neither produces install.json; both processes retain their database descriptors until terminated. Thus the native guard's serialized bootstrap and setup's process scan obstruct one another. Reproduction script `/tmp/w14-same-worktree-review.py`, evidence `/tmp/w14-race-review-6tywvno3/report.json` (operator-local synthetic paths only). Two DIFFERENT worktrees in the new suite do not cover this requirement.
+
+Correction: keep the native ownership/critical-section boundary authoritative. Adapt the existing setup preparation narrowly for an authorized first mutation already under that guard; don't add a second facade/lock protocol or weaken ordinary update/rollback checks. Prove exactly one successful owner and foreign-manager refusal without writes from the loser, on the same worktree; verify retry/reads do not get stuck. Preserve malformed/subagent/copied-state refusals.
+
+### W14-R2-07 — interrupted automatic preparation requires manual setup again
+
+Same runtime, separate fresh inherited worktree. First authorized mutation with product fault injection `CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER=1` exits -9 after selecting runtime, leaving its journal and native reservation. Restart without injection refuses before serving: SETUP_STATE_PARTIAL, no record, pending.json present. Evidence `/tmp/w14-race-review-6tywvno3/interruption-report.json`. Existing test recovers an explicit setup CLI call; it does not prove recovery of automatic first use.
+
+Correction: distinguish provably same-worktree recoverable journal/native reservation from unexplained or copied partial state, using existing identity/recovery evidence. Permit pure startup/reads and recover only at the next authorized native mutation; no manual setup/restart loop, no automatic foreign adoption. Test interruption at meaningful write boundaries and copied/tampered pending state.
+
+### W14-R2-08 — setup plan claims no writes after installing runtime
+
+Default package pin, local source, fresh temporary home, setup WITHOUT --yes: exit0, applied=false, but runtime installed and home created. At `006bf13a7be2952764b30b438506701b46c2ac6a`, source runtime `f37207a7352b3277ac6d5f5a7c6051a80b00c6b1`. Evidence `/tmp/w14-plan-review-lxuwq7n3/result.json`. Entry skill says plan-only and CLI says nothing written. Make dry-run genuinely read-only (including source cache/runtime) and apply acquire/build only under --yes, with honest pre-install planning output. Preserve a reviewable migration diff when runtime is present. This is an ordinary correction, not a new permission gate.
+
+### Step back and next route
+
+At the third review of AC-03 we replaced per-worktree setup with the existing native mutation boundary. Keep that simpler direction; remaining defects are the boundary between that guard and wave12 selection/recovery, not grounds for another framework. Existing authorization covers these narrow fixes, tests, refreshed actual release pin and full validation. Next round in the same Claude session. Keep earlier ledgers; don't label concurrent/interrupted automatic preparation PASS until these reproductions pass. User-authorized wave13 deferral remains unchanged.

@@ -49,3 +49,21 @@ Następny krok: spójna korekta R2-01–05 bez nowych pytań produktowych.
 Użytkownik delegował roboczy interfejs wave13; [decyzja02](../features/F-W14-plugin-distribution/decisions/02.md)
 zapisuje kod cf2365c i review853302c. Wspólna integracja po odbiorze wave13, nie blokuje
 niezależnej pracy. Bez push,merge,wdrożenia,zmian wave13 i dodatkowych pilotów modeli.
+
+## 2026-09-16 — runda3 i ścisłe wznowienie, review nadal REWORK
+
+Task `task_v62rz4kag7`: BLOCKED przez format dowodów reprodukcji, następnie DONE po
+wznowieniu tego samego zadania/sesji. Head `f490b46`, pin runtime `6b483b2`.
+Paczka F-W14-round-3-resumed.zip zweryfikowana niezależnie, SHA-256
+`b2b03c21540c1b4746c38376ccd082b395c6616e21a4de9c0ec8837b00a584aa`.
+Claude: build,468 JS,43 Python,140 pilot (1 skipped), packages check PASS.
+Usunięto równoległy setup/fasadę, instalator używa wave12, instrukcje pozostają w runtime,
+eksporter działa w obcym repo, launch jest w jednym procesie. Nowe worktree startuje
+bez zapisu; pierwsza autoryzowana mutacja przygotowuje wybór runtime.
+Codex niezależnie: eksport/verify i lokalna instalacja domyślnego pina PASS; realny
+runtime ujawnił blokowanie obu równoczesnych pierwszych użyć tego samego worktree
+oraz brak restartu po przerwaniu automatycznej inicjalizacji. Plan setupu zapisuje runtime
+mimo opisu dry-run. [Review02](../features/F-W14-plugin-distribution/reviews/02-implementation.md)
+zawiera R2-06–08, dokładne commity i reprodukcje. Kolejny krok: wąska korekta na istniejącej
+granicy guarda/wyboru runtime, ponowne testy i końcowy review. Bez nowej decyzji produktowej.
+Wave13 nadal bez integracji do czasu odbioru; żadnego push,merge,wdrożenia ani pilota modeli.

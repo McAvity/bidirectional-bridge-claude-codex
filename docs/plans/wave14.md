@@ -1,6 +1,6 @@
 # Wave14 — pluginy i praca bez ręcznego init worktree
 
-Status: ZAPLANOWANE; implementacja niezlecona. Data: 2026-09-16.
+Status: W REALIZACJI; implementacja i zwykłe korekty autoryzowane. Data: 2026-09-16.
 Baza planowania: feature-workflow `6795703`. Wave12 odebrane; wave13 w realizacji
 według użytkownika. Postęp: [wave14-progress.md](wave14-progress.md).
 
