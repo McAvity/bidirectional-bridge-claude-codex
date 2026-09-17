@@ -2,7 +2,7 @@
 
 Cały zlecony zakres W15-01–04 wykonany przez Claude przez bridge; Codex przeprowadził
 niezależne review i próby. Pięć rund, jedna sesja, bez recovery. Wszystkie C1-C4/I1-I8
-zamknięte; [review](reviews/02-implementation.md) PASS. Odbiór użytkownika pending.
+zamknięte; [review](reviews/02-implementation.md) PASS. Odbiór użytkownika approved 2026-09-17; decyzja02. Historyczny punkt wznowienia poniżej opisuje stan dostawy przed odbiorem.
 
 Naturalne wejście korzysta z przypiętych instrukcji managera; plugin pozostaje cienki.
 Opcjonalna preferencja AGENTS ma plan/diff i bezpieczną odmowę niezgodnego targetu.

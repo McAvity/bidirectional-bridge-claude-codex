@@ -104,3 +104,10 @@ Finalny [handoff](../features/F-W15-natural-workflow/handoff.md) zawiera commity
 ograniczenia i punkt wznowienia. Eksport F-W15-final-01.zip, potem q-01 odbiór użytkownika.
 Nie uruchamiać kolejnej rundy; root pozostaje otwarty do rzeczywistej decyzji.
 Brak push/merge/deploy; aktywny runtime/piny/konfiguracja nietknięte.
+
+## Odbiór — 2026-09-17
+
+Użytkownik przyjął dostawę b64b858 odpowiedzią na q-01; decyzja02 approved.
+Feature/root do zamknięcia przez bridge. Następny krok: instrukcja setupu na osobnym
+worktree realnego projektu z jawnym runtime wave15 (release pin nadal ff225e5).
+Samo przygotowanie procedury nie uruchamia instalacji ani testów z modelami.

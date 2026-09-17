@@ -1,5 +1,13 @@
 # Current handoff
 
+## Wave15 — accepted 2026-09-17
+
+User accepted local delivery b64b858 via q-01; see
+[decision02](features/F-W15-natural-workflow/decisions/02.md).
+Next: real-project setup procedure using an explicit wave15 runtime.
+No installation, model smoke, push, merge or deployment performed.
+Earlier pending acceptance entries are historical.
+
 ## Wave15 — local delivery ready for acceptance
 
 All authorized tasks implemented and independently reviewed: technical PASS.
