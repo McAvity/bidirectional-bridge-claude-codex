@@ -2,8 +2,8 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.2.0",
   "pinned": {
-    "commit": "ff225e550966806e2d39221eeaaa1428abc5307e",
-    "describe": "Integrated wave13/wave14 runtime with dispatcher-aware doctor"
+    "commit": "b64b858263b653e546fc021163762a2af1bc8551",
+    "describe": "Accepted wave15: natural workflow, continuation and optional project preference"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [

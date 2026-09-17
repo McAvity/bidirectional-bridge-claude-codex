@@ -111,3 +111,12 @@ Użytkownik przyjął dostawę b64b858 odpowiedzią na q-01; decyzja02 approved.
 Feature/root do zamknięcia przez bridge. Następny krok: instrukcja setupu na osobnym
 worktree realnego projektu z jawnym runtime wave15 (release pin nadal ff225e5).
 Samo przygotowanie procedury nie uruchamia instalacji ani testów z modelami.
+
+## Przygotowanie release pinu — 2026-09-17
+
+Za zgodą użytkownika domyślny pin dystrybucji przeniesiony na zaakceptowane b64b858.
+Pakiety przegenerowane lokalnie; runtime sesji i deklaracja tego projektu bez zmian.
+CLI Codex potwierdza marketplace add --ref feature-workflow. Publikacja nowego
+release descriptor i osiągalność wskazanego commita są konieczne dla zdalnej instalacji.
+Nadal bez push/merge; następny krok to publikacja po osobnym zleceniu, potem setup
+realnego projektu. To przygotowanie dystrybucji, nie wykonany smoke/instalacja.
