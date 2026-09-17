@@ -1,5 +1,13 @@
 # Current handoff
 
+## Distribution publication reconciled — 2026-09-17
+
+Remote feature-workflow already contains accepted b64b858 and published v0.3.0
+(prerelease), runtime pin2611d1e, CI35160973276 SUCCESS. Local e56c04e is superseded;
+do not merge it over the newer release. No redundant push or runtime activation.
+Next: marketplace from feature-workflow and real-project setup.
+See [progress](plans/wave15-progress.md) for evidence and parallel decision histories.
+
 ## Wave15 — accepted 2026-09-17
 
 User accepted local delivery b64b858 via q-01; see

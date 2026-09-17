@@ -120,3 +120,15 @@ CLI Codex potwierdza marketplace add --ref feature-workflow. Publikacja nowego
 release descriptor i osiągalność wskazanego commita są konieczne dla zdalnej instalacji.
 Nadal bez push/merge; następny krok to publikacja po osobnym zleceniu, potem setup
 realnego projektu. To przygotowanie dystrybucji, nie wykonany smoke/instalacja.
+
+## Rekonsyliacja publikacji — 2026-09-17
+
+Użytkownik zlecił merge/push przygotowanej dystrybucji. Przed zapisem fetch wykazał,
+że origin/feature-workflow ma już fb246e8, zawiera b64b858 i wydanie0.3.0 z pinem
+2611d1ecccfa807b1e046ebce7b05e0dded27d12. GitHub potwierdził prerelease v0.3.0
+i CI35160973276 SUCCESS na0143fa4. Cel publikacji jest już osiągnięty.
+Lokalny e56c04e jest superseded: NIE scalać go, bo cofa package_version/pin do0.2.0.
+Nie wykonano redundantnego push/merge ani zmian innych worktree/runtime.
+Decyzja02 lokalnego managera i decyzja02 koordynatora wydania to niezależne wpisy
+o różnych zakresach; zachowano obie historie bez nadpisania. Do testu marketplace
+używać feature-workflow (albo jawnego tagu v0.3.0), następnie setup w realnym projekcie.
