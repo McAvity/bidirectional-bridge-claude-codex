@@ -144,3 +144,12 @@ Claude task_sf6qj1hpp8 COMPLETE at1b52d63 (implementation05954fe). Review02 PASS
 for instructions: package, generator, links and scope checked independently.
 W16-03 now ready: durable normalization/Git regression evidence and full validation.
 Actual rounds continue to use pinned0.3.2 package contracts; no new runtime selected.
+
+
+## W16-03 delivered; integration finding R02-01 — 2026-09-19
+
+Task_fe3862d430 completed through same-task recovery at1f28b31; attempt0 evidence
+retained. Full checks: JS582/Python77/pilot140 plus install/build/packages PASS.
+Independent review found a real rename scope bypass: moving lib/other.py to
+app/other.py hides the source from name-only checks. Review02 REWORK R02-01;
+authorized correction round next, no runtime or smoke changes.

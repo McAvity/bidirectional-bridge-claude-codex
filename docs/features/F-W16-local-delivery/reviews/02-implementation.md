@@ -32,3 +32,51 @@ If these expose ambiguous instructions, clarify within the accepted contract and
 record the precise finding; do not add a production helper without demonstrated need.
 
 Next: W16-03 under existing authorization, then independent review and full integration.
+
+
+## W16-03 integration review — 2026-09-19 — REWORK
+
+Reviewed task `task_fe3862d430`, attempts0/1, delivered range
+`d4e8b7b18631ec61789c6391399d0e747c81e900..1f28b310a87189d534c3af519f1d3176abd1369f`.
+Attempt0 ended early while waiting for background checks; bridge honestly recorded
+PARTIAL/BLOCKED with no verification. Same-task recovery completed, preserving
+attempt01 ledger. No replacement session/task or runtime change.
+
+Package verify PASS (hash `dab1ba7e98c46e800aad231d4719311cb5092ef9141e1d551239d6733c093080`),
+14 paths within scope; clean tree; range diff check PASS. Read both new test files,
+scripted CLI fixture, instruction corrections F1–F5 and evidence report. Those
+clarifications are supported by concrete tests and remain in scope. Executor full
+validation: npm ci/build, JS582, Python77, pilot140, packages/links PASS. Manager
+read the JS full-suite terminal summary; independent focused reruns follow the fix.
+The model-free/behavioural distinction is retained; no smoke is required here.
+
+### R02-01 — required correction: rename hides the out-of-scope source
+
+Requirement: AC-02/03, every changed path must be checked and scope violations
+must not produce false PASS. Evidence: on delivered code the manager used the
+real temporary repo from `tests/test_local_delivery.py` DeliveryCase, ran
+`git mv lib/other.py app/other.py`, added the new ledger and committed. Scope is
+`app/**` plus execution ledgers. `git diff --name-status BASE HEAD` shows
+`R100 lib/other.py app/other.py`, but the published `--name-only` endpoint and
+per-commit commands show only `app/other.py` plus the ledger. `receipt(...)`
+returned no findings and effective COMPLETE. Deleting the out-of-scope source is
+therefore hidden by Git rename detection. This is an observed acceptance blocker,
+not a hypothetical risk. Related ledger rename checks share the same class.
+
+Correction: use path enumeration that includes both sides (e.g. explicit
+`--no-renames` for endpoint and per-commit path checks, consistently including
+ledger addition/deletion checks), with path-safe parsing. Add regression for
+outside→inside rename and earlier-ledger rename; retain normal in-scope rename
+and add/revert coverage. Fix published instructions and test transcription,
+regenerate plugins, add a correction ledger and update the evidence report.
+Keep production API/state machine and historical contract/ledgers unchanged.
+Use existing whole-wave authority; no user decision needed.
+
+Nonblocking test fidelity note: `LEDGER=none` is permitted only for an explicitly
+read-only contract with unchanged head. The current test-local receipt checks
+only unchanged head, although its default scope allows writes. Make that fixture
+condition explicit rather than implying the predicate alone implements the rule.
+
+Next: one bounded correction round in the same Claude feature session, then
+focused re-review of R02-01 and related paths. Full JS/pilot results remain valid
+if their source inputs are unchanged; do not rerun slow unrelated suites by habit.
