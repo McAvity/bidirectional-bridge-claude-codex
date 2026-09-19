@@ -7,7 +7,9 @@ Rename scope finding R02-01 fixed byd3b5385 and rechecked. Validation: build/JS5
 Python83, pilot140; manager Python83/targeted JS29/packages/links100 PASS.
 [Delivery](features/F-W16-local-delivery/handoff.md), [progress](plans/wave16-progress.md).
 User accepted delivery4c8cd88 in q-01; [decision02](features/F-W16-local-delivery/decisions/02.md).
-No active round. No push/merge/deploy/additional model smoke;
+User subsequently authorized push and fast-forward merge to feature-workflow;
+see the publication checkpoint in [progress](plans/wave16-progress.md).
+No active round. No deployment/additional model smoke;
 new no-ZIP model behaviour unverified, pinned supervising runtime unchanged.
 Earlier executing and blocked statuses below are historical.
 

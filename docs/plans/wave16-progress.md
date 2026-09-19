@@ -180,3 +180,17 @@ Actual answer to q-01: “akceptuje feature,”. Recorded in bridge and
 All commissioned work is accepted; close the bridge feature/root and retain local
 commits. No new execution or testing scope. Earlier pending-acceptance checkpoints
 are historical. No push, merge, deployment, runtime change or model smoke authorized.
+
+
+## Merge and push authorized — 2026-09-19
+
+After accepting wave16, the user instructed “push i merge”. This authorizes
+merging the accepted wave16 history into feature-workflow and pushing both branches
+to origin. The earlier local-only restriction is superseded for these operations;
+deployment, runtime rebuild/switch and model smoke remain outside scope.
+
+Preflight: origin/feature-workflow at ef90b8d is an ancestor of accepted wave16
+ba0af195dc6422f0eb8c71fced81df4227cd095f; both worktrees clean. Fast-forward
+integration preserves the validated product tree without conflict resolution.
+Next operation: fast-forward feature-workflow and atomic push of both branches;
+confirm remote heads afterwards. Existing build/test evidence remains applicable.
