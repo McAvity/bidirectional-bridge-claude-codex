@@ -1,5 +1,16 @@
 # Current handoff
 
+## Wave16 execution authorized — blocked before delegation
+
+The whole W16-01–03 implementation, integration and independent review are now
+authorized, with Claude through bridge and local commits only. This worktree pins
+`0.2.0-ff225e550966`, which rejects host Codex `0.155.1` with
+`NATIVE_CONTEXT_INVALID` before creating the manager root. No database, feature or
+Claude round was created; runtime unchanged. [Checkpoint](plans/wave16-progress.md)
+records evidence and resumption. A compatible client/runtime is needed before
+execution; runtime changes in this session, push/merge/deploy and model smoke remain
+unauthorized. Earlier “awaiting execution instruction” entries are historical.
+
 ## Wave17 planned — standalone feature workflow distribution
 
 [Wave17](plans/wave17.md): separate workflow plugin, two client packages from shared
