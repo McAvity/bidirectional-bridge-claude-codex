@@ -1,5 +1,13 @@
 # Current handoff
 
+## Codex 0.155.1 compatibility — 0.3.1 publication checkpoint
+
+Version-only refusals replaced with CODEX_VERSION_UNVERIFIED warnings; metadata,
+subagent and ownership guards remain enforced. Code3d5891b, test correction41962cc,
+release pin41962cc. Independent review PASS; actual-host temporary setup PASS.
+See [progress](plans/codex-version-warning.md) for full validation and CI checkpoint.
+Supervising runtime unchanged; full CI required before release tag.
+
 ## Wave15 0.3.0 published; activation then smoke
 
 GitHub prerelease/tag v0.3.0: 0143fa4. CI35160973276 SUCCESS (565 JS/46 Python/140 pilot).

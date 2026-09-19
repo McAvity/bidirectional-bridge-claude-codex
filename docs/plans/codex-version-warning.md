@@ -35,3 +35,13 @@ regression. Focused setup and full-suite revalidation pending.
 Actual installed Codex0.155.1: public plugin setup with default new pin/source override
 in temporary project PASS, applied=true, preference present, entry status ready, warning
 visible. No model was invoked and no host metadata/guardian certification is claimed.
+
+## Publication checkpoint
+
+Focused setup3 PASS after41962cc; independent review confirms isolation correction.
+Code build PASS, install npm ci --ignore-scripts PASS, identity29 and reviewer26 PASS,
+Python46/pilot140 PASS, packages/docs/diff PASS. First full run571/1 is retained honestly;
+the sole failing scenario is now rechecked green, plus two isolated version cases.
+Publish the fast-forward on feature-workflow under the continuing user authorization
+for this setup delivery, then require the full CI result before tagging0.3.1.
+No supervising runtime changes or target-project installation.
