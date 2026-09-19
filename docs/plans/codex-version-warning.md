@@ -16,3 +16,11 @@ incompatibility retain their existing refusals.
 
 Implementation and independent review in progress. Build PASS; full validation pending.
 Next: finalize regressions, review, tests, commit and release delivery.
+
+## Review and validation checkpoint
+
+Code3d5891b, independent reviewer version_policy_review: core PASS, 26 identity tests PASS.
+Coordinator identity protocol/native launcher29 PASS. Read-only reviewer found rollback
+text warning omission (fixed), stale README policy (fixed), and pending release pin (next).
+Build/packages/docs/diff PASS; Python46/pilot140 PASS; full JS running.
+Version0.3.1 prepared for delivery; supervising runtime and project declaration unchanged.

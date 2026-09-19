@@ -154,8 +154,10 @@ Details: [docs/architecture.md](docs/architecture.md). Normative wire contract:
 
 For the Astra (Codex) → Claude workflow, install the Codex plugin once on your machine.
 Use Linux, Git, Node.js 24, npm and Python 3.11 or newer, with Codex and Claude Code
-installed and logged in. The current native identity adapter supports **Codex 0.154.0**;
-`doctor` refuses an unverified version. No separate bridge server or API key is needed.
+installed and logged in. **Codex 0.154.0** is historically verified; **0.155.1** and
+other unverified versions may continue with a `CODEX_VERSION_UNVERIFIED` warning.
+Metadata validation and manager identity checks remain enforced. No separate bridge
+server or API key is needed.
 
 Run these as **two consecutive commands in a normal terminal**, not in the Codex prompt:
 
