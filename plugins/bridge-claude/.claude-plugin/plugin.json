@@ -1,6 +1,6 @@
 {
   "name": "bridge-claude",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Feature workflow and bridge role instructions for Claude Code.",
   "author": {
     "name": "claude-codex-bridge"

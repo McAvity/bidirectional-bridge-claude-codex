@@ -59,3 +59,10 @@ entry points are plugins/bridge-{codex,claude}/skills/bridge-upgrade/SKILL.md.
 After local integration, the skill still needs publication/plugin refresh to become
 available in installed clients. Preserve running runtime and the independent wave16
 worktree; neither is upgraded by this implementation. No push.
+
+## Publication authorized — 2026-09-19
+
+User requested publication to the existing McAvity fork. Preparing version0.3.2 and
+an immutable release source pin; the project's own declaration remains unchanged.
+Publication includes the three local skill commits. Full CI must pass on the published
+release candidate before creating the annotated tag and GitHub prerelease.
