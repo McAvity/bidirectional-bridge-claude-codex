@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W17-workflow-plugin",
+  "phase": "plan-review",
+  "brief": "docs/features/F-W17-workflow-plugin/brief.md",
+  "design": "docs/features/F-W17-workflow-plugin/design.md",
+  "tasks": [
+    "work-items/W17-01.md",
+    "work-items/W17-02.md",
+    "work-items/W17-03.md",
+    "work-items/W17-04.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave17.md",
+    "docs/plans/wave17-progress.md",
+    "docs/plans/wave16.md",
+    "docs/plans/wave16/decisions/01.md",
+    "docs/plugin-distribution.md"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "feature-review w trybie plan, następnie feature-decide. Implementacja niezlecona; W17-02 zależy od zintegrowanego wave16."
+}

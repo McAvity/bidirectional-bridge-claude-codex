@@ -1,5 +1,14 @@
 # Current handoff
 
+## Wave17 planned — standalone feature workflow distribution
+
+[Wave17](plans/wave17.md): separate workflow plugin, two client packages from shared
+sources, existing repo and marketplace. Standalone use without bridge; bridge use
+follows pinned runtime instructions. Contract task covers legacy plugin coexistence
+and delegated Claude. Packaging depends on integrated wave16.
+Brief/design/index and W17-01–04 are ready for plan review, not implementation.
+[Progress](plans/wave17-progress.md). No runtime, profile or publication changes.
+
 ## Wave16 plan accepted — awaiting execution instruction
 
 [Wave16](plans/wave16.md) records local task delivery through bridge and Git,
