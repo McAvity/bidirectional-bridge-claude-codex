@@ -1,5 +1,14 @@
 # Current handoff
 
+## Wave15 history reconciled — 2026-09-19
+
+All wave15 commits are integrated with the accepted0.3.1 delivery. Release pin41962cc
+and wave16 documents are unchanged. Both decisions survive: release authorization02
+and [technical acceptance03](features/F-W15-natural-workflow/decisions/03.md).
+Original manager feature accepted/root DONE; model smoke remains separately scoped,
+not a behavioural PASS. Historical pending-acceptance instructions below are superseded.
+
+
 ## Wave16 plan accepted — awaiting execution instruction
 
 [Wave16](plans/wave16.md) records local task delivery through bridge and Git,
@@ -467,3 +476,23 @@ ledgers, evidence and round/final packages are preserved. The final package stil
 This closeout adds no review or tests and performs no merge, push, deployment or integration.
 No pending worker round remains. End this session after committing the documentation;
 the integration coordinator owns the next step. See `docs/plans/wave13-progress.md`.
+
+## Archived wave15 manager handoff entries
+
+The following entries are retained from1a2866d; they describe their historical state.
+
+## Distribution publication reconciled — 2026-09-17
+
+Remote feature-workflow already contains accepted b64b858 and published v0.3.0
+(prerelease), runtime pin2611d1e, CI35160973276 SUCCESS. Local e56c04e is superseded;
+do not merge it over the newer release. No redundant push or runtime activation.
+Next: marketplace from feature-workflow and real-project setup.
+See [progress](plans/wave15-progress.md) for evidence and parallel decision histories.
+
+## Wave15 — accepted 2026-09-17
+
+User accepted local delivery b64b858 via q-01; see
+[decision02](features/F-W15-natural-workflow/decisions/02.md).
+Next: real-project setup procedure using an explicit wave15 runtime.
+No installation, model smoke, push, merge or deployment performed.
+Earlier pending acceptance entries are historical.

@@ -2,7 +2,7 @@
 
 Cały zlecony zakres W15-01–04 wykonany przez Claude przez bridge; Codex przeprowadził
 niezależne review i próby. Pięć rund, jedna sesja, bez recovery. Wszystkie C1-C4/I1-I8
-zamknięte; [review](reviews/02-implementation.md) PASS. Odbiór użytkownika pending.
+zamknięte; [review](reviews/02-implementation.md) PASS. Odbiór użytkownika approved 2026-09-17; decyzja03. Historyczny punkt wznowienia poniżej opisuje stan dostawy przed odbiorem.
 
 Naturalne wejście korzysta z przypiętych instrukcji managera; plugin pozostaje cienki.
 Opcjonalna preferencja AGENTS ma plan/diff i bezpieczną odmowę niezgodnego targetu.
@@ -87,3 +87,11 @@ da6b026 docs(wave15): close entry findings and step back on continuation evidenc
 756ada2 fix(W15-I8): refuse the preference when the target runtime cannot serve its read
 292cb14 docs(W15): record the I8 correction and refresh the report
 ```
+
+## Rekonsyliacja odbioru — 2026-09-19
+
+[Decyzja03](decisions/03.md) zachowuje odbiór managera z8ceaa10.
+[Decyzja02](decisions/02.md) zachowuje osobną autoryzację koordynatora wydania.
+Historyczny punkt wznowienia powyżej nie jest już aktywny: q-01 odpowiedziane, feature
+accepted, root DONE. Smoke nie został tym samym uznany za zaliczony. Aktualny pin
+wydania0.3.1 pozostaje41962cc; nie wracać do historycznego e56c04e.
