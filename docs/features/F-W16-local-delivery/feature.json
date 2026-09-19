@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W16-local-delivery",
-  "phase": "corrections",
+  "phase": "decision",
   "brief": "docs/features/F-W16-local-delivery/brief.md",
   "design": "docs/features/F-W16-local-delivery/design.md",
   "tasks": [
@@ -17,7 +17,7 @@
   ],
   "latest_review": "docs/features/F-W16-local-delivery/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W16-local-delivery/decisions/01.md",
-  "next_action": "Correct R02-01 rename scope bypass in review02, then focused independent review and final integration handoff.",
+  "next_action": "Whole W16-01\u201303 integrated and independently reviewed PASS at907c59f; await user technical acceptance q-01. No active round, no push/merge/deploy/model smoke.",
   "bridge": {
     "feature_id": "F-W16-local-delivery",
     "parent_task_id": "task_7b9qsx8f2y"

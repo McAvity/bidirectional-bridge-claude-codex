@@ -1,5 +1,15 @@
 # Current handoff
 
+## Wave16 — local delivery ready for acceptance
+
+W16-01–03 integrated in wave16; independent technical review PASS at907c59f.
+Rename scope finding R02-01 fixed byd3b5385 and rechecked. Validation: build/JS582,
+Python83, pilot140; manager Python83/targeted JS29/packages/links100 PASS.
+[Delivery](features/F-W16-local-delivery/handoff.md), [progress](plans/wave16-progress.md).
+No active round; user acceptance pending. No push/merge/deploy/additional model smoke;
+new no-ZIP model behaviour unverified, pinned supervising runtime unchanged.
+Earlier executing and blocked statuses below are historical.
+
 ## Wave16 executing after authorized runtime upgrade
 
 Runtime0.3.2-34ecb8d45465 is selected; doctor handshake passed. Manager bootstrap

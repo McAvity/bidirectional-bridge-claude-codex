@@ -153,3 +153,20 @@ retained. Full checks: JS582/Python77/pilot140 plus install/build/packages PASS.
 Independent review found a real rename scope bypass: moving lib/other.py to
 app/other.py hides the source from name-only checks. Review02 REWORK R02-01;
 authorized correction round next, no runtime or smoke changes.
+
+
+## Local implementation complete; ready for acceptance — 2026-09-19
+
+W16-01–03 delivered through Claude bridge; independent Codex review PASS at
+907c59f4788b66d6dea79fbde60e18ca261e6a23. R02-01 resolved by d3b5385: both sides
+of renames and previous-ledger history now checked. Manager original repro and
+Python83/targeted JS29/packages/links100 PASS; full install/build/JS582/pilot140
+retained from unchanged tested source. All-round scope/ancestry PASS, tree clean
+before these coordinator-only final records. [Handoff](../features/F-W16-local-delivery/handoff.md),
+[review](../features/F-W16-local-delivery/reviews/02-implementation.md), integration ledger.
+
+No active worker; feature F-W16-local-delivery/root task_7b9qsx8f2y await actual
+user acceptance q-01. No feature_accept yet. New no-ZIP model behaviour remains
+unverified; no additional smoke, push, merge into feature-workflow, deployment
+or supervising-runtime change. Current runtime's package obligations were retained.
+Next: user's technical acceptance or specific requested corrections in the same session.

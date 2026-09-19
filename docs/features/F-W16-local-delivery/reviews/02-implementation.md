@@ -80,3 +80,43 @@ condition explicit rather than implying the predicate alone implements the rule.
 Next: one bounded correction round in the same Claude feature session, then
 focused re-review of R02-01 and related paths. Full JS/pilot results remain valid
 if their source inputs are unchanged; do not rerun slow unrelated suites by habit.
+
+
+## R02-01 re-review and whole-wave integration — 2026-09-19 — PASS
+
+Correction task `task_0r96723r6g`, range
+`8bdea852de86f3eb298adbb08435cb97fab789f8..907c59f4788b66d6dea79fbde60e18ca261e6a23`;
+fix commit `d3b5385`. Package verified with exact base/head, hash
+`c0ad0a3d9849abe991a6a03eed31737ff4df1faafadf5c5a9ee3770533f1a73d`.
+Seven changed paths match the contract, prior ledgers unchanged. All four delivered
+ranges independently checked for ancestry and every-commit scope; no integration drift
+in product files. Coordinator commits between rounds are separately identified.
+
+**R02-01 resolved.** Read final reference and Python test implementation. Endpoint
+and history path enumeration now use --no-renames and -z. Earlier ledger paths at
+BASE are compared with all history touches, including rename and edit-restore.
+Independently reran the original outside→inside rename repro: receipt now reports
+scope with `lib/other.py`. Read-only/LEDGER=none fixture condition is explicit.
+No open required findings remain. F1–F5 from executor investigation were reviewed
+against tests and final text: blocker/status, named-path commits, record counts,
+deleted paths and preexisting changes are consistent with agreed behaviour.
+
+Independent checks on exact clean delivered SHA907c59f:
+- Full Python tests:83/83 PASS, including36 receipt cases and existing exchange/distribution.
+- Delivery, feature-workflow and wave15-continuation vitest files:29/29 PASS.
+- packages:check PASS, digest828af404a292; relative Markdown links across the whole
+  implementation range:100 links in33 changed Markdown files, none broken.
+- Range diff check, all-round ancestry/scope and unchanged supervising pin: PASS.
+
+Retained executor checks: npm ci --ignore-scripts/build, full JS582 and pilot140 PASS
+on08ed5b2 code, with no later changes to shared/claude/codex/scripts/tools or dependency
+manifests. Later instruction/generated/Python changes are covered by the independent
+checks above. Tests are model-free; full JS/pilot were not unnecessarily rerun.
+
+Whole-wave verdict: technical PASS for W16-01–03 and integration in wave16.
+AC-01/04/05 have complete instruction/mechanical evidence; actual compliance of
+models with the new no-ZIP workflow remains unverified. AC-02/03 receipt mechanics,
+AC-06 optional exchange, AC-07 replay/namespace and AC-08 source/distribution consistency
+have the evidence documented in the report. No empirical model-behaviour claim or
+user acceptance is inferred. Original wave15 smoke obligations are unchanged.
+Next: user acceptance of local technical delivery; no publication or deployment.
