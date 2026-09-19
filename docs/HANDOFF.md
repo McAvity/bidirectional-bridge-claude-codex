@@ -1,5 +1,13 @@
 # Current handoff
 
+## Wave16 planned — optional exchange for local bridge work
+
+[Wave16](plans/wave16.md) records local task delivery through bridge and Git,
+with feature-exchange optional for external transfer or explicit export requests.
+Preserve provenance/scope review, existing round contracts and wave15 intent/replay.
+Planning only: no implementation, smoke or runtime change authorized by this plan.
+[Progress](plans/wave16-progress.md). Earlier release/smoke checkpoints remain in force.
+
 ## Codex 0.155.1 fix published — 0.3.1
 
 Prerelease/tag v0.3.1 on eef7f18; feature-workflow published, runtime pin41962cc.
