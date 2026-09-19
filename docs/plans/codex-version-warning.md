@@ -49,3 +49,25 @@ No supervising runtime changes or target-project installation.
 CI host updated from0.154.0 to0.155.1 so the publication gate exercises the user's
 actual reported CLI release. The previous queued run is superseded by this commit.
 Synthetic regressions retain coverage of the old verified and future versions.
+
+## Complete — published 0.3.1
+
+Full CI35431614450 SUCCESS on eef7f18ed9c70ab7bb1b8e24737df4b327d2bb07,
+with actual Codex0.155.1:37 files/574 JS PASS,46 Python PASS,131 pilot discovered
+(130 PASS,1 optional TUI module skipped for missing pexpect/pyte). Local pilot140 PASS
+includes that module's10 cases; this explains the different totals. Build/install,
+packages and documentation PASS. Known first-run fixture failure is fixed and revalidated.
+Independent review has no remaining required findings.
+
+Annotated tag/prerelease v0.3.1 published on eef7f18; runtime pin41962cce73b01db8c20712e946dce6b46e67cb10.
+Tag annotation initially used local pilot count140 for CI; immutable tag retained, release
+notes corrected to the authoritative CI count and explicit optional-module skip.
+Remote feature-workflow includes all fix commits; no other worktree files were changed.
+Active ff225e5 runtime and this project's declaration/configuration remain unchanged.
+No model smoke or actual target-project setup was executed.
+
+Resume: refresh bridge-codex marketplace/plugin to0.3.1, restart the target project's
+Codex client, retry its previously refused setup. Existing configured projects require
+an explicit runtime update; plugin refresh alone preserves their declared pin.
+Bridge manager task was never created for this correction because the active old runtime
+refused0.155.1; no recovery or replacement task is pending.

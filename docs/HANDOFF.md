@@ -1,5 +1,14 @@
 # Current handoff
 
+## Codex 0.155.1 fix published — 0.3.1
+
+Prerelease/tag v0.3.1 on eef7f18; feature-workflow published, runtime pin41962cc.
+CI35431614450 SUCCESS on Codex0.155.1:574 JS/46 Python; pilot130 PASS plus one
+optional module skip (local140 PASS). Independent review and real-host temporary setup PASS.
+Version mismatches now warn; native identity and ownership checks remain enforced.
+[Progress and next setup step](plans/codex-version-warning.md). Supervising runtime unchanged.
+Earlier publication checkpoints below are historical.
+
 ## Codex 0.155.1 compatibility — 0.3.1 publication checkpoint
 
 Version-only refusals replaced with CODEX_VERSION_UNVERIFIED warnings; metadata,
