@@ -759,6 +759,22 @@ describe("bridge setup CLI", () => {
     expect(check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"]).json, "state").code).toBe("STATE_SCHEMA_NEWER");
   });
 
+  it.each(["0.155.1", "99.0.0"])("warns without refusing setup on unverified Codex %s", (version) => {
+    const project = makeProject(`unverified-${version}`);
+    init(project);
+    const unverified = { FAKE_CODEX_VERSION: version };
+    expect(check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"], unverified).json, "codex"))
+      .toMatchObject({ code: "CODEX_VERSION_UNVERIFIED", status: "warn" });
+    const hostAllowed = bridgeJson(["update", "--workspace", project, "--runtime", runtimeB.id, "--yes"], unverified);
+    expect(hostAllowed.status).toBe(0);
+    expect(hostAllowed.json.refusals).toEqual([]);
+    expect(hostAllowed.json.notes.join("\n")).toContain(`CODEX_VERSION_UNVERIFIED: Codex ${version}`);
+    const repeated = bridgeJson(["update", "--workspace", project, "--runtime", runtimeB.id, "--yes"], unverified);
+    expect(repeated.status).toBe(0);
+    expect(repeated.json.changed).toBe(false);
+    expect(repeated.json.notes.join("\n")).toContain("CODEX_VERSION_UNVERIFIED");
+  });
+
   it("diagnoses missing runtimes, unverified hosts, trust, foreign state and access problems", () => {
     const notInstalled = bridge(["init", "--workspace", tmp, "--runtime", "9.9.9-000000000000"]);
     expect(notInstalled.status).toBe(1);
@@ -777,16 +793,6 @@ describe("bridge setup CLI", () => {
       expect(plan.json.refusals.map((refusal: { code: string }) => refusal.code)).toContain("RUNTIME_INCOMPLETE");
     } finally {
       rmSync(incomplete, { recursive: true, force: true });
-    }
-
-    for (const version of ["0.155.1", "99.0.0"]) {
-      const unverified = { FAKE_CODEX_VERSION: version };
-      expect(check(bridgeJson(["doctor", "--workspace", project, "--no-handshake"], unverified).json, "codex"))
-        .toMatchObject({ code: "CODEX_VERSION_UNVERIFIED", status: "warn" });
-      const hostAllowed = bridgeJson(["update", "--workspace", project, "--runtime", runtimeB.id, "--yes"], unverified);
-      expect(hostAllowed.status).toBe(0);
-      expect(hostAllowed.json.refusals).toEqual([]);
-      expect(hostAllowed.json.notes.join("\n")).toContain(`CODEX_VERSION_UNVERIFIED: Codex ${version}`);
     }
 
     const hidden = { FAKE_CODEX_HIDE_PROJECT: "1" };
