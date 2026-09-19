@@ -1381,20 +1381,18 @@ describe("rollback returns to the previous runtime (W14-R2-09)", () => {
 
 describe("the setup plan is read-only (W14-R2-08)", () => {
   it("uses setup --to for an inherited pin with no local record, then update for its selection", () => {
-    expect(setup().code).toBe(0);
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
+    expect(setup(project, ["--to", older.id]).code).toBe(0);
     git(project, "add", "-A");
     git(project, "commit", "-qm", "enable bridge");
     const external = join(root, "upgrade inherited");
     git(project, "worktree", "add", "-q", "-b", "upgrade-inherited", external);
-    // An old pin need not be installed to upgrade this pristine worktree to an installed target.
-    const declaration = JSON.parse(readFileSync(join(external, PROJECT_DECLARATION), "utf8"));
-    declaration.pinned = { runtime_id: "0.0.0-000000000000", commit: "0".repeat(40) };
-    writeFileSync(join(external, PROJECT_DECLARATION), JSON.stringify(declaration));
+    // Inherit an actual installer-owned pin; hand-editing it would correctly trigger a conflict.
     const before = readFileSync(join(external, PROJECT_DECLARATION), "utf8");
     const refused = plugin(external, ["update", "--to", runtimeId, "--yes", "--json"], env);
     expect((refused.json as any).refusals.some((r: any) => r.code === "SETUP_NOT_INITIALIZED")).toBe(true);
     const planned = plugin(external, ["setup", "--to", runtimeId, "--json"], env);
-    expect(planned.code, planned.stderr).toBe(0);
+    expect(planned.code, JSON.stringify(planned.json)).toBe(0);
     expect(planned.json?.applied).toBe(false);
     expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(false);
     expect(readFileSync(join(external, PROJECT_DECLARATION), "utf8")).toBe(before);
