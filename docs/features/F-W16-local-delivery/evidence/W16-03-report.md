@@ -113,3 +113,29 @@ the attempt-2 ledger and the round summary.
 - `glob_re` ports `shared/protocol/src/scope.ts`; a divergence would only affect these tests.
 - Model smoke was not run (not authorized); W15 smoke obligations remain separate.
 - This round itself followed the pinned 0.3.2 instructions (ZIP package), as its contract required.
+
+## Correction R02-01 (2026-09-19, correction round on base `8bdea85`)
+
+The integration review [02-implementation](../reviews/02-implementation.md) found a false PASS
+that the evidence above did not cover: the published scope checks used Git's default rename
+detection. Everything earlier in this report is kept as recorded; this section supersedes the
+AC-03 claim for renames and the `test_local_delivery.py` count.
+
+| Item | Detail |
+| --- | --- |
+| Finding | `git mv lib/other.py app/other.py`: `git diff --name-only` and `git log --name-only` list only `app/other.py`; the deleted out-of-scope source was hidden and `receipt()` returned no findings (effective COMPLETE) |
+| Same class, found here | an earlier ledger moved onto the new ledger path: the pathspec-limited `--diff-filter=A` check saw an add, the `MD` check saw a rename; no finding |
+| Fix | `local-delivery.md` § 4.6/4.7 and § 2 `changed_scope`: `--no-renames` with `-z` path-safe output for the endpoint and per-commit lists; earlier ledgers = any path of `git ls-tree -r -z --name-only BASE -- <ledger dir>` touched in `git log --no-renames --name-only -z --format= BASE..HEAD -- <ledger dir>` (modify, delete, move away, edit-and-restore); `LEDGER=none` only for a read-only contract with `HEAD` = `BASE` |
+| Regressions | outside→inside rename (scope, names `lib/other.py`), inside→outside rename, valid in-scope rename (passes, lists both paths), earlier ledger renamed onto the new ledger, earlier ledger edited and restored, committed paths with spaces; add-then-revert retained; `LEDGER=none` fixture now states read-only explicitly |
+| Reproduction | `tests/test_local_delivery.py` sha256 `013bb94b…1da7af` with the unfixed transcription (base `8bdea85`, `local-delivery.md` `c5f57708…525ec639`): 36 run, 5 failed — the two rename-scope cases, the valid rename (endpoint lacked the source), the earlier-ledger rename (`[]`) and edit-restore |
+| Fixed snapshot | `d3b5385` (`tests/test_local_delivery.py` `692024f9…0e56d4`, `local-delivery.md` `58504b2e…10beac095`, plugins regenerated) |
+
+Validation on `d3b5385`: `python3 -m unittest discover -s tests -v` exit 0, 83 tests OK, 0 skipped
+(36 in `test_local_delivery.py`); `npx vitest run` of the delivery, feature-workflow and
+wave15-continuation files exit 0, 3 files / 29 tests; `npm run packages:check` exit 0 (digest
+`828af404a292`). Not rerun: the full JS suite (582) and pilot suite (140) from `08ed5b2`; since
+then only instruction text, generated plugins and this Python test changed, none of which those
+suites execute beyond what `packages:check` and the Python distribution tests cover.
+
+AC-03 after the correction: renames, earlier-ledger moves and edit-restore are now detected
+mechanically; the behavioural part stays unverified (R16-N2).
