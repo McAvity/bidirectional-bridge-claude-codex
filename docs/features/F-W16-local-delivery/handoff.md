@@ -1,8 +1,8 @@
-# Wave16 — local delivery ready for acceptance
+# Wave16 — local delivery accepted
 
 W16-01–03 and integration in `wave16` are technically complete; independent Codex
 review **PASS**, including correction R02-01. Claude implemented through one bridge
-feature session. No required findings remain. User acceptance is pending.
+feature session. No required findings remain. User accepted the delivery at `4c8cd88` in question q-01; see [decision02](decisions/02.md).
 
 The workflow now delivers local commits with a precise base/head, ledger, outcome
 and worktree declaration. The coordinator checks scope/history, reads the delivered
@@ -27,6 +27,6 @@ rules, not the new product instructions. The final package is also prepared unde
 that existing runtime requirement; it is not a new wave16 requirement.
 
 No push, merge to feature-workflow, deployment or supervising runtime modification.
-Technical delivery is ready for the user's acceptance. Publication, runtime selection
-and any model smoke require their own authorization. Root task_7b9qsx8f2y and feature
-F-W16-local-delivery remain open for that decision; no further task approval was needed.
+Technical delivery is accepted. Publication, runtime selection and any model smoke
+require their own authorization. Decision02 authorizes closure of root task_7b9qsx8f2y
+and feature F-W16-local-delivery; no further task approval is needed.

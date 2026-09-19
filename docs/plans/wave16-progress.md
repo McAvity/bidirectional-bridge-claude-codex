@@ -170,3 +170,13 @@ user acceptance q-01. No feature_accept yet. New no-ZIP model behaviour remains
 unverified; no additional smoke, push, merge into feature-workflow, deployment
 or supervising-runtime change. Current runtime's package obligations were retained.
 Next: user's technical acceptance or specific requested corrections in the same session.
+
+
+## User acceptance — 2026-09-19
+
+Actual answer to q-01: “akceptuje feature,”. Recorded in bridge and
+[decision02](../features/F-W16-local-delivery/decisions/02.md). Accepted delivery
+4c8cd8809d59ed8c238bbb63a6eee0a307ac8374, reviewed implementation907c59f.
+All commissioned work is accepted; close the bridge feature/root and retain local
+commits. No new execution or testing scope. Earlier pending-acceptance checkpoints
+are historical. No push, merge, deployment, runtime change or model smoke authorized.
