@@ -18,3 +18,12 @@ Nie zmieniono źródeł skilli/pluginów, runtime, bazy lub profili. Bez push.
 Następny krok: [feature-review planu](../features/F-W17-workflow-plugin/design.md),
 potem feature-decide. Review i decyzja nie zostały jeszcze wykonane; implementacja
 niezlecona. Nie przejmować ani nie zmieniać zakresu wave16.
+
+## Checkpoint integracji planu
+
+Plan zapisano w `96566f2` na branchu wave17-plan. Kontrole dokumentacji i indeksu PASS.
+Próba fast-forward do feature-workflow została odrzucona: w głównym checkoucie
+pojawiła się równoległa integracja dokumentów wave15 z konfliktem docs/HANDOFF.md.
+Nie zmieniano ani nie rozwiązywano tej cudzej pracy. Plan pozostaje na wave17-plan;
+po zakończeniu tamtej integracji dołączyć ten branch, zachowując oba checkpointy
+HANDOFF, i skierować wave17 do review. Bez push lub implementacji.
