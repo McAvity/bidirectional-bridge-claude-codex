@@ -2,8 +2,8 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.3.1",
   "pinned": {
-    "commit": "2611d1ecccfa807b1e046ebce7b05e0dded27d12",
-    "describe": "Wave15 0.3.0 experimental checkpoint; real-model smoke pending"
+    "commit": "630bbc3a10ffcc1edadb9bee02c21efea593a6b1",
+    "describe": "0.3.1: Codex 0.155.1 compatibility; unverified host versions warn instead of refusing"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
