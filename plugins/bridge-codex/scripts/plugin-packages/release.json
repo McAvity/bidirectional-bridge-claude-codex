@@ -2,8 +2,8 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.3.2",
   "pinned": {
-    "commit": "41962cce73b01db8c20712e946dce6b46e67cb10",
-    "describe": "0.3.1: Codex 0.155.1 compatibility; unverified host versions warn instead of refusing"
+    "commit": "34ecb8d4546543743228f2397b2a16ed10885e31",
+    "describe": "0.3.2: bridge-upgrade skill for both clients; existing runtime pins remain unchanged"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
