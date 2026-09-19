@@ -1380,6 +1380,34 @@ describe("rollback returns to the previous runtime (W14-R2-09)", () => {
 });
 
 describe("the setup plan is read-only (W14-R2-08)", () => {
+  it("uses setup --to for an inherited pin with no local record, then update for its selection", () => {
+    expect(setup().code).toBe(0);
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = join(root, "upgrade inherited");
+    git(project, "worktree", "add", "-q", "-b", "upgrade-inherited", external);
+    // An old pin need not be installed to upgrade this pristine worktree to an installed target.
+    const declaration = JSON.parse(readFileSync(join(external, PROJECT_DECLARATION), "utf8"));
+    declaration.pinned = { runtime_id: "0.0.0-000000000000", commit: "0".repeat(40) };
+    writeFileSync(join(external, PROJECT_DECLARATION), JSON.stringify(declaration));
+    const before = readFileSync(join(external, PROJECT_DECLARATION), "utf8");
+    const refused = plugin(external, ["update", "--to", runtimeId, "--yes", "--json"], env);
+    expect((refused.json as any).refusals.some((r: any) => r.code === "SETUP_NOT_INITIALIZED")).toBe(true);
+    const planned = plugin(external, ["setup", "--to", runtimeId, "--json"], env);
+    expect(planned.code, planned.stderr).toBe(0);
+    expect(planned.json?.applied).toBe(false);
+    expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(false);
+    expect(readFileSync(join(external, PROJECT_DECLARATION), "utf8")).toBe(before);
+    const applied = plugin(external, ["setup", "--to", runtimeId, "--yes", "--json"], env);
+    expect(applied.code, JSON.stringify(applied.json)).toBe(0);
+    expect((applied.json as any).runtime.id).toBe(runtimeId);
+    expect(status(external, env).state).toBe("ready");
+    expect(existsSync(join(external, ".bridge/bridge.db"))).toBe(false);
+    const repeated = plugin(external, ["update", "--to", runtimeId, "--yes", "--json"], env);
+    expect(repeated.code, JSON.stringify(repeated.json)).toBe(0);
+    expect(repeated.json?.changed).toBe(false);
+  }, 120_000);
+
   it("installs nothing and creates no bridge home without --yes", () => {
     const emptyHome = join(root, "an untouched home");
     const planned = plugin(project, ["setup", "--json", "--offline", "--source", REPO], { CLAUDE_CODEX_BRIDGE_HOME: emptyHome });

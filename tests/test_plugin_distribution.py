@@ -140,7 +140,7 @@ class GeneratedPackages(unittest.TestCase):
                     )
 
     def test_the_codex_package_ships_a_thin_entry_and_a_working_installer(self):
-        self.assertEqual(sorted(p.name for p in (CODEX_PACKAGE / "skills").iterdir()), ["bridge"])
+        self.assertEqual(sorted(p.name for p in (CODEX_PACKAGE / "skills").iterdir()), ["bridge", "bridge-upgrade"])
         for required in ("scripts/bridge.mjs", "scripts/setup/workspace.mjs", "scripts/plugin-packages/bridge-plugin.mjs", "scripts/plugin-packages/release.json", "scripts/bridge-project/entry-template.mjs"):
             self.assertTrue((CODEX_PACKAGE / required).is_file(), required)
         release = json.loads((CODEX_PACKAGE / "scripts/plugin-packages/release.json").read_text())
@@ -155,6 +155,29 @@ class GeneratedPackages(unittest.TestCase):
             "${CLAUDE_PLUGIN_ROOT}/skills/feature-exchange/scripts/feature_exchange.py",
             (CLAUDE_PACKAGE / "skills" / "feature-execute" / "SKILL.md").read_text(),
         )
+
+    def test_upgrade_packages_run_outside_the_checkout_without_writing_state(self):
+        for package in (CODEX_PACKAGE, CLAUDE_PACKAGE):
+            with self.subTest(package=package.name), tempfile.TemporaryDirectory(prefix="upgrade-package-") as tmp:
+                root = Path(tmp)
+                installed = root / "stable package"
+                shutil.copytree(package, installed)
+                self.assertTrue((installed / "skills/bridge-upgrade/SKILL.md").is_file())
+                project = root / "project"
+                L.make_git_repo(project)
+                bridge_home = root / "bridge-home"
+                env = client_env({"CLAUDE_CODEX_BRIDGE_HOME": str(bridge_home)})
+                before = {str(p.relative_to(project)): p.read_bytes() for p in project.rglob("*") if p.is_file()}
+                command = installed / "scripts/plugin-packages/bridge-plugin.mjs"
+                result = subprocess.run(["node", str(command), "status", "--json"], cwd=project, env=env, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                report = json.loads(result.stdout)
+                self.assertEqual(report["workspace"]["root"], str(project))
+                help_result = subprocess.run(["node", str(installed / "scripts/bridge.mjs"), "--help"], cwd=project, env=env, text=True, capture_output=True)
+                self.assertEqual(help_result.returncode, 0, help_result.stderr)
+                self.assertFalse(bridge_home.exists())
+                after = {str(p.relative_to(project)): p.read_bytes() for p in project.rglob("*") if p.is_file()}
+                self.assertEqual(before, after)
 
     def test_the_packages_carry_no_node_dependencies_to_install(self):
         for package in (CODEX_PACKAGE, CLAUDE_PACKAGE):

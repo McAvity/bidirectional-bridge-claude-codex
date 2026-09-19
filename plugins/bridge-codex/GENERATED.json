@@ -4,9 +4,10 @@
   "version": "0.3.1",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
-    ".codex/skills/using-bridge"
+    ".codex/skills/using-bridge",
+    "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "88033e683be2c1e222e13474438a9a96baa8c63a9d32dff7609abe64602a1983",
+  "source_digest": "1b9520c0d382f20fad46a29558bb819f8da653484d81347e987d2ea8eb079b8d",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -87,6 +88,10 @@
     {
       "path": "scripts/setup/workspace.mjs",
       "sha256": "7f519485bbdf71da35a2e295ec57b34f77cb45d65c7e053082ff77738a845d66"
+    },
+    {
+      "path": "skills/bridge-upgrade/SKILL.md",
+      "sha256": "5b1a9128888191a6ce89827725a8a0efaf53bdaa47a6717cacfbba02bb3cf164"
     },
     {
       "path": "skills/bridge/SKILL.md",
