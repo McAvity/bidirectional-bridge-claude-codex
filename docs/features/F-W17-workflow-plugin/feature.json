@@ -16,9 +16,14 @@
     "docs/plans/wave17-progress.md",
     "docs/plans/wave16.md",
     "docs/plans/wave16/decisions/01.md",
-    "docs/plugin-distribution.md"
+    "docs/plugin-distribution.md",
+    "docs/features/F-W16-local-delivery/handoff.md",
+    "docs/features/F-W16-local-delivery/reviews/02-implementation.md",
+    "docs/features/F-W16-local-delivery/decisions/02.md",
+    ".agents/skills/feature-execute/references/local-delivery.md",
+    "docs/tasks/bridge-upgrade-skill.md"
   ],
   "latest_review": null,
   "latest_decision": null,
-  "next_action": "feature-review w trybie plan, następnie feature-decide. Implementacja niezlecona; W17-02 zależy od zintegrowanego wave16."
+  "next_action": "feature-review zaktualizowanego planu, następnie feature-decide. Wave16 zintegrowany w bazie 33d6061; implementacja wave17 nadal niezlecona."
 }

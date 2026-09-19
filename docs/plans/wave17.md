@@ -1,7 +1,7 @@
 # Wave17 — feature-workflow jako osobny plugin
 
 Status: PLAN DO REVIEW, 2026-09-19. Implementacja niezlecona.
-Feature: F-W17-workflow-plugin. Baza planowania: `1d7f93b`.
+Feature: F-W17-workflow-plugin. Pierwotna baza: `1d7f93b`; aktualizacja po wave16: `33d6061`.
 
 Osobny plugin workflow dla Codexa i Claude Code, w obecnym repo i marketplace.
 Działa samodzielnie; w projekcie bridge korzysta z instrukcji przypiętego runtime.
@@ -23,7 +23,10 @@ Statusy i zależności mają jedno źródło w taskach:
 - [W17-03](../../work-items/W17-03.md) — współistnienie z bridge i zachowanie delegacji.
 - [W17-04](../../work-items/W17-04.md) — wspólna walidacja, dokumentacja i review.
 
-W17-02 zależy od zintegrowanego wave16. W17-01 jest lokalną bramką techniczną, a nie
+Wave16 jest już zintegrowany i odebrany; zależność wejściowa W17-02 jest spełniona.
+Projekt uwzględnia local-v1, rename-safe kontrole Git, zasoby paczek oraz zgodność
+ze starszym pinem 0.3.2. Bridge-upgrade pozostaje częścią bridge’a.
+W17-01 jest lokalną bramką techniczną, a nie
 obowiązkowym przekazaniem do użytkownika. Po review/decyzji proponowane zlecenie obejmie
 cały zakres wraz z integracją na branchu i poprawkami. Publikacja i smoke modeli
 pozostają odrębne; plan nie zmienia skilli, pluginów ani runtime.

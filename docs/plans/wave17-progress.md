@@ -35,3 +35,23 @@ z akceptacją planu wave16 (merge `630769a`), następnie dołączono branch wave
 W HANDOFF zachowano wszystkie trzy aktualne wpisy; poprzedni checkpoint oczekiwania
 na integrację jest historyczny. Kod, skille, pin i runtime bez zmian.
 Odsyłacze dokumentacji i diff: PASS. Następny krok: review planu wave17; bez push.
+
+## Aktualizacja po integracji wave16 — 2026-09-19
+
+Na zlecenie użytkownika zaktualizowano projekt, istniejące W17-01–04 i indeks.
+Wejście: HEAD33d6061, techniczny odbiór907c59f, dostawa4c8cd88 i decyzja02 wave16.
+Zależność od integracji wave16 spełniona; brief i AC-01…08 bez zmiany znaczenia.
+
+Przeniesione ustalenia: kanoniczny local-delivery.md i DELIVERY=local-v1, brak
+produkcyjnego receipt helpera, poprawka R02-01 (--no-renames/-z i historia ledgerów),
+PARTIAL/blocker oraz klasyfikacja dirt, zachowanie starych kontraktów ZIP i pinu.
+Bridge-upgrade/instalator już istnieją w obu pluginach bridge'a i pozostają tam.
+Pakowanie musi odróżniać źródła po wave16 od wydanego runtime 0.3.2 sprzed wave16.
+
+Zachowano wcześniejsze dowody: brak modelowego smoke nowej procedury nie staje się
+PASS przez aktualizację planu. Nie dodano nowych zadań, API ani bramek odbioru.
+Walidacja dokumentacji, indeksu/ścieżek, hasha briefu i diff; bez testów produktu,
+zmian kodu/skilli, runtime, publikacji lub implementacji wave17.
+Następny krok: feature-review planu wave17, potem feature-decide.
+
+Walidacja aktualizacji: `git diff --check` bez uwag; odsyłacze dokumentacji bez nowych błędów. Pełna kontrola dokumentów pozostaje FAIL z powodu dwóch zastanych ścieżek absolutnych w wave16 (`execution/W16-01/01.md:57` i `wave16-progress.md:113`); historycznych dowodów nie zmieniano.

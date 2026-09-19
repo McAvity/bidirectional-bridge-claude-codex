@@ -1,5 +1,14 @@
 # Current handoff
 
+## Wave17 plan updated after wave16 integration
+
+[Wave17](plans/wave17.md) now uses integrated wave16 (review907c59f, delivery4c8cd88,
+base33d6061). Includes local-delivery resource packaging, rename-safe Git checks,
+no production receipt helper, and old ZIP-runtime vs new standalone compatibility.
+Wave16 integration dependency satisfied; W17-01 contract gate remains. Bridge-upgrade
+stays in bridge packages. Brief criteria unchanged; plan review/decision next, no
+implementation or new behavioural PASS. [Progress](plans/wave17-progress.md).
+
 ## Wave16 — local delivery accepted
 
 W16-01–03 integrated in wave16; independent technical review PASS at907c59f.
