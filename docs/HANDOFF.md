@@ -1,5 +1,14 @@
 # Current handoff
 
+## Wave17 planned — standalone feature workflow distribution
+
+[Wave17](plans/wave17.md): separate workflow plugin, two client packages from shared
+sources, existing repo and marketplace. Standalone use without bridge; bridge use
+follows pinned runtime instructions. Contract task covers legacy plugin coexistence
+and delegated Claude. Packaging depends on integrated wave16.
+Brief/design/index and W17-01–04 are ready for plan review, not implementation.
+[Progress](plans/wave17-progress.md). No runtime, profile or publication changes.
+
 ## Wave15 history reconciled — 2026-09-19
 
 All wave15 commits are integrated with the accepted0.3.1 delivery. Release pin41962cc
@@ -7,7 +16,6 @@ and wave16 documents are unchanged. Both decisions survive: release authorizatio
 and [technical acceptance03](features/F-W15-natural-workflow/decisions/03.md).
 Original manager feature accepted/root DONE; model smoke remains separately scoped,
 not a behavioural PASS. Historical pending-acceptance instructions below are superseded.
-
 
 ## Wave16 plan accepted — awaiting execution instruction
 
