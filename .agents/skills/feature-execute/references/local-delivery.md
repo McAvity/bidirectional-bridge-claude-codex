@@ -38,13 +38,15 @@ Exactly this key order, single spaces, first line of `summary`; prose follows on
   coordinator's receipt would notice.
 - `WORKTREE`: `git status --porcelain=v1 -z --untracked-files=all` after the final commit;
   `N` = number of status records. One path can have two records (`git rm --cached` leaves `D `
-  and `??`) and a rename record names two paths; `-z` keeps paths with spaces unquoted. When dirty, classify every entry (§ 3) in `remaining_risks` items
+  and `??`) and a rename record names two paths; `-z` keeps paths with spaces unquoted. When
+  dirty, classify every entry (§ 3) in `remaining_risks` items
   `UNCOMMITTED preexisting: <paths>`, `UNCOMMITTED own: <paths>`, `UNCOMMITTED overlap: <paths>`
   and `UNCOMMITTED foreign: <paths>`; each item at most 2000 characters, overflow as `+K more`
   with the full list in the ledger.
 
-`changed_scope` lists `git diff --name-only BASE HEAD`. When a contract explicitly requires a
-package, its `PACKAGE=… SHA256=… PURPOSE=… RANGE=BASE..HEAD LEDGER=…` line comes second.
+`changed_scope` lists `git diff --no-renames --name-only -z BASE HEAD` (both sides of a move).
+When a contract explicitly requires a package, its `PACKAGE=… SHA256=… PURPOSE=… RANGE=BASE..HEAD
+LEDGER=…` line comes second.
 
 ## 3. Executor procedure
 
@@ -85,12 +87,18 @@ Read `bridge_get_task`: deliverable, artifacts, attempts. In the executor worktr
 4. **Head**: `git cat-file -e HEAD^{commit}` and `git merge-base --is-ancestor BASE HEAD`.
 5. **Range**: `git rev-list --merges BASE..HEAD` is empty unless the contract allows merges;
    `git log --format='%H %s' BASE..HEAD` is the round's commit list.
-6. **Scope**: every path of `git diff --name-only BASE HEAD` **and** of
-   `git log --name-only --format= BASE..HEAD` (catches add-then-revert) matches the write scope;
-   coordinator files (`feature.json`, `reviews/`, `decisions/`, task files) are untouched.
-   `changed_scope` is compared, Git is authoritative.
-7. **Ledger**: `git diff --diff-filter=A --name-only BASE HEAD -- <LEDGER>` lists it; no earlier
-   ledger is modified or deleted.
+6. **Scope**: every path of `git diff --no-renames --name-only -z BASE HEAD` **and** of
+   `git log --no-renames --name-only -z --format= BASE..HEAD` (catches add-then-revert) matches
+   the write scope; coordinator files (`feature.json`, `reviews/`, `decisions/`, task files) are
+   untouched. `--no-renames` is required: with rename detection a move from outside the scope
+   (`lib/x → app/x`) lists only its in-scope destination and hides the deleted source. `-z`
+   output is NUL-separated and never quoted. `changed_scope` is compared, Git is authoritative.
+7. **Ledger**: `git diff --no-renames --diff-filter=A --name-only -z BASE HEAD -- <LEDGER>`
+   lists it (with rename detection a moved earlier ledger would count as added). No earlier
+   ledger is touched: no path of `git ls-tree -r -z --name-only BASE -- <ledger dir>` appears in
+   `git log --no-renames --name-only -z --format= BASE..HEAD -- <ledger dir>`, which covers
+   modification, deletion, a move away and an edit restored later in the range. `LEDGER=none`
+   is accepted only when the contract grants no write scope and `HEAD` equals `BASE`.
 8. **Worktree**: `git -C W status --porcelain=v1 -z --untracked-files=all`, compared with
    `WORKTREE` (record count), the classification and the ledger's start record (and the dirt
    you recorded when issuing the contract). A preexisting path that appears in step 6's paths

@@ -68,6 +68,11 @@ def names(repo, *args):
     return [n for n in out(repo, *args).split('\n') if n]
 
 
+def paths(repo, *args):
+    """Path-safe list from a `-z` command: NUL-separated, never quoted."""
+    return [p for p in git(repo, *args).stdout.split('\0') if p]
+
+
 def status_records(repo):
     """`git status --porcelain=v1 -z --untracked-files=all` → (entry count, {path: XY}).
 
@@ -101,8 +106,13 @@ def start_record(repo):
     return {path: fingerprint(repo, path) for path in status(repo)}
 
 
-def receipt(repo, summary, deliverable_status, contract_base, start=None, allow_merges=False):
-    """Coordinator receipt, local-delivery.md § 4. Returns (findings, info)."""
+def receipt(repo, summary, deliverable_status, contract_base, start=None, allow_merges=False, read_only=False):
+    """Coordinator receipt, local-delivery.md § 4. Returns (findings, info).
+
+    `read_only` states that the contract granted no write scope, the only case in which
+    `LEDGER=none` is acceptable. Path lists use `--no-renames` so a move reports both sides
+    (R02-01) and `-z` so paths are never quoted.
+    """
     findings, info = [], {}
     match = DELIVERY.match(summary.split('\n')[0])
     if not match:
@@ -122,23 +132,27 @@ def receipt(repo, summary, deliverable_status, contract_base, start=None, allow_
     if names(repo, 'rev-list', '--merges', f'{base}..{head}') and not allow_merges:
         findings.append('merge')
     info['commits'] = names(repo, 'log', '--format=%H', f'{base}..{head}')
-    endpoint = names(repo, 'diff', '--name-only', base, head)
-    touched = names(repo, 'log', '--name-only', '--format=', f'{base}..{head}')
+    endpoint = paths(repo, 'diff', '--no-renames', '--name-only', '-z', base, head)
+    touched = paths(repo, 'log', '--no-renames', '--name-only', '-z', '--format=', f'{base}..{head}')
     info['endpoint'] = endpoint
     outside = sorted({p for p in endpoint + touched if not matches(p, SCOPE)})
     if outside:
         findings.append('scope')
         info['outside'] = outside
         info['outside_commits'] = [c for c in info['commits']
-                                   if any(not matches(p, SCOPE) for p in names(repo, 'show', '--name-only', '--format=', c))]
+                                   if any(not matches(p, SCOPE)
+                                          for p in paths(repo, 'show', '--no-renames', '--name-only', '-z', '--format=', c))]
     if any(matches(p, COORDINATOR) for p in endpoint + touched):
         findings.append('coordinator-file')
     if ledger == 'none':
-        if head != base:
+        if not read_only or head != base:
             findings.append('ledger')
-    elif ledger not in names(repo, 'diff', '--diff-filter=A', '--name-only', base, head, '--', ledger):
+    elif ledger not in paths(repo, 'diff', '--no-renames', '--diff-filter=A', '--name-only', '-z', base, head, '--', ledger):
         findings.append('ledger')
-    if names(repo, 'diff', '--diff-filter=MD', '--name-only', base, head, '--', LEDGER_ROOT):
+    # Earlier ledgers: any path that existed at BASE and is touched by any commit of the range,
+    # which covers modification, deletion, a move away and an edit restored later.
+    earlier = set(paths(repo, 'ls-tree', '-r', '-z', '--name-only', base, '--', LEDGER_ROOT))
+    if earlier & set(paths(repo, 'log', '--no-renames', '--name-only', '-z', '--format=', f'{base}..{head}', '--', LEDGER_ROOT)):
         findings.append('ledger-edited')
 
     count, now = status_records(repo)
@@ -321,10 +335,69 @@ class ScopeAndLedgerTests(DeliveryCase):
         findings, info = receipt(self.repo, self.line(head), 'COMPLETE', self.base)
         self.assertEqual((findings, info['endpoint']), ([], [self.ledger]))
 
-    def test_ledger_none_requires_an_unchanged_head(self):
-        self.assertEqual(receipt(self.repo, self.line(self.base, ledger='none'), 'COMPLETE', self.base)[0], [])
+    def test_ledger_none_is_accepted_only_for_a_read_only_contract_with_an_unchanged_head(self):
+        unchanged = self.line(self.base, ledger='none')
+        self.assertEqual(receipt(self.repo, unchanged, 'COMPLETE', self.base, read_only=True)[0], [])
+        # A writable contract (this fixture's default scope) always needs a committed ledger.
+        self.assertEqual(receipt(self.repo, unchanged, 'COMPLETE', self.base)[0], ['ledger'])
         head = self.deliver()
-        self.assertEqual(receipt(self.repo, self.line(head, ledger='none'), 'COMPLETE', self.base)[0], ['ledger'])
+        self.assertEqual(receipt(self.repo, self.line(head, ledger='none'), 'COMPLETE', self.base, read_only=True)[0], ['ledger'])
+
+
+class RenameTests(DeliveryCase):
+    """R02-01: Git rename detection must not hide either side of a move."""
+
+    def move(self, src, dst, extra=None, message='move'):
+        git(self.repo, 'mv', '--', src, dst)
+        files = {self.ledger: '# ledger\n', **(extra or {})}
+        for path, text in files.items():
+            self.write(path, text)
+        git(self.repo, 'add', '--', *files)
+        git(self.repo, 'commit', '-qm', message, '--', src, dst, *files)
+        return out(self.repo, 'rev-parse', 'HEAD')
+
+    def test_an_outside_to_inside_rename_is_a_scope_failure(self):
+        head = self.move('lib/other.py', 'app/other.py')
+        # What rename detection shows: only the in-scope destination.
+        self.assertNotIn('lib/other.py', names(self.repo, 'diff', '--name-only', self.base, head))
+        findings, info = receipt(self.repo, self.line(head), 'COMPLETE', self.base)
+        self.assertEqual(findings, ['scope'])
+        self.assertEqual(info['outside'], ['lib/other.py'])
+
+    def test_an_inside_to_outside_rename_names_both_sides(self):
+        head = self.move('app/keep.py', 'lib/keep.py')
+        findings, info = receipt(self.repo, self.line(head), 'COMPLETE', self.base)
+        self.assertEqual((findings, info['outside']), (['scope'], ['lib/keep.py']))
+        self.assertIn('app/keep.py', info['endpoint'])
+
+    def test_a_valid_in_scope_rename_passes_and_lists_both_paths(self):
+        head = self.move('app/keep.py', 'app/kept.py')
+        findings, info = receipt(self.repo, self.line(head), 'COMPLETE', self.base)
+        self.assertEqual(findings, [])
+        self.assertEqual(sorted(info['endpoint']), ['app/keep.py', 'app/kept.py', self.ledger])
+
+    def test_an_earlier_ledger_renamed_into_the_new_ledger_is_flagged(self):
+        earlier = f'{FEATURE}/execution/T-00/01.md'
+        (self.repo / self.ledger).parent.mkdir(parents=True, exist_ok=True)
+        git(self.repo, 'mv', '--', earlier, self.ledger)
+        git(self.repo, 'commit', '-qm', 'reuse the earlier ledger', '--', earlier, self.ledger)
+        head = out(self.repo, 'rev-parse', 'HEAD')
+        findings, _ = receipt(self.repo, self.line(head), 'COMPLETE', self.base)
+        self.assertIn('ledger-edited', findings)
+
+    def test_an_earlier_ledger_edited_and_restored_inside_the_range_is_flagged(self):
+        earlier = f'{FEATURE}/execution/T-00/01.md'
+        self.commit({earlier: '# rewritten\n'}, 'edit earlier ledger')
+        self.commit({earlier: '# earlier ledger\n'}, 'restore it')
+        head = self.deliver()
+        self.assertNotIn(earlier, names(self.repo, 'diff', '--name-only', self.base, head))
+        self.assertEqual(receipt(self.repo, self.line(head), 'COMPLETE', self.base)[0], ['ledger-edited'])
+
+    def test_committed_paths_with_spaces_are_matched_exactly(self):
+        head = self.deliver({'app/with space.py': 'S = 1\n', 'lib/odd name.py': 'O = 1\n'})
+        findings, info = receipt(self.repo, self.line(head), 'COMPLETE', self.base)
+        self.assertEqual((findings, info['outside']), (['scope'], ['lib/odd name.py']))
+        self.assertIn('app/with space.py', info['endpoint'])
 
 
 class WorktreeTests(DeliveryCase):
@@ -494,9 +567,11 @@ class PublishedProcedureTests(unittest.TestCase):
     def test_the_commands_exercised_here_are_the_published_ones(self):
         for command in ('git status --porcelain=v1 -z --untracked-files=all', 'git hash-object -- <path>',
                         'git commit -m <message> -- <paths>', 'git merge-base --is-ancestor BASE HEAD',
-                        'git rev-list --merges BASE..HEAD', 'git diff --name-only BASE HEAD',
-                        'git log --name-only --format= BASE..HEAD',
-                        'git diff --diff-filter=A --name-only BASE HEAD -- <LEDGER>',
+                        'git rev-list --merges BASE..HEAD', 'git diff --no-renames --name-only -z BASE HEAD',
+                        'git log --no-renames --name-only -z --format= BASE..HEAD',
+                        'git diff --no-renames --diff-filter=A --name-only -z BASE HEAD -- <LEDGER>',
+                        'git ls-tree -r -z --name-only BASE -- <ledger dir>',
+                        'git log --no-renames --name-only -z --format= BASE..HEAD -- <ledger dir>',
                         'git merge-base --is-ancestor HEAD T'):
             with self.subTest(command=command):
                 self.assertIn(command, self.text)

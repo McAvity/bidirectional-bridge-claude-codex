@@ -9,7 +9,7 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "bc6f05a279c774bc91d4c2ffb2df0cd91642280c72114075689a94ae0204d25d",
+  "source_digest": "828af404a2920a5fa1ed99c9233e12dd3d2d3992f718c152a4be1d0d673f1e8f",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -137,7 +137,7 @@
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
-      "sha256": "c5f57708ea44830fd9794a0236d9d582a07a03555e8c4f6bc7491223525ec639"
+      "sha256": "58504b2e374a1d5e2bbe39e807984d04aa6a4e72f952ca8094f6d6310beac095"
     },
     {
       "path": "skills/feature-plan/SKILL.md",
