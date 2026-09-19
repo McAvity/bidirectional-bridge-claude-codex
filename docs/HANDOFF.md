@@ -1,5 +1,15 @@
 # Current handoff
 
+## Bridge-upgrade skill — local implementation
+
+Both generated client plugins now include bridge-upgrade; Claude carries the same
+existing installer as Codex. Handles marketplace refresh, exact release runtime,
+setup vs update, active-client exit/apply/resume and verification. No runtime switch,
+release pin change or publication performed. [Validation and limits](tasks/bridge-upgrade-skill.md).
+Code f5783c1, fixture correction e93f53e; Python47/pilot140 PASS, JS574 unchanged cases
+plus corrected new regression PASS across the full and focused runs. No model smoke.
+Next: publish/update plugins when authorized; wave16/17 scopes remain separate.
+
 ## Wave17 planned — standalone feature workflow distribution
 
 [Wave17](plans/wave17.md): separate workflow plugin, two client packages from shared

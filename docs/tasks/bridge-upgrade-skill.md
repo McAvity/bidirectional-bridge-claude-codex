@@ -14,7 +14,7 @@ and regression for the actual SETUP_NOT_INITIALIZED case. README/distribution up
 Validation in progress: install/build PASS; skill frontmatter PASS; generator and
 links PASS; 47 Python tests and 140 pilot-tooling tests PASS. Actual CLI help confirmed
 Codex marketplace upgrade + plugin add and Claude marketplace update + plugin update.
-JS suite still running. Real client probes use isolated profiles/local stubs, not models.
+The full JS result and focused correction are recorded below. Real client probes use isolated profiles/local stubs, not models.
 
 Instruction walkthrough (not a model-behaviour claim):
 - inherited old pin/no install.json -> explicit setup --to, now covered by regression;
@@ -31,11 +31,31 @@ interface.defaultPrompt and interface.capabilities on both baseline and this bra
 The manifest is unchanged; repository generator validation and real Codex installation
 probes pass. Claude's own plugin validator passes. This is not reported as a green
 generic validator or a new product defect fixed by this change. No active runtime, personal plugin, pin, profile, model or release
-was changed. No push. Next: validate packages, scenario boundaries and required suites;
-record results, then integrate local commits if clean.
+was changed. No push. Next: integrate the validated local commits; publication and runtime selection remain separate.
 
 The first JS run found a test-fixture error in the new inherited-worktree regression:
 a manually invented declaration is correctly refused as PROJECT_FILE_MODIFIED.
 The regression now inherits files produced by an actual installed older runtime,
 matching the reported case. No installer guard or skill behaviour was relaxed.
 Targeted validation follows; the initial failing run is not reported as PASS.
+
+## Final validation and handoff
+
+Implementation f5783c1; fixture-only correction e93f53e. No product/skill changes in
+the correction. Full npm test on f5783c1: 574 passed, 1 failed (the new invalid fixture),
+37 files, 306 s. Focused rerun on e93f53e: the corrected regression passed; 68 unrelated
+cases skipped by the name filter. Thus all 574 unchanged cases and the corrected new
+case are covered; no claim of a second all-green full-suite run. Build PASS.
+Python47 and pilot140 PASS; generator, docs and diff PASS. Host tests exercised actual
+Codex/Claude installation with isolated profiles and local model stubs. New copied
+package CLI test proves both standalone packages execute outside this checkout and
+leave project/home unchanged on status. No actual marketplace refresh or model-driven
+upgrade of a user's project was performed.
+
+Only generated copies grew by the existing installer payload. No new dependency,
+installer algorithm, protocol, automatic rollback, version bump or release pin change.
+The source skill is scripts/plugin-packages/skills/bridge-upgrade/SKILL.md; generated
+entry points are plugins/bridge-{codex,claude}/skills/bridge-upgrade/SKILL.md.
+After local integration, the skill still needs publication/plugin refresh to become
+available in installed clients. Preserve running runtime and the independent wave16
+worktree; neither is upgraded by this implementation. No push.
