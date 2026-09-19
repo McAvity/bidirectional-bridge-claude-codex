@@ -24,3 +24,14 @@ Coordinator identity protocol/native launcher29 PASS. Read-only reviewer found r
 text warning omission (fixed), stale README policy (fixed), and pending release pin (next).
 Build/packages/docs/diff PASS; Python46/pilot140 PASS; full JS running.
 Version0.3.1 prepared for delivery; supervising runtime and project declaration unchanged.
+
+## Full-suite fixture correction
+
+First full run:571 PASS/1 FAIL. Successful update in the new warning check changed
+the shared diagnostic fixture from runtimeA toB; its later repair step still expected A.
+Test-only41962cc moves version cases into independent projects and checks repeat warnings.
+No product change. Runtime pin moved to41962cc so the shipped source includes the corrected
+regression. Focused setup and full-suite revalidation pending.
+Actual installed Codex0.155.1: public plugin setup with default new pin/source override
+in temporary project PASS, applied=true, preference present, entry status ready, warning
+visible. No model was invoked and no host metadata/guardian certification is claimed.
