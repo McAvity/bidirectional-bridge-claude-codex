@@ -1,6 +1,7 @@
 # Wave16 — lokalna dostawa przez bridge i Git, opcjonalny feature-exchange
 
-Status: PLAN, implementacja niezlecona. Zapisano 2026-09-19.
+Status: PLAN ZAAKCEPTOWANY przez użytkownika 2026-09-19; implementacja niezlecona.
+Decyzja: [01](wave16/decisions/01.md). Pierwotny plan zapisano 2026-09-19.
 Baza: `3a3afdd` na feature-workflow (wydanie 0.3.1).
 Postęp: [wave16-progress.md](wave16-progress.md).
 

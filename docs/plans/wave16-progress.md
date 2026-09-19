@@ -19,3 +19,14 @@ w pisaniu planu. Brak wymaganych korekt. R16-N1: mapowanie wyniku przez rzeczywi
 adapter w W16-01; R16-N2: oddzielne pokrycie techniczne i behawioralne w W16-03.
 Plan9b4a1ec bez zmian. Zapisano wyłącznie review/progress; brak implementacji,
 zmian runtime, smoke lub push. Następny krok: osobne zlecenie wykonania wave16.
+
+## Odbiór planu — 2026-09-19
+
+[Decyzja 01](wave16/decisions/01.md): approved na podstawie jawnej zgody użytkownika.
+Przyjęto plan z review 998615c; R16-N1 i R16-N2 pozostają wskazówkami do W16-01/03,
+bez korekt planu i bez nowego review. Zmieniono tylko status planu i dokumenty decyzji.
+
+Implementacja niezlecona; produkt i kryteria odbioru nie są jeszcze zweryfikowane.
+Następny krok: feature-execute dla całego W16-01–03 po osobnym zleceniu, z integracją,
+niezależnym lokalnym review i poprawkami. Brak aktywnego featura/feature.json zgodnie
+z planem; bez zmian bridge'a, runtime, modeli lub push. Walidacja: odsyłacze i diff.
