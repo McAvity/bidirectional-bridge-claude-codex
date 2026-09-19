@@ -143,3 +143,45 @@ do normalnego zamknięcia klienta. Lokalny skrypt bridge-activate-0.3.0.sh obok
 checkoutu jest gotowy i sprawdzony składniowo; dry-run bez konfliktów, tylko
 ACTIVE_SESSION. Po wykonaniu i dokładnym resume: doctor, entry --status, odczyt
 nowych instrukcji, potem autoryzowany smoke według wave15-release.md.
+
+## Retained manager-branch history (8ceaa10–1a2866d)
+
+Entries below are historical; the acceptance record is now decisions/03.md.
+
+## Odbiór — 2026-09-17
+
+Użytkownik przyjął dostawę b64b858 odpowiedzią na q-01; decyzja02 approved.
+Feature/root do zamknięcia przez bridge. Następny krok: instrukcja setupu na osobnym
+worktree realnego projektu z jawnym runtime wave15 (release pin nadal ff225e5).
+Samo przygotowanie procedury nie uruchamia instalacji ani testów z modelami.
+
+## Przygotowanie release pinu — 2026-09-17
+
+Za zgodą użytkownika domyślny pin dystrybucji przeniesiony na zaakceptowane b64b858.
+Pakiety przegenerowane lokalnie; runtime sesji i deklaracja tego projektu bez zmian.
+CLI Codex potwierdza marketplace add --ref feature-workflow. Publikacja nowego
+release descriptor i osiągalność wskazanego commita są konieczne dla zdalnej instalacji.
+Nadal bez push/merge; następny krok to publikacja po osobnym zleceniu, potem setup
+realnego projektu. To przygotowanie dystrybucji, nie wykonany smoke/instalacja.
+
+## Rekonsyliacja publikacji — 2026-09-17
+
+Użytkownik zlecił merge/push przygotowanej dystrybucji. Przed zapisem fetch wykazał,
+że origin/feature-workflow ma już fb246e8, zawiera b64b858 i wydanie0.3.0 z pinem
+2611d1ecccfa807b1e046ebce7b05e0dded27d12. GitHub potwierdził prerelease v0.3.0
+i CI35160973276 SUCCESS na0143fa4. Cel publikacji jest już osiągnięty.
+Lokalny e56c04e jest superseded: NIE scalać go, bo cofa package_version/pin do0.2.0.
+Nie wykonano redundantnego push/merge ani zmian innych worktree/runtime.
+Decyzja02 lokalnego managera i decyzja02 koordynatora wydania to niezależne wpisy
+o różnych zakresach; zachowano obie historie bez nadpisania. Do testu marketplace
+używać feature-workflow (albo jawnego tagu v0.3.0), następnie setup w realnym projekcie.
+
+## Rekonsyliacja końcowa — 2026-09-19
+
+Na zlecenie użytkownika merge wave15 z aktualnym origin/feature-workflow. Zachowano
+wszystkie trzy commity w historii, ale ich stary release pin nie zastępuje0.3.1/41962cc.
+Decyzja02 koordynatora wydania zachowana bajtowo, odbiór managera przeniesiony do03.
+Indeks/handoff/taski zgodne z rzeczywistym odbiorem technicznym; smoke nadal osobny.
+Wave16, kod, konfiguracja projektu i runtime bez zmian. Walidacja: package equivalence,
+linki dokumentacji, diff/check oraz porównanie całego zakresu poza dokumentami.
+Po publikacji obie gałęzie wave15 i fix/codex-version-warning są w historii integracyjnej.
