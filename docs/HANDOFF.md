@@ -1,5 +1,14 @@
 # Current handoff
 
+## 0.3.2 published — bridge-upgrade skill
+
+GitHub prerelease/tag v0.3.2 on79da6b7; runtime source pin34ecb8d. Both marketplace
+plugins include bridge-upgrade. CI35435206335 SUCCESS:575 JS; Python44 passed/3 skipped;
+pilot129 passed/2 skipped (local Python47/pilot140 PASS). Build/packages/docs PASS.
+[Full record](tasks/bridge-upgrade-skill.md). Earlier local-only checkpoints below are historical.
+Project pin and running runtime remain unchanged; user plugin refresh and project
+upgrade are separate from publication. No model-driven upgrade smoke was run.
+
 ## Bridge-upgrade skill — local implementation
 
 Both generated client plugins now include bridge-upgrade; Claude carries the same

@@ -66,3 +66,18 @@ User requested publication to the existing McAvity fork. Preparing version0.3.2 
 an immutable release source pin; the project's own declaration remains unchanged.
 Publication includes the three local skill commits. Full CI must pass on the published
 release candidate before creating the annotated tag and GitHub prerelease.
+
+## Published 0.3.2 — 2026-09-19
+
+GitHub prerelease/tag v0.3.2 on `79da6b7ffa06274536e318d870918bc8315ad8dc`.
+Runtime source pin `34ecb8d4546543743228f2397b2a16ed10885e31` (version0.3.2).
+CI35435206335 PASS:575 JS/37 files; Python47 discovered (44 passed,3 skipped: no Claude
+CLI); pilot131 discovered (129 passed,2 skipped: optional PTY dependencies). Local
+Python47/pilot140 covered the host/PTY checks. Install/build/packages/docs PASS.
+The release CI is a fully green run, superseding the local fixture-only limitation.
+
+Source, both versioned marketplace packages, annotated tag and GitHub release are
+published in McAvity/bidirectional-bridge-claude-codex. Existing project declaration,
+active runtime, personal plugin caches and profiles were not changed. Next: refresh
+installed plugins to obtain bridge-upgrade; use it for a separately requested project
+runtime upgrade. Model-driven upgrade behaviour remains unverified.
