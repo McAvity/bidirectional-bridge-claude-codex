@@ -45,3 +45,7 @@ the sole failing scenario is now rechecked green, plus two isolated version case
 Publish the fast-forward on feature-workflow under the continuing user authorization
 for this setup delivery, then require the full CI result before tagging0.3.1.
 No supervising runtime changes or target-project installation.
+
+CI host updated from0.154.0 to0.155.1 so the publication gate exercises the user's
+actual reported CLI release. The previous queued run is superseded by this commit.
+Synthetic regressions retain coverage of the old verified and future versions.

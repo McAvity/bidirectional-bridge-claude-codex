@@ -18,7 +18,7 @@ jobs:
           python-version: '3.11'
       - run: npm ci --ignore-scripts
       # Real CLI identity/version checks only; no login, model calls or API credentials.
-      - run: npm install --global --ignore-scripts @openai/codex@0.154.0
+      - run: npm install --global --ignore-scripts @openai/codex@0.155.1
       - run: npm run build
       - run: npm run packages:check
       - run: node docs/tools/check-doc-links.mjs
