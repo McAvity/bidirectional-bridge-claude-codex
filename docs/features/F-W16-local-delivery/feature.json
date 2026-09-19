@@ -15,9 +15,9 @@
     "docs/plans/wave16/decisions/01.md",
     "docs/plans/wave16/reviews/01-plan.md"
   ],
-  "latest_review": "docs/features/F-W16-local-delivery/reviews/01-contracts.md",
+  "latest_review": "docs/features/F-W16-local-delivery/reviews/02-implementation.md",
   "latest_decision": "docs/features/F-W16-local-delivery/decisions/01.md",
-  "next_action": "W16-01 review PASS; execute W16-02, then W16-03 and integration review.",
+  "next_action": "W16-02 technical review PASS; W16-03 regression evidence and full integration review next.",
   "bridge": {
     "feature_id": "F-W16-local-delivery",
     "parent_task_id": "task_7b9qsx8f2y"

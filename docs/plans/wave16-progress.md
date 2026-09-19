@@ -136,3 +136,11 @@ Claude task_183v6cjr2x COMPLETE at0407d243; independent review01 PASS.
 Package verify and manager normalization probe6/6 PASS. No API change needed;
 DELIVERY=local-v1 summary line survives actual normalization. Next W16-02, then
 W16-03 with durable regressions and model-free/behavioural evidence distinction.
+
+
+## W16-02 received and reviewed — 2026-09-19
+
+Claude task_sf6qj1hpp8 COMPLETE at1b52d63 (implementation05954fe). Review02 PASS
+for instructions: package, generator, links and scope checked independently.
+W16-03 now ready: durable normalization/Git regression evidence and full validation.
+Actual rounds continue to use pinned0.3.2 package contracts; no new runtime selected.
