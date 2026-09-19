@@ -128,3 +128,11 @@ unchanged. Manager root task_7b9qsx8f2y/run_2x0a2j7vxn; feature
 F-W16-local-delivery ready. Full scope remains authorized; W16-01 is next.
 Feature index and work-items record resumable state. Intents/packages remain in
 the worktree namespace ws_1449a467cf73d2d4, outside Git.
+
+
+## W16-01 received and reviewed — 2026-09-19
+
+Claude task_183v6cjr2x COMPLETE at0407d243; independent review01 PASS.
+Package verify and manager normalization probe6/6 PASS. No API change needed;
+DELIVERY=local-v1 summary line survives actual normalization. Next W16-02, then
+W16-03 with durable regressions and model-free/behavioural evidence distinction.
