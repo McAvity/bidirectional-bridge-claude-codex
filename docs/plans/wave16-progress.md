@@ -91,3 +91,29 @@ package consistency and confirmation that the project pin/config are unchanged.
 Full test suites were not rerun for this merge; upstream CI results remain recorded
 in the release handoff and are not claimed as local test results. Next: resolve the
 previously recorded runtime compatibility prerequisite, then resume W16-01–03.
+
+
+## Bridge0.3.2 upgrade prepared; apply after client exit — 2026-09-19
+
+User explicitly authorized upgrading this worktree while preserving the session and
+wave16 progress. Refreshed the existing Codex marketplace/plugin through its CLI;
+installed package confirmed0.3.2. No user-installed Claude bridge plugin exists,
+so none was installed. Stable installer and private checkpoint are outside the
+plugin cache at `/tmp/wave16-bridge-upgrade-032/` (not committed).
+
+Installed a separate immutable runtime `0.3.2-34ecb8d45465`, manifest source verified
+as `34ecb8d4546543743228f2397b2a16ed10885e31`. Existing runtime and project pin
+`0.2.0-ff225e550966` remain untouched while this client is active. Status reports
+inherited-pristine/selection absent, so the prepared operation is explicit
+`setup --to`, not update. Dry plan: no conflicts or refusals; changes only the
+portable declaration/entry and creates local selection. Codex version is reported
+as an unverified warning, not waived identity validation.
+
+After normal client exit, run the private `apply.sh`; it uses the stable installer,
+exact workspace/home/target, normal refusal checks, pin/selection assertions and
+doctor. Resume the original session recorded in the private checkpoint only if
+apply and verification succeed. Script syntax and Git diff checked; activation,
+doctor handshake and post-restart instruction discovery remain pending. On resume,
+read the new pinned instructions and pure manager status, review/commit only scoped
+portable setup changes, then continue the authorized W16-01–03 scope. No models,
+push, merge or release were performed by this preparation.
