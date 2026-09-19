@@ -14,11 +14,17 @@ is no fallback to a fresh conversation.
 3. `bridge_feature_run({feature_id, spec, input_artifacts: [], deadline_ms,
    idempotency_key})` explicitly launches the first round. The server must permit
    delegation. The result includes the feature, task and structured deliverable.
-4. Read and review the returned deliverable. For feature-exchange, require the
-   package path and version in the contract/summary, or publish the package as an
-   artifact. Artifacts are explicitly supplied as `input_artifacts` in later rounds.
-   The bridge does not unzip or approve packages. A path in a summary is only a
-   reference; the manager must read and validate the actual package.
+4. Read and review the returned deliverable. A round delivers commits in the shared
+   repository: line 1 of its summary is `DELIVERY=local-v1 BASE=<full sha> HEAD=<full sha>
+   LEDGER=<path> OUTCOME=<COMPLETE|PARTIAL> WORKTREE=<clean|dirty:N>`, the only executor
+   channel the Claude adapter always retains (`commit_or_diff` stays `null`). The manager
+   checks base, ancestry, the scope of every commit, the ledger and uncommitted changes in
+   Git, then reviews the delivered SHA and reports later integration drift separately; see
+   [local-delivery.md](../.agents/skills/feature-execute/references/local-delivery.md).
+   No ZIP is needed. A contract may still require a feature-exchange package for a
+   recipient without repository access; the bridge does not unzip or approve packages,
+   and a path in a summary is only a reference the manager must validate. Artifacts are
+   explicitly supplied as `input_artifacts` in later rounds.
 5. To request a user decision, call
    `bridge_feature_wait_user({feature_id, question_id, question})`, then show the
    question in the manager's user channel. The persisted state is `waiting_user`.
@@ -75,10 +81,12 @@ owning manager can operate the feature tools. Recovery of older feature tasks is
 also rejected once a newer task exists. The feature reservation serializes session
 use even for disjoint write scopes and separate bridge connections.
 
-Round packages live in the worktree's own exchange namespace,
-`~/tmp/bridge-exchange/ws_<16 hex>/packages/`, which `feature_exchange.py namespace` prints;
-`--name` and `--stage-name` apply it, while an explicit `--output`/`--staging` stays literal. Two
-worktrees can therefore reuse one feature, purpose and round name without colliding.
+Optional exchange packages (and the manager's intent files) live in the worktree's own
+exchange namespace, `~/tmp/bridge-exchange/ws_<16 hex>/`, which `feature_exchange.py namespace`
+prints; `--name` and `--stage-name` apply it, while an explicit `--output`/`--staging` stays
+literal. Two worktrees can therefore reuse one feature, purpose and round name without colliding.
+Rounds whose contracts were issued under an earlier runtime still export their package as those
+contracts require.
 
 ## Worktree and manager identity
 

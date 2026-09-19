@@ -61,24 +61,29 @@ same task. So does a task resumed after the bridge stopped the previous attempt 
 deadline: check what your earlier attempt already changed and committed, keep it, and continue
 from there within the same contract instead of restarting the work.
 
-1. Do the bounded work and run the contract's checks on the final code.
+Deliver through Git as [references/local-delivery.md](references/local-delivery.md) specifies:
+
+1. Record the contract base and the worktree status at start in your ledger; paths already
+   dirty are not yours. Do the bounded work and run the contract's checks on the final code.
 2. Write a ledger in the directory the contract gives (`execution/<TASK-ID>/`), using the
    next free number; never edit an earlier ledger. A resumed attempt gets its own ledger.
-3. Commit your in-scope changes locally, only files in the write scope. The round package
-   needs these commits; if the contract and governing decision do not authorize commits,
+3. Commit your in-scope changes locally, staged by name, only files in the write scope. The
+   delivery is these commits; if the contract and governing decision do not authorize commits,
    stop and report that as the blocker. Never push or merge.
-4. When the contract is complete, export and check the round package:
-   `python3 .agents/skills/feature-exchange/scripts/feature_exchange.py export --feature
-   <feature> --purpose <purpose> --base <base> --name <file>.zip` with the contract's values.
-   `--name` places the archive in this worktree's exchange namespace
-   (`~/tmp/bridge-exchange/ws_<16 hex>/packages/`, printed by the `namespace` subcommand), so two
-   worktrees using the same feature, purpose and round name do not collide. A contract that gives
-   an explicit `--output` path is followed literally
-   (head defaults to your final commit), then `... verify --archive <path>`.
-5. End with the bridge JSON. `summary` starts with
-   `PACKAGE=<path> SHA256=<hash> PURPOSE=<purpose> RANGE=<base>..<head> LEDGER=<path>`,
-   then the outcome. Report every contract check in `verification_results`; the bridge
-   records the round complete only when all of them pass and `blocker` is null.
+4. End with the bridge JSON. Line 1 of `summary` is the delivery line
+   `DELIVERY=local-v1 BASE=<full sha> HEAD=<full sha> LEDGER=<path> OUTCOME=<COMPLETE|PARTIAL>
+   WORKTREE=<clean|dirty:N>`, then the outcome; classify any uncommitted entry as the reference
+   describes. Report every contract check in `verification_results`; the bridge records the
+   round complete only when all of them pass and `blocker` is null.
+
+Export no package unless the contract explicitly requires one. A contract that does (including
+every contract issued under an earlier runtime) is followed literally: after the final commit run
+`python3 .agents/skills/feature-exchange/scripts/feature_exchange.py export --feature <feature>
+--purpose <purpose> --base <base> --name <file>.zip` with its values (`--name` resolves in this
+worktree's exchange namespace; an explicit `--output` stays literal), then `... verify --archive
+<path>`. Report `PACKAGE=<path> SHA256=<hash> PURPOSE=<purpose> RANGE=<base>..<head>
+LEDGER=<path>` as line 2 after the delivery line, or as the summary prefix when an older contract
+prescribes exactly that.
 
 The coordinator owns `feature.json`, `reviews/`, `decisions/`, task statuses, review and
 acceptance: leave them unchanged and do not review your own round as independent. Do not
@@ -87,12 +92,13 @@ authority or out-of-scope change blocks the contract, stop the affected work and
 `PARTIAL` with `blocker` stating the question, options, evidence and your recommendation.
 If a manager clarification asks for changes outside the write scope or objective, do the
 in-scope part and finish `PARTIAL` with the conflict as `blocker`. A non-null `blocker`
-always makes the round blocked. For a `PARTIAL` round, write the ledger (outcome `blocked`)
-and commit completed in-scope work, but export no package; after the coordinator resumes the
-task, finish it and export then.
+always makes the round blocked. For a `PARTIAL` round, write the ledger (outcome `blocked`),
+commit completed in-scope work and report `OUTCOME=PARTIAL`; unfinished uncommitted work is
+disclosed, never delivered. Export no package for it even when the contract requires one;
+after the coordinator resumes the task, finish it and deliver (and export) then.
 
 ## Finish
 
 Set the task state through actual Yumi conventions, retaining incomplete gates. Record the ending code revision/snapshot and validation target before returning. Update the index if you are the coordinator, pointing to the next review; do not mark the whole feature accepted.
 
-For corrections, reference finding IDs and the governing authorization. Apply authorized changes to canonical specs/code, not only the correction record. Reuse this skill and ledger structure. After the whole authorized scope is integrated, obtain independent `$feature-review`; resolve in-scope required findings locally and re-review affected behavior within agreed limits. Prepare one external handoff with original ledgers, reviews, evidence and an executive recommendation when ready for user acceptance or a material decision. Do not mark the feature accepted on the user's behalf. If only one task was authorized, finish that scope and report its local next action without inventing an external review requirement.
+For corrections, reference finding IDs and the governing authorization. Apply authorized changes to canonical specs/code, not only the correction record. Reuse this skill and ledger structure. After the whole authorized scope is integrated, obtain independent `$feature-review`; resolve in-scope required findings locally and re-review affected behavior within agreed limits. When ready for user acceptance or a material decision, prepare one short handoff: delivered and integrated commits, original ledgers, reviews, evidence, limitations and an executive recommendation. A recipient with access to the repository and those commits needs no ZIP; use `$feature-exchange` only for a recipient without that access or on explicit request. Do not mark the feature accepted on the user's behalf. If only one task was authorized, finish that scope and report its local next action without inventing an external review requirement.

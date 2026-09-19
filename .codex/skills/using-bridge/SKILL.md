@@ -168,6 +168,11 @@ rounds makes them bounded exchanges, not the continuous conversation excluded ab
   `bridge_feature_answer_user`. Claude receives only what you write into a round contract or a
   recovery message.
 - `bridge_feature_accept` closes further rounds; call it only after the acceptance decision.
+- A round delivers local commits, not a ZIP. The worker commits only its own in-scope paths and
+  starts its summary with the `DELIVERY=local-v1 BASE=… HEAD=… LEDGER=… OUTCOME=… WORKTREE=…`
+  line; the manager checks base, ancestry, scope, ledger and uncommitted changes in Git, reviews
+  the delivered SHA and reports later drift separately (`feature-execute` reference
+  `local-delivery.md`). A package is exported only when the round contract requires one.
 - As the Claude worker of a round, complete that contract; do not delegate or call bridge tools.
 
 In a repository with the `feature-*` workflow, drive the loop with its `feature-execute`
@@ -207,9 +212,10 @@ there are no tokens to store.
   cancels a running round, and the superseded session can only return through another takeover.
 - Never copy `.bridge/` between worktrees and give each worktree its own database; the bridge
   refuses shared or copied state instead of merging it.
-- Exchange artifacts follow the same split: packages, returns and staging live in this worktree's
-  `~/tmp/bridge-exchange/ws_<16 hex>/` namespace (`feature_exchange.py namespace` prints it), so a
-  second worktree reusing the same package name cannot overwrite yours.
+- Exchange artifacts follow the same split: optional packages, returns, staging and intent files
+  live in this worktree's `~/tmp/bridge-exchange/ws_<16 hex>/` namespace
+  (`feature_exchange.py namespace` prints it), so a second worktree reusing the same package name
+  cannot overwrite yours.
 - A worktree holds one active feature: `FEATURE_CONFLICT` means finish or accept the current one
   first. Rounds are attributed to the manager epoch that launched them.
 - A takeover never stops a round that is already running: its worker finishes and records its

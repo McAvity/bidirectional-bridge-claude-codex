@@ -16,7 +16,8 @@ Brief uzgodniliśmy wcześniej. Przygotuj projekt techniczny i taski Yumi do rev
 Nie zaczynaj implementacji ani eksperymentów. Rozlicz istniejące prace dotyczące
 tego featura; nie twórz duplikatów. Jeżeli dalszy zakres zależy od wyników badań,
 rozpisz szczegółowo pierwszą falę, a kolejne pozostaw jawnie warunkowe.
-Na końcu użyj $feature-exchange, aby wyeksportować wynik do ZIP-a do review planu.
+Review planu odbędzie się poza repozytorium: na końcu użyj $feature-exchange,
+aby wyeksportować wynik do ZIP-a.
 ```
 
 Instrukcje można też wskazać przez ścieżkę `${CLAUDE_PLUGIN_ROOT}/skills/feature-plan/SKILL.md`, jeśli bieżąca sesja nie wykryła jeszcze nowych skilli. Istniejący `F-001-replayability` może być dalej prowadzony tym samym procesem; jego pliki i historia nie są częścią aktualizacji workflow.
@@ -62,8 +63,9 @@ uzgodnionego zachowania. Zachowaj budżety i reguły zatrzymania eksperymentów;
 nie rozszerzaj pracy na niezatwierdzone przyszłe fale.
 Nie zatrzymuj się po każdym tasku po moją zgodę ani wymianę ZIP-ów.
 Wróć wcześniej tylko z konkretną decyzją poza udzieloną zgodą lub rzeczywistym
-impasem. Po lokalnym review całości przygotuj przez $feature-exchange jeden ZIP
-w przestrzeni wymiany tego worktree (`packages/`) z ledgerami, review, dowodami i executive summary do odbioru.
+impasem. Po lokalnym review całości przygotuj krótki handoff do odbioru: commity
+dostawy i integracji, ledgery, review, wyniki, ograniczenia i executive summary.
+ZIP przez $feature-exchange tylko wtedy, gdy o niego poproszę.
 ```
 
 ## Pliki i właściciele informacji
@@ -168,8 +170,8 @@ Feature kończy się po potwierdzeniu kryteriów na zintegrowanym kodzie, rozlic
 
 Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature_*`, implementację wykonują rundy Claude Code w jednej sesji przypisanej do featura. Procedura koordynatora jest w `${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/references/bridge-loop.md`, zasady wykonawcy w sekcji „Bridge round executor” skilla `feature-execute`. Pozostałe zasady tego przewodnika obowiązują bez zmian.
 
-- Runda to jawny kontrakt: taski, obowiązująca autoryzacja, ustalenia review do poprawy, zakres zapisu, weryfikacja, ścieżka ledgera i paczki. Po `DONE` każda poprawka lub kolejny task to nowa runda w tej samej sesji; task `BLOCKED` wznawia się istniejącym recovery z wiadomością koordynatora, bez zastępczego taska.
-- Wykonawca kończy rundę ledgerem, lokalnym commitem w granicach autoryzacji i paczką `feature-exchange` rundy. Paczka jest wewnętrznym przekazaniem między agentami; koordynator sprawdza ją przez `verify`, a review bada rzeczywisty kod w repo.
+- Runda to jawny kontrakt: taski, obowiązująca autoryzacja, ustalenia review do poprawy, zakres zapisu, weryfikacja, ścieżka ledgera i pełne SHA bazy. Po `DONE` każda poprawka lub kolejny task to nowa runda w tej samej sesji; task `BLOCKED` wznawia się istniejącym recovery z wiadomością koordynatora, bez zastępczego taska.
+- Wykonawca kończy rundę ledgerem i lokalnym commitem w granicach autoryzacji. Dostawą są te commity: pierwsza linia podsumowania `DELIVERY=local-v1 BASE=… HEAD=… LEDGER=… OUTCOME=… WORKTREE=…` wskazuje pełne SHA bazy z kontraktu i dostarczonego head. Koordynator sprawdza w Git bazę, pochodzenie, zakres zapisu każdego commita, ledger i niecommitowane zmiany (zastane oddzielnie od niedokończonej pracy wykonawcy, która wyklucza `COMPLETE`), po czym recenzuje dokładnie dostarczony SHA, a późniejszy dryf integracji opisuje osobno. Procedura: `${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/references/local-delivery.md`. ZIP rundy powstaje tylko wtedy, gdy wymaga go jej kontrakt (np. kontrakty wydane pod wcześniejszym runtime'em); wtedy koordynator dodatkowo uruchamia `verify`.
 - Kanały są rozdzielone. Zwykłe wiadomości koordynatora do użytkownika i pytania do użytkownika nie trafiają do Claude’a; bridge niczego nie dokleja. Pytanie blokujące koordynator zapisuje przez `bridge_feature_wait_user` i pokazuje użytkownikowi. Zapis odpowiedzi nie uruchamia wykonawcy; koordynator przekazuje potrzebną decyzję jawnie w kontrakcie następnej rundy albo w wiadomości recovery.
 - `COMPLETE` wykonawcy, werdykt review i akceptacja użytkownika to osobne fakty. `bridge_feature_accept` zamyka dalsze rundy, więc koordynator wywołuje go dopiero po akceptacji zapisanej w `decisions/`.
 - Obowiązuje zwykła reguła impasu: dwie kolejne rundy (lub dwa kolejne wznowienia) bez postępu nad tym samym istotnym problemem prowadzą do pytania; poza jawnymi budżetami nie ma limitu liczby rund.
@@ -178,9 +180,9 @@ Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature
 
 `feature.json` koordynatora może zawierać `"bridge": {"feature_id": "...", "parent_task_id": "..."}`, aby inny agent odnalazł stan bridge’a bez historii rozmowy.
 
-## Wymiana ZIP-ów
+## Opcjonalna wymiana ZIP-ów
 
-Wymiana odbywa się w przestrzeni nazw danego worktree: `~/tmp/bridge-exchange/ws_<16 hex>/` z katalogami `packages/`, `incoming/` i `staging/`. Klucz to pierwsze 16 znaków SHA-256(kanoniczny root worktree + NUL + kanoniczny katalog git tego worktree), więc dwa worktree jednego repozytorium nie kolidują nawet przy identycznych nazwach featura, celu i rundy; to nigdy nie jest nazwa brancha, ID featura ani sesji. Ścieżkę wypisuje `feature_exchange.py namespace --repo <ścieżka>`; wybór jest tylko do odczytu i niczego nie przejmuje. Eksportuj przez `--name <plik>.zip`, staging przez `--stage-name <nazwa>`; jawne `--output`/`--staging` pozostają dosłowne. Zwrotkę pobraną gdzie indziej skopiuj najpierw do `incoming/` tej przestrzeni. Staging pozostaje nowym katalogiem poza repo, a oryginalne ZIP-y nie są nadpisywane. Dawne płaskie przykłady `~/tmp/<feature>-<cel>-<n>.zip` w historycznych ledgerach i review opisują ówczesny stan i nie są przepisywane.
+ZIP jest potrzebny tylko odbiorcy bez dostępu do repozytorium i wskazanych commitów albo na jawne żądanie; odbiorca z takim dostępem, także zewnętrzny reviewer, dostaje commity i dokumenty w repo. Wymiana odbywa się w przestrzeni nazw danego worktree: `~/tmp/bridge-exchange/ws_<16 hex>/` z katalogami `packages/`, `incoming/` i `staging/`. Klucz to pierwsze 16 znaków SHA-256(kanoniczny root worktree + NUL + kanoniczny katalog git tego worktree), więc dwa worktree jednego repozytorium nie kolidują nawet przy identycznych nazwach featura, celu i rundy; to nigdy nie jest nazwa brancha, ID featura ani sesji. Ścieżkę wypisuje `feature_exchange.py namespace --repo <ścieżka>`; wybór jest tylko do odczytu i niczego nie przejmuje. Eksportuj przez `--name <plik>.zip`, staging przez `--stage-name <nazwa>`; jawne `--output`/`--staging` pozostają dosłowne. Zwrotkę pobraną gdzie indziej skopiuj najpierw do `incoming/` tej przestrzeni. Staging pozostaje nowym katalogiem poza repo, a oryginalne ZIP-y nie są nadpisywane. Dawne płaskie przykłady `~/tmp/<feature>-<cel>-<n>.zip` w historycznych ledgerach i review opisują ówczesny stan i nie są przepisywane.
 
 Skill `feature-exchange` zawiera skrypt Python 3.9+ bez dodatkowych zależności. Eksport zawsze obejmuje pełny katalog featura, zarejestrowane taski, ten przewodnik i jawny kontekst. Manifest zapisuje SHA-256 każdego pliku, HEAD repo, cel i granice materiału. Opcjonalny zakres kodu pochodzi z commitów; dokumenty pochodzą z bieżących plików. To rozróżnienie jest jawne.
 
@@ -188,4 +190,4 @@ Do review planu używaj paczki dokumentów. Do review implementacji dołącz zak
 
 Zachowaj oryginalny ZIP. Reviewer zwracający dokumenty zachowuje jego `exchange-manifest.json` bez zmian; edytuje pliki w ich ścieżkach i może dodawać nowe review/decyzje wewnątrz featura. Manifest opisuje wersję wejściową, nie jest podpisem nowych treści. Skrypt porównuje oryginał, zwrotkę i lokalne pliki, wskazuje konflikty i przygotowuje staging poza repo. Nie stosuje zmian automatycznie. `feature-exchange` następnie nanosi uprawnione poprawki; rozbieżności scala, a nie nadpisuje. Brak pliku w ZIP-ie nigdy nie oznacza zgody na jego usunięcie.
 
-Domyślnie są dwa przekazania zewnętrzne: projekt i taski przed zleceniem implementacji, a następnie zintegrowany wynik z oryginalnymi ledgerami, niezależnym lokalnym review, dowodami i executive summary do odbioru. Osobne przekazanie kontraktów występuje tylko wtedy, gdy wymaga go konkretna nierozstrzygnięta decyzja lub uzgodniona bramka zewnętrzna. Lokalne review tasków i poprawki nie tworzą kolejnych obowiązkowych wymian. Jeśli końcowy odbiór zatwierdzi poprawki, wykonaj cały zatwierdzony zakres i lokalne ponowne review przed następnym przekazaniem. Jawna prośba użytkownika o eksport w innym momencie nadal obowiązuje.
+Domyślnie są dwa przekazania do użytkownika: projekt i taski przed zleceniem implementacji, a następnie zintegrowany wynik z oryginalnymi ledgerami, niezależnym lokalnym review, dowodami i executive summary do odbioru. Przy dostępie do repozytorium przekazaniem jest krótki handoff wskazujący commity, wyniki, ograniczenia, review i następny krok; ZIP tylko bez takiego dostępu lub na żądanie. Rzeczywisty odbiór użytkownika pozostaje wymagany. Osobne przekazanie kontraktów występuje tylko wtedy, gdy wymaga go konkretna nierozstrzygnięta decyzja lub uzgodniona bramka zewnętrzna. Lokalne review tasków i poprawki nie tworzą kolejnych obowiązkowych wymian. Jeśli końcowy odbiór zatwierdzi poprawki, wykonaj cały zatwierdzony zakres i lokalne ponowne review przed następnym przekazaniem. Jawna prośba użytkownika o eksport w innym momencie nadal obowiązuje.

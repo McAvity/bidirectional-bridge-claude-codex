@@ -75,4 +75,6 @@ Swap `to` for the opposite runtime. Preserve the actual root run, parent, and de
 - A path artifact must exist, be repo-relative, and fit the leased output scope. Use inline evidence for read-only facts.
 - Each artifact uses exactly one of `path` or `inline`.
 - Preserve exact exit codes and commands. Never convert free-text claims into verification evidence.
-- Use `commit_or_diff: null` when neither exists.
+- Use `commit_or_diff: null` when neither exists. The Claude adapter always stores it as
+  `null`; a feature round names its delivered commits in the first summary line instead
+  (`feature-execute` reference `local-delivery.md`).

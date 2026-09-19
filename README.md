@@ -8,7 +8,9 @@ routing. The `feature-workflow` branch contains the extensions; its upstream bas
 The six feature workflow skills live in `.agents/skills/`, with their shared guide in
 [docs/features/README.md](docs/features/README.md). They are the canonical distribution
 sources and may also be used to develop this repository. Project-specific authorization
-and instructions still apply. The paired `using-bridge` skills live under `.codex/` and
+and instructions still apply. Bridge rounds deliver commits that the manager checks in Git
+and reviews at the delivered SHA; ZIP exchange is optional, for recipients without
+repository access or on request. The paired `using-bridge` skills live under `.codex/` and
 `.claude/`. See [fork setup and limitations](docs/fork-setup.md).
 
 Historical upstream certification artifacts do **not** certify these modified sources.

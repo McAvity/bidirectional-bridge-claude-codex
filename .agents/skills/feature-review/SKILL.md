@@ -21,15 +21,18 @@ Read brief, design, selected tasks, relevant decisions/contracts, ledgers and co
 - Experiment scope within plan/contracts/implementation: Apply the shared wave guidance. For a plan, check the comparison, controls, budget, stop rule, data separation and usable outputs. For execution, inspect actual configuration, data coverage, failures/exclusions, analysis and relevant harness/model code; assess effect size, uncertainty, selection bias and whether conclusions exceed the evidence. A valid negative or inconclusive result may PASS. State separately whether execution is sound, what the hypothesis result is and whether product acceptance is evidenced. Missing raw data/code limits the verdict; a report alone does not establish reproducibility.
 - Corrections: Trace open finding IDs through the governing authorization, code/spec changes and new evidence. Close each material finding explicitly; check related regressions. Retain closed findings unless a concrete change invalidates their evidence. Give new defects their own findings even when they resemble a previous issue. Broaden review only for a concrete new risk. Apply the shared step-back rule when the same problem recurs, including rounds that made progress.
 
-## Bridge round packages
+## Bridge round deliveries
 
 For a round executed through the bridge, the coordinator reviews and the executor's
-`COMPLETE`, `PASS` claims and ledger are inputs, not findings. First run
-`feature_exchange.py verify` on the round package with the expected feature, purpose, base and
-head; a failing or stale package or an empty code range is a required finding. Check that the
-round's commits and uncommitted changes stay in its write scope and leave coordinator records
-untouched. Then review the repository itself: the `base..head` range, current files, and the
-decisive checks rerun by you. Name the reviewed task id. For each required
+`COMPLETE`, `PASS` claims, delivery line and ledger are inputs, not findings. First run the
+receipt checks of [local-delivery.md](../feature-execute/references/local-delivery.md): contract
+base, delivered head and ancestry, scope of the diff and of every commit, untouched coordinator
+records, new ledger, worktree dirt (preexisting separate from unfinished executor work) and
+evidence; a failed check is a required finding. When the contract required a package, also run
+`feature_exchange.py verify` with the expected feature, purpose, base and head. Then review the
+delivered `HEAD` itself: the `base..head` range, the files at that commit, and the decisive
+checks rerun by you on it. Describe later integration drift separately and attribute it to
+nobody by default. Name the reviewed task id and delivered SHA. For each required
 finding carried from the previous review, state `resolved`, `progress` or `no progress`; the
 coordinator uses this for the shared retry rule. Disclose that the reviewer is the
 coordinating session, independent of the executor but not of the coordination.

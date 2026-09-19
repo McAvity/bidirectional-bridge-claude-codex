@@ -3,7 +3,10 @@
 Load this when you coordinate a feature whose implementation runs as Claude Code rounds
 through the bridge MCP (`bridge_feature_*`). You are the coordinator: you own the feature
 index, round contracts, independent review, decision records and the user channel. The
-executor side is the "Bridge round executor" section of `feature-execute`.
+executor side is the "Bridge round executor" section of `feature-execute`. Rounds deliver
+commits in this repository; [local-delivery.md](local-delivery.md) defines the delivery line,
+your receipt checks and the review target. A round exports a ZIP only when its contract
+requires one (`local-delivery.md` § 8).
 
 The bridge stores durable routing state. It never decides, reviews, accepts, forwards user
 messages or starts work by itself. Every round, recovery, question and acceptance is an
@@ -14,10 +17,10 @@ explicit call from you.
 1. Call `bridge_server_info` once per session; require `caller: codex`, `delegation: allow`.
 2. Require an authorized execution scope (`decisions/NN.md` or a recorded user instruction),
    authorization to delegate it to Claude through the bridge, and authorization for local
-   commits (round packages are commit ranges). Without them, prepare the decision instead of
-   starting rounds. Rounds run `git commit` and `python3` and write the package into the
-  worktree's exchange namespace outside the
-   repository; the project's Claude permissions must allow that.
+   commits (a round delivers a commit range). Without them, prepare the decision instead of
+   starting rounds. Rounds run `git commit`; the project's Claude permissions must allow that
+   (and `python3` with writes to the worktree's exchange namespace only when a contract
+   requires a package).
 3. Call `bridge_feature_get({feature_id: <feature-id>})`. If the feature exists, continue
    from its state and make sure `feature.json` records its `bridge` block. Never create a
    second root or feature for the same feature directory.
@@ -30,6 +33,9 @@ explicit call from you.
    is open (`running` or `blocked`), so a round's commit range holds only the executor's
    commits. Wrap each batch of writes in `bridge_acquire_lease` on your write scope and
    `bridge_release_lease`.
+6. Before each round read `git status --porcelain=v1 --untracked-files=all`. Commit your own
+   pending files first; list any remaining dirt inside the round's scope in the contract as
+   preexisting. Never reset, stash or clean someone else's work.
 
 ## Round contract
 
@@ -39,17 +45,19 @@ on it alone:
 - `objective`: feature id and round number; task IDs; governing authorization (path);
   for corrections the review path and required finding IDs; the user decisions that apply
   to this round, quoted with their question id; "Follow `.agents/skills/feature-execute/SKILL.md`,
-  section Bridge round executor"; the ledger directory `execution/<TASK-ID>/`; the package
-  export (purpose, `--base` = current HEAD before the round, and the archive file name for
-  `--name`, which resolves inside this worktree's exchange namespace
-  `~/tmp/bridge-exchange/ws_<16 hex>/packages/` — run `feature_exchange.py namespace` to read it;
-  give an explicit `--output` path only when a literal location is genuinely required).
+  section Bridge round executor"; the ledger directory `execution/<TASK-ID>/`; the contract
+  base as a full SHA (`git rev-parse HEAD` before the round) and "deliver per `local-delivery.md`".
+  Require a package only for a recipient without repository access or on explicit request:
+  then add purpose and the archive name for `--name` (it resolves in this worktree's exchange
+  namespace, printed by `feature_exchange.py namespace`; an explicit `--output` only when a
+  literal location is genuinely required).
 - `scope.paths`: code/test globs of the task plus `docs/features/<id>/execution/**`.
   Exclude `feature.json`, `reviews/`, `decisions/` and other features.
-- `expected_deliverable`: package path, SHA-256, purpose, `base..head`, ledger path, outcome.
+- `expected_deliverable`: the delivery line (full base and head, ledger, outcome, worktree
+  state), committed ledger and checks; plus package path and SHA-256 only when required.
 - `verification_criteria`: concrete commands that must pass on the final code.
 - `deadline_ms`: the executor's own bound, below the client tool timeout minus a margin for
-  the kill grace, the deliverable and the package check (4 500 000 for a 5400 s timeout,
+  the kill grace and the deliverable (4 500 000 for a 5400 s timeout,
   1 500 000 for 1800 s). A client tool timeout that fires first does not stop the round.
   `max_turns` sized to the work: the bridge accepts at most 256, the runtime default is 12,
   and a 75-minute round needs roughly 200 — an undersized ceiling ends the round early.
@@ -94,30 +102,35 @@ diagnostic, not round input.
 
 ## Review each round
 
-1. `bridge_get_task(latest_task_id)`: read the deliverable and artifacts. A path in the
-   summary is a claim.
-2. `python3 .agents/skills/feature-exchange/scripts/feature_exchange.py verify --archive <zip>
-   --expect-feature <feature> --expect-purpose <purpose> --expect-base <contract base>
-   --expect-head HEAD`. Compare its `archive_sha256` with the reported hash.
-3. Check the round against its contract: `git diff --name-only <base>..HEAD` and
-   `git status --porcelain` must stay within `scope.paths`, and `feature.json`, `reviews/`,
-   `decisions/` and task files must be untouched by the executor.
+1. `bridge_get_task(latest_task_id)`: read the deliverable and artifacts. The delivery line
+   and any path in the summary are claims.
+2. Run the receipt checks of `local-delivery.md` § 4: delivery line, contract base, head
+   ancestry, merges, scope of the diff and of every commit, untouched coordinator files, new
+   ledger, worktree dirt against the start record, and evidence.
+3. Review the delivered `HEAD`, not the branch tip; describe later integration drift separately
+   (`local-delivery.md` § 5). When the contract required a package (every contract issued under
+   an earlier runtime), also run `python3 .agents/skills/feature-exchange/scripts/feature_exchange.py
+   verify --archive <zip> --expect-feature <feature> --expect-purpose <purpose> --expect-base
+   <contract base> --expect-head <delivered head>` and compare its `archive_sha256` with the
+   reported hash.
 4. Use `$feature-review` in the appropriate mode: inspect the changed scope and new ledger,
    rerun decisive checks, and record the reviewed task id and exact revision. For corrections,
    append a dated entry to the existing review register and recheck open findings and concrete
    related regressions; a new round alone does not require a new review file or another reviewer.
    For every carried required finding, record `resolved`, `progress` or `no progress`.
    Keep new material defects visible and retain earlier evidence whose scope is unchanged.
-5. A missing, failing or stale package, an empty `code_changes` range, uncommitted in-scope
-   work or any change outside the scope is a required finding for the next round, not a user
-   question.
+5. A failed receipt check (`local-delivery.md` § 6) — missing or wrong delivery line or base,
+   unexpected ancestry, unfinished own work left uncommitted, any change outside the scope, or a
+   missing or failing package the contract required — is a required finding for the next round,
+   not a user question. A range holding only the ledger is valid for a diagnosis or no-change task.
 6. Route:
    - required findings within the authorized behavior → next round with a correction
      contract. Existing authorization covers it; do not ask the user;
    - PASS with authorized tasks remaining → next round for them;
-   - PASS for the whole authorized scope → export the final handoff with `$feature-exchange`
-     and ask for acceptance (below), unless the recorded authorization explicitly delegates
-     acceptance to you;
+   - PASS for the whole authorized scope → write a short handoff (delivered and integrated
+     commits, results, limitations, reviews, next step) and ask for acceptance (below), unless
+     the recorded authorization explicitly delegates acceptance to you. Export a ZIP with
+     `$feature-exchange` only when the user lacks repository access or asks for one;
    - a material choice outside the authorization → ask the user;
    - the same material finding with `no progress` in two consecutive reviews, or two
      consecutive recoveries of one task ending blocked on the same blocker → stop and ask
@@ -181,16 +194,16 @@ Persist the intent first, so a later "continue" has the exact request to replay:
 - record the exact arguments, the idempotency key, the contract path and its SHA-256, the
   authorization path, the Git base, the budget, and the `latest_task_id` you read just before;
 - after the call returns, add the ids it gave you. That is a write outside the repository, so it
-  does not commit during an open round and does not enter the executor's package;
+  does not commit during an open round and does not enter the executor's commit range;
 - it is not a second state store. It records intent, never acceptance. **The bridge is the only
   authority on whether an operation was accepted.** A missing or unreadable intent file is a
   blocker: say so and ask, rather than reconstructing a request from memory or from a hash.
 
 ### On "continue": read before you write
 
-1. **Read your own work**: `git log <git_base>..HEAD`, `git status --porcelain`, and whether the
-   round's package already exists in the exchange namespace. A summary that scrolled away is not
-   evidence that a commit or an export did not happen.
+1. **Read your own work**: `git log <git_base>..HEAD`, `git status --porcelain`, and, when the
+   contract required one, whether the round's package already exists in the exchange namespace.
+   A summary that scrolled away is not evidence that a commit or an export did not happen.
 2. **Read the intent files** for this feature: which operation was in flight, with which key.
 3. **Read the bridge**: `bridge_feature_get`, then `bridge_get_task` for the latest task. These
    are pure reads; they need no manager instance and write nothing, so a further interruption

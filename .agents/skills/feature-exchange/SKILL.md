@@ -13,7 +13,7 @@ Use the worktree's own exchange namespace for the entire lifecycle. `python3 .ag
 
 ## When to exchange
 
-Export on explicit request, at the agreed external plan/acceptance handoff, or for a concrete unresolved decision outside local authority. Completing a task, producing a ledger or passing local contract review does not trigger an export to the user; the internal round package of bridge mode (below) is separate. Keep technical review and authorized corrections local. Normally the implementation packet follows integration and independent local review of the whole authorized scope, including its corrections. An early packet must identify the actual decision or explicit external gate; do not request a ZIP exchange merely for extra certainty.
+Export when the recipient has no access to the repository and the relevant commits, on explicit request, or for a concrete unresolved decision outside local authority that goes to such a recipient. A recipient who can read the repository at the delivered commits needs no ZIP: hand over the commits, ledgers, results and limitations instead. Completing a task, producing a ledger or passing local contract review does not trigger an export; bridge rounds deliver through Git (below). Keep technical review and authorized corrections local. Normally the implementation packet follows integration and independent local review of the whole authorized scope, including its corrections. An early packet must identify the actual decision or explicit external gate; do not request a ZIP exchange merely for extra certainty.
 
 ## Export
 
@@ -61,15 +61,21 @@ commits, and reports the number of code changes and feature documents changed or
 since export. It prints the archive SHA-256.
 It establishes integrity and provenance only, not correctness or approval.
 
-## Round packages in bridge mode
+## Bridge rounds
 
-A Claude round executed through the bridge ends with an export of its work:
-`implementation-review` for new scope, `corrections-review` for a correction round,
-`--base` = the commit before the round, output path from the round contract. This is an
-internal agent-to-agent handoff; it adds no user gate or external exchange. The coordinator
-runs `verify` before its review and still inspects the repository directly. Keep `.bridge/`
-git-ignored so its database does not mark the worktree dirty. The exchange location rules
-above apply unless the governing decision names another directory outside the repository.
+A Claude round executed through the bridge delivers commits in the shared repository, described
+by the first summary line; the coordinator checks them with Git and reviews the delivered SHA, as
+[local-delivery.md](../feature-execute/references/local-delivery.md) specifies. No export,
+archive `verify` or import is part of that loop. Keep `.bridge/` git-ignored so its database does
+not mark the worktree dirty.
+
+A round exports a package only when its contract explicitly requires one: every contract issued
+under an earlier runtime, or a round whose result goes to a recipient without repository access.
+Then use `implementation-review` for new scope or `corrections-review` for a correction round,
+`--base` = the contract base, `--name` (or the contract's literal `--output`), and `verify` with
+`--expect-base` and `--expect-head`. The coordinator still performs the Git receipt checks;
+archive integrity is not a code review. The exchange location rules above apply unless the
+governing decision names another directory outside the repository.
 
 ## Import a return
 
