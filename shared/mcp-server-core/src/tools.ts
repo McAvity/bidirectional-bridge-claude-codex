@@ -1252,7 +1252,10 @@ export async function runTool(
       attempt: summary.attempt,
       details: summary.details,
     });
-    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    const response = audit.version_warning && result !== null && typeof result === "object"
+      ? { ...result, warnings: [audit.version_warning] }
+      : result;
+    return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
   } catch (err) {
     const bridgeErr = BridgeError.from(err);
     const reason = (bridgeErr.details as { reason?: unknown } | undefined)?.reason;

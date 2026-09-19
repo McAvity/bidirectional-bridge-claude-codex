@@ -93,7 +93,7 @@ function childEnv(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   }
   // The test runner puts `node_modules/.bin` first, which shadows the host `codex` with the
   // pinned development dependency. A client's environment does not, and the compatibility guard
-  // legitimately refuses the shadowed version, so the runner's own entries are removed here.
+  // would observe the shadowed version, so the runner's own entries are removed here.
   out.PATH = (process.env.PATH ?? "")
     .split(":")
     .filter((entry) => !entry.includes("node_modules/.bin"))
@@ -179,6 +179,26 @@ describe("installation from the distribution", () => {
     const paths = ((result.json as any).changes as { path: string }[]).map((c) => c.path).sort();
     expect(paths).toEqual([PROJECT_DECLARATION, PROJECT_ENTRY, ".bridge-runtime/current", ".codex/config.toml", ".gitignore"].sort());
     expect(status(project, env).state).toBe("ready");
+  });
+
+  it.each(["0.155.1", "99.0.0"])("plans and applies the public preference setup on %s with a visible warning", (version) => {
+    const bin = join(root, "bin");
+    mkdirSync(bin);
+    writeFileSync(join(bin, "codex"), `#!/bin/sh\nprintf 'codex-cli ${version}\\n'\n`, { mode: 0o755 });
+    const hostEnv = { ...env, PATH: `${bin}:${process.env.PATH}` };
+    const args = ["setup", "--with-preference", "--source", REPO, "--commit", runtimeCommit];
+    const planned = plugin(project, [...args, "--json"], hostEnv);
+    expect(planned.code).toBe(0);
+    expect(planned.json?.notes).toEqual(expect.arrayContaining([expect.stringContaining(`CODEX_VERSION_UNVERIFIED: Codex ${version}`)]));
+    expect(existsSync(join(project, "AGENTS.md"))).toBe(false);
+    const applied = plugin(project, [...args, "--yes"], hostEnv);
+    expect(applied.code, applied.stdout + applied.stderr).toBe(0);
+    expect(applied.stdout).toContain(`CODEX_VERSION_UNVERIFIED: Codex ${version}`);
+    expect(readFileSync(join(project, "AGENTS.md"), "utf8")).toContain("entry.mjs --status");
+    expect(status(project, hostEnv).state).toBe("ready");
+    const repeated = plugin(project, [...args, "--json"], hostEnv);
+    expect(repeated.json?.changes).toEqual([]);
+    expect(repeated.json?.notes).toEqual(expect.arrayContaining([expect.stringContaining("CODEX_VERSION_UNVERIFIED")]));
   });
 
   it("writes a local selection record and a selection symlink, not just a declaration", () => {

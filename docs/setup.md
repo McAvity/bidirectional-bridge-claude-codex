@@ -13,8 +13,9 @@ worktree of that project needs only its own local selection and no runtime insta
 
 - Linux and a worktree on a local filesystem (no network or FUSE mounts for bridge state);
 - Node.js 22.13 or newer (tested with 24), npm, Git and Python 3.11 or newer;
-- Codex CLI **0.154.0** for the manager: the manager identity adapter is verified for exactly
-  this version and other versions are refused;
+- Codex CLI for the manager: **0.154.0** has the previously verified identity adapter.
+  **0.155.1** and other unverified versions may use the same metadata contract with a
+  `CODEX_VERSION_UNVERIFIED` warning; a version mismatch alone does not block setup or calls;
 - Claude Code for the worker; both clients logged in normally.
 
 ## 1. Install a pinned runtime
@@ -119,7 +120,7 @@ Other worktrees keep their runtime until they are updated themselves. The comman
 the worktree is in use — a running bridge server, a Codex or Claude process in the worktree,
 or a process holding a `.bridge/` file open — and names the processes to close normally;
 nothing is killed. It also refuses when the database schema is newer than the target runtime
-supports or when the installed Codex version is not verified by the target runtime. The new
+supports; an unverified Codex version produces a warning, not a refusal. The new
 runtime migrates the database on its first authorized call, not during `update`.
 
 ## 6. Roll back
@@ -157,7 +158,7 @@ result `incomplete`, never `ok`.
 | `GIT_MISSING`, `NODE_MISSING`, `NODE_UNSUPPORTED` | A required tool is missing or too old. |
 | `PYTHON_MISSING`, `PYTHON_UNSUPPORTED` | No Python 3.11+ (feature exchange and TOML checks need it). |
 | `CODEX_MISSING`, `CLAUDE_MISSING` | A client is not on `PATH`. |
-| `CODEX_VERSION_UNSUPPORTED` | The Codex version has no verified identity adapter in the selected runtime. |
+| `CODEX_VERSION_UNVERIFIED` | Warning: this Codex version is outside the verified list; setup continues and runtime identity checks still apply. Older runtimes retain their old refusal until explicitly updated. |
 | `CODEX_VERSION_UNKNOWN`, `CODEX_ADAPTERS_UNKNOWN` | Not enough evidence about the host version. |
 | `CODEX_LOGIN_MISSING`, `CLAUDE_LOGIN_MISSING`, `CLAUDE_LOGIN_UNKNOWN` | Log in normally; billing is not examined. |
 | `WORKSPACE_MISSING`, `WORKSPACE_NOT_ROOT`, `WORKSPACE_UNRESOLVED` | Pass an existing worktree root. |
@@ -183,7 +184,7 @@ result `incomplete`, never `ok`.
 
 `init`, `update` and `rollback` refuse with `PATH_REDIRECTED`, `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN`,
 `STATE_SCHEMA_NEWER`, `STATE_UNREADABLE`, `RUNTIME_COMPATIBILITY_UNKNOWN`, `RUNTIME_INCOMPLETE`,
-`CODEX_VERSION_UNSUPPORTED`, `SETUP_ALREADY_INITIALIZED`, `SETUP_NOT_INITIALIZED`,
+`SETUP_ALREADY_INITIALIZED`, `SETUP_NOT_INITIALIZED`,
 `ROLLBACK_SAME_RUNTIME` or `ROLLBACK_NO_PREVIOUS`, and report file conflicts as
 `INSTRUCTION_MODIFIED`, `CODEX_CONFIG_*` or `GITIGNORE_CONFLICT`. `install` reports
 `INSTALL_SOURCE_INVALID` or `INSTALL_STEP_FAILED` with the path of its log.

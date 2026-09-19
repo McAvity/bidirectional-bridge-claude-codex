@@ -11,6 +11,15 @@ explicitly.
 
 ## Unreleased
 
+## 0.3.1 — 2026-09-19 (experimental)
+
+### Changed
+
+- Codex host versions outside the verified list (including 0.155.1) now produce
+  `CODEX_VERSION_UNVERIFIED` warnings in setup, doctor and successful guarded MCP calls,
+  instead of a version-only refusal. Metadata validation, subagent rejection and manager
+  ownership/fencing remain enforced; unverified host behaviour is not certified.
+
 ## 0.3.0 — 2026-09-17 (experimental; wave15 smoke pending)
 
 ### Added

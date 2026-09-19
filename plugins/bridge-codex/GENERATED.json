@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-codex",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".codex/skills/using-bridge"
@@ -10,7 +10,7 @@
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "a5ea3d3e4a3bc77503f2ecfcd2ff31e6f1de5a6b3dd482345167c63b25b88ac2"
+      "sha256": "56029b4b7c32ff71366c96cb7fb4493ad5b24c7f0976d62da864e42b00c84c58"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
@@ -54,11 +54,11 @@
     },
     {
       "path": "scripts/plugin-packages/bridge-plugin.mjs",
-      "sha256": "c3b0544b1a798b4418e60f3d355f88bfb4146fe38b5cd78c5b72d897076d4b2f"
+      "sha256": "1681d284ad7f7949b0df207735b20a225ad22a2fe94d83de445d9c4e891110ec"
     },
     {
       "path": "scripts/plugin-packages/release.json",
-      "sha256": "0a14171b3c457ed9ba7d48ff254384495dd17c4ad1b718ea25a3867f4ce64477"
+      "sha256": "c9c809131a8bfbc56105ee4d136e4241991a023ee97dcd89dd0bf6093cec8f4e"
     },
     {
       "path": "scripts/setup/common.mjs",
@@ -74,7 +74,7 @@
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "ccd78a5a4abe980be919bcd1859f005f309b87171c12da9388d32ad4a9898439"
+      "sha256": "511877ba68a0720d3e198a0913bd5c426f4c3a4bf4e69998cc3646d78ff904e4"
     },
     {
       "path": "scripts/setup/processes.mjs",
@@ -86,7 +86,7 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "f7734c4f0e60c6b4899cacd00c1c16aa260a56d9fb335c9389317dab0c5835a7"
+      "sha256": "7f519485bbdf71da35a2e295ec57b34f77cb45d65c7e053082ff77738a845d66"
     },
     {
       "path": "skills/bridge/SKILL.md",

@@ -223,6 +223,7 @@ export async function main(argv, { cwd = process.cwd(), env = process.env } = {}
       `${r.applied ? "rolled back" : r.ok ? "plan" : "refused"}: ${r.workspace}`,
       `runtime:  ${r.runtime.id}`,
       ...(r.changes.length === 0 ? ["changes:  none"] : ["changes:", ...r.changes.map((c) => `  ${String(c.action).padEnd(6)} ${c.path}`)]),
+      ...r.notes.map((note) => `note:     ${note}`),
       ...r.refusals.map((c) => `refused:  ${c.code}: ${c.message}${c.nextStep ? `\n  next: ${c.nextStep}` : ""}`),
       r.applied ? "result:   applied" : r.ok ? "result:   dry run, nothing written; re-run with --yes" : "result:   nothing written",
     ]);
@@ -284,6 +285,7 @@ export async function main(argv, { cwd = process.cwd(), env = process.env } = {}
     `runtime:  ${r.runtime.id} (${r.runtime_installed_now ? "installed now" : "already installed"})`,
     ...(r.changes.length === 0 ? ["changes:  none"] : ["changes:", ...r.changes.map((c) => `  ${String(c.action).padEnd(6)} ${c.path}`)]),
     ...r.changes.filter((c) => c.diff).map((c) => c.diff.trimEnd()),
+    ...r.notes.map((note) => `note:     ${note}`),
     ...r.kept_local.map((k) => `kept local: ${k.path}`),
     ...r.conflicts.map((c) => `conflict: ${c.code} ${c.path}: ${c.message}`),
     ...r.refusals.map((c) => `refused:  ${c.code}: ${c.message}${c.nextStep ? `\n  next: ${c.nextStep}` : ""}`),

@@ -54,6 +54,7 @@ export interface AuthorizedSession {
  * audit, so none of them can write a record on another call's authority.
  */
 export interface CallAudit {
+  version_warning?: { code: string; message: string };
   authorized: boolean;
   armed: boolean;
   epoch: number | null;
@@ -129,6 +130,7 @@ export class IdentityRuntime {
     native: NativeCallContext | null,
   ): void {
     audit.authorized = true;
+    if (native?.version_warning) audit.version_warning = native.version_warning;
     audit.epoch = binding?.epoch ?? null;
     audit.generation = binding?.instance_generation ?? null;
     // The native thread id is a local session handle: correlate by digest, never by value.

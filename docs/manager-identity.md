@@ -25,8 +25,11 @@ ownership, leases, lineage and recovery authorisation. Manager identity is separ
 From the per-request MCP metadata the Codex host attaches to a tool call: `params._meta.threadId`
 plus the `x-codex-turn-metadata` object. Tool arguments, environment variables, cwd and rollout
 files are never read and never used as a fallback. A call is refused before it can write when the
-metadata is missing, malformed, inconsistent, belongs to a subagent, or comes from a host version
-without a verified adapter (currently exactly `0.154.0`).
+metadata is missing, malformed, inconsistent or belongs to a subagent. Host version is
+compatibility information, not identity proof: an unverified version (including `0.155.1`)
+uses the same strict turn-metadata adapter and successful guarded calls return a
+`warnings` entry with code `CODEX_VERSION_UNVERIFIED`. Version must still be present and
+well-formed; no identity source or ownership check is bypassed.
 
 ## Lifecycle
 
@@ -54,7 +57,7 @@ without a verified adapter (currently exactly `0.154.0`).
 
 | Code / reason | Meaning and remedy |
 | --- | --- |
-| `NATIVE_CONTEXT_INVALID` | The call carried no usable native context, or the host version has no verified adapter. Use a supported Codex session; do not pass ids as arguments. |
+| `NATIVE_CONTEXT_INVALID` | The call carried no usable native context. Use a native Codex session with valid metadata; do not pass ids as arguments. |
 | `MANAGER_FOREIGN_THREAD` | Another session owns this worktree. Continue in that session, or take over explicitly on the user's instruction. |
 | `MANAGER_INSTANCE_FENCED` | Your session owns the worktree but this connection is not the active one. Resume the instance explicitly. |
 | `MANAGER_FENCED` | Your session was superseded by a takeover. Only another explicit takeover returns authority. |
@@ -98,7 +101,8 @@ read-only and grants nothing. `feature_exchange.py namespace` prints the paths, 
 
 - The worktree state directory must be on a local filesystem with working POSIX advisory
   locking; network and FUSE mounts are unsupported for this purpose.
-- The verified host adapter is exactly Codex `0.154.0`; other versions are refused until verified.
+- The historically verified host is Codex `0.154.0`. Other versions are allowed with a warning
+  when their metadata satisfies the same contract; this does not certify their guardian behaviour.
 - Among several legitimate root sessions, the first one to take ownership becomes the manager.
 - Start each client at the worktree root; a subdirectory is refused.
 - One worktree, one database, one active feature.

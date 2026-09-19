@@ -517,8 +517,8 @@ export async function runDoctor({
   } else if (!Array.isArray(adapters)) {
     add("codex", "unknown", "CODEX_ADAPTERS_UNKNOWN", `Codex ${codexVersion}; the selected runtime does not declare verified host versions`);
   } else if (!adapters.includes(codexVersion)) {
-    add("codex", "error", "CODEX_VERSION_UNSUPPORTED", `Codex ${codexVersion} has no verified identity adapter (verified: ${adapters.join(", ")})`, {
-      nextStep: "use a verified Codex version; the adapter check is not bypassed",
+    add("codex", "warn", "CODEX_VERSION_UNVERIFIED", `Codex ${codexVersion} has no verified identity adapter (verified: ${adapters.join(", ")})`, {
+      nextStep: "version alone does not block setup; identity checks remain enforced. If an older runtime refuses this host, explicitly update that runtime",
     });
   } else {
     add("codex", "ok", "OK", `Codex ${codexVersion} (verified identity adapter)`);

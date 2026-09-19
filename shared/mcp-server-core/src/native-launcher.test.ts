@@ -489,15 +489,16 @@ describe("native project MCP launcher", () => {
       expect(foreign.isError).toBe(true);
       expect(foreign.data.error.code).toBe("MANAGER_FOREIGN_THREAD");
 
-      // Missing and unsupported envelopes are refused as well.
+      // Missing metadata is refused; a newer host uses the strict envelope adapter with a warning.
       const noMeta = await harness.callTool("bridge_create_task", { spec: taskSpec() });
       expect(noMeta.data.error.code).toBe("NATIVE_CONTEXT_INVALID");
-      const badVersion = await harness.callTool(
+      const newerVersion = await harness.callTool(
         "bridge_create_task",
         { spec: taskSpec() },
-        nativeMeta("thread-external-1", "0.154.1"),
+        nativeMeta("thread-external-1", "0.155.1"),
       );
-      expect(badVersion.data.error.details.reason).toBe("native_adapter_unsupported");
+      expect(newerVersion.isError).toBeFalsy();
+      expect(newerVersion.data.warnings[0].code).toBe("CODEX_VERSION_UNVERIFIED");
       expect(existsSync(join(externalWorkspace, "scripts", "native-bridge-mcp.mjs"))).toBe(false);
     } finally {
       const exit = await harness.shutdown();

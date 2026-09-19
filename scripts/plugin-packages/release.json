@@ -1,6 +1,6 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.3.0",
+  "package_version": "0.3.1",
   "pinned": {
     "commit": "2611d1ecccfa807b1e046ebce7b05e0dded27d12",
     "describe": "Wave15 0.3.0 experimental checkpoint; real-model smoke pending"

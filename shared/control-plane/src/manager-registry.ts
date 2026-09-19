@@ -28,6 +28,7 @@ export interface NativeCallContext {
   readonly meta_thread_id: string;
   readonly codex_version: string;
   readonly adapter_id: string;
+  readonly version_warning?: { code: string; message: string };
   readonly thread_source: string | null;
   readonly forked_from_thread_id: string | null;
 }
@@ -46,7 +47,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * Classify one request's `_meta` (contract §5.2).
  *
  * The complete turn-metadata object is mandatory because subagent classification depends on
- * it; a missing or unknown host version is refused rather than silently trusted.
+ * it. Missing/malformed versions are refused; an unverified version uses the same strict
+ * envelope checks and carries a warning (version policy updated 2026-09-19).
  */
 export function classifyNativeContext(meta: unknown): NativeCallContext {
   if (!isObject(meta)) invalid("request carries no native context", "native_context_missing");
@@ -75,16 +77,14 @@ export function classifyNativeContext(meta: unknown): NativeCallContext {
     });
   }
   const version = turn["codex_version"];
-  if (typeof version !== "string") {
-    invalid("native turn metadata lacks codex_version", "native_adapter_unsupported");
+  if (typeof version !== "string" || version.length > 80 ||
+      !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u.test(version)) {
+    invalid("native turn metadata lacks a well-formed codex_version", "native_context_malformed");
   }
-  const adapter = VERIFIED_ADAPTERS.get(version);
-  if (!adapter) {
-    invalid(`host version ${version} has no verified envelope adapter`, "native_adapter_unsupported", {
-      codex_version: version,
-      verified: [...VERIFIED_ADAPTERS.keys()],
-    });
-  }
+  const verifiedAdapter = VERIFIED_ADAPTERS.get(version);
+  // Version is compatibility information, never identity proof. Unknown hosts still have to
+  // satisfy every metadata, subagent and ownership check; do not call this adapter verified.
+  const adapter = verifiedAdapter ?? "codex-turn-metadata-unverified";
   const source = turn["thread_source"];
   const forked = turn["forked_from_thread_id"];
   return {
@@ -93,6 +93,10 @@ export function classifyNativeContext(meta: unknown): NativeCallContext {
     meta_thread_id: metaThreadId,
     codex_version: version,
     adapter_id: adapter,
+    ...(!verifiedAdapter ? { version_warning: {
+      code: "CODEX_VERSION_UNVERIFIED",
+      message: `Codex ${version} has not been fully verified; using the turn-metadata adapter with all identity checks enforced (verified: ${[...VERIFIED_ADAPTERS.keys()].join(", ")}).`,
+    } } : {}),
     thread_source: typeof source === "string" ? source : null,
     forked_from_thread_id: typeof forked === "string" ? forked : null,
   };

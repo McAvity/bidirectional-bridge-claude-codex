@@ -1,5 +1,12 @@
 # Contract: manager identity and worktree isolation (W7-ID-01)
 
+Policy amendment, 2026-09-19: the user authorized replacing the strict version
+allowlist in §5.3/A-01 with a warning. Well-formed unverified versions may use the
+same validated metadata adapter; missing/malformed/inconsistent metadata, subagents,
+foreign threads and fenced instances remain refused. The current behaviour is described
+in [manager identity](../../../manager-identity.md). Historical revision6 and its
+verification evidence below are preserved; unverified hosts are not labelled verified.
+
 Status: **proposed** for coordinator contract review, revision 6. No product code is implemented
 by this round. Code facts were inspected at `e5cc93a43c2c9c2d127725048a65faa2050b1696`; this
 revision is written on `d94c2dee56464863f42cae1cfd192e02f8108034`.

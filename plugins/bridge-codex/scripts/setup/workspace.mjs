@@ -438,16 +438,17 @@ export function compatibilityRefusals(target, root, env = process.env) {
       nextStep: "keep the current runtime or select one that supports this schema; the database is never restored from a copy",
     });
   }
+  return refusals;
+}
+
+/** A host release number alone never prevents setup. Identity is checked per MCP call. */
+export function codexCompatibilityWarning(target, env = process.env) {
   const adapters = target.manifest.compatibility.codex_identity_adapters;
   const host = codexHostVersion(env);
   if (host.version && Array.isArray(adapters) && !adapters.includes(host.version)) {
-    refusals.push({
-      code: "CODEX_VERSION_UNSUPPORTED",
-      message: `Codex ${host.version} has no verified identity adapter in runtime ${target.id} (verified: ${adapters.join(", ")})`,
-      nextStep: "use a verified Codex version; the adapter check is not bypassed",
-    });
+    return `CODEX_VERSION_UNVERIFIED: Codex ${host.version} has not been fully verified with runtime ${target.id} (verified: ${adapters.join(", ")}); setup may continue, and runtime identity checks remain enforced. Older runtimes may still refuse this host until explicitly updated.`;
   }
-  return refusals;
+  return null;
 }
 
 function knownCodexBlocks(home) {
@@ -1036,6 +1037,9 @@ export function planChange({
   };
   plan.changed =
     plan.ops.length > 0 || plan.pending !== null || comparableRecord(plan.record) !== comparableRecord(plan.nextRecord);
+
+  const hostWarning = codexCompatibilityWarning(target, env);
+  if (hostWarning) plan.notes.push(hostWarning);
 
   if (plan.changed && plan.conflicts.length === 0) {
     plan.refusals.push(...compatibilityRefusals(target, root, env));

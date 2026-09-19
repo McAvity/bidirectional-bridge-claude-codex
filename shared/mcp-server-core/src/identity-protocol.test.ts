@@ -121,7 +121,7 @@ describe("identity protocol: bootstrap and reads", () => {
     expect(JSON.parse(readFileSync(`${database}.owner`, "utf8"))["state"]).toBe("bound");
   });
 
-  it("refuses missing, subagent and unsupported envelopes before creating any state", async () => {
+  it("refuses missing, subagent and malformed envelopes before creating any state", async () => {
     const { a } = worktrees();
     const codex = server(a);
 
@@ -142,9 +142,9 @@ describe("identity protocol: bootstrap and reads", () => {
       "native_subagent_rejected",
     );
 
-    const badVersion = await call(codex, "bridge_create_task", { spec }, meta("T1", "0.154.1"));
+    const badVersion = await call(codex, "bridge_create_task", { spec }, meta("T1", "not-a-version"));
     expect((badVersion.data["error"] as { details: { reason: string } }).details.reason).toBe(
-      "native_adapter_unsupported",
+      "native_context_malformed",
     );
 
     const inconsistent = await call(codex, "bridge_create_task", { spec }, {
@@ -157,6 +157,37 @@ describe("identity protocol: bootstrap and reads", () => {
 
     // Nothing was created by any refused call.
     expect(existsSync(stateDirectory(a))).toBe(false);
+  });
+
+  it.each(["0.155.1", "99.0.0", "0.155.1-beta.1"])("allows unverified host %s with warning and preserves ownership", async (version) => {
+    const { a } = worktrees();
+    const owner = server(a);
+    const created = await call(owner, "bridge_create_task", { spec }, meta("T1", version));
+    expect(created.isError).toBe(false);
+    expect(created.data["warnings"]).toEqual([expect.objectContaining({ code: "CODEX_VERSION_UNVERIFIED" })]);
+    const before = (await call(owner, "bridge_read_events")).data["last_event_id"];
+    const intruder = server(a);
+    const denied = await call(intruder, "bridge_create_task", { spec }, meta("T2", version));
+    expect(denied.data["error"]).toMatchObject({ code: "MANAGER_FOREIGN_THREAD" });
+    expect((await call(owner, "bridge_read_events")).data["last_event_id"]).toBe(before);
+    const fenced = await call(server(a), "bridge_create_task", { spec }, meta("T1", version));
+    expect(fenced.data["error"]).toMatchObject({ code: "MANAGER_INSTANCE_FENCED" });
+  });
+
+  it.each(["0.155.1", "99.0.0"])("does not weaken invalid-envelope guards on %s", async (version) => {
+    const { a } = worktrees();
+    const owner = server(a);
+    for (const patch of [
+      { subagent_kind: "review" }, { parent_thread_id: "parent" },
+      { session_id: "other" }, { thread_id: "other" },
+      { codex_version: "" }, { codex_version: undefined }, { codex_version: "x".repeat(81) },
+    ]) {
+      const envelope = meta("T1", version);
+      envelope["x-codex-turn-metadata"] = { ...(envelope["x-codex-turn-metadata"] as object), ...patch };
+      const denied = await call(owner, "bridge_create_task", { spec }, envelope);
+      expect(denied.data["error"]).toMatchObject({ code: "NATIVE_CONTEXT_INVALID" });
+      expect(existsSync(stateDirectory(a))).toBe(false);
+    }
   });
 
   it("keeps durable state and ownership untouched for a foreign session's reads and mutations", async () => {
