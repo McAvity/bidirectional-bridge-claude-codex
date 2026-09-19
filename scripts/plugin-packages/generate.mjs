@@ -24,6 +24,7 @@ export const WORKFLOW_SKILLS = ".agents/skills";
 export const CODEX_ROLE_SKILL = ".codex/skills/using-bridge";
 export const CLAUDE_ROLE_SKILL = ".claude/skills/using-bridge";
 export const WORKFLOW_GUIDE = "docs/features/README.md";
+export const UPGRADE_SKILL = "scripts/plugin-packages/skills/bridge-upgrade";
 
 export const CODEX_PACKAGE = "plugins/bridge-codex";
 export const CLAUDE_PACKAGE = "plugins/bridge-claude";
@@ -150,6 +151,17 @@ function copyTree(fromRoot, from, toRoot, to, transform) {
 const THIN_ENTRY = () => readFileSync(join(REPO_ROOT, "scripts/plugin-packages/templates/codex-entry-SKILL.md"), "utf8");
 
 
+function installerFiles(root) {
+  const files = [];
+  for (const rel of INSTALLER_FILES) {
+    const target = join(root, rel);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, readFileSync(join(REPO_ROOT, rel)), { mode: rel.endsWith("bridge.mjs") ? 0o755 : 0o644 });
+    files.push(rel);
+  }
+  return files;
+}
+
 function codexPackage(root, version) {
   const files = [];
   mkdirSync(join(root, ".codex-plugin"), { recursive: true });
@@ -181,12 +193,8 @@ function codexPackage(root, version) {
   // The installer travels with the package, mirroring the repository layout so every relative
   // import keeps resolving. This is what lets the setup skill install a pinned runtime with no
   // clone and no runtime id, and it is why a marketplace is never asked to build anything.
-  for (const rel of INSTALLER_FILES) {
-    const target = join(root, rel);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, readFileSync(join(REPO_ROOT, rel)), { mode: rel.endsWith("bridge.mjs") ? 0o755 : 0o644 });
-    files.push(rel);
-  }
+  files.push(...installerFiles(root));
+  files.push(...copyTree(REPO_ROOT, UPGRADE_SKILL, root, "skills/bridge-upgrade"));
   return files.sort(byString);
 }
 
@@ -206,6 +214,8 @@ function claudePackage(root, version) {
   );
   files.push(".claude-plugin/plugin.json");
 
+  files.push(...installerFiles(root));
+  files.push(...copyTree(REPO_ROOT, UPGRADE_SKILL, root, "skills/bridge-upgrade"));
   files.push(...copyTree(REPO_ROOT, WORKFLOW_SKILLS, root, "skills", rewriteForClaude));
   files.push(...copyTree(REPO_ROOT, CLAUDE_ROLE_SKILL, root, "skills/using-bridge", rewriteForClaude));
 
@@ -225,7 +235,7 @@ function claudePackage(root, version) {
 /** Digest of the canonical sources a package was generated from. */
 export function sourceDigest(repoRoot = REPO_ROOT) {
   const parts = [];
-  for (const top of [WORKFLOW_SKILLS, CODEX_ROLE_SKILL, CLAUDE_ROLE_SKILL]) {
+  for (const top of [WORKFLOW_SKILLS, CODEX_ROLE_SKILL, CLAUDE_ROLE_SKILL, UPGRADE_SKILL]) {
     for (const rel of walkFiles(join(repoRoot, top), skipGenerated)) {
       parts.push(`${top}/${rel}:${sha256(readFileSync(join(repoRoot, top, rel)))}`);
     }
@@ -263,7 +273,7 @@ export function generate(outRoot) {
     name: "bridge-codex",
     version,
     files: codexPackage(codexRoot, version),
-    sources: [CODEX_ROLE_SKILL],
+    sources: [CODEX_ROLE_SKILL, UPGRADE_SKILL],
   });
 
   const claudeRoot = join(outRoot, CLAUDE_PACKAGE);
@@ -272,7 +282,7 @@ export function generate(outRoot) {
     name: "bridge-claude",
     version,
     files: claudePackage(claudeRoot, version),
-    sources: [WORKFLOW_SKILLS, CLAUDE_ROLE_SKILL, WORKFLOW_GUIDE],
+    sources: [WORKFLOW_SKILLS, CLAUDE_ROLE_SKILL, WORKFLOW_GUIDE, UPGRADE_SKILL],
   });
 
   mkdirSync(join(outRoot, dirname(CODEX_MARKETPLACE)), { recursive: true });

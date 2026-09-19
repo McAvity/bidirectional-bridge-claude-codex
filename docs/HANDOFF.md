@@ -11,6 +11,25 @@ records evidence and resumption. A compatible client/runtime is needed before
 execution; runtime changes in this session, push/merge/deploy and model smoke remain
 unauthorized. Earlier “awaiting execution instruction” entries are historical.
 
+## 0.3.2 published — bridge-upgrade skill
+
+GitHub prerelease/tag v0.3.2 on79da6b7; runtime source pin34ecb8d. Both marketplace
+plugins include bridge-upgrade. CI35435206335 SUCCESS:575 JS; Python44 passed/3 skipped;
+pilot129 passed/2 skipped (local Python47/pilot140 PASS). Build/packages/docs PASS.
+[Full record](tasks/bridge-upgrade-skill.md). Earlier local-only checkpoints below are historical.
+Project pin and running runtime remain unchanged; user plugin refresh and project
+upgrade are separate from publication. No model-driven upgrade smoke was run.
+
+## Bridge-upgrade skill — local implementation
+
+Both generated client plugins now include bridge-upgrade; Claude carries the same
+existing installer as Codex. Handles marketplace refresh, exact release runtime,
+setup vs update, active-client exit/apply/resume and verification. No runtime switch,
+release pin change or publication performed. [Validation and limits](tasks/bridge-upgrade-skill.md).
+Code f5783c1, fixture correction e93f53e; Python47/pilot140 PASS, JS574 unchanged cases
+plus corrected new regression PASS across the full and focused runs. No model smoke.
+Next: publish/update plugins when authorized; wave16/17 scopes remain separate.
+
 ## Wave17 planned — standalone feature workflow distribution
 
 [Wave17](plans/wave17.md): separate workflow plugin, two client packages from shared

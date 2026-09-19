@@ -11,6 +11,23 @@ explicitly.
 
 ## Unreleased
 
+## 0.3.2 — 2026-09-19 (experimental)
+
+### Added
+
+- `bridge-upgrade` skill in both client plugins: marketplace refresh, exact release
+  preparation, inherited-worktree setup/update selection and exit/apply/resume guidance.
+- The Claude plugin carries the same generated installer payload as the Codex plugin,
+  so upgrades do not require a separate bridge checkout.
+
+### Validation boundary
+
+The installer and runtime state machine are unchanged. This is a GitHub/marketplace
+release, not an npm publication or an automatic project runtime update. Existing
+pins and live sessions remain unchanged. Model-driven upgrade behaviour and the
+previously scoped wave15 smoke remain unverified; see the
+[validation record](docs/tasks/bridge-upgrade-skill.md).
+
 ## 0.3.1 — 2026-09-19 (experimental)
 
 ### Changed

@@ -1380,6 +1380,32 @@ describe("rollback returns to the previous runtime (W14-R2-09)", () => {
 });
 
 describe("the setup plan is read-only (W14-R2-08)", () => {
+  it("uses setup --to for an inherited pin with no local record, then update for its selection", () => {
+    const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
+    expect(setup(project, ["--to", older.id]).code).toBe(0);
+    git(project, "add", "-A");
+    git(project, "commit", "-qm", "enable bridge");
+    const external = join(root, "upgrade inherited");
+    git(project, "worktree", "add", "-q", "-b", "upgrade-inherited", external);
+    // Inherit an actual installer-owned pin; hand-editing it would correctly trigger a conflict.
+    const before = readFileSync(join(external, PROJECT_DECLARATION), "utf8");
+    const refused = plugin(external, ["update", "--to", runtimeId, "--yes", "--json"], env);
+    expect((refused.json as any).refusals.some((r: any) => r.code === "SETUP_NOT_INITIALIZED")).toBe(true);
+    const planned = plugin(external, ["setup", "--to", runtimeId, "--json"], env);
+    expect(planned.code, JSON.stringify(planned.json)).toBe(0);
+    expect(planned.json?.applied).toBe(false);
+    expect(existsSync(join(external, ".bridge-runtime/install.json"))).toBe(false);
+    expect(readFileSync(join(external, PROJECT_DECLARATION), "utf8")).toBe(before);
+    const applied = plugin(external, ["setup", "--to", runtimeId, "--yes", "--json"], env);
+    expect(applied.code, JSON.stringify(applied.json)).toBe(0);
+    expect((applied.json as any).runtime.id).toBe(runtimeId);
+    expect(status(external, env).state).toBe("ready");
+    expect(existsSync(join(external, ".bridge/bridge.db"))).toBe(false);
+    const repeated = plugin(external, ["update", "--to", runtimeId, "--yes", "--json"], env);
+    expect(repeated.code, JSON.stringify(repeated.json)).toBe(0);
+    expect(repeated.json?.changed).toBe(false);
+  }, 120_000);
+
   it("installs nothing and creates no bridge home without --yes", () => {
     const emptyHome = join(root, "an untouched home");
     const planned = plugin(project, ["setup", "--json", "--offline", "--source", REPO], { CLAUDE_CODEX_BRIDGE_HOME: emptyHome });

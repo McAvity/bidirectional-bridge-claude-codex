@@ -200,6 +200,14 @@ npm test
 Do not rebuild a runtime supervising an active task. Installing a new version beside
 the old one is safe; switching a worktree refuses while its clients are active.
 
+### Updating an existing project
+
+Ask the bridge plugin: **“Upgrade the bridge in this project”** (`bridge-upgrade`).
+It refreshes installed bridge plugins, prepares the selected release and chooses
+setup/update for the actual worktree. If a client is using that worktree, it prepares
+one shell command to run after normal exit, then verifies the update after resume.
+See [the upgrade procedure](docs/plugin-distribution.md#upgrade-with-the-skill).
+
 ## Quick start
 
 1. Open a terminal at the **root of your project's Git repository** and run `codex`.

@@ -1,18 +1,99 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-claude",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills",
     ".claude/skills/using-bridge",
-    "docs/features/README.md"
+    "docs/features/README.md",
+    "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "88033e683be2c1e222e13474438a9a96baa8c63a9d32dff7609abe64602a1983",
+  "source_digest": "1b9520c0d382f20fad46a29558bb819f8da653484d81347e987d2ea8eb079b8d",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
-      "sha256": "ebdf82fb37f589ba4e994e3f710e7d10becc514ca4ebb17bad42a097955106c6"
+      "sha256": "85adc0b43cee3a1fbb5c1dc975ba54106cfba93d1806169bc3301c6316be81a2"
+    },
+    {
+      "path": "scripts/bridge-project/dispatch.mjs",
+      "sha256": "ce3ee912997cd4e4790e99d5ee05c663877d66ea231ec82db21a205669e1efdc"
+    },
+    {
+      "path": "scripts/bridge-project/entry-template.mjs",
+      "sha256": "41e2b94b4b348842d4a879ab77aa0cdc98a166ad8c2f375dde77a16541ddd9af"
+    },
+    {
+      "path": "scripts/bridge-project/locate.mjs",
+      "sha256": "1859ad681a351b0eed1b39b657923b19a6300612794b91f3f5872523999079f2"
+    },
+    {
+      "path": "scripts/bridge-project/pending-selection.mjs",
+      "sha256": "df903c1195f82d3c127d03f9b1107e7fe534cbe0e8946a73ff4f500501bb6a1c"
+    },
+    {
+      "path": "scripts/bridge.mjs",
+      "sha256": "6d80bc6df3d6095340498fad6b6a900eb21f344c02160d4920b4976ca2cb56ba"
+    },
+    {
+      "path": "scripts/diagnostics/collect.mjs",
+      "sha256": "07bfd381e603147dfe7f28691caeb31d51e334904c545d7930466c1f36df990d"
+    },
+    {
+      "path": "scripts/diagnostics/project.mjs",
+      "sha256": "7a0085a17da158878fd42fad6e4dfee4cbacbb39ddfbb2215d635d4bbc82e79b"
+    },
+    {
+      "path": "scripts/diagnostics/safe-read.mjs",
+      "sha256": "631e50e27602c00fa97ae9b67da41f14ae4c8c92a8e384ad3ea48ec7a3e9f349"
+    },
+    {
+      "path": "scripts/diagnostics/zip.mjs",
+      "sha256": "8ef503cd681b9cb7145b053b66144f616be1317aa8001cc6c096c0af1bd1dad6"
+    },
+    {
+      "path": "scripts/plugin-packages/acquire.mjs",
+      "sha256": "8cd0e4e6260884d15a80dd4e56083da0d28e7f25978b989b6b197fff9245803c"
+    },
+    {
+      "path": "scripts/plugin-packages/bridge-plugin.mjs",
+      "sha256": "1681d284ad7f7949b0df207735b20a225ad22a2fe94d83de445d9c4e891110ec"
+    },
+    {
+      "path": "scripts/plugin-packages/release.json",
+      "sha256": "91f6e8312e74685a3ef7e10085b37bf59197ed13f087cd5089af5bedf865e824"
+    },
+    {
+      "path": "scripts/setup/common.mjs",
+      "sha256": "1afc28abba6bb0c7b347ca49e0b85ab904b6a0f8d2f473f5bc02cf516d6e2695"
+    },
+    {
+      "path": "scripts/setup/diff.mjs",
+      "sha256": "bdf5ffd6e30856b335bb51a48338caab16f43fd0fec81616e09095f9b683d822"
+    },
+    {
+      "path": "scripts/setup/distribution.mjs",
+      "sha256": "83a83bf0c98726f2f0137bbe70b924f6f418cbe9fde192763b3f1e30d3e308d5"
+    },
+    {
+      "path": "scripts/setup/doctor.mjs",
+      "sha256": "511877ba68a0720d3e198a0913bd5c426f4c3a4bf4e69998cc3646d78ff904e4"
+    },
+    {
+      "path": "scripts/setup/processes.mjs",
+      "sha256": "d2ec6768375e9e60f9dd50c2fef5b8a375d69b014aabd9060b6007eba951574d"
+    },
+    {
+      "path": "scripts/setup/runtime.mjs",
+      "sha256": "1f40d79a1792e30960b0cef152cd30a84f5c8b3c608f6176e2c95e6785e6ebbf"
+    },
+    {
+      "path": "scripts/setup/workspace.mjs",
+      "sha256": "7f519485bbdf71da35a2e295ec57b34f77cb45d65c7e053082ff77738a845d66"
+    },
+    {
+      "path": "skills/bridge-upgrade/SKILL.md",
+      "sha256": "5b1a9128888191a6ce89827725a8a0efaf53bdaa47a6717cacfbba02bb3cf164"
     },
     {
       "path": "skills/feature-decide/SKILL.md",

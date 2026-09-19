@@ -75,3 +75,19 @@ Then register the manager and feature `F-W16-local-delivery`, record work-items 
 feature.json, and delegate W16-01 before the dependent implementation. Preserve the
 original user authorization: no renewed approval per task is needed. Selecting or
 changing a runtime during this session is explicitly outside that authorization.
+
+
+## Latest feature-workflow merged into wave16 — 2026-09-19
+
+User explicitly requested this incoming merge. Fetched `origin/feature-workflow`
+at `ef90b8d` and merged it into `wave16`, preserving the local bootstrap checkpoint
+`fd1d253`. The sole conflict was concurrent additions at the top of
+`docs/HANDOFF.md`; both entries were retained. Incoming release0.3.2 and
+bridge-upgrade sources do not change this worktree's project runtime pin or activate
+an installed runtime. No push or merge into feature-workflow was performed.
+
+Validation: merge conflict resolution, staged diff whitespace check, generated
+package consistency and confirmation that the project pin/config are unchanged.
+Full test suites were not rerun for this merge; upstream CI results remain recorded
+in the release handoff and are not claimed as local test results. Next: resolve the
+previously recorded runtime compatibility prerequisite, then resume W16-01–03.

@@ -12,8 +12,8 @@ separate marketplace repository.
 
 | Path | Contents |
 | --- | --- |
-| `plugins/bridge-codex/` | Codex package: one thin entry skill, the installer and the pinned release descriptor |
-| `plugins/bridge-claude/` | Claude Code package: the whole feature workflow and the bridge role skill |
+| `plugins/bridge-codex/` | Codex package: thin entry and bridge-upgrade skills, installer and pinned release descriptor |
+| `plugins/bridge-claude/` | Claude Code package: feature workflow, bridge role and bridge-upgrade skills, same installer |
 | `.agents/plugins/marketplace.json` | Codex marketplace; the repository root is the marketplace root |
 | `.claude-plugin/marketplace.json` | Claude Code marketplace, same root |
 
@@ -189,6 +189,32 @@ and points at the setup skill, which installs exactly that pin. It never falls b
 version. The same gate refuses a worktree whose applied selection differs from the declaration, a
 copied setup record, a disabled or unrecognised declaration, and a pin whose commit does not match
 the runtime answering to its id — each before the server starts, with nothing written.
+
+## Upgrade with the skill
+
+Ask **“Upgrade the bridge in this project”**, or invoke `bridge-upgrade` from the
+installed bridge plugin. It is available in both client packages, generated from
+`scripts/plugin-packages/skills/bridge-upgrade/SKILL.md`. It uses the existing CLI;
+there is no second updater or background supervisor.
+
+The skill distinguishes marketplace plugin refresh, installation of an immutable
+runtime, and selection of that runtime by this worktree. It refreshes only the bridge
+plugins already installed, preserves their source/channel/scope, resolves the release's
+full commit, and plans the project diff. In a pristine inherited worktree it uses
+`setup --to <runtime-id>`; `update` requires a local install record. An existing valid
+selection uses `update --to <runtime-id>`. A legacy layout keeps its existing CLI path.
+
+If the worktree is active, preparation stops before changing its pin or files. The
+agent supplies a concrete shell command using a stable copy of the installer outside
+plugin caches. Close the affected clients normally, execute the command in the shell,
+and resume the existing session. Afterward, status and doctor verify the selection;
+a prepared update is not reported as applied. Marketplace refresh alone never moves
+an existing project's pin, and a doctor handshake is not a model smoke test.
+
+Commit the reviewed portable declaration/entry on the chosen base branch if future
+branches should inherit the pin. Other existing worktrees are not silently switched.
+Plugin refresh requires publication first: adding this skill to a local branch does
+not update already installed plugins or the release descriptor.
 
 ## Removing the plugin
 
