@@ -117,3 +117,14 @@ doctor handshake and post-restart instruction discovery remain pending. On resum
 read the new pinned instructions and pure manager status, review/commit only scoped
 portable setup changes, then continue the authorized W16-01–03 scope. No models,
 push, merge or release were performed by this preparation.
+
+
+## Execution resumed on compatible runtime — 2026-09-19
+
+Authorized post-exit upgrade completed: pin/selection0.3.2-34ecb8d45465, doctor ok
+including handshake (Codex version warning only). Reviewed portable setup changes
+are committed separately from implementation inputs. Supervising runtime now stays
+unchanged. Manager root task_7b9qsx8f2y/run_2x0a2j7vxn; feature
+F-W16-local-delivery ready. Full scope remains authorized; W16-01 is next.
+Feature index and work-items record resumable state. Intents/packages remain in
+the worktree namespace ws_1449a467cf73d2d4, outside Git.

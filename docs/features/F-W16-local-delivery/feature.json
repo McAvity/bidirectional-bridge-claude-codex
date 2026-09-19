@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W16-local-delivery",
+  "phase": "execution",
+  "brief": "docs/features/F-W16-local-delivery/brief.md",
+  "design": "docs/features/F-W16-local-delivery/design.md",
+  "tasks": [
+    "work-items/W16-01.md",
+    "work-items/W16-02.md",
+    "work-items/W16-03.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plans/wave16.md",
+    "docs/plans/wave16/decisions/01.md",
+    "docs/plans/wave16/reviews/01-plan.md"
+  ],
+  "latest_review": null,
+  "latest_decision": "docs/features/F-W16-local-delivery/decisions/01.md",
+  "next_action": "Run W16-01 contract round, then independent local review and authorized dependent tasks.",
+  "bridge": {
+    "feature_id": "F-W16-local-delivery",
+    "parent_task_id": "task_7b9qsx8f2y"
+  }
+}

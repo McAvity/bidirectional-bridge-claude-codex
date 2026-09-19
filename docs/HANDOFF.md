@@ -1,5 +1,12 @@
 # Current handoff
 
+## Wave16 executing after authorized runtime upgrade
+
+Runtime0.3.2-34ecb8d45465 is selected; doctor handshake passed. Manager bootstrap
+succeeded. Claude implements W16-01–03; Codex coordinates and independently reviews.
+[Progress](plans/wave16-progress.md), [feature](features/F-W16-local-delivery/feature.json).
+Local commits only; no push/merge/deploy/model smoke. Earlier bootstrap block is resolved.
+
 ## Wave16 execution authorized — blocked before delegation
 
 The whole W16-01–03 implementation, integration and independent review are now
