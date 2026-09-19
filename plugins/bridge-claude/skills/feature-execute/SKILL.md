@@ -67,7 +67,8 @@ Deliver through Git as [references/local-delivery.md](references/local-delivery.
    dirty are not yours. Do the bounded work and run the contract's checks on the final code.
 2. Write a ledger in the directory the contract gives (`execution/<TASK-ID>/`), using the
    next free number; never edit an earlier ledger. A resumed attempt gets its own ledger.
-3. Commit your in-scope changes locally, staged by name, only files in the write scope. The
+3. Commit your in-scope changes locally, naming the paths when staging and committing
+   (`git commit -m <message> -- <paths>`), only files in the write scope. The
    delivery is these commits; if the contract and governing decision do not authorize commits,
    stop and report that as the blocker. Never push or merge.
 4. End with the bridge JSON. Line 1 of `summary` is the delivery line
@@ -92,7 +93,8 @@ authority or out-of-scope change blocks the contract, stop the affected work and
 `PARTIAL` with `blocker` stating the question, options, evidence and your recommendation.
 If a manager clarification asks for changes outside the write scope or objective, do the
 in-scope part and finish `PARTIAL` with the conflict as `blocker`. A non-null `blocker`
-always makes the round blocked. For a `PARTIAL` round, write the ledger (outcome `blocked`),
+always makes the round blocked, and `OUTCOME=PARTIAL` always needs one: without a blocker the
+bridge records the round DONE. For a `PARTIAL` round, write the ledger (outcome `blocked`),
 commit completed in-scope work and report `OUTCOME=PARTIAL`; unfinished uncommitted work is
 disclosed, never delivered. Export no package for it even when the contract requires one;
 after the coordinator resumes the task, finish it and deliver (and export) then.

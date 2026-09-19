@@ -33,9 +33,12 @@ Exactly this key order, single spaces, first line of `summary`; prose follows on
 - `LEDGER`: the new `execution/<TASK-ID>/<n>.md` committed in `BASE..HEAD`; `none` only when
   the contract grants no write scope (then `HEAD` = `BASE`, and the findings go in `summary`).
 - `OUTCOME`: `PARTIAL` whenever `blocker` is non-null, work is unfinished or own work is left
-  uncommitted.
-- `WORKTREE`: `git status --porcelain=v1 --untracked-files=all` after the final commit;
-  `N` = number of entries. When dirty, classify every entry (§ 3) in `remaining_risks` items
+  uncommitted. `OUTCOME=PARTIAL` always comes with a non-null `blocker` naming what remains:
+  without one the bridge records the task DONE/COMPLETE when the checks pass, and only the
+  coordinator's receipt would notice.
+- `WORKTREE`: `git status --porcelain=v1 -z --untracked-files=all` after the final commit;
+  `N` = number of status records. One path can have two records (`git rm --cached` leaves `D `
+  and `??`) and a rename record names two paths; `-z` keeps paths with spaces unquoted. When dirty, classify every entry (§ 3) in `remaining_risks` items
   `UNCOMMITTED preexisting: <paths>`, `UNCOMMITTED own: <paths>`, `UNCOMMITTED overlap: <paths>`
   and `UNCOMMITTED foreign: <paths>`; each item at most 2000 characters, overflow as `+K more`
   with the full list in the ledger.
@@ -45,15 +48,19 @@ package, its `PACKAGE=… SHA256=… PURPOSE=… RANGE=BASE..HEAD LEDGER=…` li
 
 ## 3. Executor procedure
 
-1. At start record in the ledger: `BASE`, `git status --porcelain=v1 --untracked-files=all`,
-   and `git hash-object <path>` of each dirty path inside the write scope. These are
-   *preexisting* entries: not yours, not delivered, never cleaned, reset or stashed.
+1. At start record in the ledger: `BASE`, `git status --porcelain=v1 -z --untracked-files=all`,
+   and `git hash-object -- <path>` (or `deleted` when the file does not exist) of each dirty path
+   inside the write scope, including both paths of a rename. These are *preexisting* entries:
+   not yours, not delivered, never cleaned, reset or stashed.
 2. Do not edit a path that was dirty at start unless the contract assigns it; if the work needs
    it, stop with a blocker naming the path.
 3. Implement, run the contract checks on the final code, write the ledger. Commit only your own
-   in-scope paths, staged by name (`git add -- <paths>`, never `-A` or `.`). Only the ledger may
-   be committed after the checks; if code changes, rerun them. Never push or merge.
-4. Classify the final status against the start record: an entry present at start with unchanged
+   in-scope paths, named both when staging and when committing (`git add -- <paths>` then
+   `git commit -m <message> -- <paths>`; never `-A`, `.` or a bare `git commit`): a bare commit
+   also records whatever someone else had already staged. Only the ledger may be committed
+   after the checks; if code changes, rerun them. Never push or merge.
+4. Classify the final status against the start record by path and bytes, not by status
+   letters (staging does not change ownership): an entry present at start with unchanged
    bytes is `preexisting`; a new entry inside your write scope is `own`; a new entry outside it
    is `foreign` (not yours: you write only in scope); a start entry inside the scope whose bytes
    changed is `overlap` (attribution unresolved). Any `own` or `overlap` entry means
@@ -70,7 +77,9 @@ Read `bridge_get_task`: deliverable, artifacts, attempts. In the executor worktr
 1. **Parse** line 1 of `summary` against § 2. Missing or malformed: no delivery; treat as
    PARTIAL, read any report artifact, never PASS.
 2. **Status**: the effective outcome is the more conservative of `OUTCOME` and
-   `deliverable.status` (the adapter downgrades missing or failing checks). A mismatch is a finding.
+   `deliverable.status` (the adapter downgrades missing or failing checks). A mismatch is a
+   finding. `OUTCOME=PARTIAL` on a DONE/COMPLETE task (no blocker) cannot be resumed: route the
+   remaining work as a correction round.
 3. **Base**: `BASE` equals the contract base (always a full SHA in the contract);
    `git -C W rev-parse --verify BASE^{commit}`.
 4. **Head**: `git cat-file -e HEAD^{commit}` and `git merge-base --is-ancestor BASE HEAD`.
@@ -82,9 +91,11 @@ Read `bridge_get_task`: deliverable, artifacts, attempts. In the executor worktr
    `changed_scope` is compared, Git is authoritative.
 7. **Ledger**: `git diff --diff-filter=A --name-only BASE HEAD -- <LEDGER>` lists it; no earlier
    ledger is modified or deleted.
-8. **Worktree**: `git -C W status --porcelain=v1 --untracked-files=all`, compared with
-   `WORKTREE`, the classification and the ledger's start record (and the dirt you recorded
-   when issuing the contract). Uncommitted bytes are never part of the delivery.
+8. **Worktree**: `git -C W status --porcelain=v1 -z --untracked-files=all`, compared with
+   `WORKTREE` (record count), the classification and the ledger's start record (and the dirt
+   you recorded when issuing the contract). A preexisting path that appears in step 6's paths
+   means someone else's bytes may be in the delivery. Uncommitted bytes are never part of the
+   delivery.
 9. **Evidence**: the checks in the ledger match `verification_results` (a dropped malformed
    entry shows up as a gap); report artifacts read through `bridge_read_artifact` show integrity `ok`.
 
@@ -107,6 +118,8 @@ Read `bridge_get_task`: deliverable, artifacts, attempts. In the executor worktr
 | `BASE` not an ancestor, unexpected merge in the range | Ancestry failure; range commits are not attributed to the executor |
 | Path outside the write scope in the diff or any commit | Scope failure; name the paths; do not revert others' work |
 | `own`/`overlap` dirt or misreported `WORKTREE` in a COMPLETE round | Required finding; uncommitted bytes are not reviewed as delivered |
+| `OUTCOME=PARTIAL` recorded as DONE/COMPLETE | Effective PARTIAL; required finding; the rest goes to a correction round |
+| A path dirty at the start is changed by the range | Required finding: attribution unresolved until its origin is confirmed |
 | `preexisting` dirt, including paths inside the scope, and `foreign` dirt | Reported separately, not attributed to the executor, not cleaned; `foreign` dirt is checked against other leases |
 | Ledger missing, or an earlier ledger edited | Finding: evidence incomplete |
 | Authorship or scope cannot be confirmed | Resolve the concrete mismatch; never default to PASS |

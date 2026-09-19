@@ -9,7 +9,7 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "68f7d8fa101ab23e9d5adbf3ccd2fd3aced5f8a2e37381e4765eb906405dcb57",
+  "source_digest": "bc6f05a279c774bc91d4c2ffb2df0cd91642280c72114075689a94ae0204d25d",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -125,7 +125,7 @@
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "4834baf2538244b4f1163e5160bfddab12420309afc37a238a65e99884e764c5"
+      "sha256": "a5c9539667d9ea8925425e92c3251fdc496bb7c2f11fe97818feef6b69174187"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -133,11 +133,11 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "ac1459ab1ebd7e052b1c61a947b4fba702dc2df07ea3d6fffd17d7dbfaf62899"
+      "sha256": "b3b32fceca65a1f3face5888c8c328d1f42ae3e208bb47350a322154fc67ee9d"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
-      "sha256": "bd0b70020d20a7714f5ecb71ab2f08c4d8c09caedd97368b38274e802e56a341"
+      "sha256": "c5f57708ea44830fd9794a0236d9d582a07a03555e8c4f6bc7491223525ec639"
     },
     {
       "path": "skills/feature-plan/SKILL.md",

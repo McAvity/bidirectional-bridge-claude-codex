@@ -33,8 +33,9 @@ explicit call from you.
    is open (`running` or `blocked`), so a round's commit range holds only the executor's
    commits. Wrap each batch of writes in `bridge_acquire_lease` on your write scope and
    `bridge_release_lease`.
-6. Before each round read `git status --porcelain=v1 --untracked-files=all`. Commit your own
-   pending files first; list any remaining dirt inside the round's scope in the contract as
+6. Before each round read `git status --porcelain=v1 -z --untracked-files=all`. Commit your own
+   pending files first, with a pathspec (`git commit -m <message> -- <paths>`) so nothing else
+   staged is swept in; list any remaining dirt inside the round's scope in the contract as
    preexisting. Never reset, stash or clean someone else's work.
 
 ## Round contract
@@ -120,7 +121,8 @@ diagnostic, not round input.
    For every carried required finding, record `resolved`, `progress` or `no progress`.
    Keep new material defects visible and retain earlier evidence whose scope is unchanged.
 5. A failed receipt check (`local-delivery.md` § 6) — missing or wrong delivery line or base,
-   unexpected ancestry, unfinished own work left uncommitted, any change outside the scope, or a
+   unexpected ancestry, unfinished own work left uncommitted, `OUTCOME=PARTIAL` recorded as
+   DONE, a preexisting path changed by the range, any change outside the scope, or a
    missing or failing package the contract required — is a required finding for the next round,
    not a user question. A range holding only the ledger is valid for a diagnosis or no-change task.
 6. Route:
