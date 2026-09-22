@@ -55,3 +55,14 @@ zmian kodu/skilli, runtime, publikacji lub implementacji wave17.
 Następny krok: feature-review planu wave17, potem feature-decide.
 
 Walidacja aktualizacji: `git diff --check` bez uwag; odsyłacze dokumentacji bez nowych błędów. Pełna kontrola dokumentów pozostaje FAIL z powodu dwóch zastanych ścieżek absolutnych w wave16 (`execution/W16-01/01.md:57` i `wave16-progress.md:113`); historycznych dowodów nie zmieniano.
+
+## Execution authorized — 2026-09-22
+
+Actual worktree resolved: wave17, branch wave17; clean input fa08f1d.
+Plan review01 PASS, decision01 records whole W17-01–04 authority and boundaries.
+Final wave16 is present; runtime0.3.2-34ecb8d45465 remains unchanged and requires ZIP
+round handoffs. New standalone product still carries wave16 local-v1 resources.
+Bridge root bootstrapped successfully; Codex0.155.1 warning is advisory, identity enforced.
+Shell sandbox bwrap could not start; authorized reads used escalated execution.
+Next: Claude W17-01, local contract review, then remaining authorized tasks.
+No product test or host/model behavioural PASS claimed yet. Local commits only.

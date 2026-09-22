@@ -1,5 +1,12 @@
 # Current handoff
 
+## Wave17 executing — 2026-09-22
+
+Whole W17-01–04 authorized; plan review PASS, decision01 recorded. Claude implements
+through bridge; Codex coordinates and independently reviews. Contract W17-01 is a local
+gate. [Progress](plans/wave17-progress.md). Local commits only; no push/merge/deploy/model
+pilots. Supervising runtime0.3.2-34ecb8d45465 unchanged; its ZIP rules still apply.
+
 ## Wave17 plan updated after wave16 integration
 
 [Wave17](plans/wave17.md) now uses integrated wave16 (review907c59f, delivery4c8cd88,

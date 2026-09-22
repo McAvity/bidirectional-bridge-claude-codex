@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W17-workflow-plugin",
-  "phase": "plan-review",
+  "phase": "execution",
   "brief": "docs/features/F-W17-workflow-plugin/brief.md",
   "design": "docs/features/F-W17-workflow-plugin/design.md",
   "tasks": [
@@ -23,7 +23,11 @@
     ".agents/skills/feature-execute/references/local-delivery.md",
     "docs/tasks/bridge-upgrade-skill.md"
   ],
-  "latest_review": null,
-  "latest_decision": null,
-  "next_action": "feature-review zaktualizowanego planu, następnie feature-decide. Wave16 zintegrowany w bazie 33d6061; implementacja wave17 nadal niezlecona."
+  "latest_review": "docs/features/F-W17-workflow-plugin/reviews/01-plan.md",
+  "latest_decision": "docs/features/F-W17-workflow-plugin/decisions/01.md",
+  "next_action": "Claude W17-01 contract through bridge; independent local contract review, then authorized W17-02\u201304.",
+  "bridge": {
+    "feature_id": "F-W17-workflow-plugin",
+    "parent_task_id": "task_qkjep5yvm2"
+  }
 }

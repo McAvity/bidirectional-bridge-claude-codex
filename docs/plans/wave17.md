@@ -1,6 +1,6 @@
 # Wave17 — feature-workflow jako osobny plugin
 
-Status: PLAN DO REVIEW, 2026-09-19. Implementacja niezlecona.
+Status: EXECUTION AUTHORIZED, 2026-09-22. Plan review PASS; decyzja01 obejmuje W17-01–04.
 Feature: F-W17-workflow-plugin. Pierwotna baza: `1d7f93b`; aktualizacja po wave16: `33d6061`.
 
 Osobny plugin workflow dla Codexa i Claude Code, w obecnym repo i marketplace.
