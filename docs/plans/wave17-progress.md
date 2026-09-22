@@ -66,3 +66,12 @@ Bridge root bootstrapped successfully; Codex0.155.1 warning is advisory, identit
 Shell sandbox bwrap could not start; authorized reads used escalated execution.
 Next: Claude W17-01, local contract review, then remaining authorized tasks.
 No product test or host/model behavioural PASS claimed yet. Local commits only.
+
+## W17-01 delivery and contract review — 2026-09-22
+
+Manager authorization checkpoint a67aee7; Claude contract/probes bcb2ad8, ledger92770a4.
+Package verified, seven-path endpoint/history scope and clean tree PASS. Reported model-free
+host evidence:26 findings, Claude2.1.280/Codex0.155.1; fixture30 and distribution15 PASS.
+Independent review02 REWORK: R02-01 reproduces package-location shortcut overriding a
+valid project pin. Correct contract/prototype locally, then release W17-02–04. No scope
+change or new user gate; runtime untouched. Historical link failures remain separate.
