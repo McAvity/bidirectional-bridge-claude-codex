@@ -1,0 +1,10 @@
+{
+  "name": "feature-workflow",
+  "version": "0.3.2",
+  "description": "Feature workflow: design, plan, execute, review, decide and exchange feature work.",
+  "author": {
+    "name": "claude-codex-bridge"
+  },
+  "license": "MIT",
+  "skills": "./skills/"
+}

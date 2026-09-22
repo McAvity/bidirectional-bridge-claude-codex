@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // W17-01 fixtures: disposable runtimes and candidate feature-workflow packages for the host probes.
-// Research instrument only — W17-02 owns the product generator. Everything is written under the
-// destination the caller gives, which the probes keep inside a disposable run root.
+// Research instrument only — the product packages come from scripts/plugin-packages/generate.mjs.
+// Candidates remain useful for an *older* plugin version built from a commit that predates it.
+// Everything is written under the destination the caller gives, which the probes keep inside a
+// disposable run root.
 //
 //   node wave17_fixtures.mjs runtime <dest-home> --commit <sha> --id <runtime id> [--repo DIR]
 //   node wave17_fixtures.mjs package <dest> --client claude|codex --commit <sha> --version <v> [--repo DIR]
@@ -15,13 +17,13 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sha256, treeDigest, walkFiles } from "../setup/common.mjs";
-import { rewriteForClaude } from "../plugin-packages/generate.mjs";
+import { rewriteForClaude, rewriteForCodex } from "../plugin-packages/generate.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "..", "..");
 export const PLUGIN_NAME = "feature-workflow";
 export const SIX = ["feature-design", "feature-plan", "feature-execute", "feature-review", "feature-decide", "feature-exchange"];
-const RUNTIME_PATHS = [".agents/skills", ".codex/skills/using-bridge", ".claude/skills/using-bridge", "docs/features/README.md", "scripts", "plugins/bridge-claude"];
+const RUNTIME_PATHS = [".agents/skills", ".codex/skills/using-bridge", ".claude/skills/using-bridge", "docs/features/README.md", "scripts", "plugins/bridge-claude", "plugins/feature-workflow-claude"];
 // The launch files verifyRuntime requires. Stubs: the reader never executes them.
 const STUBS = [
   "shared/control-plane/dist/index.js",
@@ -78,18 +80,7 @@ export function buildRuntime({ home, id, commit, repo = REPO }) {
   return { path, manifest };
 }
 
-/**
- * Candidate Codex rewrite. Codex expands no plugin-root variable in skill text, so references are
- * anchored to `<package>` — the directory two levels above a skill's SKILL.md, whose absolute path
- * the host lists in the model-visible skills table.
- */
-export function rewriteForCodex(text) {
-  return text
-    .replaceAll(".agents/skills/feature-exchange/scripts/feature_exchange.py", "<package>/skills/feature-exchange/scripts/feature_exchange.py")
-    .replaceAll("](../../../docs/features/README.md)", "](../../workflow/README.md)")
-    .replaceAll("docs/features/README.md", "<package>/workflow/README.md")
-    .replaceAll(".agents/skills/", "<package>/skills/");
-}
+// The Codex rewrite is the generator's own (`generate.mjs:rewriteForCodex`) since W17-02.
 
 const REWRITABLE = /\.(md|yaml|yml)$/u;
 
@@ -137,7 +128,7 @@ export function buildPackage({ dest, client, commit, version, repo = REPO }) {
     writeFileSync(join(dest, "workflow/README.md"), rewrite(readFileSync(join(staging, "docs/features/README.md"), "utf8")));
     files.push("workflow/README.md");
     mkdirSync(join(dest, "scripts"), { recursive: true });
-    copyFileSync(join(HERE, "wave17_select_source.mjs"), join(dest, "scripts/select-source.mjs"));
+    copyFileSync(join(REPO, "scripts/workflow-source/select-source.mjs"), join(dest, "scripts/select-source.mjs"));
     chmodSync(join(dest, "scripts/select-source.mjs"), 0o755);
     files.push("scripts/select-source.mjs");
     const [manifestPath, manifest] = manifestFor(client, version);

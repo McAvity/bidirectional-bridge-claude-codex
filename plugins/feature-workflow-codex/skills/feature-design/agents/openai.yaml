@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-design"
+  short_description: "Shape feature intent and acceptance criteria"
+  default_prompt: "Use $feature-workflow:feature-design for the selected feature and follow <package>/workflow/README.md."

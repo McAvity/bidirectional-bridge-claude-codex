@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-execute"
+  short_description: "Implement tasks and record execution evidence"
+  default_prompt: "Use $feature-workflow:feature-execute for the selected feature and follow <package>/workflow/README.md."

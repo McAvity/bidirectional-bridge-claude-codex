@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-decide"
+  short_description: "Record decisions and authorize scoped corrections"
+  default_prompt: "Use $feature-workflow:feature-decide for the selected feature and follow <package>/workflow/README.md."

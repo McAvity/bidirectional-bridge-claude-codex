@@ -1,0 +1,17 @@
+{
+  "name": "feature-workflow",
+  "version": "0.3.2",
+  "description": "Feature workflow: design, plan, execute, review, decide and exchange feature work.",
+  "author": {
+    "name": "claude-codex-bridge"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Feature workflow",
+    "shortDescription": "Plan, execute, review and decide feature work.",
+    "longDescription": "The six feature-* skills with their references and exchange helper. Works on its own; in a project that pins a bridge runtime each entry follows that runtime's instructions.",
+    "developerName": "claude-codex-bridge",
+    "category": "Productivity"
+  }
+}

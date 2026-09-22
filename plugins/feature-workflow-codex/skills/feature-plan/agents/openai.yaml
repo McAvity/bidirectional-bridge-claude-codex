@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-plan"
+  short_description: "Plan repository work and bounded Yumi tasks"
+  default_prompt: "Use $feature-workflow:feature-plan for the selected feature and follow <package>/workflow/README.md."
