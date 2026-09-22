@@ -82,3 +82,13 @@ Fix340aefa/evidence0afbbbd/ledger a943866. Review02 appended PASS, R02-01 resolv
 Independent36 fixture tests, exact package, ancestry/every-commit scope and clean tree PASS.
 No earlier evidence rewritten. Next: one sequential W17-02–04 implementation workstream,
 actual generated-package/launcher checks, full required validation and independent review.
+
+## W17-02–04 delivered; independent review — 2026-09-22
+
+Code08cefbe/606d64b, integration tests d533651, host evidence4ec57ca, docs2115018;
+report/ledgers fa88ba5 and formatting follow-ups through4038b85. Package/scope/history PASS.
+Executor full checks: ci/build, JS590/Python100/pilot140/probe37/packages PASS.
+Independent: targeted JS15, Python50, probes37, packages, receipt/diff PASS; canonical docs
+checker still exactly two historical wave16 findings. Review03: documentation-only REWORK
+R03-01 (standalone exception wording) and nonblocking R03-N1 (checker provenance).
+No open code blocker. Next: bounded docs correction and final local delivery; no model pilot.
