@@ -1,0 +1,1563 @@
+{
+  "base": "a67aee78234ac60444d9dec18ea65f20cbdd241c",
+  "claude": {
+    "available": true,
+    "cases": [
+      {
+        "bare_feature_entries": [],
+        "case": "control-empty-profile",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [],
+        "override_lines": [],
+        "plugins": [],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "delegated-no-personal-install/old-runtime",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "bridge-claude:feature-decide",
+          "bridge-claude:feature-design",
+          "bridge-claude:feature-exchange",
+          "bridge-claude:feature-execute",
+          "bridge-claude:feature-plan",
+          "bridge-claude:feature-review"
+        ],
+        "override_lines": [],
+        "plugins": [
+          {
+            "name": "bridge-claude",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+            "source": "bridge-claude@inline",
+            "version": "0.3.2"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "workflow-only",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "override_lines": [],
+        "plugins": [
+          {
+            "name": "feature-workflow",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace/plugins/feature-workflow-claude",
+            "source": "feature-workflow@claude-codex-bridge",
+            "version": "0.3.1"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "workflow+legacy-bridge-claude",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "bridge-claude:feature-decide",
+          "bridge-claude:feature-design",
+          "bridge-claude:feature-exchange",
+          "bridge-claude:feature-execute",
+          "bridge-claude:feature-plan",
+          "bridge-claude:feature-review",
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "override_lines": [],
+        "plugins": [
+          {
+            "name": "feature-workflow",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace/plugins/feature-workflow-claude",
+            "source": "feature-workflow@claude-codex-bridge",
+            "version": "0.3.1"
+          },
+          {
+            "name": "bridge-claude",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace/plugins/bridge-claude",
+            "source": "bridge-claude@claude-codex-bridge",
+            "version": "0.3.2"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "delegated-old-runtime+personal-workflow+legacy",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "bridge-claude:feature-decide",
+          "bridge-claude:feature-design",
+          "bridge-claude:feature-exchange",
+          "bridge-claude:feature-execute",
+          "bridge-claude:feature-plan",
+          "bridge-claude:feature-review",
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "override_lines": [
+          "Plugin \"bridge-claude\" from --plugin-dir overrides installed version"
+        ],
+        "plugins": [
+          {
+            "name": "bridge-claude",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+            "source": "bridge-claude@inline",
+            "version": "0.3.2"
+          },
+          {
+            "name": "feature-workflow",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace/plugins/feature-workflow-claude",
+            "source": "feature-workflow@claude-codex-bridge",
+            "version": "0.3.1"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "delegated-new-runtime-shape+personal-workflow+legacy",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "bridge-claude:feature-decide",
+          "bridge-claude:feature-design",
+          "bridge-claude:feature-exchange",
+          "bridge-claude:feature-execute",
+          "bridge-claude:feature-plan",
+          "bridge-claude:feature-review",
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "override_lines": [
+          "Plugin \"bridge-claude\" from --plugin-dir overrides installed version",
+          "Plugin \"feature-workflow\" from --plugin-dir overrides installed version"
+        ],
+        "plugins": [
+          {
+            "name": "bridge-claude",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/bridge-claude",
+            "source": "bridge-claude@inline",
+            "version": "0.3.2"
+          },
+          {
+            "name": "feature-workflow",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+            "source": "feature-workflow@inline",
+            "version": "0.3.2"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "workflow+legacy-disabled",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "override_lines": [],
+        "plugins": [
+          {
+            "name": "feature-workflow",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace/plugins/feature-workflow-claude",
+            "source": "feature-workflow@claude-codex-bridge",
+            "version": "0.3.1"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "workflow-after-update",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "override_lines": [],
+        "plugins": [
+          {
+            "name": "feature-workflow",
+            "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace/plugins/feature-workflow-claude",
+            "source": "feature-workflow@claude-codex-bridge",
+            "version": "0.3.2"
+          }
+        ],
+        "spent_nothing": true
+      },
+      {
+        "bare_feature_entries": [],
+        "case": "after-uninstall",
+        "claude_code_version": "2.1.280",
+        "exit_code": 1,
+        "feature_entries": [],
+        "override_lines": [],
+        "plugins": [],
+        "spent_nothing": true
+      }
+    ],
+    "findings": {
+      "control_has_no_feature_entry": true,
+      "delegated_case_uses_the_real_launcher_packages": true,
+      "delegated_without_personal_install_gets_runtime_entries": true,
+      "disabling_legacy_leaves_only_workflow": true,
+      "every_session_was_model_free": true,
+      "legacy_and_workflow_both_listed": true,
+      "new_runtime_shape_overrides_personal_workflow": true,
+      "no_bare_feature_entry_in_any_case": true,
+      "old_runtime_delegation_also_sees_personal_workflow": true,
+      "runtime_plugin_dir_overrides_personal_bridge_claude": true,
+      "uninstall_removes_entries": true,
+      "update_replaces_standalone_resources_with_local_delivery": true,
+      "workflow_only_exposes_six_qualified_entries": true
+    },
+    "installed_after_update": {
+      "enabled": true,
+      "local_delivery_present": true,
+      "version": "0.3.2"
+    },
+    "installed_before_update": {
+      "enabled": true,
+      "local_delivery_present": false,
+      "version": "0.3.1"
+    },
+    "launcher_executor_packages": [
+      "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/bridge-claude",
+      "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude"
+    ],
+    "plugin_validate_exit": {
+      "claude-new": 0,
+      "claude-old": 0
+    },
+    "runtimes_unchanged": true,
+    "steps": [
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "marketplace",
+          "add",
+          "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/claude-marketplace"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "install",
+          "feature-workflow@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "install",
+          "bridge-claude@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "disable",
+          "bridge-claude@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "list",
+          "--json"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "marketplace",
+          "update",
+          "claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "update",
+          "feature-workflow@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "list",
+          "--json"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "uninstall",
+          "feature-workflow@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "uninstall",
+          "bridge-claude@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      }
+    ],
+    "update_exit": 0
+  },
+  "codex": {
+    "available": true,
+    "cache_versions_after_update": [
+      "0.3.2"
+    ],
+    "cases": {
+      "after-remove": {
+        "bridge_entries": [],
+        "exit_code": 0,
+        "feature_entries": [],
+        "workflow_files": []
+      },
+      "control": {
+        "bridge_entries": [],
+        "exit_code": 0,
+        "feature_entries": [],
+        "workflow_files": []
+      },
+      "workflow+bridge-codex": {
+        "bridge_entries": [
+          "bridge-codex:bridge",
+          "bridge-codex:bridge-upgrade"
+        ],
+        "exit_code": 0,
+        "feature_entries": [
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "workflow_files": [
+          "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/0.3.1/skills"
+        ]
+      },
+      "workflow+repo-local-skills": {
+        "bridge_entries": [
+          "bridge-codex:bridge",
+          "bridge-codex:bridge-upgrade"
+        ],
+        "exit_code": 0,
+        "feature_entries": [
+          "feature-execute",
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "workflow_files": [
+          "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/0.3.1/skills"
+        ]
+      },
+      "workflow-after-update": {
+        "bridge_entries": [
+          "bridge-codex:bridge",
+          "bridge-codex:bridge-upgrade"
+        ],
+        "exit_code": 0,
+        "feature_entries": [
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "workflow_files": [
+          "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/0.3.2/skills"
+        ]
+      },
+      "workflow-only": {
+        "bridge_entries": [],
+        "exit_code": 0,
+        "feature_entries": [
+          "feature-workflow:feature-decide",
+          "feature-workflow:feature-design",
+          "feature-workflow:feature-exchange",
+          "feature-workflow:feature-execute",
+          "feature-workflow:feature-plan",
+          "feature-workflow:feature-review"
+        ],
+        "workflow_files": [
+          "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/0.3.1/skills"
+        ]
+      }
+    },
+    "findings": {
+      "bridge_codex_adds_no_feature_entry": true,
+      "control_has_no_feature_entry": true,
+      "remove_deletes_plugin_cache": true,
+      "remove_removes_entries": true,
+      "repo_local_skill_listed_bare_beside_plugin": true,
+      "update_drops_previous_cache_version": true,
+      "update_serves_new_resources": true,
+      "workflow_only_exposes_six_qualified_entries": true
+    },
+    "installed_path_new": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/0.3.2",
+    "installed_path_old": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/0.3.1",
+    "method": "`codex debug prompt-input` renders the model-visible prompt (CLI help text); the isolated CODEX_HOME holds no credentials, so no model request could be authenticated. Not a network capture.",
+    "runtimes_unchanged": true,
+    "steps": [
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "marketplace",
+          "add",
+          "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/codex-marketplace",
+          "--json"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "add",
+          "feature-workflow@claude-codex-bridge",
+          "--json"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "add",
+          "bridge-codex@claude-codex-bridge",
+          "--json"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "add",
+          "feature-workflow@claude-codex-bridge",
+          "--json"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "remove",
+          "feature-workflow@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "remove",
+          "bridge-codex@claude-codex-bridge"
+        ],
+        "exit_code": 0,
+        "stderr": ""
+      }
+    ]
+  },
+  "evidence_kind": "fixtures plus model-free host cases in disposable profiles; no model ran; newer workflow packages are the generated plugins/feature-workflow-*",
+  "findings": {
+    "matching_runtime_package_selects_declared_runtime": true,
+    "mismatched_runtime_package_refused_even_when_standalone": true,
+    "new_pin_and_standalone_carry_local_delivery": true,
+    "old_pin_keeps_zip_era_instructions": true,
+    "plugin_version_does_not_change_pinned_answer": true,
+    "project_entry_never_executed": true,
+    "runtime_package_cases_as_contracted": true,
+    "source_matrix_as_contracted": true,
+    "source_reads_wrote_nothing": true,
+    "unresolved_pin_never_answered_by_package_location": true
+  },
+  "fixtures": {
+    "packages": {
+      "claude-new": {
+        "dest": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new",
+        "digest": "ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "generated": true,
+        "version": "0.3.2"
+      },
+      "claude-old": {
+        "dest": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-old",
+        "digest": "ff197a7866e71e43ee2e537becdb80c5037fd396cc05281883ee16c4acf8a535",
+        "files": 17
+      },
+      "codex-new": {
+        "dest": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/codex-new",
+        "digest": "ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "generated": true,
+        "version": "0.3.2"
+      },
+      "codex-old": {
+        "dest": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/codex-old",
+        "digest": "f45b42782114fdddf3fa132b4985780cc4682880084197f5cccec935879701e5",
+        "files": 17
+      }
+    },
+    "runtimes": {
+      "new": {
+        "commit": "a67aee78234ac60444d9dec18ea65f20cbdd241c",
+        "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a",
+        "runtime_id": "0.3.3-a67aee78234a",
+        "set_sha256": "3f41f12cd2e6a3932df93ce61fb8ecf7940bf8829182ef28cb3cc619e101ae08"
+      },
+      "old": {
+        "commit": "34ecb8d4546543743228f2397b2a16ed10885e31",
+        "path": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465",
+        "runtime_id": "0.3.2-34ecb8d45465",
+        "set_sha256": "769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda"
+      }
+    }
+  },
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.280 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.155.1"
+    }
+  },
+  "live_worktree_read": {
+    "available": true,
+    "code": "PINNED_RUNTIME",
+    "exit_code": 0,
+    "local_delivery_present": false,
+    "note": ".bridge/ (the live database of the supervising runtime) is not snapshotted; the reader never opens it",
+    "pin": {
+      "commit": "34ecb8d4546543743228f2397b2a16ed10885e31",
+      "enabled": true,
+      "runtime_id": "0.3.2-34ecb8d45465"
+    },
+    "record": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=ecb375b53ae702c93b07b13611e284acead87e31d3496e70ae2b311fe31570ec",
+    "runtime_state": "ready",
+    "source": "runtime",
+    "writes_in_bridge_project_and_runtime_selection": []
+  },
+  "new_fixture_runtime": {
+    "commit": "a67aee78234ac60444d9dec18ea65f20cbdd241c",
+    "runtime_id": "0.3.3-a67aee78234a"
+  },
+  "node": "v24.15.0",
+  "old_pin": {
+    "commit": "34ecb8d4546543743228f2397b2a16ed10885e31",
+    "runtime_id": "0.3.2-34ecb8d45465"
+  },
+  "packages": {
+    "claude-new": {
+      "checkout_relative_references": [],
+      "entries": [
+        "feature-decide",
+        "feature-design",
+        "feature-exchange",
+        "feature-execute",
+        "feature-plan",
+        "feature-review"
+      ],
+      "exchange_helper_outside_checkout": {
+        "export_exit": 0,
+        "guide_supplied_by_installation": [
+          "docs/features/README.md"
+        ],
+        "integrity": "ok",
+        "stderr": "",
+        "verify_exit": 0
+      },
+      "exchange_helper_present": true,
+      "links": {
+        "checked": 42,
+        "unresolved": []
+      },
+      "local_delivery_present": true,
+      "reader_present": true,
+      "six_entries": true
+    },
+    "claude-old": {
+      "checkout_relative_references": [],
+      "entries": [
+        "feature-decide",
+        "feature-design",
+        "feature-exchange",
+        "feature-execute",
+        "feature-plan",
+        "feature-review"
+      ],
+      "exchange_helper_present": true,
+      "links": {
+        "checked": 31,
+        "unresolved": []
+      },
+      "local_delivery_present": false,
+      "reader_present": true,
+      "six_entries": true
+    },
+    "codex-new": {
+      "checkout_relative_references": [],
+      "entries": [
+        "feature-decide",
+        "feature-design",
+        "feature-exchange",
+        "feature-execute",
+        "feature-plan",
+        "feature-review"
+      ],
+      "exchange_helper_outside_checkout": {
+        "export_exit": 0,
+        "guide_supplied_by_installation": [
+          "docs/features/README.md"
+        ],
+        "integrity": "ok",
+        "stderr": "",
+        "verify_exit": 0
+      },
+      "exchange_helper_present": true,
+      "links": {
+        "checked": 42,
+        "unresolved": []
+      },
+      "local_delivery_present": true,
+      "reader_present": true,
+      "six_entries": true
+    },
+    "codex-old": {
+      "checkout_relative_references": [],
+      "entries": [
+        "feature-decide",
+        "feature-design",
+        "feature-exchange",
+        "feature-execute",
+        "feature-plan",
+        "feature-review"
+      ],
+      "exchange_helper_present": true,
+      "links": {
+        "checked": 31,
+        "unresolved": []
+      },
+      "local_delivery_present": false,
+      "reader_present": true,
+      "six_entries": true
+    }
+  },
+  "probe": "w17-01-distribution",
+  "provenance": {
+    "head": "d533651df1d1fa48beb2153f096c292e83d262c6",
+    "probe_sources_uncommitted": false,
+    "sha256": {
+      "scripts/native-bridge-mcp.mjs": "fb83cef436da6666037619a35a97a171f42aeec8e20e24d6ffdbb14afa61cd48",
+      "scripts/plugin-packages/generate.mjs": "4e5617f0c2d544a81e7d7d22eb01a7909146ed128bafae00577c1ac586bfd737",
+      "scripts/plugin-probes/wave17_fixtures.mjs": "fcdf9f88f7744f221dd3d722804778da1860cf5ec8e52125050b1240e3430e63",
+      "scripts/plugin-probes/wave17_probe_distribution.py": "525bedb3d7f3c93c802a9c82026646ba5fab4ba6cd14c67f2f0e0dc62b84787a",
+      "scripts/plugin-probes/wave17_select_source.mjs": "7fb56337e4a53bfe21941408fa425c645a103450e74378f374400edb72523d7e",
+      "scripts/workflow-source/select-source.mjs": "8fee47e1a3c002a26ae423e5eb0a68cf92abea95f498034c6813beef0f195ad8"
+    }
+  },
+  "run_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614",
+  "source_selection": {
+    "cases": [
+      {
+        "as_expected": true,
+        "case": "no-bridge",
+        "code": "STANDALONE_NO_BRIDGE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "STANDALONE_NO_BRIDGE"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": true,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "no-bridge",
+        "code": "STANDALONE_NO_BRIDGE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "STANDALONE_NO_BRIDGE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "not-a-worktree",
+        "code": "STANDALONE_NO_WORKTREE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "STANDALONE_NO_WORKTREE"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": true,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "not-a-worktree",
+        "code": "STANDALONE_NO_WORKTREE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "STANDALONE_NO_WORKTREE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pinned-old-0.3.2",
+        "code": "PINNED_RUNTIME",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": "inherited-pristine",
+        "record": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda",
+        "source": "runtime",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/.agents/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pinned-old-0.3.2",
+        "code": "PINNED_RUNTIME",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": false,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": "inherited-pristine",
+        "record": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda",
+        "source": "runtime",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/.agents/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pinned-new",
+        "code": "PINNED_RUNTIME",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": true,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": "inherited-pristine",
+        "record": "INSTRUCTIONS=runtime:0.3.3-a67aee78234a SET=3f41f12cd2e6a3932df93ce61fb8ecf7940bf8829182ef28cb3cc619e101ae08",
+        "source": "runtime",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/.agents/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pinned-new",
+        "code": "PINNED_RUNTIME",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": null,
+        "pin_not_used": null,
+        "pin_state": "inherited-pristine",
+        "record": "INSTRUCTIONS=runtime:0.3.3-a67aee78234a SET=3f41f12cd2e6a3932df93ce61fb8ecf7940bf8829182ef28cb3cc619e101ae08",
+        "source": "runtime",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/.agents/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pin-runtime-missing",
+        "code": "RUNTIME_MISSING",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "RUNTIME_MISSING"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "runtime 0.9.9-000000000000 is not installed under <home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes; ask the bridge setup skill to install exactly that pin",
+        "pin_not_used": null,
+        "pin_state": "runtime-missing",
+        "record": "INSTRUCTIONS=none CODE=RUNTIME_MISSING",
+        "source": "none",
+        "workflow_skills": null,
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pin-runtime-missing",
+        "code": "EXPLICIT_STANDALONE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "runtime 0.9.9-000000000000 is not installed under <home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes; ask the bridge setup skill to install exactly that pin",
+        "pin_not_used": "RUNTIME_MISSING",
+        "pin_state": "runtime-missing",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pin-commit-mismatch",
+        "code": "PIN_UNRESOLVED",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PIN_UNRESOLVED"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "the project pins commit a67aee78234ac60444d9dec18ea65f20cbdd241c but runtime 0.3.2-34ecb8d45465 was built from 34ecb8d4546543743228f2397b2a16ed10885e31; install the pinned commit or move the pin with the setup skill",
+        "pin_not_used": null,
+        "pin_state": "pin-commit-mismatch",
+        "record": "INSTRUCTIONS=none CODE=PIN_UNRESOLVED",
+        "source": "none",
+        "workflow_skills": null,
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "pin-commit-mismatch",
+        "code": "EXPLICIT_STANDALONE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "the project pins commit a67aee78234ac60444d9dec18ea65f20cbdd241c but runtime 0.3.2-34ecb8d45465 was built from 34ecb8d4546543743228f2397b2a16ed10885e31; install the pinned commit or move the pin with the setup skill",
+        "pin_not_used": "PIN_UNRESOLVED",
+        "pin_state": "pin-commit-mismatch",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "declaration-invalid",
+        "code": "DECLARATION_INVALID",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "DECLARATION_INVALID"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": ".bridge-project/bridge.json is not valid JSON; inspect it \u2014 nothing was changed",
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=none CODE=DECLARATION_INVALID",
+        "source": "none",
+        "workflow_skills": null,
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "declaration-invalid",
+        "code": "EXPLICIT_STANDALONE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": ".bridge-project/bridge.json is not valid JSON; inspect it \u2014 nothing was changed",
+        "pin_not_used": "DECLARATION_INVALID",
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "project-disabled",
+        "code": "PROJECT_DISABLED",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PROJECT_DISABLED"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "the bridge is disabled for this project in .bridge-project/bridge.json; work standalone only when the user scopes it so",
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=none CODE=PROJECT_DISABLED",
+        "source": "none",
+        "workflow_skills": null,
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "project-disabled",
+        "code": "EXPLICIT_STANDALONE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "the bridge is disabled for this project in .bridge-project/bridge.json; work standalone only when the user scopes it so",
+        "pin_not_used": "PROJECT_DISABLED",
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "legacy-layout",
+        "code": "LEGACY_LAYOUT",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "LEGACY_LAYOUT"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "this worktree has bridge state but no portable declaration; run the bridge plugin's status or `doctor` and migrate with its setup",
+        "pin_not_used": null,
+        "pin_state": null,
+        "record": "INSTRUCTIONS=none CODE=LEGACY_LAYOUT",
+        "source": "none",
+        "workflow_skills": null,
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "legacy-layout",
+        "code": "EXPLICIT_STANDALONE",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "this worktree has bridge state but no portable declaration; run the bridge plugin's status or `doctor` and migrate with its setup",
+        "pin_not_used": "LEGACY_LAYOUT",
+        "pin_state": null,
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "workflow_skills": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/packages/claude-new/skills",
+        "writes": []
+      }
+    ],
+    "plugin_update_agreement": {
+      "pinned_old_via_new_package": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda",
+      "pinned_old_via_old_package": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda",
+      "standalone_via_new_package_local_delivery": true,
+      "standalone_via_old_package_local_delivery": false
+    },
+    "projects": {
+      "declaration-invalid": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/declaration-invalid",
+      "legacy-layout": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/legacy-layout",
+      "no-bridge": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/no-bridge",
+      "not-a-worktree": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/not-a-worktree",
+      "pin-commit-mismatch": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/pin-mismatch",
+      "pin-runtime-missing": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/pin-missing",
+      "pinned-new": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/pinned-new",
+      "pinned-old-0.3.2": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/pinned-old",
+      "project-disabled": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/projects/project-disabled"
+    },
+    "runtime_package_cases": [
+      {
+        "as_expected": true,
+        "case": "matching/old-pin+old-runtime-package",
+        "code": "PINNED_RUNTIME",
+        "declared_runtime": "0.3.2-34ecb8d45465",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": null,
+        "package_inside_runtime": "0.3.2-34ecb8d45465",
+        "package_matches_pin": true,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+        "project": "pinned-old-0.3.2",
+        "reader": "canonical via --package-root",
+        "record": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda",
+        "source": "runtime",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "matching/old-pin+old-runtime-package",
+        "code": "PINNED_RUNTIME",
+        "declared_runtime": "0.3.2-34ecb8d45465",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": false,
+        "next_step": null,
+        "package_inside_runtime": "0.3.2-34ecb8d45465",
+        "package_matches_pin": true,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+        "project": "pinned-old-0.3.2",
+        "reader": "canonical via --package-root",
+        "record": "INSTRUCTIONS=runtime:0.3.2-34ecb8d45465 SET=769dbc050593fbabe8bf97546b42fee74cf55e1dfa45053f83927eea25e33cda",
+        "source": "runtime",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "matching/new-pin+new-runtime-package",
+        "code": "PINNED_RUNTIME",
+        "declared_runtime": "0.3.3-a67aee78234a",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": true,
+        "next_step": null,
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": true,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "pinned-new",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=runtime:0.3.3-a67aee78234a SET=3f41f12cd2e6a3932df93ce61fb8ecf7940bf8829182ef28cb3cc619e101ae08",
+        "source": "runtime",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "matching/new-pin+new-runtime-package",
+        "code": "PINNED_RUNTIME",
+        "declared_runtime": "0.3.3-a67aee78234a",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "runtime",
+          "PINNED_RUNTIME"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": null,
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": true,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "pinned-new",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=runtime:0.3.3-a67aee78234a SET=3f41f12cd2e6a3932df93ce61fb8ecf7940bf8829182ef28cb3cc619e101ae08",
+        "source": "runtime",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "mismatch/old-pin+new-runtime-package",
+        "code": "PACKAGE_PIN_MISMATCH",
+        "declared_runtime": "0.3.2-34ecb8d45465",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PACKAGE_PIN_MISMATCH"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "this package belongs to runtime 0.3.3-a67aee78234a but the project pins 0.3.2-34ecb8d45465; run the pinned runtime's instructions, or move the pin with the bridge setup skill",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "pinned-old-0.3.2",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=none CODE=PACKAGE_PIN_MISMATCH",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "mismatch/old-pin+new-runtime-package",
+        "code": "PACKAGE_PIN_MISMATCH",
+        "declared_runtime": "0.3.2-34ecb8d45465",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PACKAGE_PIN_MISMATCH"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": false,
+        "next_step": "this package belongs to runtime 0.3.3-a67aee78234a but the project pins 0.3.2-34ecb8d45465; run the pinned runtime's instructions, or move the pin with the bridge setup skill",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "pinned-old-0.3.2",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=none CODE=PACKAGE_PIN_MISMATCH",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "mismatch/new-pin+old-runtime-package",
+        "code": "PACKAGE_PIN_MISMATCH",
+        "declared_runtime": "0.3.3-a67aee78234a",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PACKAGE_PIN_MISMATCH"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "this package belongs to runtime 0.3.2-34ecb8d45465 but the project pins 0.3.3-a67aee78234a; run the pinned runtime's instructions, or move the pin with the bridge setup skill",
+        "package_inside_runtime": "0.3.2-34ecb8d45465",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+        "project": "pinned-new",
+        "reader": "canonical via --package-root",
+        "record": "INSTRUCTIONS=none CODE=PACKAGE_PIN_MISMATCH",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "mismatch/new-pin+old-runtime-package",
+        "code": "PACKAGE_PIN_MISMATCH",
+        "declared_runtime": "0.3.3-a67aee78234a",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PACKAGE_PIN_MISMATCH"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": false,
+        "next_step": "this package belongs to runtime 0.3.2-34ecb8d45465 but the project pins 0.3.3-a67aee78234a; run the pinned runtime's instructions, or move the pin with the bridge setup skill",
+        "package_inside_runtime": "0.3.2-34ecb8d45465",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+        "project": "pinned-new",
+        "reader": "canonical via --package-root",
+        "record": "INSTRUCTIONS=none CODE=PACKAGE_PIN_MISMATCH",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/runtime-missing+new-runtime-package",
+        "code": "RUNTIME_MISSING",
+        "declared_runtime": "0.9.9-000000000000",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "RUNTIME_MISSING"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "runtime 0.9.9-000000000000 is not installed under <home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes; ask the bridge setup skill to install exactly that pin",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "pin-runtime-missing",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=none CODE=RUNTIME_MISSING",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/runtime-missing+new-runtime-package",
+        "code": "EXPLICIT_STANDALONE",
+        "declared_runtime": "0.9.9-000000000000",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "runtime 0.9.9-000000000000 is not installed under <home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes; ask the bridge setup skill to install exactly that pin",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "pin-runtime-missing",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/commit-mismatch+same-id-runtime-package",
+        "code": "PIN_UNRESOLVED",
+        "declared_runtime": "0.3.2-34ecb8d45465",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PIN_UNRESOLVED"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "the project pins commit a67aee78234ac60444d9dec18ea65f20cbdd241c but runtime 0.3.2-34ecb8d45465 was built from 34ecb8d4546543743228f2397b2a16ed10885e31; install the pinned commit or move the pin with the setup skill",
+        "package_inside_runtime": "0.3.2-34ecb8d45465",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+        "project": "pin-commit-mismatch",
+        "reader": "canonical via --package-root",
+        "record": "INSTRUCTIONS=none CODE=PIN_UNRESOLVED",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/commit-mismatch+same-id-runtime-package",
+        "code": "EXPLICIT_STANDALONE",
+        "declared_runtime": "0.3.2-34ecb8d45465",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": false,
+        "next_step": "the project pins commit a67aee78234ac60444d9dec18ea65f20cbdd241c but runtime 0.3.2-34ecb8d45465 was built from 34ecb8d4546543743228f2397b2a16ed10885e31; install the pinned commit or move the pin with the setup skill",
+        "package_inside_runtime": "0.3.2-34ecb8d45465",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.2-34ecb8d45465/plugins/bridge-claude",
+        "project": "pin-commit-mismatch",
+        "reader": "canonical via --package-root",
+        "record": "INSTRUCTIONS=plugin:bridge-claude@0.3.2 DIGEST=1b9520c0d382f20fad46a29558bb819f8da653484d81347e987d2ea8eb079b8d",
+        "source": "plugin",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/project-disabled+new-runtime-package",
+        "code": "PROJECT_DISABLED",
+        "declared_runtime": "0.3.3-a67aee78234a",
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "PROJECT_DISABLED"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "the bridge is disabled for this project in .bridge-project/bridge.json; work standalone only when the user scopes it so",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "project-disabled",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=none CODE=PROJECT_DISABLED",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/project-disabled+new-runtime-package",
+        "code": "EXPLICIT_STANDALONE",
+        "declared_runtime": "0.3.3-a67aee78234a",
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "the bridge is disabled for this project in .bridge-project/bridge.json; work standalone only when the user scopes it so",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "project-disabled",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/legacy-layout+new-runtime-package",
+        "code": "LEGACY_LAYOUT",
+        "declared_runtime": null,
+        "entry_tripwire_fired": false,
+        "exit_code": 3,
+        "expected": [
+          "none",
+          "LEGACY_LAYOUT"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": false,
+        "next_step": "this worktree has bridge state but no portable declaration; run the bridge plugin's status or `doctor` and migrate with its setup",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "legacy-layout",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=none CODE=LEGACY_LAYOUT",
+        "source": "none",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "unresolved/legacy-layout+new-runtime-package",
+        "code": "EXPLICIT_STANDALONE",
+        "declared_runtime": null,
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "EXPLICIT_STANDALONE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": "this worktree has bridge state but no portable declaration; run the bridge plugin's status or `doctor` and migrate with its setup",
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "legacy-layout",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "no-bridge+new-runtime-package",
+        "code": "STANDALONE_NO_BRIDGE",
+        "declared_runtime": null,
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "STANDALONE_NO_BRIDGE"
+        ],
+        "explicit_standalone": false,
+        "local_delivery_present": true,
+        "next_step": null,
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "no-bridge",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "no-bridge+new-runtime-package",
+        "code": "STANDALONE_NO_BRIDGE",
+        "declared_runtime": null,
+        "entry_tripwire_fired": false,
+        "exit_code": 0,
+        "expected": [
+          "plugin",
+          "STANDALONE_NO_BRIDGE"
+        ],
+        "explicit_standalone": true,
+        "local_delivery_present": true,
+        "next_step": null,
+        "package_inside_runtime": "0.3.3-a67aee78234a",
+        "package_matches_pin": null,
+        "package_root": "<home>/tmp/w17-01-probes/run-20260922-230053-2066614/bridge-home/runtimes/0.3.3-a67aee78234a/plugins/feature-workflow-claude",
+        "project": "no-bridge",
+        "reader": "package's own",
+        "record": "INSTRUCTIONS=plugin:feature-workflow@0.3.2 DIGEST=ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+        "source": "plugin",
+        "writes": []
+      },
+      {
+        "as_expected": true,
+        "case": "nonexistent-package-root-beneath-runtime",
+        "entry_tripwire_fired": false,
+        "exit_code": 1,
+        "expected": [
+          "reader-error",
+          "exit 1"
+        ],
+        "explicit_standalone": false,
+        "stdout_empty": true,
+        "writes": []
+      }
+    ]
+  },
+  "unverified": [
+    "Which entry a model chooses from a natural-language request when several are listed.",
+    "Whether a model follows the source reader's answer or a round contract over a personally installed copy.",
+    "Codex `$feature-workflow:<skill>` mention syntax in the interactive composer (only the listed name is observed).",
+    "Expansion of any plugin-root variable in Codex skill text (none is documented; the candidate uses <package>)."
+  ]
+}
