@@ -75,3 +75,10 @@ host evidence:26 findings, Claude2.1.280/Codex0.155.1; fixture30 and distributio
 Independent review02 REWORK: R02-01 reproduces package-location shortcut overriding a
 valid project pin. Correct contract/prototype locally, then release W17-02–04. No scope
 change or new user gate; runtime untouched. Historical link failures remain separate.
+
+## W17-01 gate passed — 2026-09-22
+
+Fix340aefa/evidence0afbbbd/ledger a943866. Review02 appended PASS, R02-01 resolved.
+Independent36 fixture tests, exact package, ancestry/every-commit scope and clean tree PASS.
+No earlier evidence rewritten. Next: one sequential W17-02–04 implementation workstream,
+actual generated-package/launcher checks, full required validation and independent review.

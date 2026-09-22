@@ -47,3 +47,24 @@ Nonblocking notes: qualify all public entries; document explicit legacy disable/
 W17-03 must test actual generated packages and real launcher arguments, not only candidate
 fixture layout. Runtime upgrades remain bridge-owned. Model natural routing/compliance is
 UNVERIFIED, not a gate authorized for model smoke here.
+
+## R02-01 correction review — 2026-09-22 — PASS
+
+Task `task_q1bcvhqdgh`, exact clean delivered range
+`23cfa402c9cde68d1c10c11f77817757cdda3a15..a943866627e40a33cf17424dd64f6a629ff43ecf`.
+Correction340aefa, evidence0afbbbd, new ledger a943866. Package verified with exact base/head,
+hash `86972c11a199c8802782eb2765a00e0d0c4f9bddf2177cd8b59c325de55b77ad`.
+Six-path endpoint/every-commit scope, ancestry, no merges, prior ledger preservation and
+clean tree independently PASS. Read corrected contract, selector diff and regression cases.
+Independent fixture suite36/36 PASS (initial review also independently reran30/30).
+
+**R02-01 resolved.** No early return based on package location remains. Project declaration
+and pinned runtime classifier precede package comparison; a different-runtime package is
+refused even with --standalone; matching package gets PINNED_RUNTIME and instruction digest.
+Missing/conflicting/disabled/legacy cases use the declared-state result. Nonexistent package
+root is an error. Regression matrix covers both old/new directions, unresolved states and
+unchanged files; historical host evidence is retained and superseded only for the faulty case.
+
+Contract gate W17-01 PASS. Model routing/compliance remains UNVERIFIED as originally scoped.
+No required findings remain. Continue W17-02–04 under decision01; carry these cases to the
+actual generated product and test the real runner arguments. No new user gate or acceptance.

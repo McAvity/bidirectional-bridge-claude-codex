@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W17-workflow-plugin",
-  "phase": "corrections",
+  "phase": "execution",
   "brief": "docs/features/F-W17-workflow-plugin/brief.md",
   "design": "docs/features/F-W17-workflow-plugin/design.md",
   "tasks": [
@@ -25,7 +25,7 @@
   ],
   "latest_review": "docs/features/F-W17-workflow-plugin/reviews/02-contracts.md",
   "latest_decision": "docs/features/F-W17-workflow-plugin/decisions/01.md",
-  "next_action": "Claude corrects W17-01 R02-01 source selection; local re-review then W17-02\u201304 under decision01.",
+  "next_action": "W17-01 contract PASS; Claude implements W17-02\u201304 with integrated model-free validation, then independent implementation review.",
   "bridge": {
     "feature_id": "F-W17-workflow-plugin",
     "parent_task_id": "task_qkjep5yvm2"
