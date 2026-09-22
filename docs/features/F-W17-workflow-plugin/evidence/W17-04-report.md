@@ -64,8 +64,9 @@ Supervising runtime `0.3.2-34ecb8d45465` was only read, never rebuilt, edited or
 The link check finds no broken relative link at the base or at the head. The two recorded
 wave16 findings are unchanged and were not edited:
 `docs/features/F-W16-local-delivery/execution/W16-01/01.md:57` (an absolute personal path) and
-`docs/plans/wave16-progress.md:113` (matched only by the looser `/home/` substring rule; the text is
-"workspace/home/target"). The same loose rule also matches the pre-existing `bridge-upgrade`
+`docs/plans/wave16-progress.md:113` (matched only by the looser home-directory substring rule;
+the line is prose naming a workspace and home target). The same loose rule also matches the
+pre-existing `bridge-upgrade`
 skill line 115 in its source and two bridge packages, identical at the base. W17 adds none.
 
 ## Residual limits (UNVERIFIED, not claimed)
