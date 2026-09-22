@@ -131,6 +131,21 @@ export function readSourceIdentity(root = nativeBridgeRepositoryRoot) {
   };
 }
 
+/** Executor packages a runtime hands a delegated Claude, in `--plugin-dir` order. */
+export const EXECUTOR_PACKAGES = ["plugins/bridge-claude", "plugins/feature-workflow-claude"];
+
+/**
+ * Absolute paths of the executor packages present in this runtime (`root`), in order.
+ *
+ * `bridge-claude` stays first and self-sufficient: it is the package every runtime has passed so
+ * far. A runtime that also ships `feature-workflow-claude` passes it second, so its pinned copy
+ * overrides a personally installed `feature-workflow` of the same plugin name (W17-01 contract
+ * § 6). An older runtime lacks it and passes `bridge-claude` alone, exactly as before.
+ */
+export function executorPackages(root = nativeBridgeRepositoryRoot) {
+  return EXECUTOR_PACKAGES.map((rel) => join(root, rel)).filter((path) => existsSync(join(path, ".claude-plugin", "plugin.json")));
+}
+
 export async function runNativeBridge(args) {
   if (args.help) {
     process.stderr.write(NATIVE_BRIDGE_HELP);
@@ -159,16 +174,14 @@ export async function runNativeBridge(args) {
   ]);
 
   const log = (line) => core.stderrLog(`[bridge-native:${args.caller}] ${line}`);
-  // The executor package generated from this runtime's own canonical skills. It ships inside the
-  // runtime, so a plugin cache refresh cannot take it away from a round already under way.
-  const executorPackage = new URL("../plugins/bridge-claude", import.meta.url);
-  const executorPackagePath = existsSync(fileURLToPath(new URL("./.claude-plugin/plugin.json", `${executorPackage.href}/`)))
-    ? fileURLToPath(executorPackage)
-    : undefined;
+  // The executor packages generated from this runtime's own canonical skills. They ship inside the
+  // runtime, so a plugin cache refresh cannot take them away from a round already under way.
+  const [executorPackagePath, ...furtherPackages] = executorPackages();
 
   const claudeRunner = new claudeSide.ClaudeCodeRunner({
     permissionMode: "acceptEdits",
     ...(executorPackagePath ? { pluginDir: executorPackagePath } : {}),
+    ...(furtherPackages.length > 0 ? { pluginDirs: furtherPackages } : {}),
     // ClaudeCodeRunner owns the protected opus/high profile and conservative bounded
     // default. A validated TaskSpec.max_turns may raise or lower only the turn ceiling.
     // Delegated Claude runs are non-interactive, so permission prompts cannot be answered.

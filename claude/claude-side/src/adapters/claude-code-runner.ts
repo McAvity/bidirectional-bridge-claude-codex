@@ -160,6 +160,14 @@ export interface ClaudeCodeRunnerOptions {
    * Absent means the caller supplies no package and Claude Code uses its own discovery.
    */
   readonly pluginDir?: string;
+  /**
+   * Further instruction packages for the round, passed after `pluginDir` as repeated `--plugin-dir`.
+   *
+   * W17-01 measured that Claude Code resolves a `--plugin-dir` plugin against installed plugins by
+   * plugin name, so a runtime that also hands over its `feature-workflow` package overrides a
+   * personally installed copy of that name. A runtime without that package simply omits it.
+   */
+  readonly pluginDirs?: readonly string[];
   /** Diagnostics sink. Never stdout — a launcher's stdout is the MCP transport. */
   readonly log?: (line: string) => void;
   readonly env?: NodeJS.ProcessEnv;
@@ -584,6 +592,15 @@ async function preserveDetailedReport(
   return artifacts;
 }
 
+/** The instruction packages of one round, in order, each once: `pluginDir` then `pluginDirs`. */
+export function executorPluginDirs(o: Pick<ClaudeCodeRunnerOptions, "pluginDir" | "pluginDirs">): string[] {
+  const dirs: string[] = [];
+  for (const dir of [o.pluginDir, ...(o.pluginDirs ?? [])]) {
+    if (typeof dir === "string" && dir.length > 0 && !dirs.includes(dir)) dirs.push(dir);
+  }
+  return dirs;
+}
+
 export class ClaudeCodeRunner implements ClaudeRunner {
   readonly description: string;
   private readonly options: ClaudeCodeRunnerOptions;
@@ -669,7 +686,7 @@ export class ClaudeCodeRunner implements ClaudeRunner {
 
     // The pinned instruction package travels with the runtime, not with the project and not
     // with the operator's profile; see docs/plugin-distribution.md.
-    if (o.pluginDir) args.push("--plugin-dir", o.pluginDir);
+    for (const dir of executorPluginDirs(o)) args.push("--plugin-dir", dir);
 
     if (o.allowedTools?.length) args.push("--allowed-tools", ...o.allowedTools);
     if (o.disallowedTools?.length) args.push("--disallowed-tools", ...o.disallowedTools);
