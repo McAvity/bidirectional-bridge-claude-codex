@@ -10,6 +10,10 @@
 // never installs, never starts an MCP server and never executes the project's entry point. A
 // project pin is classified by the pinned runtime's own `scripts/bridge-project/locate.mjs`, so
 // there is no second pin algorithm here; the only local logic is finding that file.
+//
+// The project pin always comes first (review R02-01). Where this package lies on disk proves
+// neither delegation nor the pin: it is compared with the pin only after the pinned runtime
+// classified the worktree as serving, and a package inside a different runtime is refused.
 
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -46,7 +50,10 @@ function worktreeOf(cwd) {
   return top.status === 0 && top.stdout.trim() ? real(top.stdout.trim()) : null;
 }
 
-/** When this package itself was handed over by an installed runtime, it *is* the pinned copy. */
+/**
+ * The installed runtime directory this package lies in, if any. A location only: it is never
+ * treated as a delegation identity or as a pin, only checked against a pin already resolved.
+ */
 export function packageRuntime(packageRoot, home) {
   const rel = relative(real(join(home, "runtimes")), real(packageRoot));
   if (!rel || rel.startsWith("..") || isAbsolute(rel)) return null;
@@ -121,6 +128,9 @@ function record(result) {
 }
 
 export async function selectSource({ cwd = process.cwd(), env = process.env, packageRoot, standalone = false } = {}) {
+  if (!packageRoot || !existsSync(packageRoot) || !statSync(packageRoot).isDirectory()) {
+    throw new Error(`package root is not an existing directory: ${packageRoot}`);
+  }
   const home = bridgeHome(env);
   const root = worktreeOf(real(cwd));
   const base = {
@@ -129,7 +139,7 @@ export async function selectSource({ cwd = process.cwd(), env = process.env, pac
     worktree: root,
     home,
     explicit_standalone: standalone,
-    package: packageInfo(packageRoot),
+    package: { ...packageInfo(packageRoot), inside_runtime: packageRuntime(packageRoot, home) },
     declaration: null,
     runtime: null,
     instructions: null,
@@ -147,17 +157,6 @@ export async function selectSource({ cwd = process.cwd(), env = process.env, pac
     standalone
       ? plugin("EXPLICIT_STANDALONE", { pin_not_used: code, next_step: nextStep, ...extra })
       : finish({ source: "none", code, next_step: nextStep, ...extra });
-
-  const own = packageRuntime(packageRoot, home);
-  if (own) {
-    const path = join(home, "runtimes", own);
-    return finish({
-      source: "runtime",
-      code: "RUNTIME_PACKAGE",
-      runtime: { id: own, path, commit: null, state: "package-inside-runtime", set_sha256: null },
-      instructions: runtimeInstructions(path, null),
-    });
-  }
 
   if (root === null) return plugin("STANDALONE_NO_WORKTREE");
   const declaration = readDeclaration(root);
@@ -204,7 +203,25 @@ export async function selectSource({ cwd = process.cwd(), env = process.env, pac
   if (!SERVING.has(status.state) || !status.instructions) {
     return refuse("PIN_UNRESOLVED", status.next_step ?? `the project pin is in state ${status.state}`, { runtime, pin_state: status.state });
   }
-  return finish({ source: "runtime", code: "PINNED_RUNTIME", runtime, instructions: runtimeInstructions(runtimePath, status.instructions) });
+  // The pin is valid and serving. A package inside a *different* runtime is a conflict between
+  // the copy being run and the pin; `--standalone` cannot waive it, because a valid pin wins.
+  const inside = base.package.inside_runtime;
+  if (inside !== null && inside !== pin.runtime_id) {
+    return finish({
+      source: "none",
+      code: "PACKAGE_PIN_MISMATCH",
+      runtime,
+      next_step: `this package belongs to runtime ${inside} but the project pins ${pin.runtime_id}; ` +
+        "run the pinned runtime's instructions, or move the pin with the bridge setup skill",
+    });
+  }
+  return finish({
+    source: "runtime",
+    code: "PINNED_RUNTIME",
+    runtime,
+    instructions: runtimeInstructions(runtimePath, status.instructions),
+    package_matches_pin: inside === pin.runtime_id,
+  });
 }
 
 function parse(argv) {

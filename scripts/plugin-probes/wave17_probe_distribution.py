@@ -159,10 +159,14 @@ def build_fixtures(root: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def select(cwd: Path, package_root: Path, home: Path, *, standalone: bool = False) -> dict:
+def select(cwd: Path, package_root: Path, home: Path, *, standalone: bool = False, via_reader: bool = False) -> dict:
+    """Run a package's own reader, or (`via_reader`) this checkout's reader with `--package-root`."""
     env = dict(os.environ)
     env["CLAUDE_CODEX_BRIDGE_HOME"] = str(home)
-    args = [str(package_root / "scripts" / "select-source.mjs"), "--cwd", str(cwd)]
+    if via_reader:
+        args = [str(READER), "--cwd", str(cwd), "--package-root", str(package_root)]
+    else:
+        args = [str(package_root / "scripts" / "select-source.mjs"), "--cwd", str(cwd)]
     if standalone:
         args.append("--standalone")
     proc = node(*args, env=env)
@@ -231,13 +235,7 @@ def source_matrix(root: Path, fx: dict) -> dict:
                 }
             )
 
-    # The package handed to a delegated Claude by a runtime is that runtime's copy by location.
-    inside = home / "runtimes" / NEW_ID / "plugins" / "bridge-claude"
-    runtime_package = node(
-        str(READER), "--cwd", str(projects["pinned-old-0.3.2"]), "--package-root", str(inside),
-        env={**os.environ, "CLAUDE_CODEX_BRIDGE_HOME": str(home)},
-    )
-    runtime_package_result = json.loads(runtime_package.stdout)
+    runtime_package = runtime_package_matrix(root, home, projects)
 
     # Plugin update does not change a pinned project's answer: reader of the *old* package and of
     # the *new* package agree on the pin, and differ only for standalone use.
@@ -254,15 +252,84 @@ def source_matrix(root: Path, fx: dict) -> dict:
     }
     return {
         "cases": cases,
-        "runtime_package": {
-            "package_root": str(inside),
-            "source": runtime_package_result.get("source"),
-            "code": runtime_package_result.get("code"),
-            "record": runtime_package_result.get("record"),
-        },
+        "runtime_package_cases": runtime_package,
         "plugin_update_agreement": agreement,
         "projects": {k: str(v) for k, v in projects.items()},
     }
+
+
+def runtime_package_matrix(root: Path, home: Path, projects: dict) -> list[dict]:
+    """R02-01 regression: a package lying inside an installed runtime never outranks the pin.
+
+    The package root is the executor package a runtime hands a delegated Claude
+    (`<home>/runtimes/<id>/plugins/bridge-claude`). Location is compared with the project pin only
+    after the pinned runtime's own classifier answered; it never selects a runtime by itself.
+    """
+    old_pkg = home / "runtimes" / OLD_ID / "plugins" / "bridge-claude"
+    new_pkg = home / "runtimes" / NEW_ID / "plugins" / "bridge-claude"
+    scoped = ("plugin", "EXPLICIT_STANDALONE")
+    mismatch = ("none", "PACKAGE_PIN_MISMATCH")
+    # (case, project, package root, expected, expected with --standalone, expected local-delivery)
+    plan = [
+        ("matching/old-pin+old-runtime-package", "pinned-old-0.3.2", old_pkg, ("runtime", "PINNED_RUNTIME"), ("runtime", "PINNED_RUNTIME"), False),
+        ("matching/new-pin+new-runtime-package", "pinned-new", new_pkg, ("runtime", "PINNED_RUNTIME"), ("runtime", "PINNED_RUNTIME"), True),
+        ("mismatch/old-pin+new-runtime-package", "pinned-old-0.3.2", new_pkg, mismatch, mismatch, None),
+        ("mismatch/new-pin+old-runtime-package", "pinned-new", old_pkg, mismatch, mismatch, None),
+        ("unresolved/runtime-missing+new-runtime-package", "pin-runtime-missing", new_pkg, ("none", "RUNTIME_MISSING"), scoped, None),
+        ("unresolved/commit-mismatch+same-id-runtime-package", "pin-commit-mismatch", old_pkg, ("none", "PIN_UNRESOLVED"), scoped, None),
+        ("unresolved/project-disabled+new-runtime-package", "project-disabled", new_pkg, ("none", "PROJECT_DISABLED"), scoped, None),
+        ("unresolved/legacy-layout+new-runtime-package", "legacy-layout", new_pkg, ("none", "LEGACY_LAYOUT"), scoped, None),
+        ("no-bridge+new-runtime-package", "no-bridge", new_pkg, ("plugin", "STANDALONE_NO_BRIDGE"), ("plugin", "STANDALONE_NO_BRIDGE"), None),
+    ]
+    cases = []
+    for name, project_key, package, want, want_scoped, want_delivery in plan:
+        project = Path(projects[project_key])
+        for standalone in (False, True):
+            before = tree_snapshot(project, home)
+            result = select(project, package, home, standalone=standalone, via_reader=True)
+            after = tree_snapshot(project, home)
+            expected = want_scoped if standalone else want
+            delivery = bool((result.get("instructions") or {}).get("local_delivery"))
+            ok = [result.get("source"), result.get("code")] == list(expected)
+            if want_delivery is not None and result.get("source") == "runtime":
+                ok = ok and delivery is want_delivery
+            cases.append(
+                {
+                    "case": name,
+                    "explicit_standalone": standalone,
+                    "project": project_key,
+                    "package_inside_runtime": (result.get("package") or {}).get("inside_runtime"),
+                    "declared_runtime": (result.get("declaration") or {}).get("runtime_id"),
+                    "source": result.get("source"),
+                    "code": result.get("code"),
+                    "record": result.get("record"),
+                    "package_matches_pin": result.get("package_matches_pin"),
+                    "local_delivery_present": delivery,
+                    "next_step": result.get("next_step"),
+                    "exit_code": result["exit_code"],
+                    "expected": list(expected),
+                    "as_expected": ok,
+                    "writes": snapshot_diff(before, after),
+                    "entry_tripwire_fired": (project / ".bridge-project" / "TRIPWIRE-ENTRY-EXECUTED").exists(),
+                }
+            )
+    # A path that merely *names* a runtime is not a package: the reader refuses to answer.
+    ghost = home / "runtimes" / NEW_ID / "does" / "not" / "exist"
+    proc = node(str(READER), "--cwd", str(projects["pinned-old-0.3.2"]), "--package-root", str(ghost),
+                env={**os.environ, "CLAUDE_CODEX_BRIDGE_HOME": str(home)})
+    cases.append(
+        {
+            "case": "nonexistent-package-root-beneath-runtime",
+            "explicit_standalone": False,
+            "exit_code": proc.returncode,
+            "stdout_empty": proc.stdout.strip() == "",
+            "expected": ["reader-error", "exit 1"],
+            "as_expected": proc.returncode == 1 and proc.stdout.strip() == "",
+            "writes": [],
+            "entry_tripwire_fired": False,
+        }
+    )
+    return cases
 
 
 def live_worktree_read() -> dict:
@@ -660,6 +727,20 @@ def codex_side(root: Path, fx: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def provenance() -> dict:
+    """Which bytes produced this result: the commit and whether the probe sources differ from it."""
+    def out(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True).stdout.strip()
+
+    sources = [READER, FIXTURES, Path(__file__).resolve()]
+    rel = [str(path.relative_to(REPO)) for path in sources]
+    return {
+        "head": out("rev-parse", "HEAD"),
+        "probe_sources_uncommitted": out("status", "--porcelain=v1", "--", *rel) != "",
+        "sha256": {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in zip(rel, sources)},
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=None, help="write the redacted JSON result here")
@@ -671,6 +752,13 @@ def main() -> int:
     matrix = source_matrix(root, fx)
     result = {
         "probe": "w17-01-distribution",
+        "evidence_kind": (
+            "fixture-only: source selection on disposable fixture runtimes/projects and one read-only "
+            "live worktree read; no Claude/Codex host case and no model ran"
+            if args.no_hosts
+            else "fixtures plus model-free host cases in disposable profiles; no model ran"
+        ),
+        "provenance": provenance(),
         "base": NEW_COMMIT,
         "old_pin": {"runtime_id": OLD_ID, "commit": OLD_COMMIT},
         "new_fixture_runtime": {"runtime_id": NEW_ID, "commit": NEW_COMMIT},
@@ -690,11 +778,27 @@ def main() -> int:
             "Expansion of any plugin-root variable in Codex skill text (none is documented; the candidate uses <package>).",
         ],
     }
+    every = matrix["cases"] + matrix["runtime_package_cases"]
     matrix_ok = all(c["as_expected"] and not c["writes"] and not c["entry_tripwire_fired"] for c in matrix["cases"])
+    package_cases = matrix["runtime_package_cases"]
     result["findings"] = {
         "source_matrix_as_contracted": matrix_ok,
-        "source_reads_wrote_nothing": all(not c["writes"] for c in matrix["cases"]),
-        "project_entry_never_executed": not any(c["entry_tripwire_fired"] for c in matrix["cases"]),
+        "runtime_package_cases_as_contracted": all(
+            c["as_expected"] and not c["writes"] and not c["entry_tripwire_fired"] for c in package_cases
+        ),
+        "matching_runtime_package_selects_declared_runtime": all(
+            c["source"] == "runtime" and c["record"].startswith(f"INSTRUCTIONS=runtime:{c['declared_runtime']} ")
+            and c["package_matches_pin"] is True
+            for c in package_cases if c["case"].startswith("matching/")
+        ),
+        "mismatched_runtime_package_refused_even_when_standalone": all(
+            c["source"] == "none" and c["code"] == "PACKAGE_PIN_MISMATCH" for c in package_cases if c["case"].startswith("mismatch/")
+        ),
+        "unresolved_pin_never_answered_by_package_location": all(
+            c["source"] != "runtime" for c in package_cases if c["case"].startswith("unresolved/")
+        ),
+        "source_reads_wrote_nothing": all(not c["writes"] for c in every),
+        "project_entry_never_executed": not any(c["entry_tripwire_fired"] for c in every),
         "old_pin_keeps_zip_era_instructions": next(
             c for c in matrix["cases"] if c["case"] == "pinned-old-0.3.2" and not c["explicit_standalone"]
         )["local_delivery_present"] is False,

@@ -29,22 +29,25 @@ def commit_available(commit: str) -> bool:
     return out.returncode == 0
 
 
-@unittest.skipUnless(
-    commit_available(P.OLD_COMMIT) and commit_available(P.NEW_COMMIT),
-    "fixture commits are not in this clone's history",
-)
+FIXTURE_COMMITS = commit_available(P.OLD_COMMIT) and commit_available(P.NEW_COMMIT)
+_MATRIX: dict = {}
+
+
+def shared_matrix() -> dict:
+    """Build the fixture runtimes and run the reader matrix once for every class below."""
+    if not _MATRIX:
+        with tempfile.TemporaryDirectory(prefix="w17-01-test-") as tmp:
+            root = Path(tmp)
+            _MATRIX.update(P.source_matrix(root, P.build_fixtures(root)))
+    return _MATRIX
+
+
+@unittest.skipUnless(FIXTURE_COMMITS, "fixture commits are not in this clone's history")
 class SourceSelection(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls._tmp = tempfile.TemporaryDirectory(prefix="w17-01-test-")
-        cls.root = Path(cls._tmp.name)
-        cls.fx = P.build_fixtures(cls.root)
-        cls.matrix = P.source_matrix(cls.root, cls.fx)
+        cls.matrix = shared_matrix()
         cls.by = {(c["case"], c["explicit_standalone"]): c for c in cls.matrix["cases"]}
-
-    @classmethod
-    def tearDownClass(cls):
-        cls._tmp.cleanup()
 
     def test_every_case_matches_the_contract(self):
         wrong = [(c["case"], c["explicit_standalone"], c["source"], c["code"]) for c in self.matrix["cases"] if not c["as_expected"]]
@@ -83,9 +86,63 @@ class SourceSelection(unittest.TestCase):
         self.assertFalse(agreement["standalone_via_old_package_local_delivery"])
         self.assertTrue(agreement["standalone_via_new_package_local_delivery"])
 
-    def test_a_package_inside_a_runtime_is_that_runtime(self):
-        self.assertEqual(self.matrix["runtime_package"]["code"], "RUNTIME_PACKAGE")
-        self.assertIn(P.NEW_ID, self.matrix["runtime_package"]["record"])
+
+@unittest.skipUnless(FIXTURE_COMMITS, "fixture commits are not in this clone's history")
+class RuntimePackageNeverOutranksThePin(unittest.TestCase):
+    """Review R02-01: package location is compared with a resolved pin, never used instead of it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cases = shared_matrix()["runtime_package_cases"]
+        cls.by = {(c["case"], c["explicit_standalone"]): c for c in cls.cases}
+
+    def test_every_runtime_package_case_matches_the_contract(self):
+        wrong = [(c["case"], c["explicit_standalone"], c.get("source"), c.get("code")) for c in self.cases if not c["as_expected"]]
+        self.assertEqual(wrong, [])
+
+    def test_matching_delegated_package_selects_the_declared_runtime(self):
+        for case, runtime_id, delivery in (
+            ("matching/old-pin+old-runtime-package", P.OLD_ID, False),
+            ("matching/new-pin+new-runtime-package", P.NEW_ID, True),
+        ):
+            for standalone in (False, True):
+                with self.subTest(case=case, standalone=standalone):
+                    hit = self.by[(case, standalone)]
+                    self.assertEqual((hit["source"], hit["code"]), ("runtime", "PINNED_RUNTIME"))
+                    self.assertTrue(hit["record"].startswith(f"INSTRUCTIONS=runtime:{runtime_id} SET="))
+                    self.assertNotIn("SET=unknown", hit["record"])
+                    self.assertIs(hit["package_matches_pin"], True)
+                    self.assertIs(hit["local_delivery_present"], delivery)
+
+    def test_old_pin_with_new_package_is_refused_not_upgraded(self):
+        for case in ("mismatch/old-pin+new-runtime-package", "mismatch/new-pin+old-runtime-package"):
+            for standalone in (False, True):
+                with self.subTest(case=case, standalone=standalone):
+                    hit = self.by[(case, standalone)]
+                    self.assertEqual((hit["source"], hit["code"], hit["exit_code"]), ("none", "PACKAGE_PIN_MISMATCH", 3))
+                    self.assertFalse(hit["local_delivery_present"])
+
+    def test_unresolved_pins_are_classified_before_package_location(self):
+        for case in (c for c, s in self.by if c.startswith("unresolved/") and not s):
+            with self.subTest(case=case):
+                refused = self.by[(case, False)]
+                self.assertEqual((refused["source"], refused["exit_code"]), ("none", 3))
+                self.assertTrue(refused["record"].startswith("INSTRUCTIONS=none "))
+                self.assertEqual(self.by[(case, True)]["code"], "EXPLICIT_STANDALONE")
+
+    def test_same_id_package_does_not_hide_a_commit_mismatch(self):
+        hit = self.by[("unresolved/commit-mismatch+same-id-runtime-package", False)]
+        self.assertEqual((hit["source"], hit["code"]), ("none", "PIN_UNRESOLVED"))
+        self.assertEqual(hit["package_inside_runtime"], P.OLD_ID)
+
+    def test_a_path_that_only_names_a_runtime_is_rejected(self):
+        ghost = self.by[("nonexistent-package-root-beneath-runtime", False)]
+        self.assertEqual(ghost["exit_code"], 1)
+        self.assertTrue(ghost["stdout_empty"])
+
+    def test_runtime_package_reads_write_nothing(self):
+        self.assertEqual([c["case"] for c in self.cases if c["writes"]], [])
+        self.assertFalse(any(c["entry_tripwire_fired"] for c in self.cases))
 
 
 @unittest.skipUnless(commit_available(P.NEW_COMMIT), "fixture commit is not in this clone's history")

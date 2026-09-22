@@ -1,12 +1,17 @@
 # W17-01 — distribution, source selection and compatibility contract
 
-Status: proposed contract for independent local review; W17-01 gate before W17-02.
+Status: proposed contract, corrected for [review 02](../reviews/02-contracts.md) R02-01
+(§ 4, § 6); W17-01 gate before W17-02.
 Authority: [decision 01](../decisions/01.md) (whole W17-01–04 execution, local only).
-Base: `a67aee78234ac60444d9dec18ea65f20cbdd241c`. Inputs: [brief](../brief.md),
+Base: `a67aee78234ac60444d9dec18ea65f20cbdd241c`; correction base
+`23cfa402c9cde68d1c10c11f77817757cdda3a15`. Inputs: [brief](../brief.md),
 [design](../design.md), [plan review](../reviews/01-plan.md), W17-01 work item.
-Evidence: [`evidence/W17-01-host-probes.json`](../evidence/W17-01-host-probes.json), produced
-by `scripts/plugin-probes/wave17_probe_distribution.py`; fixture checks in
-`tests/plugin-probes/test_wave17_distribution.py`. Ledger: [execution/W17-01/01.md](../execution/W17-01/01.md).
+Evidence: [`evidence/W17-01-host-probes.json`](../evidence/W17-01-host-probes.json)
+(historical candidate run: hosts and fixtures, before R02-01) and
+[`evidence/W17-01-correction-02.json`](../evidence/W17-01-correction-02.json) (fixture-only
+source selection after R02-01), both from `scripts/plugin-probes/wave17_probe_distribution.py`;
+fixture checks in `tests/plugin-probes/test_wave17_distribution.py`. Ledgers:
+[01](../execution/W17-01/01.md), [02](../execution/W17-01/02.md).
 
 Host versions observed: Claude Code `2.1.280`, codex-cli `0.155.1`, Node `v24.15.0`,
 Python `3.12.3`. All host facts below were observed in disposable profiles with no model
@@ -107,12 +112,17 @@ node "<package>/scripts/select-source.mjs" --json                     # Codex
 
 Output format `feature-workflow.instruction-source/v1`: `source` (`plugin` | `runtime` |
 `none`), `code`, `instructions` (`workflow_skills`, `guide`, `exchange_helper`,
-`local_delivery`), `runtime`, `next_step`, `record`, `reads_only: true`. Exit 0 = answer,
-3 = refusal (`source: none`), 1 = reader error.
+`local_delivery`), `runtime`, `package` (with `inside_runtime`), `next_step`, `record`,
+`reads_only: true`. Exit 0 = answer, 3 = refusal (`source: none`), 1 = reader error (also a
+package root that is not an existing directory).
+
+One selection path, pin first (R02-01): the worktree and its declaration are always read and
+the pin is always classified by the pinned runtime before anything else. Where the package lies
+on disk is neither a pin nor a delegation identity; it is only compared with a pin that the
+runtime classified as serving (last two rows).
 
 | Worktree | `code` | Source | Rule |
 | --- | --- | --- | --- |
-| package located inside `<home>/runtimes/<id>/` | `RUNTIME_PACKAGE` | runtime | the package *is* the pinned copy (delegated round) |
 | not a Git worktree | `STANDALONE_NO_WORKTREE` | plugin | own resources |
 | no declaration, no bridge traces | `STANDALONE_NO_BRIDGE` | plugin | own resources; no MCP, runtime or setup needed |
 | valid pin, runtime `ready` / `inherited-pristine` | `PINNED_RUNTIME` | runtime | read `<workflow_skills>/<skill>/SKILL.md`, runtime guide and helper; never mix with the package copy. Also for an explicitly standalone task; a narrower user instruction still bounds scope |
@@ -122,7 +132,9 @@ Output format `feature-workflow.instruction-source/v1`: `source` (`plugin` | `ru
 | `enabled: false` | `PROJECT_DISABLED` | none | ask; standalone only when scoped |
 | `.bridge-runtime/`, `.bridge/` or `[mcp_servers.bridge]` without declaration | `LEGACY_LAYOUT` | none | wave12 layout; migrate with bridge `status`/`setup` |
 | runtime without a usable `locate.mjs` | `RUNTIME_WITHOUT_READER` | none | use the bridge plugin's `status` |
-| any `none` case with `--standalone` | `EXPLICIT_STANDALONE` | plugin | records `pin_not_used`; never a silent fallback |
+| any `none` case above with `--standalone` | `EXPLICIT_STANDALONE` | plugin | records `pin_not_used`; never a silent fallback |
+| serving pin, package inside the **same** `<home>/runtimes/<pin>/` | `PINNED_RUNTIME` | runtime | `package_matches_pin: true`; the delegated runtime package works with no personal install |
+| serving pin, package inside a **different** installed runtime | `PACKAGE_PIN_MISMATCH` | none | hard refusal, not waived by `--standalone` (a valid pin wins); run the pinned instructions or move the pin |
 
 Pin classification is not reimplemented. The reader checks that the pinned runtime's
 `scripts/bridge-project/locate.mjs` textually exports `status` and `instructionPaths`, imports
@@ -131,8 +143,13 @@ it and calls `status()` — the classifier used by the bridge plugin's `status` 
 against the runtime's answer (`HOME_MISMATCH` refuses). The file in runtime
 `0.3.2-34ecb8d45465` is identical to the base, so the current pin is supported.
 
-Read-only guarantees, each observed: no file in the project, bridge home or package changed
-across 18 fixture reads (path, SHA-256, mtime and mode snapshots); a tripwire
+An unresolved pin (missing runtime, commit mismatch even when the package lies in the runtime
+with the pinned id, disabled project, legacy layout) is answered by its own row, whatever the
+package location; only `--standalone` turns it into `EXPLICIT_STANDALONE`.
+
+Read-only guarantees, each observed on fixtures: no file in the project, bridge home or package
+changed across 18 fixture reads, and no file in the project or bridge home across the 18
+runtime-package reads of the correction (path, SHA-256, mtime and mode snapshots); a tripwire
 `.bridge-project/entry.mjs` was never executed; nothing is installed or set up; no manager is
 claimed; `.bridge/` is never opened. The live worktree read (real home, current pin) answered
 `PINNED_RUNTIME`, state `ready`, and left `.bridge-project/` and `.bridge-runtime/` unchanged.
@@ -178,6 +195,13 @@ Contract:
 2. Runtimes built from W17-03 on also ship `plugins/feature-workflow-claude`, and the launcher
    passes it as a second `--plugin-dir` when present (same existence check as today). Both
    packages are generated from one source commit; W17-03 asserts identical feature bytes.
+Source selection for a delegated round follows § 4 like every other use: the project pin is
+resolved first, and a runtime-supplied package is accepted only when it lies in the pinned
+runtime (`PINNED_RUNTIME`, `package_matches_pin: true`); a package from another runtime is
+`PACKAGE_PIN_MISMATCH`. Verified on fixtures for the 0.3.2 and 0.3.3 fixture runtimes and read
+only against the real installed `0.3.2-34ecb8d45465` package for this worktree; no delegated
+host session was rerun for the correction.
+
 3. Pre-W17 runtimes cannot change. The personal copy stays visible there; the round contract
    remains authority and the personal copy's reader answers `PINNED_RUNTIME`. That the model
    follows either is **UNVERIFIED** (§ 9, risk R1). No personal-profile change is required.
@@ -236,6 +260,14 @@ Reproduce: `python3 scripts/plugin-probes/wave17_probe_distribution.py --out <fi
   credentials. Neither is a network capture.
 - Instruction sets come from Git commits `34ecb8d` and the base, never from identical copies.
 - Fixture runtimes stub launch binaries; they prove selection, not a working bridge.
+- Correction evidence (`W17-01-correction-02.json`) is **fixture-only**: it ran the
+  `--no-hosts` mode (source matrix, R02-01 runtime-package cases, package checks and one
+  read-only live worktree read) and records the committed probe sources it ran from
+  (`provenance`). Host versions in it are `--version` output only; no host session and no
+  model ran. The host findings above come from the historical candidate run; the reader change
+  does not touch host discovery, so those host cases were not repeated. That run's
+  `source_selection.runtime_package` entry (`RUNTIME_PACKAGE`) records the defect R02-01
+  found and is superseded by `runtime_package_cases`; the historical file is not rewritten.
 - **UNVERIFIED**: model choice among listed entries; model compliance with the reader or a round
   contract over a personal copy; Codex `$plugin:skill` composer syntax; plugin-root expansion
   in Codex skill text; Git-marketplace refresh (local marketplaces were used).
@@ -246,8 +278,10 @@ Reproduce: `python3 scripts/plugin-probes/wave17_probe_distribution.py --out <fi
   canonical source (e.g. `scripts/workflow-source/select-source.mjs`, copied verbatim); add
   `rewriteForCodex` and the `<package>` anchor; an entry preamble running the reader; checks
   for six entries, links, `local-delivery.md` equality, helper portability and `packages:check`.
+  Carry the § 4 pin-first rule and the R02-01 matching/mismatch/unresolved cases unchanged.
 - W17-03: second `--plugin-dir` (§ 6.2) with identical-bytes test; keep runner path and old
-  runtimes; delegated fixture test with and without personal installs.
+  runtimes; delegated tests with and without personal installs on the actual generated
+  packages and the real launcher arguments, not only this candidate fixture layout.
 - W17-04: README and `docs/plugin-distribution.md`: install, § 7 migration, § 5 matrix,
   host-vs-model limits; AC-01…08 evidence map.
 - R1: delegated rounds of pre-W17 pins still see a personal `feature-workflow`
@@ -258,7 +292,7 @@ Reproduce: `python3 scripts/plugin-probes/wave17_probe_distribution.py --out <fi
 | AC | Contract | Evidence |
 | --- | --- | --- |
 | AC-02 | § 1–3 | Claude/Codex `workflow_only_exposes_six_qualified_entries`; package checks |
-| AC-03 | § 4–5 | source matrix; `plugin_version_does_not_change_pinned_answer` |
+| AC-03 | § 4–5 | source matrix; `plugin_version_does_not_change_pinned_answer`; correction: `mismatched_runtime_package_refused_even_when_standalone`, `unresolved_pin_never_answered_by_package_location` |
 | AC-04 | § 7 | `legacy_and_workflow_both_listed`, `disabling_legacy_leaves_only_workflow`, Codex coexistence |
-| AC-05 | § 6 | delegated cases, `new_runtime_shape_overrides_personal_workflow` |
+| AC-05 | § 6 | delegated host cases, `new_runtime_shape_overrides_personal_workflow`; correction: `matching_runtime_package_selects_declared_runtime` |
 | AC-07 | § 4, § 7 | `source_reads_wrote_nothing`, tripwire, live read, `runtimes_unchanged` |
