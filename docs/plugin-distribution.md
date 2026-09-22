@@ -109,11 +109,13 @@ node "<package>/scripts/select-source.mjs" --json              # Codex; <package
 
 | Worktree | Answer | What the entry does |
 | --- | --- | --- |
-| no bridge declaration, or not a Git worktree | `plugin` (`STANDALONE_NO_BRIDGE` / `_NO_WORKTREE`) | follows its own package: skills, guide, `local-delivery.md`, exchange helper |
+| not a Git worktree | `plugin` (`STANDALONE_NO_WORKTREE`) | follows its own package: skills, guide, `local-delivery.md`, exchange helper |
+| no bridge declaration **and** no bridge traces (no `.bridge-runtime/`, `.bridge/` or `[mcp_servers.bridge]` in `.codex/config.toml`) | `plugin` (`STANDALONE_NO_BRIDGE`) | follows its own package, as above |
 | a valid pin whose runtime is installed and serving | `runtime` (`PINNED_RUNTIME`) | follows the pinned runtime's skills, guide and helper instead — also for a task scoped as standalone |
-| pinned runtime missing, commit mismatch, diverged selection, disabled project, invalid declaration, legacy wave12 layout | `none`, exit 3 | reports `code` and `next_step` and stops |
-| the package lies inside a *different* installed runtime than the pin | `none` (`PACKAGE_PIN_MISMATCH`) | refuses, even with `--standalone` |
-| any `none` above when the user explicitly asked to work without the bridge (`--standalone`) | `plugin` (`EXPLICIT_STANDALONE`) | follows the package and records `pin_not_used` |
+| bridge traces without a declaration (legacy wave12 layout) | `none` (`LEGACY_LAYOUT`), exit 3 | reports `code` and `next_step` and stops |
+| pinned runtime missing (`RUNTIME_MISSING`), commit mismatch or diverged selection (`PIN_UNRESOLVED`), disabled project (`PROJECT_DISABLED`), invalid declaration (`DECLARATION_INVALID`), runtime without a usable reader (`RUNTIME_WITHOUT_READER`), bridge-home mismatch (`HOME_MISMATCH`) | `none`, exit 3 | reports `code` and `next_step` and stops |
+| any refusal in the two rows above when the user explicitly asked to work without the bridge (`--standalone`) | `plugin` (`EXPLICIT_STANDALONE`) | follows the package and records the refusal as `pin_not_used` |
+| a serving pin, but the package lies inside a *different* installed runtime | `none` (`PACKAGE_PIN_MISMATCH`), exit 3 | hard refusal: **not** waived by `--standalone`, because a valid pin wins |
 
 The pin always comes first: the reader reads the declaration and lets the pinned runtime's own
 `scripts/bridge-project/locate.mjs` classify it — the same classifier as `status` above — before it

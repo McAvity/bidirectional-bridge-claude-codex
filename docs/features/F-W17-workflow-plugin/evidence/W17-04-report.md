@@ -1,6 +1,9 @@
 # W17 integrated delivery — acceptance evidence (W17-02–04)
 
 Executor report for independent review; not a review verdict or user acceptance.
+Corrected for [review 03](../reviews/03-implementation.md) R03-01 (source table in
+`docs/plugin-distribution.md`) and R03-N1 (documentation checker provenance, below); see
+[W17-04 ledger 02](../execution/W17-04/02.md).
 Range `9e7e9c0151d666146f6b8d51ee712f1c723c3a60..` the W17-04 ledger commit. Code and docs
 tested at `2115018896f6b6f251dc1bde2ea7fb80ae0cce41` (later commits add only this report and the
 ledgers). Contract: [01-distribution.md](../contracts/01-distribution.md); authority:
@@ -34,7 +37,7 @@ Supervising runtime `0.3.2-34ecb8d45465` was only read, never rebuilt, edited or
 | AC-05 delegated Claude without personal install | met (real launcher + host) | Real launcher passes `--plugin-dir bridge-claude --plugin-dir feature-workflow-claude` (repo layout) and `bridge-claude` alone (older layout) — `scripts/native-bridge-mcp.plugin-dirs.test.ts`; real installed runtime's launcher returns both; delegated session with a personal install gets the runtime copies (override logged, zero usage) |
 | AC-06 reproducible generation, portable references and helper | met | `generate.mjs --check`; every Markdown link and `${CLAUDE_PLUGIN_ROOT}` / `<package>` reference resolves inside each package; no checkout-relative reference; packaged helper exports and verifies a foreign repository from a copy outside the checkout with the installation-supplied guide; `local-delivery.md` byte-identical to the wave16 source in both packages |
 | AC-07 read-only detection; update/remove non-destructive | met (fixture + host) | 18 + 19 fixture reads with path/SHA/mtime snapshots and an entry-point tripwire: no writes, entry never run; live read of this worktree unchanged; Claude update/uninstall and Codex add/remove leave fixture runtimes byte-identical |
-| AC-08 docs and honest report | met | README install/migration/limits, `docs/plugin-distribution.md` workflow section; this report separates host evidence from model behaviour |
+| AC-08 docs and honest report | met after R03-01 | README install/migration/limits, `docs/plugin-distribution.md` workflow section (source table corrected: `--standalone` never waives `PACKAGE_PIN_MISMATCH`; standalone without a declaration also needs no bridge traces); this report separates host evidence from model behaviour |
 
 ## Old pin vs new resources (W17-02/03 wave16 inputs)
 
@@ -57,17 +60,26 @@ Supervising runtime `0.3.2-34ecb8d45465` was only read, never rebuilt, edited or
 | `python3 -m unittest discover -s tests/plugin-probes -v` | exit 0; 37 tests |
 | `npm run packages:check` | exit 0 |
 | `python3 scripts/plugin-probes/wave17_probe_distribution.py --out …/W17-03-host-probes.json` (at `d533651`) | exit 0; all fixture, Claude and Codex findings true |
-| `python3 scripts/plugin-probes/wave17_doc_links.py` | no broken links; findings identical to base (below) |
+| `node docs/tools/check-doc-links.mjs` (the repository's tracked documentation gate) | exit 1 at base `9e7e9c0`, at `b093faf` and at the correction head: exactly the same two historical wave16 findings, no new problem (below) |
+| `python3 scripts/plugin-probes/wave17_doc_links.py` (supplemental, W17-04) | no broken links; findings identical to base |
 
 ## Historical documentation findings (reported separately)
 
-The link check finds no broken relative link at the base or at the head. The two recorded
-wave16 findings are unchanged and were not edited:
-`docs/features/F-W16-local-delivery/execution/W16-01/01.md:57` (an absolute personal path) and
-`docs/plans/wave16-progress.md:113` (matched only by the looser home-directory substring rule;
-the line is prose naming a workspace and home target). The same loose rule also matches the
-pre-existing `bridge-upgrade` skill line 115 in its source and two bridge packages, identical at
-the base. W17 adds none.
+The documentation gate is the tracked `docs/tools/check-doc-links.mjs` (relative links, anchors,
+absolute filesystem paths over README, CONTRIBUTING, CHANGELOG and `docs/`). It was run on full-tree
+extracts of each revision and exits 1 at the implementation base `9e7e9c0`, at the correction base
+`b093faf` and at the correction head, each time with exactly these two problems, both in wave16
+records that were not edited:
+
+- `docs/features/F-W16-local-delivery/execution/W16-01/01.md:57` — absolute filesystem path;
+- `docs/plans/wave16-progress.md:113` — absolute filesystem path by the gate's rule (the line's
+  prose names a workspace and home target).
+
+Exit 1 is therefore the recorded baseline, not a full-check PASS, and the gate was not changed.
+The coordinator independently ran the same gate at base and head with the same result. The
+supplemental `scripts/plugin-probes/wave17_doc_links.py` (tracked-file view per revision) finds no
+broken link and the same two lines under its looser rule. An earlier version of this section and
+W17-04 ledger 01 said no checker existed; that was wrong (R03-N1) and is corrected in ledger 02.
 
 ## Residual limits (UNVERIFIED, not claimed)
 
