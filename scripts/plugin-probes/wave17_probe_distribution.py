@@ -138,20 +138,58 @@ def declaration(runtime_id: str, commit: str, enabled: bool = True) -> dict:
     return {"format": "claude-codex-bridge.project/v1", "enabled": enabled, "pinned": {"runtime_id": runtime_id, "commit": commit}}
 
 
-def build_fixtures(root: Path) -> dict:
+GENERATED_PACKAGES = {client: REPO / "plugins" / f"feature-workflow-{client}" for client in ("claude", "codex")}
+
+
+def build_fixtures(root: Path, actual: bool | None = None) -> dict:
+    """Two runtimes with different instruction sets and an older and a newer workflow package.
+
+    With `actual` (the default once the generator has produced them) the newer packages are copies
+    of the generated `plugins/feature-workflow-*`, and the newer runtime also ships the generated
+    `plugins/feature-workflow-claude` as a W17-03 runtime does. The older package is always a
+    candidate built from the pre-wave16 commit, the only way to have a previous plugin version.
+    """
+    if actual is None:
+        actual = all((path / "GENERATED.json").is_file() for path in GENERATED_PACKAGES.values())
     home = root / "bridge-home"
+    overlay = ["--overlay", f"plugins/feature-workflow-claude={GENERATED_PACKAGES['claude']}"] if actual else []
     runtimes = {
         "old": node_json(str(FIXTURES), "runtime", str(home), "--commit", OLD_COMMIT, "--id", OLD_ID),
-        "new": node_json(str(FIXTURES), "runtime", str(home), "--commit", NEW_COMMIT, "--id", NEW_ID),
+        "new": node_json(str(FIXTURES), "runtime", str(home), "--commit", NEW_COMMIT, "--id", NEW_ID, *overlay),
     }
     packages = {}
     for client in ("claude", "codex"):
-        for label, commit, version in (("old", OLD_COMMIT, "0.3.2"), ("new", NEW_COMMIT, "0.3.3")):
-            dest = root / "packages" / f"{client}-{label}"
-            packages[f"{client}-{label}"] = node_json(
-                str(FIXTURES), "package", str(dest), "--client", client, "--commit", commit, "--version", version
+        old = root / "packages" / f"{client}-old"
+        packages[f"{client}-old"] = node_json(
+            str(FIXTURES), "package", str(old), "--client", client, "--commit", OLD_COMMIT,
+            "--version", "0.3.1" if actual else "0.3.2",
+        )
+        new = root / "packages" / f"{client}-new"
+        if actual:
+            shutil.copytree(GENERATED_PACKAGES[client], new)
+            marker = json.loads((new / "GENERATED.json").read_text())
+            packages[f"{client}-new"] = {"dest": str(new), "generated": True, "version": marker["version"], "digest": marker["source_digest"]}
+        else:
+            packages[f"{client}-new"] = node_json(
+                str(FIXTURES), "package", str(new), "--client", client, "--commit", NEW_COMMIT, "--version", "0.3.3"
             )
-    return {"home": home, "runtimes": runtimes, "packages": packages}
+    return {"home": home, "runtimes": runtimes, "packages": packages, "actual": actual}
+
+
+def package_version(package: Path) -> str:
+    return json.loads((package / "GENERATED.json").read_text())["version"]
+
+
+def executor_packages(runtime: Path) -> list[str]:
+    """What the real launcher (`native-bridge-mcp.mjs:executorPackages`) hands over from `runtime`."""
+    script = (
+        "import { executorPackages } from %s; process.stdout.write(JSON.stringify(executorPackages(process.argv[1])));"
+        % json.dumps((REPO / "scripts" / "native-bridge-mcp.mjs").as_uri())
+    )
+    proc = subprocess.run(["node", "--input-type=module", "-e", script, str(runtime)], capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr)
+    return json.loads(proc.stdout)
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +304,10 @@ def runtime_package_matrix(root: Path, home: Path, projects: dict) -> list[dict]
     after the pinned runtime's own classifier answered; it never selects a runtime by itself.
     """
     old_pkg = home / "runtimes" / OLD_ID / "plugins" / "bridge-claude"
-    new_pkg = home / "runtimes" / NEW_ID / "plugins" / "bridge-claude"
+    # A W17-03 runtime ships its workflow package; its own reader then answers. Otherwise the
+    # canonical reader is run with the runtime's bridge-claude directory as the package root.
+    shipped = home / "runtimes" / NEW_ID / "plugins" / "feature-workflow-claude"
+    new_pkg = shipped if (shipped / "scripts" / "select-source.mjs").is_file() else home / "runtimes" / NEW_ID / "plugins" / "bridge-claude"
     scoped = ("plugin", "EXPLICIT_STANDALONE")
     mismatch = ("none", "PACKAGE_PIN_MISMATCH")
     # (case, project, package root, expected, expected with --standalone, expected local-delivery)
@@ -286,7 +327,8 @@ def runtime_package_matrix(root: Path, home: Path, projects: dict) -> list[dict]
         project = Path(projects[project_key])
         for standalone in (False, True):
             before = tree_snapshot(project, home)
-            result = select(project, package, home, standalone=standalone, via_reader=True)
+            own_reader = (package / "scripts" / "select-source.mjs").is_file()
+            result = select(project, package, home, standalone=standalone, via_reader=not own_reader)
             after = tree_snapshot(project, home)
             expected = want_scoped if standalone else want
             delivery = bool((result.get("instructions") or {}).get("local_delivery"))
@@ -299,6 +341,8 @@ def runtime_package_matrix(root: Path, home: Path, projects: dict) -> list[dict]
                     "explicit_standalone": standalone,
                     "project": project_key,
                     "package_inside_runtime": (result.get("package") or {}).get("inside_runtime"),
+                    "package_root": str(package),
+                    "reader": "package's own" if own_reader else "canonical via --package-root",
                     "declared_runtime": (result.get("declaration") or {}).get("runtime_id"),
                     "source": result.get("source"),
                     "code": result.get("code"),
@@ -538,8 +582,11 @@ def claude_side(root: Path, fx: dict) -> dict:
     old_runtime_pkg = home / "runtimes" / OLD_ID / "plugins" / "bridge-claude"
     new_runtime_bridge = home / "runtimes" / NEW_ID / "plugins" / "bridge-claude"
     # New-runtime shape proposed by the contract: the runtime also ships the workflow package.
-    new_runtime_workflow = root / "new-runtime-shape" / "feature-workflow-claude"
-    shutil.copytree(root / "packages" / "claude-new", new_runtime_workflow)
+    new_runtime_workflow = home / "runtimes" / NEW_ID / "plugins" / "feature-workflow-claude"
+    if not new_runtime_workflow.is_dir():
+        new_runtime_workflow = root / "new-runtime-shape" / "feature-workflow-claude"
+        shutil.copytree(root / "packages" / "claude-new", new_runtime_workflow)
+    launcher_dirs = executor_packages(home / "runtimes" / NEW_ID)
 
     cases = []
     with L.AnthropicStub() as stub:
@@ -553,7 +600,7 @@ def claude_side(root: Path, fx: dict) -> dict:
         cases.append(claude_session("delegated-old-runtime+personal-workflow+legacy", root, project, config, stub, ["--plugin-dir", str(old_runtime_pkg)]))
         cases.append(claude_session(
             "delegated-new-runtime-shape+personal-workflow+legacy", root, project, config, stub,
-            ["--plugin-dir", str(new_runtime_bridge), "--plugin-dir", str(new_runtime_workflow)],
+            [a for d in (launcher_dirs if len(launcher_dirs) == 2 else [str(new_runtime_bridge), str(new_runtime_workflow)]) for a in ("--plugin-dir", d)],
         ))
         plugin("disable", f"bridge-claude@{MARKETPLACE}")
         cases.append(claude_session("workflow+legacy-disabled", root, project, config, stub, []))
@@ -586,8 +633,11 @@ def claude_side(root: Path, fx: dict) -> dict:
         "installed_before_update": installed(listed_before_update, f"{WORKFLOW}@{MARKETPLACE}"),
         "installed_after_update": installed(listed_after_update, f"{WORKFLOW}@{MARKETPLACE}"),
         "update_exit": update["exit_code"],
+        "launcher_executor_packages": launcher_dirs,
         "runtimes_unchanged": snapshot_diff(runtimes_before, tree_snapshot(home / "runtimes")) == [],
         "findings": {
+            "delegated_case_uses_the_real_launcher_packages": launcher_dirs
+            == [str(new_runtime_bridge), str(new_runtime_workflow)],
             "every_session_was_model_free": all(c["spent_nothing"] for c in cases),
             "control_has_no_feature_entry": by["control-empty-profile"]["feature_entries"] == [],
             "workflow_only_exposes_six_qualified_entries": by["workflow-only"]["feature_entries"] == qualified,
@@ -718,7 +768,7 @@ def codex_side(root: Path, fx: dict) -> dict:
             "repo_local_skill_listed_bare_beside_plugin": summary["workflow+repo-local-skills"]["feature_entries"] == sorted(qualified + ["feature-execute"]),
             "update_serves_new_resources": new_resources and not old_resources,
             "remove_deletes_plugin_cache": bool(path_new) and not path_new.exists(),
-            "update_drops_previous_cache_version": cache_after_update == ["0.3.3"],
+            "update_drops_previous_cache_version": cache_after_update == [package_version(root / "packages" / "codex-new")],
             "remove_removes_entries": summary["after-remove"]["feature_entries"] == [],
         },
     }
@@ -732,7 +782,14 @@ def provenance() -> dict:
     def out(*args: str) -> str:
         return subprocess.run(["git", "-C", str(REPO), *args], capture_output=True, text=True).stdout.strip()
 
-    sources = [READER, FIXTURES, Path(__file__).resolve()]
+    sources = [
+        READER,
+        REPO / "scripts" / "workflow-source" / "select-source.mjs",
+        REPO / "scripts" / "plugin-packages" / "generate.mjs",
+        REPO / "scripts" / "native-bridge-mcp.mjs",
+        FIXTURES,
+        Path(__file__).resolve(),
+    ]
     rel = [str(path.relative_to(REPO)) for path in sources]
     return {
         "head": out("rev-parse", "HEAD"),
@@ -753,11 +810,11 @@ def main() -> int:
     result = {
         "probe": "w17-01-distribution",
         "evidence_kind": (
-            "fixture-only: source selection on disposable fixture runtimes/projects and one read-only "
-            "live worktree read; no Claude/Codex host case and no model ran"
+            ("fixture-only: source selection on disposable fixture runtimes/projects and one read-only "
+             "live worktree read; no Claude/Codex host case and no model ran")
             if args.no_hosts
             else "fixtures plus model-free host cases in disposable profiles; no model ran"
-        ),
+        ) + ("; newer workflow packages are the generated plugins/feature-workflow-*" if fx["actual"] else "; candidate packages"),
         "provenance": provenance(),
         "base": NEW_COMMIT,
         "old_pin": {"runtime_id": OLD_ID, "commit": OLD_COMMIT},

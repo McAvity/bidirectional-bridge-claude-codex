@@ -5,14 +5,14 @@
 // Everything is written under the destination the caller gives, which the probes keep inside a
 // disposable run root.
 //
-//   node wave17_fixtures.mjs runtime <dest-home> --commit <sha> --id <runtime id> [--repo DIR]
+//   node wave17_fixtures.mjs runtime <dest-home> --commit <sha> --id <runtime id> [--repo DIR] [--overlay REL=DIR]
 //   node wave17_fixtures.mjs package <dest> --client claude|codex --commit <sha> --version <v> [--repo DIR]
 //
 // Instruction bytes always come from a Git commit (`git archive`), never from the working tree, so
 // the pre-wave16 pin 34ecb8d and the post-wave16 base give two genuinely different instruction sets.
 
 import { spawnSync } from "node:child_process";
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,9 +51,18 @@ export function extractCommit(repo, commit, paths, dest) {
   return present;
 }
 
-export function buildRuntime({ home, id, commit, repo = REPO }) {
+/**
+ * A disposable runtime with the instruction set of `commit`. `overlay` maps runtime-relative
+ * directories to directories copied in before the manifest is computed — used to give an older
+ * commit the generated `plugins/feature-workflow-claude` a W17-03 runtime ships.
+ */
+export function buildRuntime({ home, id, commit, repo = REPO, overlay = {} }) {
   const path = join(home, "runtimes", id);
   extractCommit(repo, commit, RUNTIME_PATHS, path);
+  for (const [rel, from] of Object.entries(overlay)) {
+    rmSync(join(path, rel), { recursive: true, force: true });
+    cpSync(from, join(path, rel), { recursive: true });
+  }
   for (const rel of STUBS) {
     mkdirSync(dirname(join(path, rel)), { recursive: true });
     writeFileSync(join(path, rel), rel.endsWith(".json") ? "{}\n" : "// W17-01 fixture stub, never executed\n");
@@ -149,9 +158,16 @@ export function buildPackage({ dest, client, commit, version, repo = REPO }) {
 function main(argv) {
   const [command, dest, ...rest] = argv;
   const options = { repo: REPO };
-  for (let index = 0; index < rest.length; index += 2) options[rest[index].replace(/^--/u, "")] = rest[index + 1];
+  const overlay = {};
+  for (let index = 0; index < rest.length; index += 2) {
+    const key = rest[index].replace(/^--/u, "");
+    if (key === "overlay") {
+      const [rel, from] = rest[index + 1].split("=");
+      overlay[rel] = resolve(from);
+    } else options[key] = rest[index + 1];
+  }
   if (command === "runtime") {
-    const { path, manifest } = buildRuntime({ home: resolve(dest), id: options.id, commit: options.commit, repo: resolve(options.repo) });
+    const { path, manifest } = buildRuntime({ home: resolve(dest), id: options.id, commit: options.commit, repo: resolve(options.repo), overlay });
     return { path, runtime_id: manifest.runtime_id, commit: manifest.source.commit, set_sha256: manifest.instructions.set_sha256 };
   }
   if (command === "package") {

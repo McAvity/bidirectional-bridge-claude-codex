@@ -1,6 +1,7 @@
 """Host-independent checks of the W17-01 source reader and fixtures.
 
-Fixture checks, not host evidence: they run no Claude/Codex CLI and no model. They pin the
+Fixture checks, not host evidence: they run no Claude/Codex CLI and no model. Since W17-02 the
+newer packages are the generated plugins/feature-workflow-*. They pin the
 contracted source-selection matrix (docs/features/F-W17-workflow-plugin/contracts/
 01-distribution.md § 4) against two genuinely different instruction sets — the pre-wave16 pin
 34ecb8d and the wave17 base — and check that every read leaves the fixture trees untouched.
@@ -38,7 +39,9 @@ def shared_matrix() -> dict:
     if not _MATRIX:
         with tempfile.TemporaryDirectory(prefix="w17-01-test-") as tmp:
             root = Path(tmp)
-            _MATRIX.update(P.source_matrix(root, P.build_fixtures(root)))
+            fx = P.build_fixtures(root)
+            _MATRIX.update(P.source_matrix(root, fx))
+            _MATRIX["actual_packages"] = fx["actual"]
     return _MATRIX
 
 
@@ -139,6 +142,16 @@ class RuntimePackageNeverOutranksThePin(unittest.TestCase):
         ghost = self.by[("nonexistent-package-root-beneath-runtime", False)]
         self.assertEqual(ghost["exit_code"], 1)
         self.assertTrue(ghost["stdout_empty"])
+
+    def test_the_generated_packages_and_the_runtime_shipped_reader_answer(self):
+        # Since W17-02 the matrix runs the generated plugins/feature-workflow-*, and a W17-03-shaped
+        # runtime answers through the reader of the workflow package it ships.
+        self.assertTrue(shared_matrix()["actual_packages"])
+        shipped = [c for c in self.cases if c.get("package_inside_runtime") == P.NEW_ID]
+        self.assertTrue(shipped)
+        for case in shipped:
+            self.assertEqual(case["reader"], "package's own")
+            self.assertTrue(case["package_root"].endswith("plugins/feature-workflow-claude"))
 
     def test_runtime_package_reads_write_nothing(self):
         self.assertEqual([c["case"] for c in self.cases if c["writes"]], [])

@@ -439,5 +439,103 @@ class ClaudeHost(unittest.TestCase):
         self.assertFalse((project / ".agents").exists())
 
 
+
+class InstalledRuntimeWorkflow(unittest.TestCase):
+    """W17-03 on a real installed runtime of HEAD: executor packages and pin-first selection."""
+
+    def setUp(self):
+        self.home, self.commit, self.runtime_id = build_runtime()
+        self.runtime = _RUNTIME["path"]
+        self.root = Path(tempfile.mkdtemp(prefix="w17-runtime-workflow-"))
+        L.assert_isolated(self.root)
+
+    def tearDown(self):
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def pinned_project(self) -> Path:
+        project = self.root / "pinned project"
+        L.make_git_repo(project)
+        (project / ".bridge-project").mkdir()
+        (project / ".bridge-project" / "bridge.json").write_text(json.dumps(
+            {"format": "claude-codex-bridge.project/v1", "enabled": True,
+             "pinned": {"runtime_id": self.runtime_id, "commit": self.commit}}, indent=2) + "\n")
+        git(project, "add", "-A")
+        git(project, "commit", "-qm", "pin")
+        return project
+
+    def select(self, package: Path, project: Path) -> tuple[int, dict]:
+        proc = subprocess.run(
+            ["node", str(package / "scripts" / "select-source.mjs"), "--cwd", str(project)],
+            capture_output=True, text=True, timeout=300, env=client_env({"CLAUDE_CODEX_BRIDGE_HOME": str(self.home)}),
+        )
+        return proc.returncode, json.loads(proc.stdout)
+
+    def test_the_runtime_launcher_hands_over_both_of_its_packages(self):
+        launcher = (self.runtime / "scripts" / "native-bridge-mcp.mjs").as_uri()
+        out = subprocess.run(
+            ["node", "--input-type=module", "-e",
+             f"import {{ executorPackages }} from {json.dumps(launcher)}; process.stdout.write(JSON.stringify(executorPackages()));"],
+            capture_output=True, text=True, timeout=120, env=client_env(),
+        )
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(json.loads(out.stdout), [
+            str(self.runtime / "plugins" / "bridge-claude"),
+            str(self.runtime / "plugins" / "feature-workflow-claude"),
+        ])
+
+    def test_the_runtime_workflow_package_selects_its_own_pin(self):
+        project = self.pinned_project()
+        before = git(project, "status", "--porcelain=v1", "--untracked-files=all")
+        manifest = json.loads((self.runtime / "runtime-manifest.json").read_text())
+        code, answer = self.select(self.runtime / "plugins" / "feature-workflow-claude", project)
+        self.assertEqual((code, answer["source"], answer["code"]), (0, "runtime", "PINNED_RUNTIME"))
+        self.assertIs(answer["package_matches_pin"], True)
+        self.assertEqual(answer["record"], f"INSTRUCTIONS=runtime:{self.runtime_id} SET={manifest['instructions']['set_sha256']}")
+        self.assertEqual(Path(answer["instructions"]["workflow_skills"]), self.runtime / ".agents" / "skills")
+        self.assertTrue(answer["instructions"]["local_delivery"])
+        # The marketplace copy (outside the runtime) resolves the same pin, never itself.
+        code, answer = self.select(REPO_ROOT / "plugins" / "feature-workflow-claude", project)
+        self.assertEqual((code, answer["code"], answer["package_matches_pin"]), (0, "PINNED_RUNTIME", False))
+        self.assertEqual(git(project, "status", "--porcelain=v1", "--untracked-files=all"), before)
+
+    def test_a_delegated_session_gets_the_runtime_copies_over_a_personal_install(self):
+        try:
+            L.claude_bin()
+        except L.ProbeSkipped as exc:
+            self.skipTest(f"host evidence unavailable: {exc}")
+        config = self.root / "claude-config"
+        config.mkdir()
+        env = {"CLAUDE_CONFIG_DIR": str(config)}
+        self.assertEqual(L.run_claude_plugin(["marketplace", "add", str(REPO_ROOT)], env=env)["exit_code"], 0)
+        self.assertEqual(L.run_claude_plugin(["install", "feature-workflow@claude-codex-bridge"], env=env)["exit_code"], 0)
+        project = self.pinned_project()
+        debug = self.root / "claude-debug.log"
+        dirs = [self.runtime / "plugins" / "bridge-claude", self.runtime / "plugins" / "feature-workflow-claude"]
+        with L.AnthropicStub() as stub:
+            proc = L.run_claude_headless(
+                "w17 check: no model call is expected to succeed", cwd=project, config_dir=config, stub=stub,
+                extra_args=["--output-format", "stream-json", "--verbose", *[a for d in dirs for a in ("--plugin-dir", str(d))]],
+                debug_file=debug,
+            )
+        init, result = {}, {}
+        for line in proc.stdout.splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if event.get("type") == "system" and event.get("subtype") == "init":
+                init = event
+            if event.get("type") == "result":
+                result = event
+        self.assertTrue(L.claude_spent_nothing(result), result)
+        plugins = {p["name"]: p.get("path") for p in init.get("plugins", [])}
+        self.assertEqual(plugins.get("feature-workflow"), str(dirs[1]))
+        self.assertEqual(plugins.get("bridge-claude"), str(dirs[0]))
+        self.assertIn('Plugin "feature-workflow" from --plugin-dir overrides installed version', debug.read_text(errors="replace"))
+        entries = sorted(s for s in init.get("skills", []) if re.search(r"(^|:)feature-[a-z]+$", s))
+        self.assertEqual([s for s in entries if ":" not in s], [])
+        self.assertEqual(len(entries), 12)
+
+
 if __name__ == "__main__":
     unittest.main()
