@@ -1,5 +1,15 @@
 # Current handoff
 
+## Wave17 — local delivery ready, 2026-09-22
+
+W17-01–04 implemented; independent technical review PASS on final executor deliveryfcba1e2.
+Four Claude bridge rounds, Codex review; no required findings remain. Full ci/build, JS590,
+Python100, pilot140, probes37/packages PASS; independent JS15/Python50/probes37 PASS.
+Two historical wave16 doc-check findings unchanged; model behaviour unverified.
+[Handoff](features/F-W17-workflow-plugin/handoff.md), [progress](plans/wave17-progress.md).
+User acceptance pending. Local only: no push/merge/deploy/model pilots; supervisor unchanged.
+Earlier execution and planning entries below are historical.
+
 ## Wave17 executing — 2026-09-22
 
 Whole W17-01–04 authorized; plan review PASS, decision01 recorded. Claude implements

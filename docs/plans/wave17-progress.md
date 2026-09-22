@@ -92,3 +92,21 @@ Independent: targeted JS15, Python50, probes37, packages, receipt/diff PASS; can
 checker still exactly two historical wave16 findings. Review03: documentation-only REWORK
 R03-01 (standalone exception wording) and nonblocking R03-N1 (checker provenance).
 No open code blocker. Next: bounded docs correction and final local delivery; no model pilot.
+
+## Local delivery — independent technical PASS — 2026-09-22
+
+Final executor deliveryfcba1e2; review03 closes R03-01 and R03-N1. No open required finding.
+W17-01–04 done locally on wave17. Four Claude rounds in the same bridge session; Codex
+independently reviewed contract, implementation and corrections. No unresolved recurring
+finding; no step-back/product-scope decision needed. Earlier REWORK checkpoints are historical.
+
+Full required checks: npm ci/build, JS590/Python100(no skips)/pilot140/probe37/packages PASS.
+Independent final product review: JS15/Python50/probe37/packages, all round receipts,
+ancestry/every-commit scope and diff PASS. Final documentation correction has no code drift.
+Canonical doc checker still exit1: exactly two historical wave16 findings, no new error.
+Project pin/entry/release unchanged; runtime0.3.2-34ecb8d45465 reports ready/ok.
+
+[Handoff](../features/F-W17-workflow-plugin/handoff.md) contains AC evidence, commits,
+limitations and resume. No model inference pilots; model routing/compliance and no-ZIP
+model path remain UNVERIFIED. No push, merge, publication, deployment or runtime switch.
+Next: user acceptance q-01, then record actual decision and close feature/root only if accepted.

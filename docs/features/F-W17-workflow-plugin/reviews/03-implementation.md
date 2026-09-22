@@ -71,3 +71,29 @@ change a gate to hide historical findings. No old wave16 records should be edite
 
 Next: bounded documentation correction in the same Claude session, focused re-review, then
 local handoff and user acceptance request under decision01. No open code finding remains.
+
+## Final correction and integrated review — 2026-09-22 — PASS
+
+Task `task_vhnmy1vw1h`; exact delivered range
+`b093faf606d33e9c7b234a57077a013ee2de53f8..fcba1e2cd5c6a4fa566fd1db9b42848f33494a6a`.
+Package exact base/head integrity PASS, hash
+`df63a0fe06c74f27d02734f01370aee9928a7a4f7a09b539b9f39b1e8310c93c`.
+Three exact in-scope paths across endpoint and history, ancestry/no merges, preserved earlier
+ledgers and clean tree independently PASS. Read all three file diffs against contract/code.
+
+**R03-01 resolved:** table now names only the waivable refusal rows, keeps PACKAGE_PIN_MISMATCH
+as a separate hard refusal and requires no bridge traces for no-declaration standalone.
+**R03-N1 resolved:** report names tracked canonical checker and exit1; new ledger02 corrects
+the earlier account without rewriting ledger01 or wave16 records. Independently reran canonical
+checker: exactly the same two baseline findings, no new errors. Diff check PASS.
+
+No source/test change after the reviewed4038b85 product; retained full executor and independent
+product checks above remain applicable. Final status read: ready, runtime0.3.2-34ecb8d45465 ok;
+project pin, entry and release descriptor unchanged from originalfa08f1d. No deployment.
+
+Integrated technical **PASS** for W17-01–04. No open required findings. Contract R02-01 was
+fixed in one correction and remains closed; documentation R03-01 fixed in one correction.
+No recurring unsolved problem called for step-back or a product compromise. AC mapping and
+model/host limits in the report stand. Natural-language routing and model compliance remain
+UNVERIFIED; real-agent no-ZIP success is not claimed. Two historical docs findings remain.
+Next: user acceptance of local delivery, not publication/merge/deployment.

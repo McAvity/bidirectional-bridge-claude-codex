@@ -1,6 +1,6 @@
 # Wave17 — feature-workflow jako osobny plugin
 
-Status: EXECUTION AUTHORIZED, 2026-09-22. Plan review PASS; decyzja01 obejmuje W17-01–04.
+Status: LOCAL DELIVERY, 2026-09-22. W17-01–04 wykonane; niezależne review PASS; odbiór użytkownika oczekuje.
 Feature: F-W17-workflow-plugin. Pierwotna baza: `1d7f93b`; aktualizacja po wave16: `33d6061`.
 
 Osobny plugin workflow dla Codexa i Claude Code, w obecnym repo i marketplace.
@@ -31,5 +31,6 @@ obowiązkowym przekazaniem do użytkownika. Po review/decyzji proponowane zlecen
 cały zakres wraz z integracją na branchu i poprawkami. Publikacja i smoke modeli
 pozostają odrębne; plan nie zmienia skilli, pluginów ani runtime.
 
-Następne wywołanie: `$feature-review` w trybie plan dla
-`docs/features/F-W17-workflow-plugin/`, następnie `$feature-decide`.
+Następny krok: odbiór lokalnej dostawy przez użytkownika; `$feature-decide` zapisze rzeczywistą odpowiedź.
+Dowody i ograniczenia: [handoff](../features/F-W17-workflow-plugin/handoff.md).
+Powyższe zapisy propozycji kolejności są historycznym planem; bieżące wykonanie opisuje postęp.
