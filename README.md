@@ -102,7 +102,10 @@ solves on its own. The bridge addresses them with explicit mechanisms:
 - production security or production readiness;
 - large-scale, multi-user, or long-horizon reliability;
 - benchmark advantage over either agent alone;
-- optimal or automatic routing of work between models.
+- optimal or automatic routing of work between models;
+- that a model picks the intended `feature-*` entry from a natural request, or follows the
+  workflow plugin's instruction-source answer — host tests prove what each client lists and
+  hands over, not what a model then does.
 
 Controlled Claude-alone versus Codex-alone versus bridged benchmarking is planned but has
 **not** been completed. This repository makes no performance, cost, or security claim beyond
@@ -174,19 +177,49 @@ then installs dependencies and builds a separate immutable runtime. No manual cl
 `npm init`, global MCP server or per-worktree installation is needed on this machine.
 Network access to GitHub and npm (or an existing cache) is needed on first setup.
 
-### Optional: native Claude Code plugin
+### The feature workflow plugin, in either client
 
-The bridge already supplies its delegated Claude with the executor plugin from its
-pinned runtime. You do **not** need this extra installation for Astra to delegate.
-To use the same workflow directly in Claude Code, run in a normal terminal:
+`feature-workflow` is a separate plugin with the six phases — `feature-design`,
+`feature-plan`, `feature-execute`, `feature-review`, `feature-decide` and
+`feature-exchange` — for Codex and Claude Code. It works on its own: no bridge, MCP
+server, runtime or project setup is needed to plan, execute or review a feature.
 
 ```sh
+codex plugin marketplace add McAvity/bidirectional-bridge-claude-codex --ref feature-workflow
+codex plugin add feature-workflow@claude-codex-bridge
+
 claude plugin marketplace add McAvity/bidirectional-bridge-claude-codex
-claude plugin install bridge-claude@claude-codex-bridge
+claude plugin install feature-workflow@claude-codex-bridge
 ```
 
-The fork's default branch is `feature-workflow`; both marketplaces live in this repo.
-See [plugin distribution](docs/plugin-distribution.md) for updates and removal.
+Ask naturally (“Review the plan in docs/plans/example.md”), or name an entry by its
+qualified name: `/feature-workflow:feature-review` in Claude Code; Codex lists it as
+`feature-workflow:feature-review`. Installing the plugin grants no authority to
+delegate, publish or execute a plan.
+
+In a project that pins a bridge runtime, every entry first runs a read-only check and then
+follows **that runtime's** instructions, not the plugin's copy — so a plugin update never
+changes the rules of a pinned project, and a project on the older 0.3.2 runtime keeps its
+ZIP round packages. A missing or conflicting pin is reported with a next step, never
+papered over with a newer copy. The bridge's delegated Claude needs no personal
+installation: the runtime hands it its own packages.
+
+### Migrating from `bridge-claude` in Claude Code
+
+`bridge-claude` used to be the way to get the feature workflow in Claude Code; it stays the
+runtime's executor package and keeps its bridge role and upgrade skills. With both installed,
+Claude Code lists `bridge-claude:feature-*` beside `feature-workflow:feature-*`. Move your
+own profile explicitly — nothing is disabled for you:
+
+```sh
+claude plugin marketplace update claude-codex-bridge
+claude plugin install feature-workflow@claude-codex-bridge
+claude plugin disable bridge-claude@claude-codex-bridge    # or: claude plugin uninstall …
+```
+
+Codex needs no such step: `bridge-codex` carries no `feature-*` entry. The fork's default
+branch is `feature-workflow`; both marketplaces live in this repo. See
+[plugin distribution](docs/plugin-distribution.md) for source selection, updates and removal.
 
 ### Developer / no-plugin alternative
 
@@ -529,6 +562,8 @@ because this release publishes source on GitHub, not packages to the npm registr
 - [Installation](docs/installation.md) — requirements, deterministic setup, project MCP config
 - [Setup](docs/setup.md) — pinned runtimes, worktree init, update, rollback, doctor
   ([layout](docs/setup-layout.md))
+- [Plugin distribution](docs/plugin-distribution.md) — bridge and feature-workflow plugins,
+  instruction source, migration, updates and removal
 - [Usage](docs/usage.md) — manager workflow, worked examples, writing tasks
 - [Telemetry](docs/telemetry.md) — recorded fields, sources, privacy boundary
 - [Recovery](docs/recovery.md) — persisted handles, strict same-task resume

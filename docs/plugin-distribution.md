@@ -6,14 +6,16 @@ The per-worktree file layout is [setup-layout.md](setup-layout.md); the CLI proc
 
 ## What is distributed
 
-Both packages and both marketplace manifests are generated from the single canonical instruction
+All packages and both marketplace manifests are generated from the single canonical instruction
 set in this repository and committed here. There is no second copy to keep in sync, and no
 separate marketplace repository.
 
 | Path | Contents |
 | --- | --- |
 | `plugins/bridge-codex/` | Codex package: thin entry and bridge-upgrade skills, installer and pinned release descriptor |
-| `plugins/bridge-claude/` | Claude Code package: feature workflow, bridge role and bridge-upgrade skills, same installer |
+| `plugins/bridge-claude/` | Claude Code package: feature workflow, bridge role and bridge-upgrade skills, same installer; also the runtime's executor package |
+| `plugins/feature-workflow-codex/` | Codex `feature-workflow` plugin: the six `feature-*` skills, their references, the exchange helper, the workflow guide and the instruction-source reader |
+| `plugins/feature-workflow-claude/` | the same `feature-workflow` plugin for Claude Code |
 | `.agents/plugins/marketplace.json` | Codex marketplace; the repository root is the marketplace root |
 | `.claude-plugin/marketplace.json` | Claude Code marketplace, same root |
 
@@ -31,15 +33,16 @@ never assumed to install dependencies.
 
 ```sh
 codex plugin marketplace add <path to a clone, or owner/repo>
-codex plugin add bridge-codex@claude-codex-bridge
+codex plugin add bridge-codex@claude-codex-bridge            # the bridge (setup, upgrade, manager entry)
+codex plugin add feature-workflow@claude-codex-bridge        # the feature workflow
 
 claude plugin marketplace add <path to a clone, or owner/repo>
-claude plugin install bridge-claude@claude-codex-bridge
+claude plugin install feature-workflow@claude-codex-bridge   # the feature workflow
 ```
 
-The Claude Code package is optional for the manager→executor path: the bridge passes the executor
-the package from its own installed runtime. Install it when you want to use the same roles natively
-in Claude Code.
+The workflow plugin is independent of the bridge; install either or both. The Claude Code bridge
+package is optional for the manager→executor path: the bridge passes the executor the packages from
+its own installed runtime. Neither plugin declares a dependency on the other.
 
 The Codex package installs the runtime itself. `scripts/plugin-packages/release.json` pins a full
 commit and a repository; `setup` resolves that commit from an explicit `--source`, from
@@ -51,11 +54,14 @@ unchanged for anyone who prefers it.
 
 ## Where the instructions live
 
-Only in the installed runtime, `<home>/runtimes/<id>/`. The Codex package ships a thin `bridge`
-entry skill whose whole job is to report where that is and tell the manager to read it. Nothing
-generic is ever written into a target repository, so a manager cannot end up reading a newer
-workflow than the runtime it is driving, and the delegated executor is given
-`--plugin-dir <runtime>/plugins/bridge-claude` by the runtime itself.
+For bridge work, only in the installed runtime, `<home>/runtimes/<id>/`. The Codex package ships a
+thin `bridge` entry skill whose whole job is to report where that is and tell the manager to read
+it. Nothing generic is ever written into a target repository, so a manager cannot end up reading a
+newer workflow than the runtime it is driving, and the delegated executor is given
+`--plugin-dir <runtime>/plugins/bridge-claude` (and the runtime's own
+`plugins/feature-workflow-claude` when it ships one) by the runtime itself. The `feature-workflow`
+plugin carries a standalone copy for projects without the bridge and defers to the pinned runtime
+everywhere else ([below](#the-feature-workflow-plugin)).
 
 A plugin cache refresh cannot disturb any of this. Codex deletes the previous version's cache
 directory on update; the pinned runtime is not in a cache.
@@ -77,6 +83,106 @@ installs nothing; the plugin's `setup` remains the only way to install or prepar
 The mode requires a runtime that ships it. A project pinned to an older runtime answers
 `RUNTIME_WITHOUT_STATUS` and exits instead of serving, so the flag never silently starts an MCP
 server; use the plugin's `status` there.
+
+## The feature-workflow plugin
+
+`feature-workflow` (plugin name in both clients; packages `plugins/feature-workflow-codex/` and
+`plugins/feature-workflow-claude/`) offers six entries. Both clients list plugin skills only by
+their qualified name; neither lists a bare `feature-*` from a plugin.
+
+| Entry | Claude Code | Codex |
+| --- | --- | --- |
+| design, plan, execute, review, decide, exchange | `/feature-workflow:feature-design` … `/feature-workflow:feature-exchange` | listed as `feature-workflow:feature-design` … |
+
+A natural request works as well. Which entry a model picks from a natural request is not something
+a host test can show; the qualified name is the unambiguous form.
+
+### Which instructions an entry follows
+
+Every entry opens with a generated preamble: before any phase work it runs the packaged reader from
+the target worktree and follows its answer.
+
+```sh
+node "${CLAUDE_PLUGIN_ROOT}/scripts/select-source.mjs" --json   # Claude Code
+node "<package>/scripts/select-source.mjs" --json              # Codex; <package> is two levels above SKILL.md
+```
+
+| Worktree | Answer | What the entry does |
+| --- | --- | --- |
+| no bridge declaration, or not a Git worktree | `plugin` (`STANDALONE_NO_BRIDGE` / `_NO_WORKTREE`) | follows its own package: skills, guide, `local-delivery.md`, exchange helper |
+| a valid pin whose runtime is installed and serving | `runtime` (`PINNED_RUNTIME`) | follows the pinned runtime's skills, guide and helper instead — also for a task scoped as standalone |
+| pinned runtime missing, commit mismatch, diverged selection, disabled project, invalid declaration, legacy wave12 layout | `none`, exit 3 | reports `code` and `next_step` and stops |
+| the package lies inside a *different* installed runtime than the pin | `none` (`PACKAGE_PIN_MISMATCH`) | refuses, even with `--standalone` |
+| any `none` above when the user explicitly asked to work without the bridge (`--standalone`) | `plugin` (`EXPLICIT_STANDALONE`) | follows the package and records `pin_not_used` |
+
+The pin always comes first: the reader reads the declaration and lets the pinned runtime's own
+`scripts/bridge-project/locate.mjs` classify it — the same classifier as `status` above — before it
+looks at where the package itself lies. A package inside the pinned runtime (a delegated round) is
+accepted as that runtime (`package_matches_pin: true`). The read writes nothing, installs nothing,
+claims no manager, never runs `.bridge-project/entry.mjs` and never starts an MCP server. Its
+`record` line (`INSTRUCTIONS=runtime:<id> SET=<digest>` or `INSTRUCTIONS=plugin:feature-workflow@<v>
+DIGEST=<digest>`) goes into the ledger of a significant execution or review.
+
+### Old pins keep their rules
+
+| Project | Instructions | Round handoff |
+| --- | --- | --- |
+| no bridge, current plugin | the plugin's, including wave16 `local-delivery.md` | — |
+| pinned to `0.3.2-34ecb8d45465` (before wave16) | that runtime's; it has no `local-delivery.md` | ZIP round package through the runtime's helper, unchanged |
+| pinned to a runtime built after wave16 | that runtime's | `DELIVERY=local-v1`; a package on request |
+
+A marketplace update changes what standalone use reads; it never moves a pin or changes a pinned
+runtime's files. The generator copies `local-delivery.md` byte for byte; it has no production
+receipt parser.
+
+### The delegated executor
+
+The runtime passes a delegated Claude `--plugin-dir <runtime>/plugins/bridge-claude` and, when the
+runtime ships it, `--plugin-dir <runtime>/plugins/feature-workflow-claude`. Claude Code matches a
+`--plugin-dir` plugin to an installed one by plugin name, so these pinned copies take precedence over
+a personal `bridge-claude` or `feature-workflow` install. A runtime without the workflow package —
+0.3.2 included — passes `bridge-claude` alone, as before; in those rounds a personally installed
+`feature-workflow` stays visible next to `bridge-claude:*`, and the round contract remains the
+authority. No personal installation is needed for delegation.
+
+### Coexistence and migration
+
+| Installed | Codex lists | Claude Code lists |
+| --- | --- | --- |
+| `feature-workflow` only | six `feature-workflow:*` | six `feature-workflow:*` |
+| with `bridge-codex` | plus `bridge-codex:bridge`, `bridge-codex:bridge-upgrade` | — |
+| with legacy `bridge-claude` | — | six `feature-workflow:*` **and** six `bridge-claude:*` |
+
+Repository-local `.agents/skills/feature-*` (a wave12 worktree, or this repository's own sources)
+are listed bare next to the plugin's entries in Codex. The supported Claude Code profile has
+`feature-workflow` enabled and `bridge-claude` disabled or uninstalled; the move is yours and is
+never automatic:
+
+```sh
+claude plugin marketplace update claude-codex-bridge
+claude plugin install feature-workflow@claude-codex-bridge
+claude plugin disable bridge-claude@claude-codex-bridge     # or: claude plugin uninstall bridge-claude@claude-codex-bridge
+claude plugin enable bridge-claude@claude-codex-bridge      # to go back
+```
+
+Disabling `bridge-claude` also hides its `using-bridge` role in native Claude Code sessions;
+delegated rounds are unaffected. `bridge-upgrade` keeps refreshing only the bridge plugins you
+installed; it never installs, disables or removes the workflow plugin.
+
+### Updating and removing the workflow plugin
+
+`claude plugin update feature-workflow@claude-codex-bridge` / `codex plugin add
+feature-workflow@claude-codex-bridge` serve the new package; Codex deletes the previous cache
+version. `claude plugin uninstall` / `codex plugin remove` remove the entries. Neither touches an
+installed runtime, a pin, `.bridge/`, exchange packages or evidence; pinned work reads the runtime.
+
+### What the host tests show, and what they do not
+
+Isolated host tests (disposable profiles, no model turn: Claude against a local HTTP 400 stub with
+zero reported usage, Codex through `debug prompt-input`) show what each client lists, which package
+a delegated session loads and that reads write nothing. They do not show which entry a model
+chooses, or that a model follows the reader's answer or a round contract over a personal copy.
+Those remain unverified until a separate, authorised model smoke.
 
 ## Enabling a project
 
