@@ -118,3 +118,12 @@ Rerun: workflow packages14, selector probes37, launcher/runner8, package generat
 and diff PASS. Docs gate retains exactly two historical wave16 findings. Full suites
 remain prior evidence; no model smoke or behavioural PASS added. Review stored on
 review/wave17-coordinator; user acceptance/integration/release remain next steps.
+
+## User acceptance and release preparation — 2026-09-23
+
+After coordinator review PASS, user instructed “merge i opublikuj nowa wewrsje”.
+This authorizes local delivery acceptance, integration and publication to the existing
+McAvity fork. Release0.4.0 includes wave16 and wave17. Runtime activation remains separate.
+Two baseline documentation lines were normalized for CI: a personal dependency path
+now uses a checkout placeholder; slash-separated prose no longer triggers the path rule.
+Original historical content remains in Git. No model smoke or new behavioural PASS.

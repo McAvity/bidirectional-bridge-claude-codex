@@ -11,6 +11,28 @@ explicitly.
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-23 (experimental)
+
+### Added
+
+- Separate `feature-workflow` marketplace plugin for Codex and Claude Code, containing
+  six feature skills and portable resources, usable without a bridge installation.
+- Read-only selection of workflow instructions from the project-pinned runtime.
+- Delegated Claude receives both pinned executor packages when available.
+
+### Changed
+
+- Wave16 local Git delivery and review instructions replace mandatory ZIP exchange for
+  new workflows; existing pinned runtimes and historical ZIP contracts stay unchanged.
+- Existing project runtime pins are not automatically upgraded by plugin updates.
+
+### Validation boundary
+
+Package/host discovery and mechanical tests are validated. Natural-language routing,
+model compliance and real-model no-ZIP execution remain unverified. This prerelease
+publishes wave16/wave17; it does not switch any active project runtime.
+
+
 ## 0.3.2 — 2026-09-19 (experimental)
 
 ### Added

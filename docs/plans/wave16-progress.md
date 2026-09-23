@@ -110,7 +110,7 @@ portable declaration/entry and creates local selection. Codex version is reporte
 as an unverified warning, not waived identity validation.
 
 After normal client exit, run the private `apply.sh`; it uses the stable installer,
-exact workspace/home/target, normal refusal checks, pin/selection assertions and
+exact workspace, bridge home and target, normal refusal checks, pin/selection assertions and
 doctor. Resume the original session recorded in the private checkpoint only if
 apply and verification succeed. Script syntax and Git diff checked; activation,
 doctor handshake and post-restart instruction discovery remain pending. On resume,
