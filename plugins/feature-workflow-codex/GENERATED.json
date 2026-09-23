@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "feature-workflow",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills/feature-design",
@@ -18,7 +18,7 @@
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "14b2e24c48a840bbdf1770ef09aa9f0ed1a4d60a1d00c7a86775f458dabe326f"
+      "sha256": "4c9f12f680c1a6ec76f3810b3af018ad57965b4e2034768be4a1e612ea94f5de"
     },
     {
       "path": "scripts/select-source.mjs",

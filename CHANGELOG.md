@@ -11,6 +11,19 @@ explicitly.
 
 ## Unreleased
 
+## 0.4.1 — 2026-09-23 (experimental)
+
+### Fixed
+
+- Managers wait for delegated deliveries without inspecting work-in-progress files.
+  Status polling defaults to at most once per ten minutes, with explicit user cadence
+  and concrete error/restart/deadline handling taking precedence.
+- Status replies, compaction and worker launch do not end the authorized assignment:
+  collect delivery and continue through agreed review gates to handoff or a real blocker.
+- Instructions do not promise to wake ended turns/closed clients or create goals automatically.
+  No runtime mechanism changed; model behaviour and token savings remain unverified.
+
+
 ## 0.4.0 — 2026-09-23 (experimental)
 
 ### Added
