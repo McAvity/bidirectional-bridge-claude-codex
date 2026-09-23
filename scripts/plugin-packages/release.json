@@ -1,9 +1,9 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.3.2",
+  "package_version": "0.4.0",
   "pinned": {
-    "commit": "34ecb8d4546543743228f2397b2a16ed10885e31",
-    "describe": "0.3.2: bridge-upgrade skill for both clients; existing runtime pins remain unchanged"
+    "commit": "4ef8461996a2878defe1f867ab221ceccdfe23ab",
+    "describe": "0.4.0: standalone workflow plugins and local Git delivery; existing project pins unchanged"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
