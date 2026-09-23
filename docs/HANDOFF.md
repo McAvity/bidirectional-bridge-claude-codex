@@ -1,5 +1,16 @@
 # Current handoff
 
+## 0.4.0 release candidate — wave16/wave17 accepted
+
+User accepted wave17 after coordinator review04 and authorized merge/publication.
+Candidate includes standalone workflow plugins and wave16 local delivery; runtime source
+`4ef8461996a2878defe1f867ab221ceccdfe23ab`. Existing project pins unchanged.
+Local build, JS590, Python100, pilot140, probes37, packages and docs PASS.
+Historical documentation path errors normalized without changing evidence semantics.
+Next: push candidate, verify GitHub CI, publish v0.4.0 prerelease; then explicit project
+upgrade and separately scoped model smoke. Original wave17 manager may close q-01 from
+[decision02](features/F-W17-workflow-plugin/decisions/02.md); its database was not modified.
+
 ## Wave17 — local delivery ready, 2026-09-22
 
 W17-01–04 implemented; independent technical review PASS on final executor deliveryfcba1e2.
