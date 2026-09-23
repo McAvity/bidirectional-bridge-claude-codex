@@ -23,9 +23,9 @@
     ".agents/skills/feature-execute/references/local-delivery.md",
     "docs/tasks/bridge-upgrade-skill.md"
   ],
-  "latest_review": "docs/features/F-W17-workflow-plugin/reviews/03-implementation.md",
-  "latest_decision": "docs/features/F-W17-workflow-plugin/decisions/01.md",
-  "next_action": "Local technical delivery PASS; await user acceptance q-01. No push/merge/publication/deployment or runtime change.",
+  "latest_review": "docs/features/F-W17-workflow-plugin/reviews/04-coordinator.md",
+  "latest_decision": "docs/features/F-W17-workflow-plugin/decisions/02.md",
+  "next_action": "User accepted local wave17 delivery and authorized integration/publication as 0.4.0. Original manager may import decision02 to close its pending q-01; runtime activation and model smoke remain separate.",
   "bridge": {
     "feature_id": "F-W17-workflow-plugin",
     "parent_task_id": "task_qkjep5yvm2"
