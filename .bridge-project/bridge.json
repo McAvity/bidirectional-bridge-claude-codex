@@ -2,7 +2,7 @@
   "format": "claude-codex-bridge.project/v1",
   "enabled": true,
   "pinned": {
-    "runtime_id": "0.3.2-34ecb8d45465",
-    "commit": "34ecb8d4546543743228f2397b2a16ed10885e31"
+    "runtime_id": "0.4.0-4ef8461996a2",
+    "commit": "4ef8461996a2878defe1f867ab221ceccdfe23ab"
   }
 }
