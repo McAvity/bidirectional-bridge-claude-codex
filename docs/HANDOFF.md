@@ -1,5 +1,17 @@
 # Current handoff
 
+## 0.4.0 published — 2026-09-23
+
+Wave17 accepted and merged into feature-workflow. Published experimental release/tag
+[v0.4.0](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.4.0)
+at4e9e710; runtime source4ef8461.
+[Release CI35822663535](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/35822663535)
+SUCCESS. Local build/JS590/Python100/pilot140/probes37/packages/docs PASS.
+Plugin distribution includes both standalone feature-workflow packages. Project runtime
+not switched; model smoke remains unverified. Next: explicit upgrade/install in the
+target project and a separately scoped smoke. Prior release-preparation entries are historical.
+
+
 ## 0.4.0 release candidate — wave16/wave17 accepted
 
 User accepted wave17 after coordinator review04 and authorized merge/publication.

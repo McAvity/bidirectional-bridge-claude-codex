@@ -127,3 +127,12 @@ McAvity fork. Release0.4.0 includes wave16 and wave17. Runtime activation remain
 Two baseline documentation lines were normalized for CI: a personal dependency path
 now uses a checkout placeholder; slash-separated prose no longer triggers the path rule.
 Original historical content remains in Git. No model smoke or new behavioural PASS.
+
+## Published — 2026-09-23
+
+Merged and pushed to feature-workflow; experimental tag/release v0.4.0 at4e9e710.
+Runtime pin4ef8461996a2878defe1f867ab221ceccdfe23ab. CI35822663535 SUCCESS.
+Local full checks: build/JS590/Python100/pilot140/probes37/packages/docs PASS.
+Release includes standalone feature-workflow for both clients. No runtime activation
+or model smoke. This final checkpoint changes documentation only; the tested release
+commit and immutable runtime pin remain unchanged.
