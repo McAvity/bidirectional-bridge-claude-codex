@@ -14,7 +14,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "f86596c4e13460678627a8a51e24522c5f46f29fb960bbd78dd23a5fc4e22db7",
+  "source_digest": "43cc7347eb90bf775d9ea7ecfbd8ab93a8cd03eff6ca40ec1d5f2c1a260939c3",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -62,7 +62,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "e35f44ced46dfe1f41f4a07bb67fef1cf55ccceb59e4ce552a6e3263ab44002a"
+      "sha256": "c42646b8fc243ba0d31fd16c1100862a992f0102f46b549d79b3b48f5b825eec"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",

@@ -34,3 +34,21 @@ These checks establish instruction consistency, not reduced token usage or model
 Observe the next ordinary task after publication/upgrade; no additional paid pilot required.
 Next: publish an instruction release and explicitly upgrade target projects when requested.
 Current pinned0.4.0 remains unchanged; the user's direct instruction applies to live sessions.
+
+## Continuity correction — 2026-09-23
+
+User additionally requested continuity after observing a manager end its turn while a
+round was running and later stop after a progress report with executable work remaining.
+Both using-bridge roles now require active waiting/collection and continuation through
+agreed review gates. No automatic goal, extra budget, retry or changed review granularity.
+The feature loop references that rule; an ended client is not claimed to be self-waking.
+
+Additional manual walkthrough (instruction consistency, not model execution):
+- Worker launched: keep waiting, no final “started” response.
+- Status question: answer briefly and continue the existing assignment.
+- Compaction: restore scope/round identity and reconcile; no duplicate launch.
+- Delivery with executable tasks remaining: continue under existing review gates.
+- Real external blocker: finish unaffected work, checkpoint and ask; respect waiting_user.
+- No usable wait/collection mechanism: disclose that limitation, no false promise.
+- Feature ready for user acceptance: hand off; do not accept it or launch /goal yourself.
+Validation repeated: three skill validators, generated packages, docs and diff PASS.

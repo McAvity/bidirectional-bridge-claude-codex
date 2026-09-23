@@ -74,6 +74,11 @@ nothing on its own.
 
 ## After every call: act on the feature state
 
+A launched or completed round does not complete the feature. Follow using-bridge’s
+continuity rule: await/collect the existing round, then proceed through the agreed review
+gates and remaining authorized work. Status replies and compaction are not stop requests.
+
+
 | State | Do | Never |
 |---|---|---|
 | `ready` | Run round 1. | Run without authorization. |

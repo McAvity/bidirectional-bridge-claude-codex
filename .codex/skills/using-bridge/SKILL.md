@@ -314,6 +314,23 @@ cadence if the attempt is still running. Never infer termination or start recove
 elapsed polling time alone. Report material changes, not each unchanged check; if the
 host requires a progress message, use known state without another inspection.
 
+Waiting is part of the active assignment. Do not end your turn merely with “started
+the worker” or “I will wait”: use the available wait/collection mechanism until delivery.
+A progress question, a change of polling cadence or context compaction does not cancel
+the original scope. Answer status questions briefly, then continue. After compaction
+restore the scope and round identity from the checkpoint and reconcile existing state
+before acting; never relaunch just because the result was absent from the recap.
+
+After delivery, collect it and continue the remaining authorized scope under the agreed
+review gates, including in-scope corrections. A completed round is not a completed feature.
+Stop for the requested final handoff/acceptance, an explicit user stop, or a genuine
+blocker requiring external input after unaffected authorized work is exhausted. Respect
+waiting_user and existing budgets; continuity grants neither new scope nor retries.
+If the host cannot maintain waiting or deliver the result, record the exact pending
+task and technical limitation rather than promise unattended continuation. Instructions
+do not wake an ended turn or closed client. Do not create or change /goal without an
+explicit user instruction.
+
 ## Minimize bridge overhead
 
 - Call `bridge_server_info` once per native session, not before every operation.

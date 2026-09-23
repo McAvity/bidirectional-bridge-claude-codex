@@ -14,7 +14,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "f86596c4e13460678627a8a51e24522c5f46f29fb960bbd78dd23a5fc4e22db7",
+  "source_digest": "43cc7347eb90bf775d9ea7ecfbd8ab93a8cd03eff6ca40ec1d5f2c1a260939c3",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -62,7 +62,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "5c44ac3856bf7aa75a1df9c4d132d98b13cdd8762c3680241bf99216ddf112e3"
+      "sha256": "916f472fcd47de45ae9f6a4f2212eabacc60fb97f6a6a1a736547d06940c5f83"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",

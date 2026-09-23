@@ -4,7 +4,10 @@
 
 [Change and validation](tasks/quiet-delegation-wait.md): removed 60–120-second polling,
 default status checks at most once per 10 minutes, no review of work-in-progress files.
-Explicit user cadence and event-driven diagnosis take precedence. Skills/packages/docs
+Continuity now keeps the assignment active through waiting, status replies and compaction;
+collect delivery and continue authorized scope under agreed review gates. No automatic /goal
+or guarantee of waking an ended client. Explicit user cadence and event-driven diagnosis
+take precedence. Skills/packages/docs
 validated; no model behaviour claim, publication or runtime switch. Next: release/upgrade
 when requested; current0.4.0 pins retain their existing instructions.
 

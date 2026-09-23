@@ -9,7 +9,7 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "ed9a8e9766248867898925dccb2853ca06e2f45b0a1cc1bd3de9153866c575ec",
+  "source_digest": "7c9a87f6bbf44f04d928d5d78f75939dfa27f71b7fab0da5e1d0c98b70a0b197",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -133,7 +133,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "5c44ac3856bf7aa75a1df9c4d132d98b13cdd8762c3680241bf99216ddf112e3"
+      "sha256": "916f472fcd47de45ae9f6a4f2212eabacc60fb97f6a6a1a736547d06940c5f83"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
@@ -157,7 +157,7 @@
     },
     {
       "path": "skills/using-bridge/SKILL.md",
-      "sha256": "bb16fd9b448f0b2f7872d93f77631f544daf0be6fdd31f971a4c95c1c79067e8"
+      "sha256": "5257d62a04f7ee328907ea9f8491a619865f5994d6177c9c2840217e1445e296"
     },
     {
       "path": "skills/using-bridge/agents/openai.yaml",
