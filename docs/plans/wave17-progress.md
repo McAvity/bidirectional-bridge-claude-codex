@@ -110,3 +110,11 @@ Project pin/entry/release unchanged; runtime0.3.2-34ecb8d45465 reports ready/ok.
 limitations and resume. No model inference pilots; model routing/compliance and no-ZIP
 model path remain UNVERIFIED. No push, merge, publication, deployment or runtime switch.
 Next: user acceptance q-01, then record actual decision and close feature/root only if accepted.
+
+## External coordinator review — 2026-09-23
+
+Independent review04 of integrated delivery038359d: PASS, no new required correction.
+Rerun: workflow packages14, selector probes37, launcher/runner8, package generation
+and diff PASS. Docs gate retains exactly two historical wave16 findings. Full suites
+remain prior evidence; no model smoke or behavioural PASS added. Review stored on
+review/wave17-coordinator; user acceptance/integration/release remain next steps.
