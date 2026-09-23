@@ -1,5 +1,17 @@
 # Current handoff
 
+## 0.4.1 published — 2026-09-23
+
+[Release v0.4.1](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.4.1)
+at51d4cba, runtime source66f3a58.
+[CI35891853363](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/35891853363)
+SUCCESS. Local skill/package/docs validation and14 distribution tests PASS.
+Waiting/continuity instructions published; no scheduler/API change or model-behaviour claim.
+Requested external-project upgrade applied to its idle feature worktree (doctor OK);
+main checkout deferred due to active clients, with a private stable apply script.
+Project pin changes remain uncommitted pending its own task attribution rules.
+Bridge repository runtime unchanged. Earlier candidate entries are historical.
+
 ## 0.4.1 release and personal-assistant2 upgrade authorized
 
 Instruction-only quiet-wait/continuity correction; source66f3a58. User requested

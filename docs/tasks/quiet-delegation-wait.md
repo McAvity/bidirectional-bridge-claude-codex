@@ -52,3 +52,11 @@ Additional manual walkthrough (instruction consistency, not model execution):
 - No usable wait/collection mechanism: disclose that limitation, no false promise.
 - Feature ready for user acceptance: hand off; do not accept it or launch /goal yourself.
 Validation repeated: three skill validators, generated packages, docs and diff PASS.
+
+## Publication — 2026-09-23
+
+User authorized release and external-project upgrade. Published v0.4.1 at51d4cba,
+source66f3a58; CI35891853363 SUCCESS. Skill/package/docs checks and14 distribution
+tests passed locally. Idle feature worktree upgraded and doctor passed; active main
+checkout deferred by normal refusal, stable private script supplied. No model smoke,
+goal activation or change to this repository's running runtime.
