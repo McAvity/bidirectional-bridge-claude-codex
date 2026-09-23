@@ -14,7 +14,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+  "source_digest": "f86596c4e13460678627a8a51e24522c5f46f29fb960bbd78dd23a5fc4e22db7",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -54,7 +54,7 @@
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "975c883c4cd9d11f1aa5038692f15b9be566ace03f88f794b00fa8e9932a5adc"
+      "sha256": "8a68dfaf00f70a6390184a3341327cc8a8eb4ac5ff9c43e03ce471cf6f4910b3"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -62,7 +62,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "3502b1ad24d152586da62ccb760a4f807237adf4b9ca4f18065a2d053f83e249"
+      "sha256": "e35f44ced46dfe1f41f4a07bb67fef1cf55ccceb59e4ce552a6e3263ab44002a"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",

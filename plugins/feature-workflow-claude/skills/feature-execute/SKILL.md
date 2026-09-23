@@ -65,6 +65,9 @@ When the implementation runs as Claude Code rounds through the bridge MCP, the r
   Rounds of one feature are one delegated workstream in one Claude session.
 - **Bridge round executor** (Claude inside a round): the section below.
 
+When coordinating a bridge round, follow using-bridge’s waiting policy: await delivery
+without reviewing work-in-progress files. Review the delivered revision, not intermediate edits.
+
 ## Bridge round executor
 
 Inside a round, this section replaces the rest of this skill: do not continue to other tasks,

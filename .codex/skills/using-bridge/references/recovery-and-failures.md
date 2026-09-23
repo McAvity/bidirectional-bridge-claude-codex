@@ -30,7 +30,7 @@ Load this reference only for a blocked, failed, interrupted, or stranded bridge 
 | `QUOTA_EXHAUSTED` | Label a runtime-quota blocker; stop; resume the same eligible task after quota returns. | Do not call the target directly or create a replacement child. |
 | `RUNTIME_UNAVAILABLE` | Report runtime unavailable and preserve durable state. | Do not bypass the bridge with a direct CLI invocation. |
 | `TIMEOUT` | Assume partial work may exist; inspect the specific durable task; use only the declared retry budget or strict recovery. | Do not blindly restart or duplicate work. |
-| Client timeout on `bridge_feature_run` | The round keeps running. Call `bridge_feature_get`; while `running`, wait and read again; when it ends, read the result with `bridge_get_task`. | Do not recover a running round, send a recovery `message`, or retry with a new key. |
+| Client timeout on `bridge_feature_run` | The round keeps running. Call `bridge_feature_get`; while `running`, follow the SKILL.md waiting policy (default status interval 10 minutes); when it ends, read the result with `bridge_get_task`. | Do not recover a running round, send a recovery `message`, or retry with a new key. |
 | Child `BLOCKED` / `PARTIAL` | Consume useful evidence and blocker at the parent; resolve or report it. | Do not mutate the child as manager or upgrade it to complete. |
 | `NOT_OWNER` | Stop the mutation; read state if needed. | Do not steal ownership, finish the task, or release another holder’s lease. |
 | `SCOPE_CONFLICT` | Wait and recheck, narrow to disjoint scope, or return a blocker. | Do not steal or overlap the lease. |

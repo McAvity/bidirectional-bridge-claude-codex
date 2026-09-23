@@ -1,5 +1,13 @@
 # Current handoff
 
+## Quiet delegated waiting — local instruction change
+
+[Change and validation](tasks/quiet-delegation-wait.md): removed 60–120-second polling,
+default status checks at most once per 10 minutes, no review of work-in-progress files.
+Explicit user cadence and event-driven diagnosis take precedence. Skills/packages/docs
+validated; no model behaviour claim, publication or runtime switch. Next: release/upgrade
+when requested; current0.4.0 pins retain their existing instructions.
+
 ## 0.4.0 published — 2026-09-23
 
 Wave17 accepted and merged into feature-workflow. Published experimental release/tag

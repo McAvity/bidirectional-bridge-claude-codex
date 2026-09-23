@@ -77,7 +77,7 @@ nothing on its own.
 | State | Do | Never |
 |---|---|---|
 | `ready` | Run round 1. | Run without authorization. |
-| `running` | A round or its recovery executes. Wait: `sleep 60`–`120`, then `bridge_feature_get`; repeat within the deadline (this polling is the intended exception to "avoid polling"). Keep this session open. | Start a round, ask, or recover. |
+| `running` | A round or its recovery executes. Follow using-bridge’s waiting policy: await the pending call/notification; only if polling is needed, read `bridge_feature_get` at most once per 10 minutes by default. Keep this session open; do not inspect work-in-progress files. | Start a round, ask, or recover. |
 | `awaiting_review` | Review the latest round (below) and route the result. | Treat `COMPLETE` as review or acceptance. |
 | `blocked` | `bridge_get_task(latest_task_id)`; read the blocker. Resolve within authority with `bridge_resume_delegated_task({task_id, message, idempotency_key: "<task>:resume-<task.attempt + 1>"})`; otherwise ask the user. | Run a new round, create a sibling, or delegate around the blocker. |
 | `waiting_user` | Show the pending question; wait for the user's real answer. | Run, recover, or treat silence as consent. |

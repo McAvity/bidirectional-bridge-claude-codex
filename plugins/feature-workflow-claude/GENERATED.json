@@ -14,7 +14,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "ff4822a3c15dd3bafdc8ec9ad4d77f4dc516a83e827813980bba0cd02570000a",
+  "source_digest": "f86596c4e13460678627a8a51e24522c5f46f29fb960bbd78dd23a5fc4e22db7",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -54,7 +54,7 @@
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "7c9d372605b26acceea65e222140a646310ab08e25f26fceecc85c9f00893024"
+      "sha256": "7a3806898a979c4cc77f9ac45a90d653ad4d0ddc542f5d30555e6d1a9600f005"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -62,7 +62,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "b3b32fceca65a1f3face5888c8c328d1f42ae3e208bb47350a322154fc67ee9d"
+      "sha256": "5c44ac3856bf7aa75a1df9c4d132d98b13cdd8762c3680241bf99216ddf112e3"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",

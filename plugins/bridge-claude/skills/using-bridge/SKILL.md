@@ -244,6 +244,25 @@ Report only authoritative records:
 
 Leave unknown values `null`; never estimate. Cached token fields are dimensions of input usage, not extra tokens to add again. Interactive manager sessions may have no attempt telemetry; do not invent manager totals. Never expose raw execution handles, prompts, transcripts, credentials, or private trust state.
 
+## Waiting for a delegated result
+
+Prefer the pending tool call or completion notification over polling. Do not start a
+parallel status loop while the original call is still pending. If the client requires
+short wait/resume calls, use them only to collect that call, not to inspect worker progress.
+When status polling is necessary, read only the known task/feature state, at most once
+per 10 minutes by default; an explicit user cadence takes precedence. Use available
+waiting tools within their limits rather than a busy loop or a long blocking shell sleep.
+
+Do not inspect the worker's uncommitted files, diffs or transcript to narrate progress
+or begin review. Review the delivered revision after completion. Previously authorized,
+independent work may continue without touching the worker's scope. A concrete error,
+blocker, elapsed executor deadline, interruption/restart or user request for status
+justifies an earlier targeted check; silence or lack of file changes does not.
+After a client timeout, reconcile durable state once immediately, then return to this
+cadence if the attempt is still running. Never infer termination or start recovery from
+elapsed polling time alone. Report material changes, not each unchanged check; if the
+host requires a progress message, use known state without another inspection.
+
 ## Minimize bridge overhead
 
 - Call `bridge_server_info` once per native session, not before every operation.
