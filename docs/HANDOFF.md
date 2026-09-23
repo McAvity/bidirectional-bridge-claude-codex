@@ -1,5 +1,13 @@
 # Current handoff
 
+## 0.4.1 release and personal-assistant2 upgrade authorized
+
+Instruction-only quiet-wait/continuity correction; source66f3a58. User requested
+publication and upgrade of personal-assistant2. Prepare target project and active F-001
+worktree separately; never switch live clients. No model smoke or /goal promised.
+Skill/package/docs validation PASS; next: green release CI, publish, prepare/apply
+checked project updates, or supply deferred commands for active clients.
+
 ## Quiet delegated waiting — local instruction change
 
 [Change and validation](tasks/quiet-delegation-wait.md): removed 60–120-second polling,
