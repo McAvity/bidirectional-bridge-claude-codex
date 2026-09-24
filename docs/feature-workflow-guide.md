@@ -9,23 +9,31 @@ zestawem bramek ani zgód.
 
 ```mermaid
 flowchart TD
-    A[Pomysł i cel użytkownika] --> B[Brief: zakres i kryteria odbioru]
-    B --> C[Plan techniczny i taski]
-    C --> D[Review planu]
+    A[Pomysł i cel użytkownika] --> B["Brief: zakres i kryteria odbioru<br/>feature-design"]
+    B --> C["Plan techniczny i taski<br/>feature-plan"]
+    C --> D["Review planu<br/>feature-review: plan"]
     D --> E{Plan gotowy?}
     E -->|Poprawki| C
-    E -->|Tak| F[Decyzja i zlecenie implementacji]
-    F --> G[Astra zleca rundę Claude’owi przez bridge]
-    G --> H[Claude: implementacja, testy, commity i ledger]
-    H --> I[Astra: sprawdzenie dostawy i wymagane review]
+    E -->|Tak| F["Decyzja i zlecenie implementacji<br/>feature-decide: zapis zgody użytkownika"]
+    F --> G["Astra zleca rundę przez bridge<br/>feature-execute: koordynator + using-bridge"]
+    G --> H["Claude: implementacja, testy, commity i ledger<br/>feature-execute: wykonawca rundy"]
+    H --> I["Astra: sprawdzenie dostawy i wymagane review<br/>feature-execute + feature-review"]
     I -->|Poprawki lub kolejne taski| G
-    I -->|Cały zakres dostarczony| J[Review zintegrowanego featura]
+    I -->|Cały zakres dostarczony| J["Review zintegrowanego featura<br/>feature-review: implementation / corrections"]
     J -->|Istotne błędy| G
-    J -->|Gotowy do odbioru| K[Odbiór użytkownika]
+    J -->|Gotowy do odbioru| K["Odbiór użytkownika<br/>feature-decide: zapis decyzji"]
     K -->|Poprawki| G
-    K -->|Akceptacja| L[Zamknięcie featura]
-    L --> M[Merge, publikacja lub wdrożenie według osobnej zgody]
+    K -->|Akceptacja| L["Zamknięcie featura<br/>feature-execute: koordynator + using-bridge"]
+    L --> M["Merge, publikacja lub wdrożenie według osobnej zgody<br/>Procedura projektu"]
+    D -.-> X["Opcjonalne przekazanie ZIP-a<br/>feature-exchange"]
+    J -.-> X
 ```
+
+Nazwy pod krokami wskazują używane skille, a nie obowiązkowe polecenia do wpisania.
+`feature-decide` zapisuje decyzję — nie zastępuje zgody użytkownika. Przerywane
+strzałki oznaczają opcjonalną wymianę przez `feature-exchange`, np. przy review
+bez dostępu do repo; eksport można też zlecić w innym momencie.
+
 
 Diagram pokazuje normalny przebieg. Rzeczywista blokada może pojawić się na każdym
 etapie; jej obsługę opisano niżej. Review zintegrowanej dostawy może być jednocześnie

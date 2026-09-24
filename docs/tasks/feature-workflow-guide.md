@@ -9,5 +9,6 @@ Validation: documentation link check PASS (212 files); git diff --check PASS.
 Checked the guide against the shared workflow and coordinator/executor instructions.
 Diagram uses standard
 Mermaid flowchart syntax; no graphical rendering verified.
-Next: local integration into feature-workflow; no publication or runtime update needed
-for this documentation-only change.
+Integrated locally into feature-workflow. Follow-up: annotated diagram steps with
+skills, executor/coordinator roles and optional exchange; link and diff checks PASS.
+No publication or runtime update performed.
