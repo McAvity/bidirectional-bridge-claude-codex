@@ -1,5 +1,12 @@
 # Current handoff
 
+## Feature workflow user guide — 2026-09-24
+
+Added [Polish end-to-end guide](feature-workflow-guide.md), Mermaid lifecycle diagram,
+example prompts and role/acceptance boundaries. Linked from README and technical
+feature workflow. Documentation only; no skill, package or runtime changes.
+Validation and next step: [progress](tasks/feature-workflow-guide.md).
+
 ## 0.4.1 published — 2026-09-23
 
 [Release v0.4.1](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.4.1)

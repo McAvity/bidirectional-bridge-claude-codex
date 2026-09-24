@@ -13,6 +13,9 @@ and reviews at the delivered SHA; ZIP exchange is optional, for recipients witho
 repository access or on request. The paired `using-bridge` skills live under `.codex/` and
 `.claude/`. See [fork setup and limitations](docs/fork-setup.md).
 
+Practical guide (Polish): [from an idea to an accepted feature](docs/feature-workflow-guide.md),
+with a Mermaid diagram, example prompts and the Astra–Claude bridge workflow.
+
 Historical upstream certification artifacts do **not** certify these modified sources.
 This fork has not issued a new certification. See the current build and test results
 instead; do not interpret an old manifest as validation of this branch.

@@ -1,5 +1,9 @@
 # Feature sessions and user questions
 
+For the end-to-end user journey and Mermaid diagram, start with
+[Od pomysłu do odebranego featura](feature-workflow-guide.md). This page describes
+the bridge tools and durable states.
+
 A Codex manager can keep one Claude conversation across multiple bounded tasks. A
 completed round stays `DONE`; review corrections create another task with a new
 objective, scope and verification criteria. The new invocation strictly resumes the
