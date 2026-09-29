@@ -5,7 +5,11 @@
 Source fix on `fix/doctor-profile-context`; [scope and validation](tasks/doctor-profile-context.md).
 Doctor selects `--codex-profile` > `CLAUDE_CODEX_BRIDGE_CODEX_PROFILE` > default, reports the
 context and source, layers the selected profile's trust over the base and refuses empty,
-invalid or unknown profiles. No version bump, release or runtime change. Next: manager review.
+invalid or unknown profiles. Manager corrected malformed-config handling and verified
+34 setup/process tests, build, packages and docs; real-host env-profile doctor OK.
+Claude committed 31370d3 but timed out before structured delivery; no successful full
+bridge round is claimed. No version bump, release or runtime change. Next: merge/release
+when requested, then propagate selected profile explicitly from the launcher.
 
 ## 0.4.2 published — 2026-09-29
 

@@ -40,3 +40,44 @@ Risks: Codex's exact trust resolution between worktree and main-repository entri
 not specified; malformed or unreadable base configuration leaves trust unknown
 (`CODEX_CONFIG_NOT_LOADED` with `malformed_files`). Real-host verification with the user's
 profile is left to the user/manager.
+
+
+Manager review after attempt completion:
+
+Claude created commit 31370d3, but bridge attempt task_p6ddajbzx3 ended TIMEOUT at
+its 30-minute deadline without a structured deliverable or recorded verifications.
+No replacement worker or recovery attempt was started. Manager reviewed the committed
+revision and independently verified all six new profile cases, build, packages and
+documentation checks. Real-host environment-selected profile gave doctor status OK
+and a 35-tool MCP handshake. This is useful implementation evidence, not a successful
+completed bridge delegation.
+
+Review found a missing case: a successful CLI server query could hide malformed
+selected configuration. A synthetic reproduction returned codex_project OK with a
+broken selected profile. Correction refuses an unverifiable selected context even
+when the query succeeds; expanded regression covers malformed profile and base files.
+The untrusted diagnostic now refers to effective trust, including explicit overrides.
+Final regression verification follows; active runtime and personal launcher unchanged.
+
+
+Final manager validation (Node 24.14 / Python 3.12, macOS, process tests outside sandbox):
+
+- `npx vitest run scripts/setup/setup.test.ts scripts/setup/processes.test.ts`:
+  34/34 pass, two files, 242.02 seconds. Includes six profile cases, expanded
+  malformed-config success-response coverage and existing setup/process protection.
+- `npm run build`, `node scripts/plugin-packages/generate.mjs --check`,
+  `node docs/tools/check-doc-links.mjs`, `git diff --check`: PASS.
+- Independent synthetic malformed-profile reproduction now returns
+  CODEX_PROFILE_INVALID (before correction it returned OK).
+- Real-host explicit environment profile: doctor status OK, context source
+  environment, selected project MCP configuration OK, handshake 35 tools.
+- No full repository suite rerun claimed for this change; the relevant setup and
+  process suites and build/distribution/documentation gates passed.
+
+Implementation is reviewed and committed locally on fix/doctor-profile-context.
+Next: merge/release through the ordinary workflow when requested, then update the
+runtime and explicitly propagate a launcher's selected profile through the documented
+environment variable. Default/no-profile machines need no extra setting. Personal
+launcher, active runtime and marketplace cache are unchanged. The timed-out child
+remains FAILED in bridge state; successful implementation review does not relabel
+its incomplete protocol delivery as a completed delegated run.

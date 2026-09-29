@@ -949,8 +949,13 @@ describe("bridge setup CLI", () => {
       }
       // A profile Codex refuses or whose file does not parse is not a project problem.
       expect(doctor(["--codex-profile", "work"], { "work.config.toml": trust("trusted") }, { FAKE_CODEX_REFUSE_PROFILE: "1" }).project.code).toBe("CODEX_PROFILE_INVALID");
-      const malformed = doctor(["--codex-profile", "work"], { "config.toml": trust("trusted"), "work.config.toml": "bad = [\n" });
-      expect(malformed.project.code).toBe("CODEX_PROFILE_INVALID");
+      // Some CLI versions silently ignore profiles. Success must not hide a broken file.
+      for (const extra of [{}, visible]) {
+        const malformed = doctor(["--codex-profile", "work"], { "config.toml": trust("trusted"), "work.config.toml": "bad = [\n" }, extra);
+        expect(malformed.project.code).toBe("CODEX_PROFILE_INVALID");
+      }
+      const malformedBase = doctor(["--codex-profile", "work"], { "config.toml": "bad = [\n", "work.config.toml": "" }, visible);
+      expect(malformedBase.project).toMatchObject({ status: "unknown", code: "CODEX_CONFIG_NOT_LOADED" });
     }, 240_000);
 
     it("refuses an empty or malformed explicit selection before querying Codex", () => {

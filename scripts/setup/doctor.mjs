@@ -342,7 +342,16 @@ function codexProjectCheck(add, root, identity, manifest, env, context, setupPro
     }
     if (profile) {
       const trust = codexTrust(root, identity, env, profile);
-      if (trust.known && !trust.profileFound) return profileMissing(trust);
+      if (!trust.known) {
+        const malformedProfile = trust.malformed?.includes(trust.files.at(-1));
+        add("codex_project", malformedProfile ? "error" : "unknown", malformedProfile ? "CODEX_PROFILE_INVALID" : "CODEX_CONFIG_NOT_LOADED",
+          `cannot verify the selected Codex context (${where}) because its configuration could not be read; a successful server query does not establish which profile was loaded`, {
+            details: { ...contextDetails, checked_files: trust.files, ...(trust.malformed ? { malformed_files: trust.malformed } : {}) },
+            nextStep: "check that the selected configuration files parse and are readable, and Python 3.11+ is available; then rerun doctor",
+          });
+        return;
+      }
+      if (!trust.profileFound) return profileMissing(trust);
     }
     const transport = server.transport ?? {};
     const same =
@@ -390,7 +399,7 @@ function codexProjectCheck(add, root, identity, manifest, env, context, setupPro
     profileMissing(trust);
   } else if (trust.known && !trust.trusted) {
     // This is the queried CLI context only; a running client may have been started differently.
-    add("codex_project", "error", "CODEX_PROJECT_UNTRUSTED", `in the queried Codex CLI context (${where}) neither the worktree nor its main repository is trusted, so that context ignores this project's configuration; a Codex session started with another profile may differ`, {
+    add("codex_project", "error", "CODEX_PROJECT_UNTRUSTED", `in the queried Codex CLI context (${where}) the effective project trust is not trusted, so that context ignores this project's configuration; a Codex session started with another profile may differ`, {
       details: { ...contextDetails, checked_files: trust.files },
       nextStep: profile
         ? `start \`codex --profile ${profile}\` in the worktree root and approve the project trust prompt, or select the profile your interactive \`codex\` uses`
