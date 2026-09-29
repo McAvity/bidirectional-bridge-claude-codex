@@ -315,3 +315,53 @@ older than a separately installed Python. The diagnostic distinguishes a missing
 executable, missing `tomllib`, invalid TOML and an execution failure. The conservative
 configuration scan remains in effect when parsing is unavailable. This warning is
 separate from active-session detection and does not itself mean `/proc` is required.
+
+
+### Linux protected processes: opt-in read-only observer
+
+On some Linux hosts even processes of the same user have protected `/proc` cwd or
+file descriptors (for example a user service or SSH agent). The default scan
+returns `ACTIVE_USE_UNKNOWN`. Closing Codex cannot make those other processes readable.
+Do not kill system services, disable OS restrictions or run the installer as root.
+
+With a version of the installer that supports this option, authorize **only the
+read-only process observation** in your terminal, then retry the ordinary command:
+
+```sh
+sudo -v
+CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo node scripts/plugin-packages/bridge-plugin.mjs update --to <runtime-id> --yes
+CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo node scripts/bridge.mjs doctor --workspace "$PWD"
+```
+
+Close project clients normally before applying an update. Replace `<runtime-id>`
+with the exact already prepared target. Keep the same bridge home and doctor
+profile as your normal commands. The environment option also applies to setup,
+legacy init/update/rollback and doctor; it is deliberately not enabled globally.
+`native` is the default; unknown values and `sudo` on macOS are refused.
+
+Only `/usr/bin/sudo -n -- /usr/bin/python3 -I -S -c <fixed reader> ...` runs as root.
+Python reads process metadata for the original user, never writes, kills processes,
+imports project modules or executes npm/Git. The installer remains your ordinary
+user. Inspect `scripts/setup/process-observer.py` before authorizing it; this is
+trusted installer code, not a boundary against a malicious copy of the installer.
+`-I -S` disables user Python paths and site startup; the system Python must exist.
+Sudo must permit this command; `sudo -v` alone cannot grant a command disallowed by
+local policy. No password is read by the installer and it never launches a prompt.
+
+Each check requests a fresh, bounded observation, tied to the workspace, UID,
+installer PID and request nonce. There is no saved “idle” report or override flag.
+An active client, launcher or open state file still blocks the update. Missing
+privilege, incomplete inspection, changing process identity or an invalid reply
+still yields `ACTIVE_USE_UNKNOWN`. Root in a restricted container may also lack
+the access required for a complete observation; the option does not override that.
+Results expose only relevant PIDs and fixed activity labels, not argv, cwd or fd targets.
+
+Why not use `ps` everywhere? Linux `ps` itself reads `/proc` and cannot report all
+open state files. It would need `lsof`, which faces the same Linux permission checks,
+and flattened arguments lose the exact argv boundaries used for workspace paths.
+Keep Linux's native observer and macOS's existing `ps`/`lsof` backend. A snapshot is
+not a lock against a new client starting afterwards; keep clients closed throughout
+an update, as before.
+
+References: [Linux ps](https://man7.org/linux/man-pages/man1/ps.1.html) and
+[proc fd permissions](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html).

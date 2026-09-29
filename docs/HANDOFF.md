@@ -1,5 +1,12 @@
 # Current handoff
 
+## Linux protected-process installer correction
+
+Explicit read-only privileged observation for Linux procfs permission refusals;
+installer remains unprivileged, native Linux and macOS defaults unchanged.
+[Scope, validation and next step](tasks/linux-process-inspection.md).
+No release, publication or active runtime switch.
+
 ## 0.4.3 published — 2026-09-29
 
 [v0.4.3](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.4.3)

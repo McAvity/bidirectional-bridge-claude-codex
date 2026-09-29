@@ -298,3 +298,12 @@ the public documentation set.
 Open an issue with the failing command, its exit code, the stable error `code`, and the
 redacted state you can share. Do not paste execution handles, prompts, transcripts, trust
 state, or credentials — see [security.md](security.md).
+
+
+### Setup still reports ACTIVE_USE_UNKNOWN outside the sandbox
+
+On Linux, protected same-user processes can deny cwd/fd inspection even after all
+project clients exit. Changing to `ps` does not supply the missing open-file evidence.
+Use the [explicit read-only process observer](setup.md#linux-protected-processes-opt-in-read-only-observer)
+when permitted by your host's sudo policy. Never sudo the whole installer or ignore
+all permission errors. The optional observer retains active-session refusals.

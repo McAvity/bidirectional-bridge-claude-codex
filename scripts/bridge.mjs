@@ -41,6 +41,10 @@ const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Co
 
 Common options: --home <dir> (default $CLAUDE_CODEX_BRIDGE_HOME or
 ~/.local/share/claude-codex-bridge), --json. Exit status: 0 ok, 1 refused or problems, 2 usage.
+
+Linux process inspection: default native /proc; explicit
+CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo uses a read-only system Python observer
+via sudo -n. Authorize with sudo -v in your terminal first; never sudo this installer.
 `;
 
 const VALUE_FLAGS = new Set([

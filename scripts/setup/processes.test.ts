@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdtempSync, realpathSync, chmodSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -113,3 +115,102 @@ describe("macOS mount inspection", () => {
     expect(filesystemOf("/project", { platform: "darwin", execute: () => ({ ...ok(""), status: 1 }) })).toBeNull();
   });
 });
+
+describe("explicit read-only Linux privileged observation", () => {
+  function probe(change: (report: any) => any = r => r, resultChange: (result: any) => any = r => r) {
+    const root = temp();
+    const calls: any[] = [];
+    const result = findActiveUse(root, { platform: "linux", env: { CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "sudo" }, selfPid: 100,
+      execute: (command: string, args: string[], options: any) => {
+        calls.push({ command, args, options });
+        const [user, installer, workspace, nonce] = args.slice(-4);
+        return resultChange(ok(JSON.stringify(change({ format: "bridge-process-observation/v1", observer_euid: 0,
+          uid: Number(user), installer_pid: Number(installer), root: workspace, nonce, supported: true, entries: [], unreadable: 0 }))));
+      } });
+    return { result, calls, root };
+  }
+  it("uses explicit opt-in and isolated system Python, keeping the installer unprivileged", () => {
+    if (uid === 0) return;
+    const { result, calls, root } = probe();
+    expect(result).toMatchObject({ supported: true, entries: [], observer: "sudo-read-only" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].command).toBe("/usr/bin/sudo");
+    expect(calls[0].args.slice(0, 7)).toEqual(["-n", "--", "/usr/bin/python3", "-I", "-S", "-c", expect.stringContaining("def observe(")]);
+    expect(calls[0].args.slice(-4, -1)).toEqual([String(uid), "100", root]);
+    expect(calls[0].options).toMatchObject({ cwd: "/", timeoutMs: 15000 });
+  });
+  it("retains active clients and protected state holders", () => {
+    if (uid === 0) return;
+    const entries = [{ pid: 200, command: "process", kinds: ["client", "bridge-mcp", "state-open"] }];
+    expect(probe(r => ({ ...r, entries })).result).toMatchObject({ supported: true, entries });
+    expect(probe(r => ({ ...r, entries, supported: false, unreadable: 2 })).result).toMatchObject({ supported: false, entries, unreadable: 2 });
+  });
+  it("fails closed on unavailable privilege, partial output, warnings and mismatched replies", () => {
+    if (uid === 0) return;
+    for (const patch of [{ status: 1 }, { error: { code: "ENOENT" } }, { signal: "SIGTERM" }, { stderr: "denied" }, { stdout: "{" }]) {
+      expect(probe(r => r, r => ({ ...r, ...patch })).result.supported).toBe(false);
+    }
+    for (const patch of [{ uid: -1 }, { root: "/other" }, { nonce: "old" }, { installer_pid: 101 }, { observer_euid: 1000 },
+      { supported: "true" }, { unreadable: 1 }, { entries: [{ pid: 200, command: "SECRET", kinds: ["client"] }] },
+      { entries: [{ pid: 200, command: "process", kinds: ["unknown"] }] }]) {
+      const result = probe(r => ({ ...r, ...patch })).result;
+      expect(result.supported).toBe(false);
+      expect(JSON.stringify(result)).not.toContain("SECRET");
+    }
+  });
+  it("does not invoke sudo implicitly or from a sandbox, another platform or a root installer", () => {
+    const root = temp(), proc = temp();
+    const execute = () => { throw new Error("must not execute"); };
+    expect(findActiveUse(root, { platform: "linux", proc, env: {}, execute }).supported).toBe(true);
+    for (const options of [
+      { platform: "linux", env: { CODEX_SANDBOX: "restricted", CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "sudo" } },
+      { platform: "darwin", env: { CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "sudo" } },
+      { platform: "linux", env: { CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "typo" } },
+    ]) expect(findActiveUse(root, { ...options, execute }).supported).toBe(false);
+    if (uid === 0) expect(probe().result.supported).toBe(false);
+  });
+});
+
+
+it.runIf(process.platform === "linux" && uid !== 0 && process.env.BRIDGE_TEST_PRIVILEGED_OBSERVER === "1")(
+  "observes real protected Linux processes without allowing an active state holder", async () => {
+    const root = temp();
+    mkdirSync(join(root, ".bridge"));
+    writeFileSync(join(root, ".bridge", "db"), "synthetic");
+    const observe = () => findActiveUse(root, { env: { ...process.env, CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "sudo" } });
+    async function protectedProcess(holder: boolean) {
+      const code = `import ctypes, sys
+libc = ctypes.CDLL(None)
+handle = open(".bridge/db", "rb") if sys.argv[1] == "holder" else None
+if handle: assert libc.prctl(15, b"codex", 0, 0, 0) == 0
+assert libc.prctl(4, 0, 0, 0, 0) == 0
+print("ready", flush=True)
+sys.stdin.read()
+`;
+      const child = spawn("/usr/bin/python3", ["-I", "-S", "-c", code, holder ? "holder" : "unrelated", "PRIVATE_TEST_ARGUMENT"],
+        { cwd: root, stdio: ["pipe", "pipe", "pipe"] });
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error("protected fixture did not start")), 5000);
+          child.stdout.once("data", () => { clearTimeout(timer); resolve(); });
+          child.once("error", error => { clearTimeout(timer); reject(error); });
+        });
+        const native = findActiveUse(root, { env: { ...process.env, CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "native" } });
+        expect(native.supported).toBe(false);
+        const report = observe();
+        expect(report.supported, JSON.stringify(report)).toBe(true);
+        expect(JSON.stringify(report)).not.toContain("PRIVATE_TEST_ARGUMENT");
+        if (holder) expect(report.entries).toContainEqual({ pid: child.pid, command: "process", kinds: ["client", "state-open"] });
+        else expect(report.entries).toEqual([]);
+      } finally {
+        if (child.exitCode === null && child.signalCode === null) {
+          const ended = once(child, "exit");
+          child.stdin.end();
+          await ended;
+        }
+      }
+    }
+    await protectedProcess(false);
+    await protectedProcess(true);
+    expect(observe()).toMatchObject({ supported: true, entries: [] });
+  }, 60000);

@@ -46,6 +46,10 @@ Options:
                                 AGENTS.md (setup/update only). Never written without this flag;
                                 the plan shows the exact diff, including for a project that has
                                 no AGENTS.md yet, and the rest of the file is kept.
+
+Linux process inspection: default native /proc; explicit
+CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo uses a read-only system Python observer
+via sudo -n. Authorize with sudo -v in your terminal first; never sudo this installer.
 `;
 
 const VALUE_FLAGS = new Set(["--to", "--source", "--commit", "--home"]);

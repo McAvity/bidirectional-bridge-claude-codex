@@ -31,7 +31,7 @@
     },
     {
       "path": "scripts/bridge.mjs",
-      "sha256": "a516c7dfb6a5b47635de6a0030623e1c67b7c832d3a06a7ba9aa1b50e0c112d5"
+      "sha256": "fd637afe917b2fbfc6e22f9f4a87bb66e56d05ecd80c3dbb25014a79fd1f6c03"
     },
     {
       "path": "scripts/diagnostics/collect.mjs",
@@ -55,7 +55,7 @@
     },
     {
       "path": "scripts/plugin-packages/bridge-plugin.mjs",
-      "sha256": "1681d284ad7f7949b0df207735b20a225ad22a2fe94d83de445d9c4e891110ec"
+      "sha256": "90fcc3d0f41fe9992700f6ad234142f46dcb08ab040d05b8aa5c6c08854e73cd"
     },
     {
       "path": "scripts/plugin-packages/release.json",
@@ -78,8 +78,12 @@
       "sha256": "b1a13d45378900a57a8b887d168148fbcf71d1aeb56e42b21dc19943bcae6ff9"
     },
     {
+      "path": "scripts/setup/process-observer.py",
+      "sha256": "6f55110531b2fc4e13f5325e79a8f7cfe0222e746b718b50c9bc7a07b71465fb"
+    },
+    {
       "path": "scripts/setup/processes.mjs",
-      "sha256": "a3e9a7d045d88eef65e0b334657f2038f30819b9eea683f1d35a7815045d61a4"
+      "sha256": "08c91023158a50ae26189fa7640e181aaf629e441218664829c46db475612311"
     },
     {
       "path": "scripts/setup/runtime.mjs",

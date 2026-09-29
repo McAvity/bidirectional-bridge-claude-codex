@@ -3,6 +3,7 @@
 
 import { readFileSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { run } from "./common.mjs";
+import { randomBytes } from "node:crypto";
 import { basename, resolve, sep } from "node:path";
 
 function realOrNull(path) {
@@ -40,6 +41,12 @@ function describe(argv) {
 export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid = process.pid, platform = process.platform, execute = run } = {}) {
   if (env.CODEX_SANDBOX) {
     return { supported: false, reason: "running inside a Codex sandbox, which hides other processes", nextStep: "run the command outside the restricting sandbox on this host", entries: [] };
+  }
+  const inspection = env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION ?? "native";
+  if (!["native", "sudo"].includes(inspection)) return unknown("invalid CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION", "use native (default) or sudo (Linux read-only observer)");
+  if (inspection === "sudo") {
+    if (platform !== "linux" || proc !== "/proc" || process.getuid() === 0) return unknown("sudo observation requires a non-root Linux installer using the host procfs");
+    return privilegedLinuxObservation(root, { env, selfPid, execute });
   }
   if (platform === "darwin") {
     // Background processes can start/exit between ps and lsof. Retry the entire
@@ -116,7 +123,7 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
     if (kinds.length > 0) entries.push({ pid, kinds, command: describe(argv) });
   }
   return unreadable > 0
-    ? { ...unknown("some same-user process information could not be read"), entries, unreadable }
+    ? { ...unknown("some same-user process information could not be read", "close project clients; if host procfs remains restricted, authorize sudo -v in your terminal, then rerun with CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo (read-only observer; never sudo the installer)"), entries, unreadable }
     : { supported: true, entries, unreadable };
 }
 
@@ -245,4 +252,43 @@ function parseMacFiles(output) {
     }
   }
   return { records };
+}
+
+/** Opt-in only. The privileged interpreter executes a fixed, self-contained reader;
+ * npm/git/build/project writes remain in this unprivileged parent. No saved report accepted.
+ */
+function privilegedLinuxObservation(root, { env, selfPid, execute }) {
+  const canonicalRoot = realOrNull(root);
+  const uid = process.getuid();
+  const nextStep = "close project clients; run sudo -v in your terminal and retry with CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo; if inspection is still incomplete, keep the refusal and diagnose host permissions";
+  if (!canonicalRoot) return unknown("cannot resolve workspace for process observation", nextStep);
+  const nonce = randomBytes(16).toString("hex");
+  let result;
+  try {
+    const code = readFileSync(new URL("./process-observer.py", import.meta.url), "utf8");
+    // -I ignores PYTHONPATH/user packages; -S suppresses site startup; absolute binaries
+    // and argv (no shell) avoid PATH lookup or workspace/module execution as root.
+    result = execute("/usr/bin/sudo", ["-n", "--", "/usr/bin/python3", "-I", "-S", "-c", code,
+      String(uid), String(selfPid), canonicalRoot, nonce], { env, cwd: "/", timeoutMs: 15000 });
+  } catch {
+    return unknown("read-only privileged process observer unavailable", nextStep);
+  }
+  if (result.error || result.signal || result.status !== 0 || result.stderr.trim() || result.stdout.length > 1024 * 1024) {
+    return unknown("read-only privileged process observer failed or needs sudo authorization", nextStep);
+  }
+  let report;
+  try { report = JSON.parse(result.stdout); } catch { return unknown("invalid process observation", nextStep); }
+  const kinds = new Set(["bridge-mcp", "client", "state-open"]);
+  if (!report || report.format !== "bridge-process-observation/v1" || report.observer_euid !== 0 ||
+      report.uid !== uid || report.installer_pid !== selfPid || report.root !== canonicalRoot || report.nonce !== nonce ||
+      typeof report.supported !== "boolean" || !Number.isSafeInteger(report.unreadable) || report.unreadable < 0 ||
+      !Array.isArray(report.entries) || report.entries.length > 10000 ||
+      report.entries.some(entry => !entry || !Number.isSafeInteger(entry.pid) || entry.pid <= 0 || entry.pid === selfPid ||
+        entry.command !== "process" || !Array.isArray(entry.kinds) || entry.kinds.length < 1 || entry.kinds.length > 3 ||
+        entry.kinds.some(kind => !kinds.has(kind)))) {
+    return unknown("invalid or mismatched process observation", nextStep);
+  }
+  const entries = report.entries.map(({ pid, kinds, command }) => ({ pid, kinds, command }));
+  if (!report.supported || report.unreadable !== 0) return { ...unknown("privileged process observation is incomplete", nextStep), entries, unreadable: report.unreadable };
+  return { supported: true, entries, unreadable: 0, observer: "sudo-read-only" };
 }

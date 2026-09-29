@@ -25,6 +25,10 @@ jobs:
       - run: node docs/tools/check-doc-links.mjs
       - name: Diagnose runner process visibility
         run: node scripts/setup/ci-process-access.mjs
+      # A read-only sudo observer is tested against an actual PR_SET_DUMPABLE=0
+      # child. The installer and test runner stay unprivileged; no models are used.
+      - name: Protected Linux process observer
+        run: BRIDGE_TEST_PRIVILEGED_OBSERVER=1 npx vitest run scripts/setup/processes.test.ts
       # Setup must refuse unreadable same-user processes. The hosted runner service
       # can hold protected descriptors; tests get their own unprivileged user so
       # the service is outside their observation scope, without weakening the guard.
