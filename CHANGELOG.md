@@ -11,6 +11,29 @@ explicitly.
 
 ## Unreleased
 
+## 0.4.3 — 2026-09-29 (experimental)
+
+### Fixed
+
+- Doctor selects the Codex profile explicitly: `--codex-profile`, then
+  `CLAUDE_CODEX_BRIDGE_CODEX_PROFILE`, then the default configuration. Reports
+  identify the selected context and avoid attributing its trust result to a
+  differently configured interactive session.
+- Selected-profile trust overrides the base configuration; inactive profiles are
+  ignored. Invalid, missing or unverifiable selected contexts refuse conservatively,
+  including when a CLI server query succeeds despite unreadable configuration.
+- Machines without profiles keep the existing default behavior. No personal
+  configuration, launcher or trust entry is changed automatically.
+
+### Validation boundary
+
+Setup/process regressions (34 tests), build, generated packages and documentation
+checks pass on macOS. A real-host profile-aware doctor reports OK and discovers
+35 MCP tools. A delegated implementation attempt committed code but timed out
+before structured delivery; manager review and corrections completed validation.
+This release does not claim successful completion of that delegated round.
+
+
 ## 0.4.2 — 2026-09-29 (experimental)
 
 ### Fixed

@@ -81,3 +81,9 @@ environment variable. Default/no-profile machines need no extra setting. Persona
 launcher, active runtime and marketplace cache are unchanged. The timed-out child
 remains FAILED in bridge state; successful implementation review does not relabel
 its incomplete protocol delivery as a completed delegated run.
+
+
+Publication authorized: user requested release and runtime update. Preparing 0.4.3
+in release/doctor-profile-0.4.3. Current project's selected runtime is 0.4.2; keep
+it unchanged while its client is active. Next: CI, publish, refresh plugin, install
+an immutable runtime and prepare checked deferred update with explicit profile.
