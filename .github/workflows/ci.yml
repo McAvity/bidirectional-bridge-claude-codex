@@ -9,6 +9,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -30,16 +31,21 @@ jobs:
       - name: Prepare isolated test user
         run: |
           sudo useradd --create-home --shell /bin/bash bridge-test
-          sudo chown -R bridge-test:bridge-test "$GITHUB_WORKSPACE"
+          bridge_test_workspace=$(mktemp -d /tmp/bridge-ci.XXXXXX)
+          cp -a "$GITHUB_WORKSPACE/." "$bridge_test_workspace/"
+          chmod 755 "$bridge_test_workspace"
+          sudo chown -R bridge-test:bridge-test "$bridge_test_workspace"
+          echo "BRIDGE_TEST_WORKSPACE=$bridge_test_workspace" >> "$GITHUB_ENV"
       - name: Verify isolated process visibility
+        working-directory: ${{ env.BRIDGE_TEST_WORKSPACE }}
         run: sudo -H -u bridge-test env PATH="$PATH" CI=true node scripts/setup/ci-process-access.mjs --require-readable
       - name: JavaScript tests (isolated user)
+        working-directory: ${{ env.BRIDGE_TEST_WORKSPACE }}
         run: sudo -H -u bridge-test env PATH="$PATH" CI=true npm test
       - name: Python tests (isolated user)
+        working-directory: ${{ env.BRIDGE_TEST_WORKSPACE }}
         run: sudo -H -u bridge-test env PATH="$PATH" CI=true python3 -m unittest discover -s tests -v
       # Pilot tools: synthetic regressions and the tooling dry run (scripted executor, no model).
       - name: Pilot tooling tests (isolated user)
+        working-directory: ${{ env.BRIDGE_TEST_WORKSPACE }}
         run: sudo -H -u bridge-test env PATH="$PATH" CI=true python3 -m unittest discover -s tools/pilot/tests -v
-      - name: Restore checkout ownership
-        if: always()
-        run: sudo chown -R "$(id -un):$(id -gn)" "$GITHUB_WORKSPACE"

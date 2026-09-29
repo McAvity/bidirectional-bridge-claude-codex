@@ -122,3 +122,8 @@ remains conservative. CI now runs regression suites under a dedicated unprivileg
 UID, separating test processes from hosted-runner infrastructure, and restores
 checkout ownership for post-job actions. No model or credentials are passed to tests.
 Next: validate isolated-user Linux CI before publishing.
+
+CI 36593587176 confirmed runner-UID EACCES on cwd/fd access (35 unreadable
+operations). The dedicated user then could not traverse /home/runner to the source;
+use an owned copy under /tmp instead. Checkout credentials are not persisted.
+The source checkout stays owned by the runner; tests remain unprivileged.
