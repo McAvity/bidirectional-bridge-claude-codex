@@ -87,7 +87,7 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "2c46104ae10162c12bdb4fef818fd309be4f238bcfa18713fce29c2672ff9451"
+      "sha256": "496d51418a5e257c6b8b31a7b13e80eff5967ecc5544d0261256d50bf9cad4a9"
     },
     {
       "path": "skills/bridge-upgrade/SKILL.md",

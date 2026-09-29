@@ -52,3 +52,10 @@ still refuses ambiguity that can affect the target. Regression covers unrelated
 space-containing paths and repeated workspace options. Focused12 PASS.
 Final doctor on the requested worktree: macOS/APFS/config/active-use/handshake35
 PASS; only project trust remains an error, plus the nonblocking Codex version warning.
+
+
+Final integration timing: concurrent inherited bootstrap exceeded the test's3.5s
+collection window on this host. Stop doing the process scan inside the native
+mutation guard, where its result was already deliberately ignored; CLI checks
+are unchanged. Give this concurrency test10s and require an actual response,
+with both test processes cleaned in finally. Recheck native bootstrap/ownership.

@@ -687,15 +687,19 @@ describe("an inherited worktree serves without any manual step (AC-03)", () => {
     git(project, "worktree", "add", "-q", "-b", "wt-a", a);
     git(project, "worktree", "add", "-q", "-b", "wt-b", b);
     const runs = await Promise.all([
-      launchEntry(real(a), { frames: [...HANDSHAKE, authorizedMutation("a")] }),
-      launchEntry(real(b), { frames: [...HANDSHAKE, authorizedMutation("b")] }),
+      launchEntry(real(a), { frames: [...HANDSHAKE, authorizedMutation("a")], waitMs: 10_000 }),
+      launchEntry(real(b), { frames: [...HANDSHAKE, authorizedMutation("b")], waitMs: 10_000 }),
     ]);
-    for (const [index, where] of [a, b].entries()) {
-      const result = runs[index].replies.find((f: any) => f.id === 2);
-      expect(result?.result?.isError, runs[index].stderr).toBeFalsy();
-      const record = JSON.parse(readFileSync(join(real(where), ".bridge-runtime/install.json"), "utf8"));
-      expect(record.workspace.root).toBe(real(where));
-      runs[index].child.kill("SIGKILL");
+    try {
+      for (const [index, where] of [a, b].entries()) {
+        const result = runs[index].replies.find((f: any) => f.id === 2);
+        expect(result, runs[index].stderr).toBeDefined();
+        expect(result?.result?.isError, runs[index].stderr).toBeFalsy();
+        const record = JSON.parse(readFileSync(join(real(where), ".bridge-runtime/install.json"), "utf8"));
+        expect(record.workspace.root).toBe(real(where));
+      }
+    } finally {
+      for (const run of runs) run.child.kill("SIGKILL");
     }
   }, 180_000);
 });

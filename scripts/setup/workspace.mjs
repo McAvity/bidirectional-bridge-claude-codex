@@ -1048,13 +1048,13 @@ export function planChange({
 
   if (plan.changed && plan.conflicts.length === 0) {
     plan.refusals.push(...compatibilityRefusals(target, root, env));
-    const use = findActiveUse(root, { env });
     // A worktree that never selected a runtime cannot run one; only its state files matter then.
     const blocking = insideGuardedMutation
       ? []
       : currentId === null
         ? ["bridge-mcp", "state-open"]
         : ["bridge-mcp", "state-open", "client"];
+    const use = blocking.length === 0 ? null : findActiveUse(root, { env });
     if (blocking.length === 0) {
       // The guard already serialised this call; there is nothing for the scan to decide.
     } else if (!use.supported) {
