@@ -11,6 +11,26 @@ explicitly.
 
 ## Unreleased
 
+## 0.4.2 — 2026-09-29 (experimental)
+
+### Fixed
+
+- macOS setup inspects same-user processes and open files with ps/lsof instead of
+  requiring Linux /proc. Active clients/state still block configuration changes;
+  unreadable or ambiguous process state refuses conservatively.
+- Platform-specific diagnostics distinguish unsupported systems from restricted
+  process access, recognize macOS/APFS and explain Python 3.11/tomllib requirements.
+- Guarded native bootstrap avoids a redundant process scan. Test fixtures handle
+  macOS realpath behavior, process startup timing and live WAL checkpoints.
+
+### Validation boundary
+
+Focused macOS regressions, real host synthetic process checks and MCP handshake pass.
+Two unrelated JS failures reproduce on the prior baseline; operator pilot tooling
+still includes a Linux-dependent probe. No real-model delegation is claimed.
+See [macOS validation](docs/tasks/macos-setup.md).
+
+
 ## 0.4.1 — 2026-09-23 (experimental)
 
 ### Fixed

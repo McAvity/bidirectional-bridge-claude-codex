@@ -104,3 +104,13 @@ Next: launch/restart Codex in the target with Node 24 and Homebrew Python 3.12 o
 PATH and approve its native project-trust prompt. Review/merge this local source
 branch before a general release; plugin marketplace/cache remains at 0.4.1.
 Remaining baseline JS and operator pilot portability failures are separate work.
+
+
+## Publication authorized — 2026-09-29
+
+User requested merge to the default branch, publication and upgrade of this bridge
+repository. Fix fast-forwarded into feature-workflow; preparing 0.4.2 in the isolated
+release/macos-0.4.2 worktree. Existing main-checkout pin is 0.4.0-4ef8461996a2,
+not installed locally; selection absent. Normal active-session checks will apply.
+Next: pin release source, validate Linux CI, publish prerelease, refresh installed
+Codex bridge plugin and prepare/apply this project's checked setup.
