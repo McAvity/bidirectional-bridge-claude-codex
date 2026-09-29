@@ -127,3 +127,36 @@ CI 36593587176 confirmed runner-UID EACCES on cwd/fd access (35 unreadable
 operations). The dedicated user then could not traverse the runner home directory to the source;
 use an owned copy under /tmp instead. Checkout credentials are not persisted.
 The source checkout stays owned by the runner; tests remain unprivileged.
+
+
+## Published 0.4.2 — 2026-09-29
+
+Default branch feature-workflow includes release preparation and CI corrections.
+Annotated tag v0.4.2 / GitHub prerelease at bdabd802590187d991b3f0655c123478f222491a;
+immutable runtime 0.4.2-26921c088934 source 26921c0889344d52618d5839af26adcc15baf35a.
+CI 36593971019 PASS: 41 JS files / 602 tests; Python 100 (95 pass, 5 skips);
+pilot tooling 131 (129 pass, 2 skips). Runner process diagnostic confirmed 35
+unreadable operations versus zero under the dedicated test UID. Production process
+refusals remain unchanged; tests run without privileged access or runner credentials.
+
+On macOS, final release setup/status succeeded in a fresh synthetic repository and
+MCP handshake exposed 35 tools. Doctor's only error was expected project trust;
+Codex 0.159 also retained its nonblocking version warning. No model call or manager
+claim was made. Focused process/Python/mount tests 12/12 and distribution tests 3/3 pass.
+Earlier native-macOS full-suite limits remain documented above.
+
+This bridge repository: original declared 0.4.0 runtime was missing. Installed it
+beside 0.4.2 so the checked installer could recognize existing managed files; setup
+plan is now valid. Apply is deliberately deferred while the native client uses this
+workspace, per bridge-upgrade skill. The private script uses a stable installer copy,
+exact target pin, ordinary refusal checks, then status and doctor, stopping on error.
+Next: exit affected clients normally, run prepared script, reopen this session and
+verify live MCP discovery before claiming a real delegated round. No forced exit,
+trust edit, active runtime overwrite or update of unrelated worktrees.
+
+Installed Codex bridge-codex marketplace plugin refreshed through its CLI to 0.4.2;
+verified exact release pin and copied the complete package outside cache for deferred
+apply. Shell syntax checked. Auto-review rejected a repeated setup-plan invocation
+in the active project, citing pin/selection mutation risk; no workaround attempted.
+The earlier plan is valid; no subsequent apply was performed. Running client
+instructions/MCP are not reloaded by plugin installation.

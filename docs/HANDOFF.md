@@ -1,11 +1,18 @@
 # Current handoff
 
-## 0.4.2 publication — in progress, 2026-09-29
+## 0.4.2 published — 2026-09-29
 
-User authorized merge, release and this repository upgrade. Default branch is
-feature-workflow; macOS fix merged. Runtime source `26921c0889344d52618d5839af26adcc15baf35a`.
-Next: Linux CI, prerelease publication, installed plugin refresh and checked local
-setup (may require current client exit). [Evidence](tasks/macos-setup.md).
+Merged into default branch feature-workflow and published experimental
+[v0.4.2](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.4.2)
+at bdabd80, runtime source 26921c0.
+[CI 36593971019](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/36593971019)
+PASS: JS 602, Python 100 (5 skips), pilot tooling 131 (2 skips).
+CI uses a dedicated unprivileged UID; hosted-runner same-user EACCES remains a
+production refusal, not a bypass. macOS fresh setup/handshake (35 tools) pass.
+Runtime 0.4.2-26921c088934 installed. This repository's pin is deliberately still
+0.4.0 while the current client is active; checked setup plan is valid, apply after
+normal client exit with the prepared private stable installer. No real model smoke.
+[Progress and remaining limits](tasks/macos-setup.md).
 
 ## macOS setup correction — locally delivered, 2026-09-29
 
