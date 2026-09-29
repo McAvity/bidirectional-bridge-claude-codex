@@ -188,21 +188,29 @@ function findMacActiveUse(root, { env, selfPid, execute }) {
       if (args.error || args.status !== 0 || args.stderr.trim() || !args.stdout.trim()) {
         return { ...unknown("macOS could not read a live Node process's arguments; retry the command"), transient: true };
       }
-      const line = args.stdout.trim();
+      const line = args.stdout.replace(/\n$/u, "");
       if (cwd === canonicalRoot && /(?:^|[\s/])codex(?:\.js)?(?:\s|$)/u.test(line)) kinds.push("client");
       if (cwd === canonicalRoot && /(?:^|[\s/])\.bridge-project\/entry\.mjs(?:\s|$)/u.test(line)) kinds.push("bridge-mcp");
       if (/(?:^|[\s/])native-bridge-mcp\.mjs(?:\s|$)/u.test(line)) {
-        const workspace = /(?:^|\s)--workspace\s+(.+)$/u.exec(line);
         if (cwd === canonicalRoot) {
           kinds.push("bridge-mcp");
-        } else if (!workspace) {
-          // No explicit workspace: this bridge belongs to its other cwd.
         } else {
-          // ps flattens argv. Never guess the boundary of an argument containing spaces.
-          const value = workspace[1];
-          if (/\s/u.test(value)) return unknown("macOS ps cannot unambiguously resolve a bridge workspace argument containing whitespace");
-          const path = resolve(cwd, value);
-          if ((realOrNull(path) ?? path) === canonicalRoot) kinds.push("bridge-mcp");
+          // ps flattens argv. Consider every possible end of each workspace
+          // argument. If none resolves here, this bridge cannot use this root.
+          // If a whitespace-containing value could point here, refuse to guess.
+          for (const workspace of line.matchAll(/(?:^|\s)--workspace (?=([\s\S]+))/gu)) {
+            const value = workspace[1];
+            const boundaries = [...value.matchAll(/\s/gu)].map((match) => match.index);
+            if (boundaries.length > 256) return unknown("macOS bridge arguments are too ambiguous to inspect safely");
+            const possible = [...boundaries, value.length].some((end) => {
+              const path = resolve(cwd, value.slice(0, end));
+              return (realOrNull(path) ?? path) === canonicalRoot;
+            });
+            if (!possible) continue;
+            if (boundaries.length) return unknown("macOS ps cannot unambiguously resolve a bridge workspace argument containing whitespace");
+            kinds.push("bridge-mcp");
+            break;
+          }
         }
       }
     }

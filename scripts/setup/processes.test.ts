@@ -46,7 +46,12 @@ describe("portable active-use inspection", () => {
       expect(mac(root, { comm: "/node", args })).toMatchObject({ supported: true, entries: [{ kinds: expect.arrayContaining(["bridge-mcp"]) }] });
     }
   });
-  it("does not guess flattened argv boundaries", () => expect(mac(temp(), { comm: "/node", cwd: tmpdir(), args: "node /native-bridge-mcp.mjs --workspace /some spaced path" }).supported).toBe(false));
+  it("refuses ambiguous target arguments but permits unrelated workspaces with spaces", () => {
+    const root = temp();
+    expect(mac(root, { comm: "/node", cwd: tmpdir(), args: `node /native-bridge-mcp.mjs --workspace ${root} other` }).supported).toBe(false);
+    expect(mac(root, { comm: "/node", cwd: tmpdir(), args: "node /native-bridge-mcp.mjs --workspace /some unrelated spaced path" })).toMatchObject({ supported: true, entries: [] });
+    expect(mac(root, { comm: "/node", cwd: tmpdir(), args: `node /native-bridge-mcp.mjs --workspace /elsewhere --workspace ${root}` })).toMatchObject({ supported: true, entries: [{ kinds: ["bridge-mcp"] }] });
+  });
   it("distinguishes unsupported systems and sandbox restrictions", () => {
     expect(findActiveUse(temp(), { platform: "win32", env: {} }).reason).toContain("not supported");
     expect(findActiveUse(temp(), { platform: "darwin", env: { CODEX_SANDBOX: "seatbelt" } }).reason).toContain("sandbox");

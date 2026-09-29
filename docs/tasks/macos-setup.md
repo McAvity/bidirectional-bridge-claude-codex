@@ -43,3 +43,12 @@ Setup integration15d9d14:14/16 passed, two doctor-platform failures; Vitest IPC
 starvation still required a short event-loop pause between synchronous cases.
 Bridge-project test helper also relied on GNU realpath accepting a missing final
 component; replaced it with equivalent portable Node filesystem handling.
+
+
+Parallel integration exposed over-conservative handling of another bridge's
+whitespace-containing workspace argument. The scanner now checks every possible
+argument boundary, ignores it only if none can resolve to this workspace, and
+still refuses ambiguity that can affect the target. Regression covers unrelated
+space-containing paths and repeated workspace options. Focused12 PASS.
+Final doctor on the requested worktree: macOS/APFS/config/active-use/handshake35
+PASS; only project trust remains an error, plus the nonblocking Codex version warning.
