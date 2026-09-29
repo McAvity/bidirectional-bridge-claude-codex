@@ -22,7 +22,24 @@ jobs:
       - run: npm run build
       - run: npm run packages:check
       - run: node docs/tools/check-doc-links.mjs
-      - run: npm test
-      - run: python3 -m unittest discover -s tests -v
+      - name: Diagnose runner process visibility
+        run: node scripts/setup/ci-process-access.mjs
+      # Setup must refuse unreadable same-user processes. The hosted runner service
+      # can hold protected descriptors; tests get their own unprivileged user so
+      # the service is outside their observation scope, without weakening the guard.
+      - name: Prepare isolated test user
+        run: |
+          sudo useradd --create-home --shell /bin/bash bridge-test
+          sudo chown -R bridge-test:bridge-test "$GITHUB_WORKSPACE"
+      - name: Verify isolated process visibility
+        run: sudo -H -u bridge-test env PATH="$PATH" CI=true node scripts/setup/ci-process-access.mjs --require-readable
+      - name: JavaScript tests (isolated user)
+        run: sudo -H -u bridge-test env PATH="$PATH" CI=true npm test
+      - name: Python tests (isolated user)
+        run: sudo -H -u bridge-test env PATH="$PATH" CI=true python3 -m unittest discover -s tests -v
       # Pilot tools: synthetic regressions and the tooling dry run (scripted executor, no model).
-      - run: python3 -m unittest discover -s tools/pilot/tests -v
+      - name: Pilot tooling tests (isolated user)
+        run: sudo -H -u bridge-test env PATH="$PATH" CI=true python3 -m unittest discover -s tools/pilot/tests -v
+      - name: Restore checkout ownership
+        if: always()
+        run: sudo chown -R "$(id -un):$(id -gn)" "$GITHUB_WORKSPACE"

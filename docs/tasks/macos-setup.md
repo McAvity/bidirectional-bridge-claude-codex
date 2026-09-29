@@ -114,3 +114,11 @@ release/macos-0.4.2 worktree. Existing main-checkout pin is 0.4.0-4ef8461996a2,
 not installed locally; selection absent. Normal active-session checks will apply.
 Next: pin release source, validate Linux CI, publish prerelease, refresh installed
 Codex bridge plugin and prepare/apply this project's checked setup.
+
+
+Release CI 36592810435 refused Linux setup with ACTIVE_USE_UNKNOWN: same-user
+process information on the hosted runner could not be read. The production guard
+remains conservative. CI now runs regression suites under a dedicated unprivileged
+UID, separating test processes from hosted-runner infrastructure, and restores
+checkout ownership for post-job actions. No model or credentials are passed to tests.
+Next: validate isolated-user Linux CI before publishing.
