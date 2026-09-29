@@ -29,6 +29,7 @@ coverage/
 !.codex/skills/using-bridge/**
 
 # Logs and temporary workspaces
+.worktrees/
 *.log
 *.tmp
 *.temp

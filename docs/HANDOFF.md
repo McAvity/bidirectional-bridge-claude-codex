@@ -8,10 +8,11 @@ published at d356c81, runtime source a2cc942. Merged into feature-workflow.
 PASS: JS 608, Python 100 (5 skips), pilot tooling 131 (2 skips).
 Codex bridge plugin refreshed to 0.4.3; runtime 0.4.3-a2cc94209132 installed beside
 0.4.2. Fresh synthetic setup/status and 35-tool handshake pass.
-Current project's 0.4.2 pin stays unchanged while its client is active. Private checked
-update script includes explicit profile, status/doctor and optional exact-session resume.
-Next: exit affected clients normally, run the prepared script, resume the same manager
-and verify the newly selected runtime. [Details](tasks/doctor-profile-context.md).
+Current project upgraded to 0.4.3 through the checked script; profile-aware doctor
+reports OK and live MCP answers. The same manager resumed at epoch 1/generation 3.
+User authorized committing the new pin and ignoring local .worktrees/ directories.
+Validation: JSON pin, ignore rule and diff checks; no new model delegation claimed.
+[Details](tasks/doctor-profile-context.md).
 
 ## Doctor Codex profile context — locally delivered, 2026-09-29
 
