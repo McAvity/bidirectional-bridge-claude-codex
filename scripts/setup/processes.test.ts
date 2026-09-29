@@ -12,14 +12,18 @@ const temp = () => { const p = realpathSync(mkdtempSync(join(tmpdir(), "bridge-p
 afterEach(() => { for (const p of dirs.splice(0)) rmSync(p, { recursive: true, force: true }); });
 const uid = process.getuid!();
 const ok = (stdout: string) => ({ status: 0, stdout, stderr: "" });
-function mac(root: string, options: { comm?: string; cwd?: string; paths?: string[]; args?: string; fail?: string; missing?: boolean; after?: string; stderr?: string } = {}) {
+function mac(root: string, options: { comm?: string; cwd?: string; paths?: string[]; args?: string; fail?: string; missing?: boolean; after?: string; stderr?: string; targetFiles?: string; targetIdentity?: string; targetExited?: boolean } = {}) {
   let snapshots = 0;
   const rows = `${uid} 100 /node\n${uid} 200 ${options.comm ?? "/bin/sleep"}\n`;
   const fields = `p100\0cnode\0\nfcwd\0n${root}\0\np200\0csleep\0\n` + (options.missing ? "" : `fcwd\0n${options.cwd ?? root}\0\n`) + (options.paths ?? []).map(p => `f3\0n${p}\0\n`).join("");
   return findActiveUse(root, { platform: "darwin", env: {}, selfPid: 100, execute: (command: string, args: string[]) => {
     if (command === options.fail) return { status: 1, stdout: "", stderr: "Operation not permitted" };
-    if (command.endsWith("lsof")) return { ...ok(fields), stderr: options.stderr ?? "" };
+    if (command.endsWith("lsof")) return { ...ok(args.includes("-p") ? options.targetFiles ?? fields : fields), stderr: options.stderr ?? "" };
     if (args.includes("args=")) return ok(options.args ?? "node other.js");
+    if (args.includes("-p")) {
+      if (options.targetExited) return { status: 1, stdout: "", stderr: "" };
+      return ok(options.targetIdentity ?? (options.after ?? rows).split("\n").filter(line => line.includes(` ${args[args.indexOf("-p") + 1]} `)).join("\n"));
+    }
     return ok(++snapshots % 2 === 0 ? options.after ?? rows : rows);
   } });
 }
@@ -53,6 +57,15 @@ describe("portable active-use inspection", () => {
     expect(mac(temp(), { missing: true }).supported).toBe(false);
     expect(mac(temp(), { stderr: "warning: cannot stat" }).supported).toBe(false);
     expect(mac(temp(), { after: `${uid} 100 /node\n${uid} 300 /claude\n` }).supported).toBe(false);
+  });
+  it("inspects new processes individually and detects a new state holder", () => {
+    const root = temp();
+    const after = `${uid} 100 /node\n${uid} 300 /bin/sleep\n`;
+    const fields = `p300\0csleep\0\nfcwd\0n${root}\0\n`;
+    expect(mac(root, { after, targetFiles: fields })).toMatchObject({ supported: true, entries: [] });
+    expect(mac(root, { after, targetFiles: fields + `f3\0n${root}/.bridge/db\0\n` })).toMatchObject({ supported: true, entries: [{ pid: 300, kinds: ["state-open"] }] });
+    expect(mac(root, { after, targetExited: true })).toMatchObject({ supported: true, entries: [] });
+    expect(mac(root, { after, targetFiles: fields, targetIdentity: `${uid} 300 /claude\n` }).supported).toBe(false);
   });
   it("allows a process that exited between snapshots", () => expect(mac(temp(), { missing: true, after: `${uid} 100 /node\n` }).supported).toBe(true));
   it("retains Linux cwd, launcher and state-file detection", () => {

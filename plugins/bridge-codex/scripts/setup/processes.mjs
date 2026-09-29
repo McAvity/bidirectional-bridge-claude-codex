@@ -147,29 +147,9 @@ function findMacActiveUse(root, { env, selfPid, execute }) {
   if (files.error || files.status !== 0 || files.stderr.trim()) {
     return unknown("macOS lsof could not inspect process files completely", "run outside the restricting sandbox and ensure /usr/sbin/lsof can inspect this user's processes");
   }
-  if (!files.stdout.endsWith("\0\n")) return unknown("macOS lsof returned truncated output");
-  const records = new Map();
-  let record = null;
-  let fd = null;
-  for (const raw of files.stdout.split("\0")) {
-    const field = raw.replace(/^\n/u, "");
-    if (!field) continue;
-    if (field[0] === "p") {
-      if (!/^p\d+$/u.test(field)) return unknown("macOS lsof returned an invalid process record");
-      record = { cwd: null, paths: [] };
-      records.set(Number(field.slice(1)), record);
-      fd = null;
-    } else if (field[0] === "f") {
-      fd = field.slice(1);
-      if (fd === "NOFD") return unknown("macOS lsof could not read a process file descriptor table");
-    } else if (field[0] === "n" && record) {
-      const path = field.slice(1);
-      if (fd === "cwd") record.cwd = path;
-      record.paths.push(path);
-    } else if (field[0] !== "c") {
-      return unknown("macOS lsof returned incomplete or unexpected fields");
-    }
-  }
+  const parsed = parseMacFiles(files.stdout);
+  if (!parsed.records) return parsed;
+  const records = parsed.records;
   const after = snapshot();
   if (!after) return unknown("macOS ps could not verify the process snapshot");
   const canonicalRoot = realOrNull(root) ?? resolve(root);
@@ -177,9 +157,25 @@ function findMacActiveUse(root, { env, selfPid, execute }) {
   const entries = [];
   for (const [pid, command] of after) {
     if (pid === selfPid) continue;
-    const info = records.get(pid);
+    let info = records.get(pid);
     if (!before.has(pid) || before.get(pid) !== command || !info?.cwd) {
-      return { ...unknown(`macOS process ${pid} ${!before.has(pid) ? "appeared during inspection" : before.get(pid) !== command ? "changed during inspection" : "has no readable working directory"}; retry the command`), transient: true };
+      // Observe late arrivals individually: unrelated background activity need not
+      // stop setup, but every surviving PID still needs a complete observation.
+      const detail = probe("/usr/sbin/lsof", ["-nP", "-a", "-u", String(uid), "-p", String(pid), "-F0pcfn"]);
+      const identity = probe("/bin/ps", ["-ww", "-p", String(pid), "-o", "uid=,pid=,comm="]);
+      if (!identity.error && !identity.signal && identity.status === 1 && !identity.stdout.trim() && !identity.stderr.trim()) continue;
+      const match = /^\s*(\d+)\s+(\d+)\s+([^\n]+)\n?$/u.exec(identity.stdout);
+      if (identity.error || identity.signal || identity.status !== 0 || identity.stderr.trim() ||
+          !match || Number(match[1]) !== uid || Number(match[2]) !== pid || match[3] !== command) {
+        return { ...unknown(`macOS process ${pid} changed identity during inspection; retry the command`), transient: true };
+      }
+      if (detail.error || detail.signal || detail.status !== 0 || detail.stderr.trim()) {
+        return unknown(`macOS lsof could not inspect surviving process ${pid}`);
+      }
+      const fresh = parseMacFiles(detail.stdout);
+      if (!fresh.records) return fresh;
+      info = fresh.records.get(pid);
+      if (!info?.cwd) return unknown(`macOS process ${pid} has no readable working directory`);
     }
     const cwd = realOrNull(info.cwd);
     if (!cwd) return unknown("macOS reported a working directory that cannot be resolved");
@@ -213,4 +209,32 @@ function findMacActiveUse(root, { env, selfPid, execute }) {
     if (kinds.length) entries.push({ pid, kinds, command: program });
   }
   return { supported: true, entries, unreadable: 0 };
+}
+
+/** Strict lsof -F0pcfn reader, shared by full and per-PID observations. */
+function parseMacFiles(output) {
+  if (!output.endsWith("\0\n")) return unknown("macOS lsof returned truncated output");
+  const records = new Map();
+  let record = null;
+  let fd = null;
+  for (const raw of output.split("\0")) {
+    const field = raw.replace(/^\n/u, "");
+    if (!field) continue;
+    if (field[0] === "p") {
+      if (!/^p\d+$/u.test(field)) return unknown("macOS lsof returned an invalid process record");
+      record = { cwd: null, paths: [] };
+      records.set(Number(field.slice(1)), record);
+      fd = null;
+    } else if (field[0] === "f") {
+      fd = field.slice(1);
+      if (fd === "NOFD") return unknown("macOS lsof could not read a process file descriptor table");
+    } else if (field[0] === "n" && record) {
+      const path = field.slice(1);
+      if (fd === "cwd") record.cwd = path;
+      record.paths.push(path);
+    } else if (field[0] !== "c") {
+      return unknown("macOS lsof returned incomplete or unexpected fields");
+    }
+  }
+  return { records };
 }

@@ -79,7 +79,7 @@
     },
     {
       "path": "scripts/setup/processes.mjs",
-      "sha256": "8e90d71be376b1491763be4f9c7da8c9222d980fd86a20900f44aad06b2294ec"
+      "sha256": "ae3171548afbbdf82e7a7b7639466e424cbd0fe904a6e8a7437769d3b3541b58"
     },
     {
       "path": "scripts/setup/runtime.mjs",

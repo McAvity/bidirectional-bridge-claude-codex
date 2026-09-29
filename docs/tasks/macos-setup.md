@@ -26,3 +26,9 @@ for installed-runtime tests and hit synchronous Vitest IPC starvation; add a yie
 between installer test cases and rerun on committed sources. Pilot tooling has a
 separate pre-existing /proc-dependent dry-run refusal on macOS; investigate baseline.
 No paid models, external target writes, cache patches or publication yet.
+
+Integration correction: requiring global process-list stability was too strict on
+an active Mac. New/changed PIDs now receive targeted lsof plus identity rechecks;
+only verified exits are ignored and surviving unreadable processes still refuse.
+Added regression cases; 11 focused tests PASS. The initial installed candidate
+was not applied. Stopped its obsolete JS run; validation resumes on corrected SHA.
