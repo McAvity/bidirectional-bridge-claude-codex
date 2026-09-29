@@ -59,3 +59,48 @@ collection window on this host. Stop doing the process scan inside the native
 mutation guard, where its result was already deliberately ignored; CLI checks
 are unchanged. Give this concurrency test10s and require an actual response,
 with both test processes cleaned in finally. Recheck native bootstrap/ownership.
+
+
+## Final delivery — 2026-09-29
+
+Product commits: `6ff95b0`, `15d9d14`, `79f1cac`, `f0db032`, `830dff4`.
+Installed immutable runtime `0.4.1-830dff47b377`, source
+`830dff47b3774658c6149f981407b81adb63c62a`, through source install and the
+supported project update command. Requested external worktree reports `ready`;
+macOS, APFS, Python 3.12, active-use check and MCP handshake (35 tools) pass.
+Doctor still requires native Codex project trust; Codex 0.159 has a nonblocking
+unverified-version warning. No manager claimed and no model delegation attempted.
+External changes are only installer configuration (.gitignore, .bridge-project,
+.codex), left uncommitted under that repository's task-attribution rules.
+No availability feature edits, immutable runtime/cache patches or publication.
+
+Validation on Node 24.14 / Python 3.12, with process tests outside sandbox:
+
+- npm ci --ignore-scripts, build, generated package check and diff check pass.
+- Setup integration: 16/16; process/platform/Python regressions: 12/12 pass.
+- Full JS run: 598 pass, 4 fail out of 602. This is not a full green run.
+  Concurrent bootstrap timing was corrected and targeted native bootstrap,
+  exclusive manager ownership and ordinary CLI active-session refusal pass (3/3).
+  Live WAL fixture now disables its writer's automatic checkpoint, preserving
+  the main-file invariant being tested; targeted rerun passes (1/1). This final
+  test-only adjustment does not change the installed runtime product code.
+- Remaining JS failures: diagnostics ulimit write-refusal fixture and runner
+  stderr-tail byte count. Both reproduce independently on pristine baseline
+  d378e13 on this Mac; they are not fixed in this scope.
+- Python suite: 92 pass, 8 optional host skips, 100 total.
+- Pilot operator suite: 128 pass, 2 skips, 1 failure, 131 total. The tooling
+  dry-run scoring failure includes its separate Linux /proc file-holder probe
+  (and manager-turn criterion); production setup correction does not port that
+  operator-only fixture. No real-agent pilot success is claimed.
+- Real macOS synthetic process smoke passes: idle workspace, bridge plus open
+  state descriptor, client-named process, normal exit, sandbox uncertainty and
+  a workspace path containing spaces. No model invoked.
+- Actual system Python 3.9 gives the specific missing-tomllib instruction;
+  Homebrew Python 3.12 parses successfully; missing executable is distinguished.
+- Independent bounded code review found no concrete false-idle or guard-bypass
+  issue in final production changes; earlier dispatcher/mount findings were fixed.
+
+Next: launch/restart Codex in the target with Node 24 and Homebrew Python 3.12 on
+PATH and approve its native project-trust prompt. Review/merge this local source
+branch before a general release; plugin marketplace/cache remains at 0.4.1.
+Remaining baseline JS and operator pilot portability failures are separate work.

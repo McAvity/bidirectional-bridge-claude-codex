@@ -422,6 +422,9 @@ describe("incident export", () => {
         `const { DatabaseSync } = require('node:sqlite');
          const db = new DatabaseSync(process.argv[1]);
          db.exec("PRAGMA journal_mode = WAL");
+         // This assertion compares the main DB byte-for-byte while allowing WAL
+         // writes. Do not let the fixture writer checkpoint it on a slower host.
+         db.exec("PRAGMA wal_autocheckpoint = 0");
          let n = 0;
          setInterval(() => {
            n += 1;
