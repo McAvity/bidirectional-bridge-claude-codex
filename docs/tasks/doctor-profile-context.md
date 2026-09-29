@@ -87,3 +87,25 @@ Publication authorized: user requested release and runtime update. Preparing 0.4
 in release/doctor-profile-0.4.3. Current project's selected runtime is 0.4.2; keep
 it unchanged while its client is active. Next: CI, publish, refresh plugin, install
 an immutable runtime and prepare checked deferred update with explicit profile.
+
+
+## Release 0.4.3 published — 2026-09-29
+
+User authorized release and runtime upgrade. Merged into feature-workflow; annotated
+tag/GitHub prerelease v0.4.3 at d356c81cb242cecc40321e3aa03d163e388f3df1.
+Runtime source a2cc94209132fa1768ef3aec77115483eac67968.
+CI 36606993418 PASS: 41 files / 608 JS tests, 100 Python tests (5 skips), 131 pilot
+tooling tests (2 skips). Installed immutable runtime 0.4.3-a2cc94209132 and refreshed
+the existing Codex bridge plugin through its CLI to 0.4.3. No Claude marketplace
+bridge plugin was installed; the runtime contains its executor package.
+
+New runtime fresh synthetic setup/status PASS; profile source environment is reported
+and MCP handshake discovers 35 tools. Synthetic repo remains untrusted as expected;
+no model invocation is claimed. Old runtime and active project selection remain intact.
+Private stable copy of the refreshed plugin verified against exact release pin;
+deferred update script syntax checked. It runs normal update checks, status and
+profile-aware doctor, then optionally resumes the exact native manager session
+identified by bridge_manager_status, preserving profile environment in that session.
+No setup/update apply was attempted while the current client uses the project.
+Next: close affected clients, run the prepared script with --resume, then verify
+selected 0.4.3 and manager continuity. No personal launcher or trust file was edited.

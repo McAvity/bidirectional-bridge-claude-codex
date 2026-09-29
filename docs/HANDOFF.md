@@ -1,11 +1,17 @@
 # Current handoff
 
-## 0.4.3 publication — in progress, 2026-09-29
+## 0.4.3 published — 2026-09-29
 
-Release and current-project runtime upgrade authorized. Runtime source `a2cc94209132fa1768ef3aec77115483eac67968`.
-Next: full Linux CI, publish prerelease, refresh installed bridge plugin and prepare
-checked project update after active clients exit normally.
-
+[v0.4.3](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.4.3)
+published at d356c81, runtime source a2cc942. Merged into feature-workflow.
+[CI 36606993418](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/36606993418)
+PASS: JS 608, Python 100 (5 skips), pilot tooling 131 (2 skips).
+Codex bridge plugin refreshed to 0.4.3; runtime 0.4.3-a2cc94209132 installed beside
+0.4.2. Fresh synthetic setup/status and 35-tool handshake pass.
+Current project's 0.4.2 pin stays unchanged while its client is active. Private checked
+update script includes explicit profile, status/doctor and optional exact-session resume.
+Next: exit affected clients normally, run the prepared script, resume the same manager
+and verify the newly selected runtime. [Details](tasks/doctor-profile-context.md).
 
 ## Doctor Codex profile context — locally delivered, 2026-09-29
 
