@@ -1,5 +1,12 @@
 # Current handoff
 
+## 0.4.3 publication — in progress, 2026-09-29
+
+Release and current-project runtime upgrade authorized. Runtime source `a2cc94209132fa1768ef3aec77115483eac67968`.
+Next: full Linux CI, publish prerelease, refresh installed bridge plugin and prepare
+checked project update after active clients exit normally.
+
+
 ## Doctor Codex profile context — locally delivered, 2026-09-29
 
 Source fix on `fix/doctor-profile-context`; [scope and validation](tasks/doctor-profile-context.md).

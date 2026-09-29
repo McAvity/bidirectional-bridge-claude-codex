@@ -1,9 +1,9 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.4.2",
+  "package_version": "0.4.3",
   "pinned": {
-    "commit": "26921c0889344d52618d5839af26adcc15baf35a",
-    "describe": "0.4.2: conservative macOS setup and platform diagnostics"
+    "commit": "a2cc94209132fa1768ef3aec77115483eac67968",
+    "describe": "0.4.3: explicit doctor profile context and conservative trust diagnostics"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
