@@ -31,7 +31,7 @@
     },
     {
       "path": "scripts/bridge.mjs",
-      "sha256": "6d80bc6df3d6095340498fad6b6a900eb21f344c02160d4920b4976ca2cb56ba"
+      "sha256": "a516c7dfb6a5b47635de6a0030623e1c67b7c832d3a06a7ba9aa1b50e0c112d5"
     },
     {
       "path": "scripts/diagnostics/collect.mjs",
@@ -75,7 +75,7 @@
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "d10320bdc8390f0347558e86f0031a00dc22df76b4c5e9968555d2ae4fa8c754"
+      "sha256": "c019a149ad9b398105802d2883af54c0f2b32f33cb31ca0ca9cc91844c2621bd"
     },
     {
       "path": "scripts/setup/processes.mjs",

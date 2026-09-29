@@ -1,5 +1,12 @@
 # Current handoff
 
+## Doctor Codex profile context — locally delivered, 2026-09-29
+
+Source fix on `fix/doctor-profile-context`; [scope and validation](tasks/doctor-profile-context.md).
+Doctor selects `--codex-profile` > `CLAUDE_CODEX_BRIDGE_CODEX_PROFILE` > default, reports the
+context and source, layers the selected profile's trust over the base and refuses empty,
+invalid or unknown profiles. No version bump, release or runtime change. Next: manager review.
+
 ## 0.4.2 published — 2026-09-29
 
 Merged into default branch feature-workflow and published experimental

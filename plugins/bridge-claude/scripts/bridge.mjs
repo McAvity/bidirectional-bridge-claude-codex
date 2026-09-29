@@ -26,7 +26,10 @@ const HELP = `bridge.mjs — install, set up and diagnose the Claude Code <-> Co
             .bridge-project/entry.mjs, which only the dispatcher profile installs. Record it
             with the bridge setup skill instead; AGENTS.md is never read or written here.
   doctor    --workspace <worktree> [--codex-profile <name>] [--no-handshake]
-            check tools, setup, configuration, state and a real MCP handshake; no models
+            check tools, setup, configuration, state and a real MCP handshake; no models.
+            Codex is queried with --codex-profile, else $CLAUDE_CODEX_BRIDGE_CODEX_PROFILE,
+            else its default configuration; a shell function adding --profile to your
+            interactive codex is not seen. The report names the context and its source.
   diagnose  --workspace <worktree> [--feature <id> | --task <id> [--attempt <n>] | --since <30m|6h|ISO>]
             [--db <path>] [--with-evidence] [--with-database] [--inspect <file.zip>]
             collect one incident into a local package in this worktree's exchange namespace.

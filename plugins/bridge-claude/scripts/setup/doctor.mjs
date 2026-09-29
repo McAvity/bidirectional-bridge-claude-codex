@@ -248,27 +248,74 @@ function stateCheck(add, controlPlane, root, supported) {
   }
 }
 
-/** Trust levels recorded for the worktree root or its main repository in the Codex config files. */
+export const CODEX_PROFILE_ENV = "CLAUDE_CODEX_BRIDGE_CODEX_PROFILE";
+// The plain names Codex accepts for --profile, without a leading dash that could read as an option.
+const CODEX_PROFILE_NAME = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/u;
+
+/**
+ * The Codex CLI context doctor queries: --codex-profile, else $CLAUDE_CODEX_BRIDGE_CODEX_PROFILE,
+ * else the default configuration. Shell functions that add --profile to an interactive `codex` are
+ * invisible here, so the choice is always explicit. An empty or malformed explicit value is an
+ * error, never a silent fallback to the default configuration.
+ */
+export function selectCodexProfile(flag, env = process.env) {
+  const [value, source] = flag !== undefined ? [flag, "flag"] : env[CODEX_PROFILE_ENV] !== undefined ? [env[CODEX_PROFILE_ENV], "environment"] : [null, "default"];
+  if (value === null) return { profile: null, source };
+  if (!CODEX_PROFILE_NAME.test(value)) return { profile: value, source, invalid: true };
+  return { profile: value, source };
+}
+
+export function describeCodexContext({ profile, source }) {
+  if (source === "default") return "default configuration, no profile";
+  return `profile ${JSON.stringify(profile)} from ${source === "flag" ? "--codex-profile" : `$${CODEX_PROFILE_ENV}`}`;
+}
+
+const CONTEXT_REMEDY = `if your interactive \`codex\` adds --profile (for example through a shell function), rerun doctor with --codex-profile <name> or ${CODEX_PROFILE_ENV}=<name>`;
+
+/**
+ * Effective trust of the worktree in the selected Codex context, read from the user's Codex files
+ * and never written. The selected profile file layers over config.toml, so its entry wins for the
+ * same path; the worktree's own entry wins over its main repository's. Profiles that are not
+ * selected are never read. Unreadable or malformed files make the result unknown.
+ */
 function codexTrust(root, identity, env, profile) {
   const codexHome = env.CODEX_HOME ? resolve(env.CODEX_HOME) : join(homedir(), ".codex");
-  const files = [join(codexHome, "config.toml"), ...(profile ? [join(codexHome, `${profile}.config.toml`)] : [])];
+  const base = join(codexHome, "config.toml");
+  const profileFile = profile ? join(codexHome, `${profile}.config.toml`) : null;
+  const files = [base, ...(profileFile ? [profileFile] : [])];
   const candidates = [root];
   if (identity?.git_common_dir?.endsWith("/.git")) candidates.push(dirname(identity.git_common_dir));
   const script =
-    "import json, sys, tomllib\nout = {}\n" +
-    "for path in sys.argv[1:]:\n" +
+    "import json, sys, tomllib\nout = {}\nprofile = sys.argv[1]\n" +
+    "for path in sys.argv[2:]:\n" +
     "    try:\n        with open(path, 'rb') as handle:\n            data = tomllib.load(handle)\n" +
-    "    except FileNotFoundError:\n        continue\n" +
+    "    except FileNotFoundError:\n        out[path] = {'present': False}\n        continue\n" +
+    "    except Exception as error:\n        out[path] = {'present': True, 'error': type(error).__name__}\n        continue\n" +
     "    projects = data.get('projects') or {}\n" +
-    "    out[path] = {key: (value or {}).get('trust_level') for key, value in projects.items() if isinstance(value, dict)}\n" +
+    "    legacy = isinstance(data.get('profiles'), dict) and isinstance(data['profiles'].get(profile), dict)\n" +
+    "    out[path] = {'present': True, 'legacy_profile': legacy, 'levels': {key: value.get('trust_level') for key, value in projects.items() if isinstance(value, dict)}}\n" +
     "print(json.dumps(out))\n";
-  const result = run("python3", ["-c", script, ...files], { env });
+  const result = run("python3", ["-c", script, profile ?? "", ...files], { env });
   if (result.status !== 0) return { known: false, files };
-  const levels = Object.values(JSON.parse(result.stdout)).flatMap((projects) => candidates.map((path) => projects[path]));
-  return { known: true, trusted: levels.includes("trusted"), files };
+  const parsed = JSON.parse(result.stdout);
+  const broken = files.filter((path) => parsed[path]?.error);
+  if (broken.length > 0) return { known: false, files, malformed: broken };
+  const layered = {};
+  for (const path of files) Object.assign(layered, parsed[path].levels ?? {});
+  const decisive = candidates.find((path) => layered[path] !== undefined);
+  return {
+    known: true,
+    trusted: decisive !== undefined && layered[decisive] === "trusted",
+    files,
+    // A profile is known to Codex as its own file or as a legacy [profiles.<name>] table.
+    profileFound: !profile || parsed[profileFile].present || Boolean(parsed[base].legacy_profile),
+  };
 }
 
-function codexProjectCheck(add, root, identity, manifest, env, profile, setupProfile) {
+function codexProjectCheck(add, root, identity, manifest, env, context, setupProfile) {
+  const { profile } = context;
+  const where = describeCodexContext(context);
+  const contextDetails = { codex_context: { profile, source: context.source } };
   const expected = mcpDefinition(manifest, setupProfile);
   const query = (extra) =>
     run("codex", [...(profile ? ["--profile", profile] : []), ...extra, "mcp", "get", "bridge", "--json"], {
@@ -277,13 +324,25 @@ function codexProjectCheck(add, root, identity, manifest, env, profile, setupPro
       timeoutMs: 30_000,
     });
   const first = query([]);
+  // A profile Codex does not know silently yields the default configuration there; the result
+  // would then describe another context than the one requested.
+  const profileMissing = (trust) => {
+    add("codex_project", "error", "CODEX_PROFILE_NOT_FOUND", `the selected Codex profile ${JSON.stringify(profile)} has neither ${profile}.config.toml nor a [profiles.${profile}] table; doctor does not fall back to the default configuration`, {
+      details: { ...contextDetails, checked_files: trust.files },
+      nextStep: `pass the profile your interactive \`codex\` uses, or unset ${CODEX_PROFILE_ENV} and omit --codex-profile to check the default configuration`,
+    });
+  };
   if (first.status === 0) {
     let server;
     try {
       server = JSON.parse(first.stdout);
     } catch {
-      add("codex_project", "unknown", "CODEX_OUTPUT_UNRECOGNIZED", "`codex mcp get bridge --json` printed unrecognized output", { details: { stdout: tail(first.stdout, 400) } });
+      add("codex_project", "unknown", "CODEX_OUTPUT_UNRECOGNIZED", "`codex mcp get bridge --json` printed unrecognized output", { details: { ...contextDetails, stdout: tail(first.stdout, 400) } });
       return;
+    }
+    if (profile) {
+      const trust = codexTrust(root, identity, env, profile);
+      if (trust.known && !trust.profileFound) return profileMissing(trust);
     }
     const transport = server.transport ?? {};
     const same =
@@ -291,22 +350,30 @@ function codexProjectCheck(add, root, identity, manifest, env, profile, setupPro
       JSON.stringify(transport.args) === JSON.stringify(expected.args) &&
       transport.cwd === expected.cwd;
     if (!same) {
-      add("codex_project", "error", "CODEX_CONFIG_MISMATCH", "Codex resolves a different bridge server than the managed block defines", {
-        details: { command: transport.command, args: transport.args, cwd: transport.cwd },
+      add("codex_project", "error", "CODEX_CONFIG_MISMATCH", `Codex (${where}) resolves a different bridge server than the managed block defines`, {
+        details: { ...contextDetails, command: transport.command, args: transport.args, cwd: transport.cwd },
         nextStep: "remove the other mcp_servers.bridge definition (global config, profile or -c override)",
       });
     } else if (server.enabled === false) {
-      add("codex_project", "error", "CODEX_BRIDGE_DISABLED", "Codex has the bridge server disabled", { nextStep: "remove enabled = false for mcp_servers.bridge" });
+      add("codex_project", "error", "CODEX_BRIDGE_DISABLED", `Codex (${where}) has the bridge server disabled`, { details: contextDetails, nextStep: "remove enabled = false for mcp_servers.bridge" });
     } else if (Number(server.tool_timeout_sec) < TOOL_TIMEOUT_SEC) {
-      add("codex_project", "warn", "CODEX_TIMEOUT_TOO_LOW", `tool_timeout_sec is ${server.tool_timeout_sec}; long rounds need ${TOOL_TIMEOUT_SEC}`);
+      add("codex_project", "warn", "CODEX_TIMEOUT_TOO_LOW", `tool_timeout_sec is ${server.tool_timeout_sec} in Codex (${where}); long rounds need ${TOOL_TIMEOUT_SEC}`, { details: contextDetails });
     } else {
-      add("codex_project", "ok", "OK", "Codex loads the managed bridge server from this worktree");
+      add("codex_project", "ok", "OK", `Codex (${where}) loads the managed bridge server from this worktree`, { details: contextDetails });
     }
     return;
   }
+  // Errors about the selected profile itself: an invalid name or a profile file Codex refuses.
+  if (profile && (first.stderr.includes("--profile") || first.stderr.includes(`${profile}.config.toml`))) {
+    add("codex_project", "error", "CODEX_PROFILE_INVALID", `Codex refuses the selected profile ${JSON.stringify(profile)}; doctor does not fall back to the default configuration`, {
+      details: { ...contextDetails, stderr: tail(first.stderr, 600) },
+      nextStep: `fix that profile, or select another one with --codex-profile <name> or ${CODEX_PROFILE_ENV}=<name>`,
+    });
+    return;
+  }
   if (/error parsing project config|failed to load/iu.test(first.stderr)) {
-    add("codex_project", "error", "CODEX_CONFIG_INVALID", "Codex cannot load this project's configuration", {
-      details: { stderr: tail(first.stderr, 600) },
+    add("codex_project", "error", "CODEX_CONFIG_INVALID", `Codex (${where}) cannot load this project's configuration`, {
+      details: { ...contextDetails, stderr: tail(first.stderr, 600) },
       nextStep: `fix ${CODEX_CONFIG}; Codex refuses to start with it`,
     });
     return;
@@ -314,15 +381,25 @@ function codexProjectCheck(add, root, identity, manifest, env, profile, setupPro
   // Codex loads project configuration only for trusted projects, and a `-c` trust override does
   // not change that. Read the trust entries of the user's Codex files; never write them.
   const trust = codexTrust(root, identity, env, profile);
-  if (trust.known && !trust.trusted) {
-    add("codex_project", "error", "CODEX_PROJECT_UNTRUSTED", "Codex ignores this project's configuration because neither the worktree nor its main repository is trusted", {
-      details: { checked_files: trust.files },
-      nextStep: "start `codex` in the worktree root and approve the project trust prompt (pass --codex-profile if trust is kept in a profile file)",
+  if (profile && trust.malformed?.includes(trust.files.at(-1))) {
+    add("codex_project", "error", "CODEX_PROFILE_INVALID", `the file of the selected Codex profile ${JSON.stringify(profile)} does not parse; its trust is unknown`, {
+      details: { ...contextDetails, malformed_files: trust.malformed },
+      nextStep: `fix ${profile}.config.toml, or select another profile`,
+    });
+  } else if (trust.known && !trust.profileFound) {
+    profileMissing(trust);
+  } else if (trust.known && !trust.trusted) {
+    // This is the queried CLI context only; a running client may have been started differently.
+    add("codex_project", "error", "CODEX_PROJECT_UNTRUSTED", `in the queried Codex CLI context (${where}) neither the worktree nor its main repository is trusted, so that context ignores this project's configuration; a Codex session started with another profile may differ`, {
+      details: { ...contextDetails, checked_files: trust.files },
+      nextStep: profile
+        ? `start \`codex --profile ${profile}\` in the worktree root and approve the project trust prompt, or select the profile your interactive \`codex\` uses`
+        : `${CONTEXT_REMEDY}; otherwise start \`codex\` in the worktree root and approve the project trust prompt`,
     });
   } else {
-    add("codex_project", "error", "CODEX_CONFIG_NOT_LOADED", "Codex does not report the bridge server for this worktree", {
-      details: { stderr: tail(first.stderr, 600), checked_profile: profile ?? null },
-      nextStep: "check the Codex configuration layers with `codex mcp list` in the worktree root",
+    add("codex_project", "error", "CODEX_CONFIG_NOT_LOADED", `Codex (${where}) does not report the bridge server for this worktree`, {
+      details: { ...contextDetails, stderr: tail(first.stderr, 600), checked_profile: profile ?? null, ...(trust.malformed ? { malformed_files: trust.malformed } : {}) },
+      nextStep: `check the Codex configuration layers with \`codex${profile ? ` --profile ${profile}` : ""} mcp list\` in the worktree root${profile ? "" : `; ${CONTEXT_REMEDY}`}`,
     });
   }
 }
@@ -422,6 +499,7 @@ export async function runDoctor({
   const add = (id, status, code, summary, { details, nextStep } = {}) =>
     checks.push({ id, status, code: status === "ok" ? "OK" : code, summary, ...(details ? { details } : {}), ...(nextStep ? { next_step: nextStep } : {}) });
   const requested = canonical(resolve(workspace));
+  const codexContext = selectCodexProfile(codexProfile, env);
   const sandboxed = Boolean(env.CODEX_SANDBOX || env.CODEX_SANDBOX_NETWORK_DISABLED);
 
   if (process.platform === "linux") add("platform", "ok", "OK", "Linux");
@@ -639,7 +717,12 @@ export async function runDoctor({
   configStatic();
   if (safeSubset) {
     add("codex_project", "skipped", "CODEX_PROJECT_UNCHECKED", "the safe subset does not start Codex against this project's configuration");
-  } else if (codex.status === 0 && identity && manifest) codexProjectCheck(add, root, identity, manifest, env, codexProfile, setupProfile);
+  } else if (codexContext.invalid) {
+    add("codex_project", "error", "CODEX_PROFILE_INVALID", `the Codex ${describeCodexContext(codexContext)} is not a plain profile name (letters, digits, _ and -); doctor does not fall back to the default configuration`, {
+      details: { codex_context: { profile: codexContext.profile, source: codexContext.source } },
+      nextStep: `pass a valid name, or unset ${CODEX_PROFILE_ENV} and omit --codex-profile to check the default configuration`,
+    });
+  } else if (codex.status === 0 && identity && manifest) codexProjectCheck(add, root, identity, manifest, env, codexContext, setupProfile);
   else add("codex_project", "skipped", "CODEX_PROJECT_UNCHECKED", "Codex, the worktree identity or the selected runtime is unavailable");
 
   if (identity?.kind === "git") {
@@ -759,6 +842,8 @@ export async function runDoctor({
     generated_at: new Date().toISOString(),
     workspace: root,
     status,
+    // The Codex CLI context the codex_project check queried; not necessarily a running session's.
+    codex_context: { profile: codexContext.profile, source: codexContext.source, ...(codexContext.invalid ? { invalid: true } : {}) },
     next_step: first ? first.next_step ?? `resolve ${first.code}` : null,
     checks,
     distribution: distributionMetadata({
@@ -799,6 +884,7 @@ function integrationSourceOf(root) {
 
 export function formatDoctor(report) {
   const lines = [`bridge doctor: ${report.workspace}`, `status: ${report.status}`];
+  if (report.codex_context) lines.push(`codex context: ${describeCodexContext(report.codex_context)}${report.codex_context.invalid ? " (invalid)" : ""}`);
   for (const check of report.checks) {
     lines.push(`  ${check.status.padEnd(7)} ${check.id.padEnd(14)} ${check.code === "OK" ? "" : `${check.code}  `}${check.summary}`);
     if (check.next_step && check.status !== "ok") lines.push(`  ${"".padEnd(7)} ${"".padEnd(14)} next: ${check.next_step}`);

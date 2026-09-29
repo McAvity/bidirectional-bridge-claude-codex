@@ -146,9 +146,40 @@ the tools and their versions, the selected runtime's files, instructions, the Co
 what Codex itself loads (`codex mcp get bridge`), Git ignores, the worktree state, filesystem,
 write access, active use, and a real MCP handshake that only calls `bridge_server_info` and
 `bridge_manager_status`. Its only write is a temporary lock probe inside `.bridge-runtime/`,
-removed immediately. Pass `--codex-profile <name>` when Codex trust is kept in a profile file,
-and `--no-handshake` to skip the server start. Exit status 0 means `ok`; unchecked items make the
-result `incomplete`, never `ok`.
+removed immediately. Pass `--no-handshake` to skip the server start. Exit status 0 means `ok`;
+unchecked items make the result `incomplete`, never `ok`.
+
+#### Codex context
+
+Doctor runs `codex` itself, so a shell function or alias that adds `--profile` to your
+interactive `codex` does not apply to it. The Codex CLI context it queries is chosen explicitly:
+
+1. `--codex-profile <name>`;
+2. otherwise the environment variable `CLAUDE_CODEX_BRIDGE_CODEX_PROFILE`;
+3. otherwise the default configuration, with no profile.
+
+The report states the context and its source (`codex context:` line; `codex_context` in
+`--json`). Its `codex_project` result describes that CLI context only, not necessarily the
+session you are running. Trust is read from `config.toml` with the selected profile's
+`<name>.config.toml` layered over it, so the profile's own entry for a path wins; the worktree's
+entry wins over its main repository's. Profiles that are not selected are never read, and no
+trust entry is written. A profile known only as a legacy `[profiles.<name>]` table needs no
+separate file where the Codex version still accepts it (newer versions refuse it). An empty or
+malformed name, or a profile Codex refuses or cannot find, is reported as an error; doctor never
+falls back to the default configuration instead.
+
+A launcher that already chooses a profile can hand the same choice to doctor explicitly. Exported
+from the launcher, the variable reaches doctor runs started inside that Codex session (for example
+by an upgrade skill). Illustrative shell function; adapt your own launcher:
+
+```sh
+codex() {
+  local profile="work"
+  CLAUDE_CODEX_BRIDGE_CODEX_PROFILE="$profile" command codex --profile "$profile" "$@"
+}
+# or, for a doctor run from the same shell:
+export CLAUDE_CODEX_BRIDGE_CODEX_PROFILE=work
+```
 
 ### Doctor codes
 
@@ -170,7 +201,8 @@ result `incomplete`, never `ok`.
 | `RUNTIME_SELECTION_BROKEN`, `RUNTIME_INCOMPLETE`, `RUNTIME_NOT_SELECTED` | The selected runtime is missing or its files do not match its manifest. |
 | `INSTRUCTIONS_MISSING`, `INSTRUCTIONS_OUTDATED`, `INSTRUCTIONS_MODIFIED` | Instruction files are absent, from another version, or changed locally. |
 | `CODEX_CONFIG_MISSING`, `CODEX_CONFIG_CONFLICT`, `CODEX_CONFIG_MODIFIED`, `CODEX_CONFIG_INVALID`, `CODEX_CONFIG_MISMATCH` | The managed block is absent, contradicted, edited, unparsable, or overridden. |
-| `CODEX_PROJECT_UNTRUSTED` | Codex ignores the project configuration because the project is not trusted. |
+| `CODEX_PROJECT_UNTRUSTED` | In the queried Codex CLI context, the project is not trusted, so that context ignores its configuration. A session started with another profile may differ; select it with `--codex-profile` or `CLAUDE_CODEX_BRIDGE_CODEX_PROFILE`. |
+| `CODEX_PROFILE_INVALID`, `CODEX_PROFILE_NOT_FOUND` | The selected Codex profile name is empty or malformed, Codex refuses it or its file does not parse, or no such profile exists. |
 | `CODEX_CONFIG_NOT_LOADED`, `CODEX_BRIDGE_DISABLED`, `CODEX_TIMEOUT_TOO_LOW`, `CODEX_OUTPUT_UNRECOGNIZED` | Codex does not load the bridge server as defined. |
 | `GIT_IGNORE_MISSING` | `.bridge/` or `.bridge-runtime/` could be committed. |
 | `STATE_OWNED_ELSEWHERE` | The state belongs to another worktree (copied `.bridge/`, second database). |

@@ -12,6 +12,7 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -37,8 +38,17 @@ const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as {
 const FAKE_CODEX = `#!/usr/bin/env python3
 import json, os, sys, tomllib
 args = sys.argv[1:]
+if os.environ.get("FAKE_CODEX_ARGS_LOG"):
+    with open(os.environ["FAKE_CODEX_ARGS_LOG"], "a") as log:
+        log.write(json.dumps(args) + "\\n")
+profile = None
 while args and args[0] in ("--profile", "-c"):
+    if args[0] == "--profile":
+        profile = args[1]
     args = args[2:]
+if profile is not None and os.environ.get("FAKE_CODEX_REFUSE_PROFILE"):
+    print("Error: failed to load configuration\\n\\nCaused by:\\n    " + os.path.join(os.environ["CODEX_HOME"], profile + ".config.toml") + ":1:8: unclosed array", file=sys.stderr)
+    sys.exit(1)
 if args[:1] == ["--version"]:
     print("codex-cli " + os.environ.get("FAKE_CODEX_VERSION", "0.154.0"))
     sys.exit(0)
@@ -295,7 +305,7 @@ describe("bridge setup CLI", () => {
       CODEX_HOME: join(tmp, "codex home"),
       npm_config_prefer_offline: "true",
     };
-    for (const key of ["CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED", "CLAUDE_CODEX_BRIDGE_HOME", "CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER"]) {
+    for (const key of ["CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED", "CLAUDE_CODEX_BRIDGE_HOME", "CLAUDE_CODEX_BRIDGE_TEST_CRASH_AFTER", "CLAUDE_CODEX_BRIDGE_CODEX_PROFILE"]) {
       delete env[key];
     }
 
@@ -856,5 +866,106 @@ describe("bridge setup CLI", () => {
         chmodSync(join(project, ".bridge-runtime"), 0o700);
       }
     }
+  });
+
+  // Synthetic CODEX_HOME per run; the user's Codex configuration is never read or written.
+  describe("the Codex profile context", () => {
+    let project = "";
+    let root = "";
+    let run = 0;
+    beforeAll(() => {
+      project = makeProject("profile project");
+      init(project);
+      root = realpathSync(project);
+    }, 240_000);
+    /** Doctor's codex_project result in a fresh synthetic CODEX_HOME, with the codex arguments it used. */
+    const doctor = (args: string[], files: Record<string, string>, extra: NodeJS.ProcessEnv = {}) => {
+      run += 1;
+      const codexHome = join(tmp, "profile codex homes", String(run));
+      mkdirSync(codexHome, { recursive: true });
+      for (const [name, content] of Object.entries(files)) writeFileSync(join(codexHome, name), content);
+      const log = join(codexHome, "args.jsonl");
+      const result = bridgeJson(["doctor", "--workspace", project, "--no-handshake", ...args], {
+        FAKE_CODEX_HIDE_PROJECT: "1", CODEX_HOME: codexHome, FAKE_CODEX_ARGS_LOG: log, ...extra,
+      });
+      const queries = existsSync(log)
+        ? readFileSync(log, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((argv: string[]) => argv.includes("mcp"))
+        : [];
+      return { report: result.json, project: check(result.json, "codex_project") as any, queries };
+    };
+    const trust = (level: string) => `[projects."${root}"]\ntrust_level = "${level}"\n`;
+    const visible = { FAKE_CODEX_HIDE_PROJECT: "" };
+
+    it("uses the default configuration and never reads an inactive profile", () => {
+      const byDefault = doctor([], { "other.config.toml": trust("trusted") }, { CLAUDE_CODEX_BRIDGE_CODEX_PROFILE: undefined });
+      expect(byDefault.report.codex_context).toEqual({ profile: null, source: "default" });
+      expect(byDefault.queries).toEqual([["mcp", "get", "bridge", "--json"]]);
+      expect(byDefault.project.code).toBe("CODEX_PROJECT_UNTRUSTED");
+      expect(byDefault.project.summary).toContain("queried Codex CLI context (default configuration, no profile)");
+      expect(byDefault.project.next_step).toContain("--codex-profile <name> or CLAUDE_CODEX_BRIDGE_CODEX_PROFILE=<name>");
+      expect(byDefault.project.details.checked_files.some((path: string) => path.includes("other"))).toBe(false);
+      const defaultOk = doctor([], {}, visible);
+      expect(defaultOk.project).toMatchObject({ status: "ok", details: { codex_context: { profile: null, source: "default" } } });
+      expect(defaultOk.queries).toEqual([["mcp", "get", "bridge", "--json"]]);
+    }, 240_000);
+
+    it("passes a flag or environment profile to the query and the trust fallback, flag first", () => {
+      const trusted = { "work.config.toml": trust("trusted") };
+      const flag = doctor(["--codex-profile", "work"], trusted);
+      expect(flag.report.codex_context).toEqual({ profile: "work", source: "flag" });
+      expect(flag.queries).toEqual([["--profile", "work", "mcp", "get", "bridge", "--json"]]);
+      expect(flag.project.code).toBe("CODEX_CONFIG_NOT_LOADED");
+      const fromEnv = doctor([], trusted, { CLAUDE_CODEX_BRIDGE_CODEX_PROFILE: "work" });
+      expect(fromEnv.report.codex_context).toEqual({ profile: "work", source: "environment" });
+      expect(fromEnv.queries).toEqual([["--profile", "work", "mcp", "get", "bridge", "--json"]]);
+      expect(fromEnv.project.code).toBe("CODEX_CONFIG_NOT_LOADED");
+      const text = bridge(["doctor", "--workspace", project, "--no-handshake"], { CLAUDE_CODEX_BRIDGE_CODEX_PROFILE: "work", CODEX_HOME: join(tmp, "profile codex homes", String(run)) });
+      expect(text.stdout).toContain('codex context: profile "work" from $CLAUDE_CODEX_BRIDGE_CODEX_PROFILE');
+      const both = doctor(["--codex-profile", "work"], trusted, { CLAUDE_CODEX_BRIDGE_CODEX_PROFILE: "bogus" });
+      expect(both.report.codex_context).toEqual({ profile: "work", source: "flag" });
+      expect(both.queries).toEqual([["--profile", "work", "mcp", "get", "bridge", "--json"]]);
+    }, 240_000);
+
+    it("lets the selected profile's untrusted entry override a trusted base entry", () => {
+      const overridden = doctor(["--codex-profile", "work"], { "config.toml": trust("trusted"), "work.config.toml": trust("untrusted") });
+      expect(overridden.project.code).toBe("CODEX_PROJECT_UNTRUSTED");
+      expect(overridden.project.summary).toContain('profile "work" from --codex-profile');
+      expect(overridden.project.next_step).toContain("codex --profile work");
+      // Without an entry of its own, the profile inherits the base trust.
+      expect(doctor(["--codex-profile", "work"], { "config.toml": trust("trusted"), "work.config.toml": "" }).project.code).toBe("CODEX_CONFIG_NOT_LOADED");
+    }, 240_000);
+
+    it("accepts a legacy profile table without a profile file", () => {
+      const legacy = `[profiles.native]\nmodel = "synthetic"\n\n${trust("trusted")}`;
+      expect(doctor(["--codex-profile", "native"], { "config.toml": legacy }).project.code).toBe("CODEX_CONFIG_NOT_LOADED");
+      expect(doctor(["--codex-profile", "native"], { "config.toml": legacy }, visible).project.status).toBe("ok");
+    }, 240_000);
+
+    it("reports a missing, refused or malformed profile instead of falling back", () => {
+      for (const extra of [{}, visible]) {
+        const missing = doctor(["--codex-profile", "missing"], { "config.toml": trust("trusted") }, extra);
+        expect(missing.project.code).toBe("CODEX_PROFILE_NOT_FOUND");
+        expect(missing.queries).toEqual([["--profile", "missing", "mcp", "get", "bridge", "--json"]]);
+      }
+      // A profile Codex refuses or whose file does not parse is not a project problem.
+      expect(doctor(["--codex-profile", "work"], { "work.config.toml": trust("trusted") }, { FAKE_CODEX_REFUSE_PROFILE: "1" }).project.code).toBe("CODEX_PROFILE_INVALID");
+      const malformed = doctor(["--codex-profile", "work"], { "config.toml": trust("trusted"), "work.config.toml": "bad = [\n" });
+      expect(malformed.project.code).toBe("CODEX_PROFILE_INVALID");
+    }, 240_000);
+
+    it("refuses an empty or malformed explicit selection before querying Codex", () => {
+      for (const [args, extra, source] of [
+        [["--codex-profile", ""], {}, "flag"],
+        [["--codex-profile", "../work"], {}, "flag"],
+        [[], { CLAUDE_CODEX_BRIDGE_CODEX_PROFILE: "" }, "environment"],
+        [[], { CLAUDE_CODEX_BRIDGE_CODEX_PROFILE: "a.b" }, "environment"],
+      ] as const) {
+        const invalid = doctor([...args], { "config.toml": trust("trusted") }, { ...extra, ...visible });
+        expect(invalid.project.code).toBe("CODEX_PROFILE_INVALID");
+        expect(invalid.report.codex_context).toMatchObject({ source, invalid: true });
+        expect(invalid.report.status).toBe("problems");
+        expect(invalid.queries).toEqual([]);
+      }
+    }, 240_000);
   });
 });
