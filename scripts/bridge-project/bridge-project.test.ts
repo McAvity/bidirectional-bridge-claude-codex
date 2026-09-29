@@ -159,7 +159,9 @@ beforeEach(() => {
 /** Exchange namespaces live outside the sandbox, so anything created there is removed by hand. */
 const cleanupIntents: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
+  // Synchronous installer probes must not starve Vitest's IPC acknowledgements.
+  await new Promise<void>((done) => setImmediate(done));
   for (const path of cleanupIntents.splice(0)) rmSync(path, { recursive: true, force: true });
   if (root) removeTree(root);
 });

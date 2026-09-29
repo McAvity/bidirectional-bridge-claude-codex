@@ -264,3 +264,22 @@ This repository uses the same layout: its `.codex/config.toml` is the managed bl
 `.mcp.json` points to `.bridge-runtime/current`. Run `init` in each bridge worktree with a runtime
 installed from an accepted commit, so an active manager never runs the build of the worktree it
 is changing. Build and test changes in the worktree itself as before.
+
+### macOS process inspection and Python
+
+Setup, update and rollback inspect live processes before changing configuration.
+Linux uses `/proc`; macOS uses `/bin/ps` and `/usr/sbin/lsof` for same-user process,
+working-directory and open-state-file evidence. Run setup outside a sandbox that
+hides processes. Missing tools, denied or incomplete reads, and changing snapshots
+produce `ACTIVE_USE_UNKNOWN`, never an assumption that the worktree is idle.
+Retry after transient process changes. Other operating systems are explicitly
+unsupported by this check. A bridge workspace argument that `ps` cannot resolve
+unambiguously also produces an unknown result; close that bridge normally first.
+
+Python 3.11+ with standard-library `tomllib`, exposed as `python3` on `PATH`, enables
+full validation of `.codex/config.toml`. Check `command -v python3` and
+`python3 --version` in the same shell used for setup; macOS system Python may be
+older than a separately installed Python. The diagnostic distinguishes a missing
+executable, missing `tomllib`, invalid TOML and an execution failure. The conservative
+configuration scan remains in effect when parsing is unavailable. This warning is
+separate from active-session detection and does not itself mean `/proc` is required.

@@ -63,7 +63,7 @@
     },
     {
       "path": "scripts/setup/common.mjs",
-      "sha256": "1afc28abba6bb0c7b347ca49e0b85ab904b6a0f8d2f473f5bc02cf516d6e2695"
+      "sha256": "1606622549375ace4babce60e5d71e0fad20c993ebfd381bdc51c3c242902685"
     },
     {
       "path": "scripts/setup/diff.mjs",
@@ -75,11 +75,11 @@
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "511877ba68a0720d3e198a0913bd5c426f4c3a4bf4e69998cc3646d78ff904e4"
+      "sha256": "34ba168809e74ac415ccfb78af3d737b85bf396a6038b4266b38c4abf6d01243"
     },
     {
       "path": "scripts/setup/processes.mjs",
-      "sha256": "d2ec6768375e9e60f9dd50c2fef5b8a375d69b014aabd9060b6007eba951574d"
+      "sha256": "8e90d71be376b1491763be4f9c7da8c9222d980fd86a20900f44aad06b2294ec"
     },
     {
       "path": "scripts/setup/runtime.mjs",
@@ -87,7 +87,7 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "7f519485bbdf71da35a2e295ec57b34f77cb45d65c7e053082ff77738a845d66"
+      "sha256": "2c46104ae10162c12bdb4fef818fd309be4f238bcfa18713fce29c2672ff9451"
     },
     {
       "path": "skills/bridge-upgrade/SKILL.md",

@@ -685,7 +685,7 @@ export async function runDoctor({
   }
 
   const use = findActiveUse(root, { env });
-  if (!use.supported) add("active_use", "unknown", "ACTIVE_USE_UNKNOWN", `cannot tell whether the worktree is in use: ${use.reason}`);
+  if (!use.supported) add("active_use", "unknown", "ACTIVE_USE_UNKNOWN", `cannot tell whether the worktree is in use: ${use.reason}`, { nextStep: use.nextStep });
   else if (use.entries.length > 0) {
     add("active_use", "warn", "ACTIVE_SESSION", `in use by ${use.entries.map((entry) => `pid ${entry.pid} (${entry.kinds.join("+")}: ${entry.command})`).join("; ")}`, {
       details: { entries: use.entries },

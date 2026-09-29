@@ -104,6 +104,7 @@ export function run(command, args, { cwd, env, input, timeoutMs = 60_000 } = {})
     stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
   });
   return {
+    pid: result.pid,
     status: result.status,
     signal: result.signal,
     stdout: result.stdout ?? "",

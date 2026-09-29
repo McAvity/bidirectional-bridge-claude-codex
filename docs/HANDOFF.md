@@ -1,5 +1,12 @@
 # Current handoff
 
+## macOS setup correction — in progress, 2026-09-29
+
+Source fix on `fix/macos-setup`; [scope and validation](tasks/macos-setup.md).
+macOS ps/lsof active-use detection and Python diagnostics implemented; immutable
+runtime installation and requested target setup pending final verification.
+Existing runtime/cache and availability feature untouched.
+
 ## Feature workflow user guide — 2026-09-24
 
 Added [Polish end-to-end guide](feature-workflow-guide.md), Mermaid lifecycle diagram,

@@ -221,17 +221,22 @@ export function definesBridge(text) {
 }
 
 /** Parse TOML with python3 tomllib and return the effective mcp_servers.bridge table. */
-export function inspectCodexToml(text, env = process.env) {
+export function inspectCodexToml(text, env = process.env, execute = run) {
   const script =
     "import json, sys\n" +
     "try:\n    import tomllib\nexcept ModuleNotFoundError:\n    sys.exit(3)\n" +
     "try:\n    data = tomllib.loads(sys.stdin.read())\n" +
     "except tomllib.TOMLDecodeError as error:\n    print(str(error))\n    sys.exit(4)\n" +
     "print(json.dumps((data.get('mcp_servers') or {}).get('bridge')))\n";
-  const result = run("python3", ["-c", script], { input: text, env });
+  const result = execute("python3", ["-c", script], { input: text, env });
   if (result.status === 0) return { status: "parsed", bridge: JSON.parse(result.stdout) };
   if (result.status === 4) return { status: "invalid", detail: result.stdout.trim() };
-  return { status: "unverified", detail: "python3 with tomllib (3.11+) is not available" };
+  const detail = result.error?.code === "ENOENT"
+    ? "python3 was not found on PATH; install Python 3.11+ and expose it as python3"
+    : result.status === 3
+      ? "python3 on PATH has no tomllib; use Python 3.11+ (check python3 --version and command -v python3)"
+      : `python3 TOML inspection failed (${result.error?.code ?? result.signal ?? `exit ${result.status}`}); check execution permissions and sandbox restrictions`;
+  return { status: "unverified", detail };
 }
 
 export function bridgeTableMatches(bridge, manifest, profile = "legacy") {
@@ -1053,7 +1058,7 @@ export function planChange({
     if (blocking.length === 0) {
       // The guard already serialised this call; there is nothing for the scan to decide.
     } else if (!use.supported) {
-      refuse("ACTIVE_USE_UNKNOWN", `cannot tell whether this worktree is in use: ${use.reason}`, "run the command outside a sandbox on Linux");
+      refuse("ACTIVE_USE_UNKNOWN", `cannot tell whether this worktree is in use: ${use.reason}`, use.nextStep);
     } else {
       const active = use.entries.filter((entry) => entry.kinds.some((kind) => blocking.includes(kind)));
       if (active.length > 0) {

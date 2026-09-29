@@ -1,7 +1,8 @@
-// Active use of a worktree, from Linux /proc. Evidence is a live process, never the presence or
+// Active use of a worktree, from Linux /proc or macOS ps/lsof. Evidence is a live process, never the presence or
 // absence of SQLite -wal/-shm files: a crash can leave them behind and a clean close removes them.
 
 import { readFileSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { run } from "./common.mjs";
 import { basename, resolve, sep } from "node:path";
 
 function realOrNull(path) {
@@ -24,11 +25,8 @@ function isClient(base, argv) {
 }
 
 /** A short, content-free description: prompts in a worker's argv must never be printed. */
-function describe(argv, kinds) {
-  const program = basename(argv[0]);
-  if (!kinds.includes("bridge-mcp")) return program;
-  const launcher = argv.findIndex((arg) => basename(arg) === "native-bridge-mcp.mjs");
-  return [program, ...argv.slice(launcher, launcher + 7)].join(" ");
+function describe(argv) {
+  return basename(argv[0]);
 }
 
 /**
@@ -37,17 +35,29 @@ function describe(argv, kinds) {
  *  - `client`: a Codex or Claude process whose working directory is the root;
  *  - `state-open`: any process holding a file below `<root>/.bridge/` open.
  *
- * `supported: false` means the answer is unknown (no /proc, or a sandbox hides processes).
+ * `supported: false` means observation is unsupported, restricted or incomplete.
  */
-export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid = process.pid } = {}) {
+export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid = process.pid, platform = process.platform, execute = run } = {}) {
   if (env.CODEX_SANDBOX) {
-    return { supported: false, reason: "running inside a Codex sandbox, which hides other processes", entries: [] };
+    return { supported: false, reason: "running inside a Codex sandbox, which hides other processes", nextStep: "run the command outside the restricting sandbox on this host", entries: [] };
   }
+  if (platform === "darwin") {
+    // Background processes can start/exit between ps and lsof. Retry the entire
+    // observation, never turn a partial snapshot into evidence of an idle workspace.
+    let result;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      result = findMacActiveUse(root, { env, selfPid, execute });
+      if (!result.transient) break;
+    }
+    const { transient, ...report } = result;
+    return report;
+  }
+  if (platform !== "linux") return unknown(`active-use detection is not supported on ${platform}`, "use a supported Linux or macOS host");
   let names;
   try {
     names = readdirSync(proc).filter((name) => /^\d+$/u.test(name));
   } catch {
-    return { supported: false, reason: `${proc} is not available on this host`, entries: [] };
+    return unknown(`Linux process information at ${proc} is unavailable`, "run outside the restricting sandbox with a readable procfs mount");
   }
   const canonicalRoot = realOrNull(root) ?? resolve(root);
   const stateDirectory = `${canonicalRoot}${sep}.bridge${sep}`;
@@ -60,13 +70,15 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
     const base = `${proc}/${name}`;
     try {
       if (uid !== undefined && statSync(base).uid !== uid) continue;
-    } catch {
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ESRCH") unreadable += 1;
       continue;
     }
     let argv;
     try {
       argv = readFileSync(`${base}/cmdline`, "utf8").split("\0").filter((arg) => arg.length > 0);
-    } catch {
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.code !== "ESRCH") unreadable += 1;
       continue;
     }
     if (argv.length === 0) continue;
@@ -89,7 +101,8 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
         let target;
         try {
           target = readlinkSync(`${base}/fd/${fd}`);
-        } catch {
+        } catch (error) {
+          if (error.code !== "ENOENT" && error.code !== "ESRCH") unreadable += 1;
           continue;
         }
         if (target.startsWith(stateDirectory)) {
@@ -100,7 +113,104 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
     } catch (error) {
       if (error.code === "EACCES" || error.code === "EPERM") unreadable += 1;
     }
-    if (kinds.length > 0) entries.push({ pid, kinds, command: describe(argv, kinds) });
+    if (kinds.length > 0) entries.push({ pid, kinds, command: describe(argv) });
   }
-  return { supported: true, entries, unreadable };
+  return unreadable > 0
+    ? { ...unknown("some same-user process information could not be read"), entries, unreadable }
+    : { supported: true, entries, unreadable };
+}
+
+
+function unknown(reason, nextStep = "run outside the restricting sandbox; ensure process inspection is permitted, then retry") {
+  return { supported: false, reason, nextStep, entries: [] };
+}
+
+/** ps supplies the completeness baseline; lsof uses NUL fields so spaces are data. */
+function findMacActiveUse(root, { env, selfPid, execute }) {
+  const uid = process.getuid();
+  const probe = (command, args) => execute(command, args, { env, timeoutMs: 15_000 });
+  const snapshot = () => {
+    const result = probe("/bin/ps", ["-ww", "-axo", "uid=,pid=,comm="]);
+    if (result.error || result.status !== 0 || result.stderr.trim()) return null;
+    const rows = new Map();
+    for (const line of result.stdout.split("\n").filter((line) => line.trim())) {
+      const match = /^\s*(\d+)\s+(\d+)\s+(.+)$/u.exec(line);
+      if (!match) return null;
+      if (Number(match[1]) === uid && Number(match[2]) !== result.pid) rows.set(Number(match[2]), match[3]);
+    }
+    // An empty or filtered process list is not evidence of an idle worktree.
+    return rows.has(selfPid) ? rows : null;
+  };
+  const before = snapshot();
+  if (!before) return unknown("macOS ps could not enumerate processes (permission, sandbox or incomplete output)");
+  const files = probe("/usr/sbin/lsof", ["-nP", "-a", "-u", String(uid), "-F0pcfn"]);
+  if (files.error || files.status !== 0 || files.stderr.trim()) {
+    return unknown("macOS lsof could not inspect process files completely", "run outside the restricting sandbox and ensure /usr/sbin/lsof can inspect this user's processes");
+  }
+  if (!files.stdout.endsWith("\0\n")) return unknown("macOS lsof returned truncated output");
+  const records = new Map();
+  let record = null;
+  let fd = null;
+  for (const raw of files.stdout.split("\0")) {
+    const field = raw.replace(/^\n/u, "");
+    if (!field) continue;
+    if (field[0] === "p") {
+      if (!/^p\d+$/u.test(field)) return unknown("macOS lsof returned an invalid process record");
+      record = { cwd: null, paths: [] };
+      records.set(Number(field.slice(1)), record);
+      fd = null;
+    } else if (field[0] === "f") {
+      fd = field.slice(1);
+      if (fd === "NOFD") return unknown("macOS lsof could not read a process file descriptor table");
+    } else if (field[0] === "n" && record) {
+      const path = field.slice(1);
+      if (fd === "cwd") record.cwd = path;
+      record.paths.push(path);
+    } else if (field[0] !== "c") {
+      return unknown("macOS lsof returned incomplete or unexpected fields");
+    }
+  }
+  const after = snapshot();
+  if (!after) return unknown("macOS ps could not verify the process snapshot");
+  const canonicalRoot = realOrNull(root) ?? resolve(root);
+  const stateDirectory = `${canonicalRoot}${sep}.bridge${sep}`;
+  const entries = [];
+  for (const [pid, command] of after) {
+    if (pid === selfPid) continue;
+    const info = records.get(pid);
+    if (!before.has(pid) || before.get(pid) !== command || !info?.cwd) {
+      return { ...unknown(`macOS process ${pid} ${!before.has(pid) ? "appeared during inspection" : before.get(pid) !== command ? "changed during inspection" : "has no readable working directory"}; retry the command`), transient: true };
+    }
+    const cwd = realOrNull(info.cwd);
+    if (!cwd) return unknown("macOS reported a working directory that cannot be resolved");
+    const kinds = [];
+    const program = basename(command);
+    if (cwd === canonicalRoot && /^(codex|claude)(?:$|-)/u.test(program)) kinds.push("client");
+    if (info.paths.some((path) => path.startsWith(stateDirectory))) kinds.push("state-open");
+    if (/^node(?:$|-)/u.test(program)) {
+      const args = probe("/bin/ps", ["-ww", "-p", String(pid), "-o", "args="]);
+      if (args.error || args.status !== 0 || args.stderr.trim() || !args.stdout.trim()) {
+        return { ...unknown("macOS could not read a live Node process's arguments; retry the command"), transient: true };
+      }
+      const line = args.stdout.trim();
+      if (cwd === canonicalRoot && /(?:^|[\s/])codex(?:\.js)?(?:\s|$)/u.test(line)) kinds.push("client");
+      if (cwd === canonicalRoot && /(?:^|[\s/])\.bridge-project\/entry\.mjs(?:\s|$)/u.test(line)) kinds.push("bridge-mcp");
+      if (/(?:^|[\s/])native-bridge-mcp\.mjs(?:\s|$)/u.test(line)) {
+        const workspace = /(?:^|\s)--workspace\s+(.+)$/u.exec(line);
+        if (cwd === canonicalRoot) {
+          kinds.push("bridge-mcp");
+        } else if (!workspace) {
+          // No explicit workspace: this bridge belongs to its other cwd.
+        } else {
+          // ps flattens argv. Never guess the boundary of an argument containing spaces.
+          const value = workspace[1];
+          if (/\s/u.test(value)) return unknown("macOS ps cannot unambiguously resolve a bridge workspace argument containing whitespace");
+          const path = resolve(cwd, value);
+          if ((realOrNull(path) ?? path) === canonicalRoot) kinds.push("bridge-mcp");
+        }
+      }
+    }
+    if (kinds.length) entries.push({ pid, kinds, command: program });
+  }
+  return { supported: true, entries, unreadable: 0 };
 }

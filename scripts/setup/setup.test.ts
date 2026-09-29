@@ -21,7 +21,10 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+
+// Process inspection uses synchronous OS tools; let Vitest flush IPC between cases.
+afterEach(() => new Promise<void>((done) => setImmediate(done)));
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");
