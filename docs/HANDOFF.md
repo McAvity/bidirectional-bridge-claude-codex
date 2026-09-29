@@ -1,5 +1,12 @@
 # Current handoff
 
+## 0.4.2 publication — in progress, 2026-09-29
+
+User authorized merge, release and this repository upgrade. Default branch is
+feature-workflow; macOS fix merged. Runtime source `26921c0889344d52618d5839af26adcc15baf35a`.
+Next: Linux CI, prerelease publication, installed plugin refresh and checked local
+setup (may require current client exit). [Evidence](tasks/macos-setup.md).
+
 ## macOS setup correction — locally delivered, 2026-09-29
 
 Source fix on `fix/macos-setup`; [scope and validation](tasks/macos-setup.md).
