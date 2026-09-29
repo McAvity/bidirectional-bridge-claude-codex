@@ -161,7 +161,7 @@ Details: [docs/architecture.md](docs/architecture.md). Normative wire contract:
 ### Recommended: the repository marketplace
 
 For the Astra (Codex) → Claude workflow, install the Codex plugin once on your machine.
-Use Linux, Git, Node.js 24, npm and Python 3.11 or newer, with Codex and Claude Code
+Use Linux or macOS, Git, Node.js 24, npm and Python 3.11 or newer, with Codex and Claude Code
 installed and logged in. **Codex 0.154.0** is historically verified; **0.155.1** and
 other unverified versions may continue with a `CODEX_VERSION_UNVERIFIED` warning.
 Metadata validation and manager identity checks remain enforced. No separate bridge

@@ -95,3 +95,16 @@ describe("Python TOML diagnostic", () => {
     expect(inspect({ status: 0, stdout: "null" })).toEqual({ status: "parsed", bridge: null });
   });
 });
+
+
+describe("macOS mount inspection", () => {
+  it("selects the longest matching mount, retaining network types for doctor refusal", async () => {
+    const { filesystemOf } = await import("./doctor.mjs");
+    const execute = () => ok("/dev/disk on / (apfs, local)\nserver:/ on /Volumes/Shared Files (nfs, mounted by test)\n");
+    expect(filesystemOf("/some/project", { platform: "darwin", execute })).toEqual({ mountPoint: "/", fstype: "apfs" });
+    expect(filesystemOf("/Volumes/Shared Files/project", { platform: "darwin", execute })).toEqual({ mountPoint: "/Volumes/Shared Files", fstype: "nfs" });
+    expect(filesystemOf("/Volumes/Work on NAS/project", { platform: "darwin", execute: () => ok("/dev/disk on / (apfs, local)\nserver:/share on /Volumes/Work on NAS (smbfs, mounted by test)\n") })).toBeNull();
+    expect(filesystemOf("/project", { platform: "darwin", execute: () => ok("truncated") })).toBeNull();
+    expect(filesystemOf("/project", { platform: "darwin", execute: () => ({ ...ok(""), status: 1 }) })).toBeNull();
+  });
+});

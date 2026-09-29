@@ -8,9 +8,9 @@
 
 import { createHash } from "node:crypto";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, realpathSync, readFileSync, readdirSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -49,7 +49,7 @@ function makeRepo(path: string): string {
 }
 
 function real(path: string): string {
-  return execFileSync("realpath", [path], { encoding: "utf8" }).trim();
+  return existsSync(path) ? realpathSync(path) : join(real(dirname(path)), basename(path));
 }
 
 function listing(dir: string): string[] {
@@ -161,7 +161,7 @@ const cleanupIntents: string[] = [];
 
 afterEach(async () => {
   // Synchronous installer probes must not starve Vitest's IPC acknowledgements.
-  await new Promise<void>((done) => setImmediate(done));
+  await new Promise<void>((done) => setTimeout(done, 25));
   for (const path of cleanupIntents.splice(0)) rmSync(path, { recursive: true, force: true });
   if (root) removeTree(root);
 });

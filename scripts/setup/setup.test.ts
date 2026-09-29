@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 // Process inspection uses synchronous OS tools; let Vitest flush IPC between cases.
-afterEach(() => new Promise<void>((done) => setImmediate(done)));
+afterEach(() => new Promise<void>((done) => setTimeout(done, 25)));
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..");

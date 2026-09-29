@@ -11,7 +11,7 @@ worktree of that project needs only its own local selection and no runtime insta
 
 ## Requirements
 
-- Linux and a worktree on a local filesystem (no network or FUSE mounts for bridge state);
+- Linux or macOS and a worktree on a local filesystem (no network or FUSE mounts for bridge state);
 - Node.js 22.13 or newer (tested with 24), npm, Git and Python 3.11 or newer;
 - Codex CLI for the manager: **0.154.0** has the previously verified identity adapter.
   **0.155.1** and other unverified versions may use the same metadata contract with a
@@ -154,7 +154,7 @@ result `incomplete`, never `ok`.
 
 | Code | Meaning |
 | --- | --- |
-| `HOST_UNSUPPORTED_PLATFORM` | Not Linux. |
+| `HOST_UNSUPPORTED_PLATFORM` | Neither Linux nor macOS. |
 | `GIT_MISSING`, `NODE_MISSING`, `NODE_UNSUPPORTED` | A required tool is missing or too old. |
 | `PYTHON_MISSING`, `PYTHON_UNSUPPORTED` | No Python 3.11+ (feature exchange and TOML checks need it). |
 | `CODEX_MISSING`, `CLAUDE_MISSING` | A client is not on `PATH`. |
@@ -177,7 +177,7 @@ result `incomplete`, never `ok`.
 | `STATE_LEGACY_UNBOUND`, `STATE_UNRESOLVED`, `STATE_UNREADABLE`, `STATE_SCHEMA_NEWER`, `STATE_RECOVERY_NEEDED` | The state cannot be used as is; see [manager-identity](manager-identity.md). |
 | `FILESYSTEM_UNSUPPORTED`, `FILESYSTEM_UNKNOWN`, `STATE_LOCKING_UNSUPPORTED` | The filesystem is not a known local one or its locking does not work. |
 | `ACCESS_DENIED`, `SANDBOX_RESTRICTED` | A directory is not writable; `SANDBOX_RESTRICTED` when a Codex sandbox is the likely cause. |
-| `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN` | The worktree is in use, or that cannot be determined (no `/proc`, sandbox). |
+| `ACTIVE_SESSION`, `ACTIVE_USE_UNKNOWN` | The worktree is in use, or that cannot be determined (restricted or incomplete process inspection). |
 | `HANDSHAKE_FAILED`, `HANDSHAKE_IDENTITY_MISMATCH`, `HANDSHAKE_TOOLS_MISSING`, `HANDSHAKE_NOT_POSSIBLE`, `HANDSHAKE_SKIPPED` | The MCP server did not start as configured, or was not tried. |
 | `LOGS_PATH_REDIRECTED` | `.bridge/logs` is a symlink; the runtime refuses to log through it. |
 | `LOGS_DEGRADED`, `LOGS_UNREADABLE` | The [diagnostics log](diagnostics.md) reported write failures, or its directory cannot be read. |
@@ -237,13 +237,13 @@ mid-package), `DIAGNOSE_PACKAGE_EXISTS` (that name is already taken) and
 
 ## Limits
 
-- Linux only, local filesystems only, one active manager and feature per worktree.
+- Linux and macOS, local filesystems only, one active manager and feature per worktree.
 - Setup never writes through a symlink. When a managed directory or file — for example
   `.agents` shared with other projects, or anything below `.bridge-runtime/` except its
   `current` link — is a symlink, `init`, `update` and `rollback` refuse before writing,
   even if the link points inside the worktree. Replace it with a real directory, or keep those
   files unmanaged.
-- Active use is read from `/proc` for the current user. Processes of other users are not
+- Active use is read from `/proc` on Linux and `ps`/`lsof` on macOS for the current user. Processes of other users are not
   inspected, and inside a Codex sandbox the answer is unknown, so `update` refuses there.
 - Codex resolves the relative launcher path from its own working directory: start it in the
   worktree root. A `-c projects.<path>.trust_level` override does not make Codex load project

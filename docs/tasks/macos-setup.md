@@ -32,3 +32,14 @@ an active Mac. New/changed PIDs now receive targeted lsof plus identity rechecks
 only verified exits are ignored and surviving unreadable processes still refuse.
 Added regression cases; 11 focused tests PASS. The initial installed candidate
 was not applied. Stopped its obsolete JS run; validation resumes on corrected SHA.
+
+
+Target setup applied with15d9d14; real handshake exposed a remaining doctor-only
+Linux platform guard and Linux mount-table reader. Corrected Darwin platform and
+mount inspection, retaining unknown for malformed/ambiguous tables and network
+filesystem refusal. Review caught ambiguous ` on ` mount names; regression added.
+Target needs a supported update to this final correction, then trust/restart.
+Setup integration15d9d14:14/16 passed, two doctor-platform failures; Vitest IPC
+starvation still required a short event-loop pause between synchronous cases.
+Bridge-project test helper also relied on GNU realpath accepting a missing final
+component; replaced it with equivalent portable Node filesystem handling.

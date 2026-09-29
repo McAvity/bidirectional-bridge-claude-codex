@@ -32,7 +32,7 @@ import {
 export const DOCTOR_FORMAT = "claude-codex-bridge.doctor/v1";
 const DEFAULT_NODE_MINIMUM = "22.13.0";
 const FEATURE_TOOLS = 6;
-const LOCAL_FILESYSTEMS = new Set(["ext2", "ext3", "ext4", "xfs", "btrfs", "tmpfs", "zfs", "f2fs", "overlay", "jfs", "bcachefs", "reiserfs"]);
+const LOCAL_FILESYSTEMS = new Set(["ext2", "ext3", "ext4", "xfs", "btrfs", "tmpfs", "zfs", "f2fs", "overlay", "jfs", "bcachefs", "reiserfs", "apfs", "hfs"]);
 const NETWORK_FILESYSTEMS = /^(nfs|cifs|smb|9p|sshfs|fuse|ceph|glusterfs|afs|virtiofs|davfs)/u;
 
 function versionAtLeast(actual, minimum) {
@@ -50,7 +50,22 @@ function tail(text, bytes = 1200) {
   return text.length > bytes ? text.slice(-bytes) : text;
 }
 
-function filesystemOf(path) {
+export function filesystemOf(path, { platform = process.platform, env = process.env, execute = run } = {}) {
+  if (platform === "darwin") {
+    const result = execute("/sbin/mount", [], { env });
+    if (result.error || result.signal || result.status !== 0 || result.stderr.trim()) return null;
+    let best = null;
+    for (const line of result.stdout.split("\n").filter(Boolean)) {
+      if (line.split(" on ").length !== 2) return null;
+      const match = /^.+ on (.+) \(([^,()]+)(?:,[^()]*)?\)$/u.exec(line);
+      if (!match) return null;
+      const [, mountPoint, fstype] = match;
+      const prefix = mountPoint.endsWith("/") ? mountPoint : `${mountPoint}/`;
+      if ((path === mountPoint || path.startsWith(prefix)) && (!best || mountPoint.length > best.mountPoint.length)) best = { mountPoint, fstype };
+    }
+    return best;
+  }
+  if (platform !== "linux") return null;
   let text;
   try {
     text = readFileSync("/proc/self/mountinfo", "utf8");
@@ -410,7 +425,8 @@ export async function runDoctor({
   const sandboxed = Boolean(env.CODEX_SANDBOX || env.CODEX_SANDBOX_NETWORK_DISABLED);
 
   if (process.platform === "linux") add("platform", "ok", "OK", "Linux");
-  else add("platform", "error", "HOST_UNSUPPORTED_PLATFORM", `${process.platform} is not supported by setup v1`, { nextStep: "use Linux with a local filesystem" });
+  else if (process.platform === "darwin") add("platform", "ok", "OK", "macOS");
+  else add("platform", "error", "HOST_UNSUPPORTED_PLATFORM", `${process.platform} is not supported by setup v1`, { nextStep: "use Linux or macOS with a local filesystem" });
 
   const git = run("git", ["--version"], { env });
   if (git.status === 0) add("git", "ok", "OK", git.stdout.trim());
@@ -618,7 +634,7 @@ export async function runDoctor({
     if (effective && manifest && (effective.command !== "node" || JSON.stringify(effective.args) !== JSON.stringify(mcpDefinition(manifest, setupProfile).args))) {
       return add("codex_config", "error", "CODEX_CONFIG_MISMATCH", "the effective mcp_servers.bridge table differs from the managed block");
     }
-    return add("codex_config", "ok", "OK", `${CODEX_CONFIG} has the managed bridge block${parsed.status === "unverified" ? " (TOML not parsed: python3 3.11+ missing)" : ""}`);
+    return add("codex_config", "ok", "OK", `${CODEX_CONFIG} has the managed bridge block${parsed.status === "unverified" ? ` (TOML not parsed: ${parsed.detail})` : ""}`);
   };
   configStatic();
   if (safeSubset) {
@@ -637,7 +653,7 @@ export async function runDoctor({
   if (controlPlane && identity) stateCheck(add, controlPlane, root, manifest?.compatibility.state_schema_version ?? null);
   else add("state", "skipped", "STATE_UNCHECKED", "the worktree identity could not be resolved");
 
-  const filesystem = filesystemOf(root);
+  const filesystem = filesystemOf(root, { env });
   if (!filesystem) add("filesystem", "unknown", "FILESYSTEM_UNKNOWN", "cannot read the mount table");
   else if (NETWORK_FILESYSTEMS.test(filesystem.fstype)) add("filesystem", "error", "FILESYSTEM_UNSUPPORTED", `${filesystem.fstype} at ${filesystem.mountPoint}: network and FUSE filesystems are unsupported for bridge state`, { nextStep: "use a worktree on a local filesystem" });
   else if (LOCAL_FILESYSTEMS.has(filesystem.fstype)) add("filesystem", "ok", "OK", `${filesystem.fstype} at ${filesystem.mountPoint}`);
