@@ -1,5 +1,18 @@
 # Current handoff
 
+## Portable upgrade entry; this checkout on 0.5.0 — 2026-10-20
+
+[Portable upgrade](tasks/portable-upgrade.md): scripts/upgrade-local.sh delegates to
+existing setup/install/doctor, selecting the full pin from release.json. No machine
+paths, fixed project list, profile or native session IDs. Default is a read-only plan;
+--yes applies, optional --sudo-observer authenticates the Linux read-only observer.
+SQLite snapshots are private and consistent; copied/disabled state is not adopted.
+New tests11PASS, build/packages/docs PASS; full tests retain baseline host failures
+(JS76, Python2), pilot140PASS. No real apply or model invocation during wrapper tests.
+This checkout's already-applied0.5.0 pin committed separately in b2edfe7; live MCP
+and status ready were confirmed. Other projects still need their explicit activation.
+The private versioned script is superseded by this committed repository entry.
+
 ## 0.5.0 published; project activation pending — 2026-10-20
 
 [v0.5.0](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.5.0)

@@ -246,6 +246,25 @@ setup/update for the actual worktree. If a client is using that worktree, it pre
 one shell command to run after normal exit, then verifies the update after resume.
 See [the upgrade procedure](docs/plugin-distribution.md#upgrade-with-the-skill).
 
+From a bridge source clone, you can also run the checked local upgrade script:
+
+```bash
+git pull --ff-only
+bash scripts/upgrade-local.sh /path/to/project                 # plan only
+bash scripts/upgrade-local.sh --yes /path/to/project           # apply and doctor
+```
+
+It targets the release commit in this clone's `scripts/plugin-packages/release.json`,
+installs that immutable runtime if needed, backs up the default `.bridge/bridge.db` under the
+bridge home, and uses the existing installer guards. With no project argument it
+targets the current worktree; multiple explicit project paths are accepted. Close
+their clients first. It preserves legacy installation layouts and environment overrides.
+For restricted Linux process access, add `--sudo-observer` (the read-only observer
+authenticates with `sudo -v`; never run the installer with sudo). Pass
+`--codex-profile NAME` only when using that profile. Marketplace plugin refresh and
+client restart still follow the upgrade procedure above. No machine paths or session
+IDs are stored in the script. More examples: [portable upgrade](docs/tasks/portable-upgrade.md).
+
 ## Quick start
 
 1. Open a terminal at the **root of your project's Git repository** and run `codex`.
