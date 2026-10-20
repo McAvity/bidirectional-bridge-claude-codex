@@ -18,7 +18,7 @@
     "shared/control-plane/src/store/state-store.ts",
     "shared/protocol/src/types.ts"
   ],
-  "latest_review": "docs/features/F-W18-feature-closure/reviews/01-plan.md",
+  "latest_review": "docs/features/F-W18-feature-closure/reviews/02-contracts.md",
   "latest_decision": "docs/features/F-W18-feature-closure/decisions/01.md",
-  "next_action": "Autoryzowane całe W18-01…03 z integracją/review/poprawkami. W18-01 w realizacji; lokalne review kontraktu zwalnia W18-02. Patrz execution/integration/01.md."
+  "next_action": "W18-01 review PASS; wykonać W18-02, następnie W18-03 i niezależne review całości w istniejącej autoryzacji."
 }
