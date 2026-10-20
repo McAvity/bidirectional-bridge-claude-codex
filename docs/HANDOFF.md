@@ -1,5 +1,13 @@
 # Current handoff
 
+## F-W18 feature closure — brief prepared, 2026-10-20
+
+[Brief](features/F-W18-feature-closure/brief.md) for rejection/cancellation without
+acceptance, preserving work/history and releasing the feature slot. User selected v1
+with no active round; stopping workers is deferred. No product questions block planning.
+Next: feature-plan, plan review and execution decision. Design only: no tasks, code,
+runtime update or changes to external project state.
+
 ## Linux protected-process installer correction
 
 Explicit read-only privileged observation for Linux procfs permission refusals;
