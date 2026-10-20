@@ -215,3 +215,10 @@ describe("closure refusals and historical failed work", () => {
     expect(f.cp.store.getFeature("feature")).toEqual(before);
   });
 });
+
+it("quiescence checks this coordinator's descendants without blocking unrelated history", () => {
+  const f=fixture();
+  const unrelated=f.cp.tasks.create({spec,created_by:"codex"});
+  f.cp.store.updateTask({...unrelated,parent_task_id:unrelated.task_id,version:unrelated.version+1});
+  expect(f.flow.close(decision).feature.state).toBe("rejected");
+});

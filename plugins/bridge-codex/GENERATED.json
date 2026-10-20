@@ -7,7 +7,7 @@
     ".codex/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "b00bd256335b050175d2aefac06c828eb914d27b741879fa829a473ffa209f22",
+  "source_digest": "f8299132ec0ac4bf8e04c34eddd52582852713dc86ed9751abea2f231cc93e40",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",

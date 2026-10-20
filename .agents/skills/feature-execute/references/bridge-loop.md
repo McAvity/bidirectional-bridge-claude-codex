@@ -196,7 +196,11 @@ procedures. They do not authorize retrying a model. Closure itself cancels exclu
 coordination (including VERIFYING), preserves historical terminal/shared parents, and frees
 only its slot. Do not submit a later COMPLETE/PARTIAL for that closed root.
 
-Confirm persisted closure before updating the success checkpoint. After response loss, read
+Confirm persisted closure before updating the success checkpoint. Write that document under
+the repository rules; if a bridge lease is required, use a separate documentation root outside
+the closed task tree. No new feature or executor is needed, and no new approval gate is implied.
+Do not reopen the closed root to obtain a lease or mislabel its product as complete.
+After response loss, read
 or repeat exactly the same close; replay after a new feature starts cannot take its slot.
 Keep historical questions unchanged, even with null answer. After closure no round, recovery
 or answer may reopen the feature. A new assignment uses a new feature/root, retaining old code

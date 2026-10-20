@@ -157,7 +157,10 @@ Same request/key, or identical decision with a new key, preserves the original c
 A changed payload under the same key gives IDEMPOTENCY_MISMATCH; another decision after
 closure gives FEATURE_CLOSED. A replay after feature B starts never claims or releases B's
 slot. Record the document decision first, confirm close or its persisted result, then record
-the successful checkpoint. This is not a distributed transaction with Git documents.
+the successful checkpoint. Follow repository writing rules; only if a bridge lease is
+required, use a separate documentation root outside the closed task tree, without a new
+feature or executor. Never reopen the old root for this. This is not a distributed
+transaction with Git documents.
 
 `accepted`, `rejected`, `cancelled` are terminal. Rejected/cancelled feature task trees
 cannot receive new execution, recovery, state/ownership changes, artifacts or deliverables.

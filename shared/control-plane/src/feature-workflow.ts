@@ -334,15 +334,17 @@ export class FeatureWorkflow {
         if (task.parent_task_id !== parent.task_id) unsettled("round has inconsistent parent");
         if (allFeatures.some(other => other.feature_id !== f.feature_id && !featureTerminal(other) && other.task_ids.includes(id))) unsettled("round is shared with another feature");
       }
-      // Include every descendant: a direct delegation outside feature_run is not invisible work.
-      for (const task of store.listTasks()) {
-        const seen = new Set<string>();
-        let cursor = task;
-        while (cursor.parent_task_id) {
-          if (seen.has(cursor.task_id)) unsettled("cyclic task lineage");
-          seen.add(cursor.task_id);
-          if (cursor.parent_task_id === parent.task_id) { ids.add(task.task_id); break; }
-          cursor = store.getTask(cursor.parent_task_id) ?? unsettled("missing task lineage");
+      // Include descendants of this coordinator, not unrelated historical task trees.
+      // Direct delegation outside feature_run must not become invisible work.
+      const tasks = store.listTasks();
+      const pending = [parent.task_id];
+      const seen = new Set<string>(pending);
+      for (let i = 0; i < pending.length; i++) {
+        for (const child of tasks.filter(t => t.parent_task_id === pending[i])) {
+          if (seen.has(child.task_id)) unsettled("cyclic task lineage");
+          seen.add(child.task_id);
+          ids.add(child.task_id);
+          pending.push(child.task_id);
         }
       }
       for (const id of [...ids, parent.task_id]) {
