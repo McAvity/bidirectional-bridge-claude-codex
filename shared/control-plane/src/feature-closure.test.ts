@@ -222,3 +222,38 @@ it("quiescence checks this coordinator's descendants without blocking unrelated 
   f.cp.store.updateTask({...unrelated,parent_task_id:unrelated.task_id,version:unrelated.version+1});
   expect(f.flow.close(decision).feature.state).toBe("rejected");
 });
+
+describe("R03-01 descendant execution evidence", () => {
+  it.each([TaskState.BLOCKED, TaskState.DONE])("refuses an unattributed %s descendant without a completed attempt", state => {
+    const f = fixture();
+    const child = f.cp.tasks.create({spec, created_by:"codex", parent_task_id:f.parent.task_id});
+    f.cp.tasks.claim(child.task_id,"claude");
+    if (state === TaskState.BLOCKED) f.cp.tasks.block(child.task_id,"claude","synthetic interrupted reservation");
+    else {
+      f.cp.tasks.transition({task_id:child.task_id,agent:"claude",to:TaskState.WORKING});
+      f.cp.tasks.transition({task_id:child.task_id,agent:"claude",to:TaskState.VERIFYING});
+      f.cp.tasks.transition({task_id:child.task_id,agent:"claude",to:TaskState.DONE});
+    }
+    const before = {feature:f.cp.store.getFeature("feature"),parent:f.cp.tasks.get(f.parent.task_id),child:f.cp.tasks.get(child.task_id),events:f.cp.store.readEvents()};
+    expect(() => f.flow.close({...decision,outcome:"cancelled"})).toThrowError(expect.objectContaining({code:"FEATURE_UNSETTLED"}));
+    expect({feature:f.cp.store.getFeature("feature"),parent:f.cp.tasks.get(f.parent.task_id),child:f.cp.tasks.get(child.task_id),events:f.cp.store.readEvents()}).toEqual(before);
+  });
+
+  it("checks the attempt counter for descendants outside task_ids", () => {
+    const f=fixture();
+    const child=f.cp.tasks.create({spec,created_by:"codex",parent_task_id:f.parent.task_id});
+    f.cp.tasks.claim(child.task_id,"claude"); f.cp.tasks.block(child.task_id,"claude","synthetic interrupted reservation");
+    f.cp.attempts.start(child.task_id,0,"claude"); f.cp.attempts.end(child.task_id,0,"claude","PARTIAL");
+    const current=f.cp.tasks.get(child.task_id);
+    f.cp.store.updateTask({...current,attempt:1,version:current.version+1});
+    expect(() => f.flow.close(decision)).toThrowError(expect.objectContaining({code:"FEATURE_UNSETTLED"}));
+  });
+
+  it("allows an explicitly cancelled reservation that never opened an attempt", () => {
+    const f=fixture();
+    const child=f.cp.tasks.create({spec,created_by:"codex",parent_task_id:f.parent.task_id});
+    f.cp.tasks.claim(child.task_id,"claude");
+    f.cp.tasks.transition({task_id:child.task_id,agent:"claude",to:TaskState.CANCELLED,reason:"synthetic cancellation before execution"});
+    expect(f.flow.close(decision).feature.state).toBe("rejected");
+  });
+});

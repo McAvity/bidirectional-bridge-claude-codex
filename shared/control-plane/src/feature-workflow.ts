@@ -354,7 +354,13 @@ export class FeatureWorkflow {
         if (store.listHeldLeases().some(l => l.task_id === id)) busy("task still holds a lease");
         if (id !== parent.task_id) {
           if (![TaskState.DONE, TaskState.FAILED, TaskState.CANCELLED, TaskState.BLOCKED].includes(task.state as never)) busy("descendant task is not settled");
-          if (f.task_ids.includes(id) && (!attempts.length || attempts.at(-1)?.attempt !== task.attempt)) unsettled("round has no matching completed attempt");
+          // Every executor descendant needs evidence, even if it was delegated outside
+          // feature_run and is absent from task_ids. A cancelled initial reservation
+          // without any attempt never entered the adapter and cannot start after close.
+          const cancelledBeforeExecution = task.state === TaskState.CANCELLED && task.attempt === 0 &&
+            !attempts.length && !f.task_ids.includes(id);
+          if (!cancelledBeforeExecution && (!attempts.length || attempts.at(-1)?.attempt !== task.attempt))
+            unsettled("descendant has no matching completed attempt");
         }
       }
       const now = this.cp.clock.now();
