@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W18-feature-closure",
-  "phase": "plan-review",
+  "phase": "decision",
   "brief": "docs/features/F-W18-feature-closure/brief.md",
   "design": "docs/features/F-W18-feature-closure/design.md",
   "tasks": [
@@ -18,7 +18,7 @@
     "shared/control-plane/src/store/state-store.ts",
     "shared/protocol/src/types.ts"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W18-feature-closure/reviews/01-plan.md",
   "latest_decision": null,
-  "next_action": "feature-review w trybie plan, następnie feature-decide. Bez implementacji; W18-02 zależy od lokalnego review kontraktu W18-01."
+  "next_action": "feature-decide F-W18: niezależne review planu PASS, bez wymaganych korekt. Implementacja nadal niezlecona; W18-01 zawiera lokalną bramkę kontraktową."
 }
