@@ -2,7 +2,7 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.5.0",
   "pinned": {
-    "commit": "e95153d79522a7c9719b24b82cd63527e2a30441",
+    "commit": "12c4938282b2222d65e2636ecf24ec3e921e4a99",
     "describe": "0.5.0: idle feature rejection/cancellation, schema 6 and Linux process inspection"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",

@@ -25,3 +25,12 @@ Correction in progress: validate required named capabilities, requiring close fo
 schema6 while retaining schema5 checks. Add direct regressions and regenerate packages;
 then repin runtime source, rerun CI and only publish on PASS. The initially installed
 0.5.0-e95153d79522 preview remains immutable but will not be the released upgrade target.
+
+## Doctor correction review — PASS
+
+Executor12c4938 replaces an exact count with six required feature-tool names plus
+close for schema>=6; schema5 remains supported. Coordinator independently inspected
+the diff and ran42/42 tests (doctor capabilities, closure and schema compatibility).
+Packages, links and diff-check PASS. This is the one release integration correction;
+no product requirement changed. Released runtime source is now12c4938282b2222d65e2636ecf24ec3e921e4a99,
+not the earlier immutable preview. Another full CI must pass before publication.
