@@ -19,6 +19,6 @@
     "shared/protocol/src/types.ts"
   ],
   "latest_review": "docs/features/F-W18-feature-closure/reviews/01-plan.md",
-  "latest_decision": null,
-  "next_action": "feature-decide F-W18: niezależne review planu PASS, bez wymaganych korekt. Implementacja nadal niezlecona; W18-01 zawiera lokalną bramkę kontraktową."
+  "latest_decision": "docs/features/F-W18-feature-closure/decisions/01.md",
+  "next_action": "Plan approved przez delegowane feature-decide (decyzja 01). Oczekuje zlecenia feature-execute całego W18-01…03 wraz z integracją, lokalnym niezależnym review i poprawkami. Produkt nieodebrany."
 }

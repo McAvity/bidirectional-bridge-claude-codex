@@ -1,16 +1,15 @@
 # Current handoff
 
-## F-W18 feature closure — plan ready for review, 2026-10-20
+## F-W18 feature closure — plan approved, execution not assigned, 2026-10-20
 
-[Brief](features/F-W18-feature-closure/brief.md),
-[design](features/F-W18-feature-closure/design.md) and
-[index](features/F-W18-feature-closure/feature.json). Three planned work-items:
-contract, runtime/tests, workflow/integration. V1 closes only with no active or
-unreconciled round; stopping workers is deferred. Contract review is a local
-technical dependency, not a new user gate after each task.
-Planning only; no product/runtime/external project changes. Next: feature-review
-(plan), then feature-decide and an explicit execution assignment. The proposed
-schema migration and coordinator lifecycle still require the W18-01 contract.
+[Decision 01](features/F-W18-feature-closure/decisions/01.md) accepts the plan
+under delegated feature-decide judgment after [independent review PASS](features/F-W18-feature-closure/reviews/01-plan.md).
+[Design](features/F-W18-feature-closure/design.md) and W18-01…03 cover contract,
+runtime/tests, workflow/integration. V1 closes only without active/unreconciled work.
+Next: explicit feature-execute assignment for the whole remaining scope, including
+local contract review, integration and corrections. No per-task user approval gate.
+Older initialize compatibility and coordinator lifecycle remain W18-01 obligations.
+No product implementation, task closure, runtime change, push or external-project mutation.
 
 ## Linux protected-process installer correction
 
