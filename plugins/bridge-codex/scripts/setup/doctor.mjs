@@ -31,7 +31,18 @@ import {
 
 export const DOCTOR_FORMAT = "claude-codex-bridge.doctor/v1";
 const DEFAULT_NODE_MINIMUM = "22.13.0";
-const FEATURE_TOOLS = 6;
+const BASE_FEATURE_TOOLS = [
+  "bridge_feature_create", "bridge_feature_get", "bridge_feature_run",
+  "bridge_feature_wait_user", "bridge_feature_answer_user", "bridge_feature_accept",
+];
+
+/** Validate capabilities by name, allowing additive tools and legacy schema5 runtimes. */
+export function missingRequiredFeatureTools(tools, manifest) {
+  const required = [...BASE_FEATURE_TOOLS];
+  if (manifest?.compatibility?.state_schema_version >= 6) required.push("bridge_feature_close");
+  const available = new Set(Array.isArray(tools) ? tools : []);
+  return required.filter((name) => !available.has(name));
+}
 const LOCAL_FILESYSTEMS = new Set(["ext2", "ext3", "ext4", "xfs", "btrfs", "tmpfs", "zfs", "f2fs", "overlay", "jfs", "bcachefs", "reiserfs", "apfs", "hfs"]);
 const NETWORK_FILESYSTEMS = /^(nfs|cifs|smb|9p|sshfs|fuse|ceph|glusterfs|afs|virtiofs|davfs)/u;
 
@@ -812,7 +823,7 @@ export async function runDoctor({
     add("handshake", "skipped", "HANDSHAKE_NOT_POSSIBLE", "needs a resolved worktree and a complete selected runtime");
   } else {
     const result = await handshake(root, mcpDefinition(manifest, setupProfile), env);
-    const featureTools = result.tools?.filter((name) => name.startsWith("bridge_feature_")).length ?? 0;
+    const missingFeatureTools = missingRequiredFeatureTools(result.tools, manifest);
     if (!result.ok) {
       add("handshake", "error", "HANDSHAKE_FAILED", `MCP handshake failed: ${result.error}`, {
         details: { stderr_tail: result.stderr_tail },
@@ -820,8 +831,8 @@ export async function runDoctor({
       });
     } else if (result.serverInfo.data?.caller !== "codex" || result.serverInfo.data?.delegation !== "allow") {
       add("handshake", "error", "HANDSHAKE_IDENTITY_MISMATCH", "server did not bind caller=codex delegation=allow", { details: { server_info: result.serverInfo.data } });
-    } else if (featureTools !== FEATURE_TOOLS) {
-      add("handshake", "error", "HANDSHAKE_TOOLS_MISSING", `server exposes ${featureTools} feature tools, expected ${FEATURE_TOOLS}`, { details: { tools: result.tools } });
+    } else if (missingFeatureTools.length > 0) {
+      add("handshake", "error", "HANDSHAKE_TOOLS_MISSING", `server is missing required feature tools: ${missingFeatureTools.join(", ")}`, { details: { tools: result.tools, missing_tools: missingFeatureTools } });
     } else {
       // Session identifiers stay out of the report; only the shape of the binding is shown.
       const status = result.managerStatus.data ?? {};
