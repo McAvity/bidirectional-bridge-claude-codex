@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W18-feature-closure",
-  "phase": "execution",
+  "phase": "decision",
   "brief": "docs/features/F-W18-feature-closure/brief.md",
   "design": "docs/features/F-W18-feature-closure/design.md",
   "tasks": [
@@ -18,7 +18,7 @@
     "shared/control-plane/src/store/state-store.ts",
     "shared/protocol/src/types.ts"
   ],
-  "latest_review": "docs/features/F-W18-feature-closure/reviews/02-contracts.md",
+  "latest_review": "docs/features/F-W18-feature-closure/reviews/03-implementation.md",
   "latest_decision": "docs/features/F-W18-feature-closure/decisions/01.md",
-  "next_action": "W18-01 review PASS; wykonać W18-02, następnie W18-03 i niezależne review całości w istniejącej autoryzacji."
+  "next_action": "Cały W18-01…03 lokalnie dostarczony i review03 PASS, R03-01 resolved; oczekuje rzeczywistego odbioru użytkownika. Bez release/upgrade projektów. Patrz execution/integration/01.md."
 }

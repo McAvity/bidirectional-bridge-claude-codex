@@ -1,15 +1,18 @@
 # Current handoff
 
-## F-W18 feature closure — plan approved, execution not assigned, 2026-10-20
+## F-W18 feature closure — locally delivered, review PASS, 2026-10-20
 
-[Decision 01](features/F-W18-feature-closure/decisions/01.md) accepts the plan
-under delegated feature-decide judgment after [independent review PASS](features/F-W18-feature-closure/reviews/01-plan.md).
-[Design](features/F-W18-feature-closure/design.md) and W18-01…03 cover contract,
-runtime/tests, workflow/integration. V1 closes only without active/unreconciled work.
-Next: explicit feature-execute assignment for the whole remaining scope, including
-local contract review, integration and corrections. No per-task user approval gate.
-Older initialize compatibility and coordinator lifecycle remain W18-01 obligations.
-No product implementation, task closure, runtime change, push or external-project mutation.
+[Implementation review03](features/F-W18-feature-closure/reviews/03-implementation.md)
+PASS after R03-01 correction. [Integration ledger](features/F-W18-feature-closure/execution/integration/01.md)
+contains task/commit mapping and validation. Final product SHA 0bdf45c on
+ design/feature-closure; W18-01…03 done locally, user acceptance pending.
+New bridge_feature_close, rejected/cancelled, atomic slot release, schema6,
+guards, privacy projection and distributed instructions. No active-worker stopping.
+Independent final build/focused90 tests PASS including actual0.4.3 launcher fixture.
+Full suites retain baseline host failures: JS76, Python2; pilot140PASS.
+Native executor used because MCP bridge tools were unavailable; no real-model claim.
+No implementation push/merge/release/runtime upgrade or external-project mutation.
+Next: user acceptance, then separately authorized integration/publication/upgrade.
 
 ## Linux protected-process installer correction
 
