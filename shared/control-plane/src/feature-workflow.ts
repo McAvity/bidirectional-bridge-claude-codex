@@ -166,7 +166,7 @@ export class FeatureWorkflow {
     // Pure preflight: a request that is about to be refused must not reconcile state or append
     // events on behalf of a caller whose authority has not been checked yet (review R09-01).
     const feature = this.view(feature_id, manager);
-    assertFeatureOpen(feature);
+    if (feature.state !== "accepted") assertFeatureOpen(feature);
     const replay = this.replay(key, requestHash);
     if (replay) return this.result(feature_id, manager, replay, true);
     if (feature.active_task_id || !["ready", "awaiting_review"].includes(feature.state))
@@ -327,7 +327,8 @@ export class FeatureWorkflow {
       const shared = allFeatures.some(other => other.feature_id !== f.feature_id && other.parent_task_id === parent.task_id && !featureTerminal(other));
       const ids = new Set(f.task_ids);
       if (ids.size !== f.task_ids.length || (f.latest_task_id !== null && !ids.has(f.latest_task_id)) ||
-          (f.active_task_id !== null && !ids.has(f.active_task_id)) || (ids.size && !f.latest_task_id)) unsettled("inconsistent feature task references");
+          (f.active_task_id !== null && (!ids.has(f.active_task_id) || f.active_task_id !== f.latest_task_id)) ||
+          (ids.size && f.latest_task_id !== f.task_ids.at(-1))) unsettled("inconsistent feature task references");
       for (const id of ids) {
         const task = store.getTask(id) ?? unsettled("missing feature task");
         if (task.parent_task_id !== parent.task_id) unsettled("round has inconsistent parent");

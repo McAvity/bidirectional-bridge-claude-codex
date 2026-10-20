@@ -142,6 +142,27 @@ Decyzja wskazuje review i jego wersję, przyjęte/odrzucone ustalenia z krótkim
 
 Poprawki przywracające uzgodnione zachowanie mieszczą się w zleceniu implementacji całego featura, chyba że użytkownik zawęził zakres. Wykonuj je lokalnie, odwołując się do ustaleń review i istniejącej zgody, a następnie sprawdzaj zmieniony zakres i związane regresje. Przy dwóch kolejnych rundach bez postępu nad tym samym istotnym problemem pokaż przyczynę impasu i konkretną decyzję potrzebną do kontynuacji; użytkownik może ustalić inny budżet. To nie jest automatyczny limit dwóch review całego featura ani powód do zatrzymania skutecznych poprawek. Niezależnie od postępu, przy trzecim sprawdzaniu tego samego problemu w danej fazie zrób krótki krok wstecz: jakie istotne wymaganie pozostaje niespełnione, jaki jest dowód i czy prostsze podejście usunie klasę problemów? Powiązane ID mogą opisywać ten sam problem; zmiana fazy lub nowy defekt nie jest automatycznie powtórzeniem. Rozważ uproszczenie wcześniej, gdy jest oczywiste. Ten krok nie wymaga nowego dokumentu ani pytania, nie ogranicza liczby napraw i nie pozwala zaakceptować błędu. Zwykły wybór techniczny podejmij w istniejącej zgodzie; materialną zmianę wymagań uzgodnij. Odnotuj tylko istotny wynik w bieżącym review lub ledgerze. Zachowaj jawne limity prób/kosztów. Nowe wybory produktowe eskaluj, kontynuując niezależną, dozwoloną pracę.
 
+## Odrzucenie albo anulowanie całego featura
+
+`feature-decide` zapisuje jednoznaczną decyzję użytkownika lub decyzję jawnie delegowaną:
+`rejected` odrzuca kierunek/dostawę, `cancelled` kończy pracę bez oceny jakości. REWORK
+dostawy oznacza poprawki, pauza oznacza oczekiwanie; FAIL/PARTIAL wykonawcy nie są
+produktową decyzją zamknięcia. Przy jasnej decyzji nie prosimy o ponowne zatwierdzenie;
+wyjaśniamy tylko rzeczywiście niejednoznaczne „odrzucam”, gdy może znaczyć poprawki.
+
+W bridge koordynator `feature-execute` zapisuje decyzję przed wywołaniem
+`bridge_feature_close` z powodem, źródłem i trwałym kluczem idempotencji. Dopiero
+potwierdzony wynik/odczyt closure pozwala zapisać zwolnienie slotu. Po utracie
+odpowiedzi odczyt lub identyczne ponowienie dokańcza checkpoint; nie uruchamia modelu.
+Aktywne/nierozliczone próby i HELD lease powodują odmowę. Nie zabijamy wykonawcy,
+nie edytujemy SQLite ani nie podstawiamy accept. Starszy runtime wymaga upgrade;
+same nowe skille nie dodają narzędzia. Bez bridge wystarcza zapis decyzji dokumentowej.
+
+Historia pytań, tasków, ledgerów, review, commitów, plików i paczek pozostaje.
+Nie oznaczamy niespełnionych AC jako PASS ani tasków jako DONE. Zamknięcie nie daje
+zgody na revert/reset/clean, usuwanie lub publikację. Ponowne wykorzystanie pracy
+wymaga nowego zlecenia; ten sam terminalny feature nie jest otwierany ponownie.
+
 ## Feature z eksperymentami i kolejnymi falami
 
 Ta sekcja dotyczy prac, w których pomiar decyduje o dalszym projekcie. Utrzymuj jeden brief celu i stosuj te same skille dla kolejnych fal. `feature-plan` konkretyzuje najbliższą falę, a dalsze opisuje przez pytania, wymagane wejścia i outputy. Nie wymagać szczegółowego backlogu ani wybranego algorytmu dla zakresu zależnego od nieznanych jeszcze wyników. Wyniki poprzedniej fali stają się wersjonowanym wejściem do ponownego planowania; nie zastępują samodzielnie decyzji.

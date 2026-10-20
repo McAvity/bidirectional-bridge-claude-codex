@@ -102,6 +102,15 @@ commit completed in-scope work and report `OUTCOME=PARTIAL`; unfinished uncommit
 disclosed, never delivered. Export no package for it even when the contract requires one;
 after the coordinator resumes the task, finish it and deliver (and export) then.
 
+## Final rejection or cancellation
+
+A user may explicitly stop the whole feature before acceptance. Follow feature-decide and,
+when coordinating a bridge feature, the close procedure in references/bridge-loop.md.
+REWORK of a delivery, pause and worker failure do not imply this decision. Close only idle,
+settled work; a newer skill cannot add the operation to an old runtime. Preserve code and
+historical task outcomes, do not submit a fake success, and confirm closure before recording
+that the slot was freed. Without bridge, record only the document decision.
+
 ## Finish
 
 Set the task state through actual Yumi conventions, retaining incomplete gates. Record the ending code revision/snapshot and validation target before returning. Update the index if you are the coordinator, pointing to the next review; do not mark the whole feature accepted.

@@ -70,6 +70,7 @@ stored in the shared coordination database; avoid putting secrets in them.
   a `FAILED` task whose last attempt ended at the bridge deadline with its session kept.
   Every other `FAILED` stays terminal.
 - `accepted`: final manager acceptance; no more rounds or recovery.
+- `rejected` / `cancelled`: final explicit closure without acceptance; no rounds, recovery or reopening. History remains readable.
 
 A round key is scoped to the feature and atomically reserved with its task. Reusing
 it with the same request returns that task's current state/deliverable, including
@@ -127,3 +128,56 @@ or configuration automatically, nor implement an autonomous agent-to-agent loop.
 The manager must call the tools according to this sequence. The `using-bridge` skill
 section "Feature rounds" and the feature workflow skills (`feature-execute` reference
 `bridge-loop.md`) describe how a manager drives this loop.
+
+## Closing without acceptance
+
+`bridge_feature_close({feature_id, outcome, reason, decision_ref, idempotency_key})`
+records an explicit manager statement of the user's (or delegated) final decision.
+`outcome` is `rejected` or `cancelled`; neither means review PASS or product acceptance.
+REWORK and pause remain open. Required nonblank text limits: feature_id 256, reason4000,
+decision_ref1000, idempotency_key256 characters. decision_ref is opaque, never fetched.
+
+Response: `{feature, replayed}`. The feature's immutable `closure` contains outcome,
+reason, decision_ref, server closed_at, manager/attribution and coordinator_effect.
+Local reads retain the reason; default diagnostic exports omit raw reason/source/native
+thread identity while retaining outcome, time and the coordinator effect. Existing
+question/answer, tasks, attempts, deliveries, code and packages are preserved.
+
+Close allows ready, waiting_user, awaiting_review and ended blocked/failed rounds.
+It refuses open attempts, unstarted reservations, inconsistent references and HELD leases
+including expired ones. Parent attempts/leases and unknown active descendants also count.
+`FEATURE_BUSY`/`FEATURE_UNSETTLED` require settlement through supported procedures;
+close never stops an executor or automatically recovers it. Explicitly release your own
+manual lease before closing. An exclusive unfinished coordinator becomes CANCELLED,
+including VERIFYING via this narrow operation only. Terminal/shared coordinators remain
+unchanged; no COMPLETE delivery or fake successful product is created.
+
+Closure, coordinator outcome, idempotency and release of this slot commit atomically.
+Same request/key, or identical decision with a new key, preserves the original closure/time.
+A changed payload under the same key gives IDEMPOTENCY_MISMATCH; another decision after
+closure gives FEATURE_CLOSED. A replay after feature B starts never claims or releases B's
+slot. Record the document decision first, confirm close or its persisted result, then record
+the successful checkpoint. This is not a distributed transaction with Git documents.
+
+`accepted`, `rejected`, `cancelled` are terminal. Rejected/cancelled feature task trees
+cannot receive new execution, recovery, state/ownership changes, artifacts or deliverables.
+Reads remain available; create with the same ID/parent returns the old feature without
+reclaiming the slot. New work needs a new feature/root, never a replacement task to reopen
+closed work. The generic task state machine and accepted-product semantics are unchanged.
+
+## Schema 6 and downgrade
+
+Closure requires a schema6 runtime. Existing open state written by0.4.3 is preserved and
+migrated on an authorized mutation through the normal identity/adoption rules. Read-only
+queries do not migrate. Before updating, preserve a consistent SQLite backup and normally
+stop clients. Setup/update/rollback refuse a target supporting a lower schema than the DB.
+After new writes there is no lossless downgrade: restoring a premigration backup means
+losing subsequent decisions and is not performed by the installer.
+
+The supported0.4.3 launcher uses existing-state attach/readonly, which reject schema6.
+Its **direct library initialize API is unsafe for newer databases**: that historical code
+can overwrite the schema number. Do not use it or manually switch pins to bypass compatibility.
+New initialize/initializeSchema/attach/readonly paths reject future versions before schema
+changes. New skills with an old selected runtime cannot provide close; upgrade rather than
+calling accept or editing SQLite. No automatic downgrade, reopening, file deletion or
+worker cancellation is part of this operation.

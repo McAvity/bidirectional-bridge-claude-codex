@@ -38,6 +38,14 @@ Load this reference only for a blocked, failed, interrupted, or stranded bridge 
 | Round `FAILED` with attempt outcome `TIMEOUT` | Read `bridge_get_task` and its `termination_evidence` file, confirm the worker stopped, then resume once with `recover_timeout`, a justified `deadline_ms` and `max_turns`. | Do not reopen any other `FAILED`, reuse the expired deadline implicitly, or repeat after a second timeout without a decision. |
 | Failed recovery | Report the same task, new attempt, lineage, and exact reason. | Do not create a sibling task or fresh runtime thread. |
 
+## Closed features
+
+`rejected`/`cancelled` are final. `FEATURE_CLOSED` forbids round/recovery/task mutation;
+read historical results instead. `FEATURE_BUSY` or `FEATURE_UNSETTLED` on close means
+active or insufficiently settled work, not permission to stop a process or retry a model.
+Keep closure's idempotency key for a lost response. Missing close requires a runtime upgrade;
+never use accept to release rejected work. Closed parent/worker outcomes are not rewritten.
+
 ## Termination evidence
 
 An attempt that ended without a result leaves `<database dir>/evidence/<task_id>/attempt-<n>.json`

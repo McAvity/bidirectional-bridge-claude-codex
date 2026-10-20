@@ -965,6 +965,9 @@ export async function runDiagnose(options) {
                 ...state.feature,
                 // The question and its answer are user content and stay out of the package.
                 question_present: state.feature.question !== null && state.feature.question !== undefined,
+                closure_outcome: state.feature.closure?.outcome ?? null,
+                closed_at: state.feature.closure?.closed_at ?? null,
+                coordinator_effect: state.feature.closure?.coordinator_effect ?? null,
               },
               FEATURE_SPEC,
               aliases,

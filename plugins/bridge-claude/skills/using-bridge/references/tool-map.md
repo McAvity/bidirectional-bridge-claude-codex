@@ -25,6 +25,7 @@ Use the live MCP schema as the final authority. Load this map only when the exac
 | `bridge_feature_wait_user` | Persist a blocking question for the user; nothing is sent to Claude. |
 | `bridge_feature_answer_user` | Record the user's answer; launches and forwards nothing. |
 | `bridge_feature_accept` | Accept after the acceptance decision; no rounds afterwards. |
+| `bridge_feature_close` | Record rejected/cancelled with reason, decision_ref and stable idempotency_key; idle settled work only. Preserve history, free only own slot; no model invocation. |
 
 ## Conditional task and coordination tools
 

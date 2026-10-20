@@ -183,3 +183,35 @@ describe("schema6 forward guard", () => {
     db.close();
   });
 });
+
+describe("closure refusals and historical failed work", () => {
+  it("closes an ended TIMEOUT without recovering or rewriting the failed task", async () => {
+    const f=fixture(); const round=await f.flow.run(f.request);
+    const task=f.cp.tasks.get(round.task.task_id);
+    f.cp.store.updateTask({...task,state:TaskState.FAILED,version:task.version+1});
+    const attempt=f.cp.attempts.list(task.task_id)[0]!;
+    f.cp.store.upsertAttempt({...attempt,outcome:"TIMEOUT"});
+    const before=f.cp.tasks.get(task.task_id);
+    expect(f.flow.close({...decision,outcome:"cancelled"}).feature.state).toBe("cancelled");
+    expect(f.cp.tasks.get(task.task_id)).toEqual(before); expect(f.seen).toHaveLength(1);
+  });
+  it("refuses another slot, wrong owner, accepted and inconsistent task references", async () => {
+    const f=fixture();
+    expect(()=>f.flow.close({...decision,manager:"claude"})).toThrow();
+    f.cp.store.putManagerBinding!({epoch:1,native_thread_id:"synthetic",active_instance_id:"instance",instance_generation:1,active_feature_id:"another",updated_at:1});
+    expect(()=>f.flow.close(decision)).toThrowError(expect.objectContaining({code:"FEATURE_CONFLICT"}));
+    f.cp.store.putManagerBinding!({...f.cp.store.getManagerBinding!()!,active_feature_id:null});
+    const feature=f.cp.store.getFeature("feature")!;
+    f.cp.store.putFeature({...feature,task_ids:["missing"],latest_task_id:"missing"});
+    expect(()=>f.flow.close(decision)).toThrowError(expect.objectContaining({code:"FEATURE_UNSETTLED"}));
+    f.cp.store.putFeature(feature);
+    await f.flow.run(f.request); f.flow.accept("feature","codex");
+    expect(()=>f.flow.close(decision)).toThrowError(expect.objectContaining({code:"FEATURE_CLOSED"}));
+  });
+  it("validates required decision fields without touching domain records", () => {
+    const f=fixture(); const before=f.cp.store.getFeature("feature");
+    for(const invalid of [{reason:" "},{reason:"x".repeat(4001)},{decision_ref:""},{idempotency_key:""},{outcome:"accepted"}])
+      expect(()=>f.flow.close({...decision,...invalid} as typeof decision)).toThrowError(expect.objectContaining({code:"INVALID_ARGUMENT"}));
+    expect(f.cp.store.getFeature("feature")).toEqual(before);
+  });
+});

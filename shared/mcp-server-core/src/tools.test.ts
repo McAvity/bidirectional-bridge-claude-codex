@@ -91,6 +91,7 @@ describe("MCP tool surface", () => {
       "bridge_submit_deliverable",
       "bridge_delegate",
       "bridge_feature_accept",
+      "bridge_feature_close",
       "bridge_feature_answer_user",
       "bridge_feature_create",
       "bridge_feature_get",

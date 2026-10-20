@@ -23,6 +23,12 @@ flowchart TD
     J -->|Istotne błędy| G
     J -->|Gotowy do odbioru| K["Odbiór użytkownika<br/>feature-decide: zapis decyzji"]
     K -->|Poprawki| G
+    F -.-> N["Decyzja: odrzucenie lub rezygnacja<br/>feature-decide"]
+    K -->|Odrzucenie całego featura| N
+    N --> O{Brak aktywnej lub nierozliczonej rundy?}
+    O -->|Nie| P["Odmowa zamknięcia; rozliczenie istniejącej pracy<br/>feature-execute + using-bridge"]
+    O -->|Tak| Q["bridge_feature_close: rejected lub cancelled<br/>feature-execute + using-bridge"]
+    Q --> R["Slot wolny; kod i historia zachowane"]
     K -->|Akceptacja| L["Zamknięcie featura<br/>feature-execute: koordynator + using-bridge"]
     L --> M["Merge, publikacja lub wdrożenie według osobnej zgody<br/>Procedura projektu"]
     D -.-> X["Opcjonalne przekazanie ZIP-a<br/>feature-exchange"]
@@ -165,3 +171,19 @@ zlecone, ale sama akceptacja lokalnej implementacji nie oznacza ich wykonania.
 - [Tożsamość managera](manager-identity.md) — własność worktree i wznowienie.
 - [Setup](setup.md) — szczegóły instalacji przypiętego runtime.
 - [README](../README.md) — instalacja z marketplace i mapa dokumentacji.
+
+
+## Rezygnacja i odrzucenie
+
+Możesz powiedzieć „Kończymy ten feature, odrzucam dostawę; zachowaj historię” albo
+„Anuluj dalszą realizację tego featura”. Astra zapisze decyzję i użyje
+`bridge_feature_close`, gdy wykonawca jest zakończony i rozliczony. Nie uruchomi modelu,
+nie przyjmie produktu i nie usunie kodu. „Popraw tę dostawę” prowadzi do REWORK;
+„zrób pauzę” nie zwalnia slotu. Niejasne „odrzucam” wymaga ustalenia, który wariant
+masz na myśli, ale jasna decyzja nie wymaga powtórnego potwierdzenia.
+
+Zamknięcie aktywnej/nierozliczonej rundy zostanie odmówione — pierwsza wersja nie
+zatrzymuje procesu. Po zamknięciu można rozpocząć nowy feature, zachowując historię
+starego. Odpowiedź na jego dawne pytanie nie otwiera go ponownie. Bez bridge decyzja
+pozostaje dokumentowa; przy starym runtime potrzebny jest upgrade, nigdy zastępcze
+`accept`. Szczegóły zgodności: [stany i zamknięcie](feature-workflow.md#closing-without-acceptance).

@@ -87,6 +87,7 @@ gates and remaining authorized work. Status replies and compaction are not stop 
 | `blocked` | `bridge_get_task(latest_task_id)`; read the blocker. Resolve within authority with `bridge_resume_delegated_task({task_id, message, idempotency_key: "<task>:resume-<task.attempt + 1>"})`; otherwise ask the user. | Run a new round, create a sibling, or delegate around the blocker. |
 | `waiting_user` | Show the pending question; wait for the user's real answer. | Run, recover, or treat silence as consent. |
 | `accepted` | Finish the root task. | Start more rounds. |
+| `rejected` / `cancelled` | Report the recorded closure; preserve delivered work and history. | New rounds/recovery, changing the decision, or fabricating acceptance. |
 
 A `FAILED` round whose last attempt ended `TIMEOUT` (the bridge stopped it at `deadline_ms`)
 keeps its session and can be reopened once, explicitly, when the extra runtime is authorized:
@@ -178,9 +179,30 @@ After the user's acceptance answer (or explicitly delegated acceptance) is recor
 `decisions/NN.md`: `bridge_feature_accept`, then `bridge_submit_deliverable` for the root
 with the review and decision references and a real passing check. If the user asks for
 changes instead, record the decision and run the next round; the feature stays
-`awaiting_review` until then. If the user stops the feature (impasse, `FAILED` round,
-changed goal), record that decision and submit the root as `PARTIAL` or `FAILED` with the
-reason; never accept it.
+`awaiting_review` until then.
+
+A final user decision to stop the whole feature uses `bridge_feature_close`, not accept or
+a fabricated root result. `rejected` declines the direction/delivery; `cancelled` discontinues
+work without a quality judgment. REWORK, pause and executor FAIL/PARTIAL are not this decision.
+Use `$feature-decide` to record the real decision and source first. A clear instruction needs
+no repeated permission; clarify only an ambiguous rejection that might request corrections.
+
+Read the feature and relevant attempts/leases. Release only your own manually held lease
+normally. Then call `{feature_id, outcome, reason, decision_ref, idempotency_key}`; keep the key
+for restart/lost-response replay. The bridge refuses active/unsettled attempts, including an
+expired but HELD lease; do not kill a worker, run recovery just to close, or edit SQLite.
+`FEATURE_BUSY`/`FEATURE_UNSETTLED` require resolving the existing activity through supported
+procedures. They do not authorize retrying a model. Closure itself cancels exclusive unfinished
+coordination (including VERIFYING), preserves historical terminal/shared parents, and frees
+only its slot. Do not submit a later COMPLETE/PARTIAL for that closed root.
+
+Confirm persisted closure before updating the success checkpoint. After response loss, read
+or repeat exactly the same close; replay after a new feature starts cannot take its slot.
+Keep historical questions unchanged, even with null answer. After closure no round, recovery
+or answer may reopen the feature. A new assignment uses a new feature/root, retaining old code
+unless separately authorized otherwise. Never revert/reset/clean/delete as a side effect.
+If close is absent from the selected runtime, report upgrade required; do not substitute
+accept. Standalone operation records the document decision only, without claiming MCP closure.
 
 ## Interruptions, retries and restart: "continue"
 

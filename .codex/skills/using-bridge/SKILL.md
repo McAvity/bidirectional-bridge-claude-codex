@@ -168,6 +168,11 @@ rounds makes them bounded exchanges, not the continuous conversation excluded ab
   `bridge_feature_answer_user`. Claude receives only what you write into a round contract or a
   recovery message.
 - `bridge_feature_accept` closes further rounds; call it only after the acceptance decision.
+- `bridge_feature_close` records a clear final rejection/cancellation decision when no worker
+  or unsettled attempt remains. It preserves code/history and frees only that feature slot.
+  REWORK and pause do not call it. Keep the decision reference and idempotency key; after a lost
+  response read/replay before claiming success. A missing tool requires runtime upgrade, never
+  substitute accept, SQL edits, process termination or fabricated task success.
 - A round delivers local commits, not a ZIP. The worker commits only its own in-scope paths and
   starts its summary with the `DELIVERY=local-v1 BASE=… HEAD=… LEDGER=… OUTCOME=… WORKTREE=…`
   line; the manager checks base, ancestry, scope, ledger and uncommitted changes in Git, reviews
@@ -216,8 +221,8 @@ there are no tokens to store.
   live in this worktree's `~/tmp/bridge-exchange/ws_<16 hex>/` namespace
   (`feature_exchange.py namespace` prints it), so a second worktree reusing the same package name
   cannot overwrite yours.
-- A worktree holds one active feature: `FEATURE_CONFLICT` means finish or accept the current one
-  first. Rounds are attributed to the manager epoch that launched them.
+- A worktree holds one active feature: `FEATURE_CONFLICT` means resolve the current feature first: acceptance, or an explicit
+  rejection/cancellation through close when idle. Rounds are attributed to the manager epoch that launched them.
 - A takeover never stops a round that is already running: its worker finishes and records its
   result; only the *next* round is refused for the fenced session.
 

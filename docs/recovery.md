@@ -59,7 +59,7 @@ bridge_resume_delegated_task({
 
 All of the following must hold in durable state, in one transaction: the caller owns the
 direct parent and created the child; the feature (if any) is bound to that manager, is not
-`waiting_user`/`accepted`, and this is its latest task; the task is `FAILED`; its current
+`waiting_user`/`accepted`/`rejected`/`cancelled`, and this is its latest task; the task is `FAILED`; its current
 attempt has ended with outcome `TIMEOUT`, was recorded by the owner, and the FAILED
 transition that followed it gives the deadline as its reason; attempt telemetry, when
 present, records a timeout; a session handle is persisted; no later attempt, live lease or
@@ -134,3 +134,16 @@ Recovery semantics and state transitions are specified in [PROTOCOL.md](PROTOCOL
 covered deterministically by `shared/control-plane/src/recovery.test.ts`. For symptom-first
 guidance when a resume is refused, see
 [troubleshooting.md](troubleshooting.md#strict-resume-fails).
+
+## Closed feature boundary
+
+Rejected/cancelled features cannot be recovered, including historical recovery keys and
+FAILED/TIMEOUT tasks. `FEATURE_CLOSED` is final; read the existing result. A user decision
+to discontinue idle work uses `bridge_feature_close` rather than recovery or acceptance.
+Open attempts, reservations and HELD leases (even expired) cause close to refuse with
+FEATURE_BUSY/FEATURE_UNSETTLED. Resolve existing state normally; close does not terminate
+processes, infer completion from client timeout or expire leases itself.
+
+A lost close response can be resolved by read or replay of the same decision and key;
+this cannot disturb a later feature's slot. See [schema6 and downgrade](feature-workflow.md#schema-6-and-downgrade)
+for the old initialize limitation and why restoring an older backup is not a lossless rollback.

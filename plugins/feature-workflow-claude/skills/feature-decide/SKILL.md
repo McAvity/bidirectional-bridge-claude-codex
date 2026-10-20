@@ -45,4 +45,22 @@ such. Record acceptance only from the user's acceptance or an explicitly delegat
 acceptance; only then may the coordinator call `bridge_feature_accept`, which closes further
 rounds. A reviewer `PASS` or executor `COMPLETE` alone never does.
 
+## Rejection or cancellation
+
+A final decision to stop the whole feature is different from REWORK of one delivery,
+a pause, or an executor FAIL/PARTIAL. Record `rejected` (declined direction/delivery)
+or `cancelled` (discontinued without a quality judgment), reason and decision source.
+A clear existing user instruction is sufficient; clarify only genuinely ambiguous
+"reject this" when it may mean corrections. Never infer acceptance, task DONE or AC PASS.
+Preserve prior reviews, ledgers, commits and files; closure authorizes no revert/reset/clean.
+
+For bridge-managed work, the coordinator uses `bridge_feature_close` only with no active
+or unsettled worker. Record the decision first and keep a stable idempotency key; only after
+the response or a matching persisted closure record state that bridge closure succeeded.
+Its `reason`/`decision_ref` record manager testimony, not independent proof of a human.
+A closed question stays historical (possibly unanswered); do not invent an answer to close.
+If the tool is missing in the selected runtime, report upgrade required: newer skills alone
+do not provide it, and `bridge_feature_accept` is never a substitute. Standalone workflow
+records the decision in documents without installing MCP or claiming a freed bridge slot.
+
 No product implementation or silent closure of tasks in this role. Do not claim full acceptance where required real-data/operator evidence remains absent. If the user explicitly changes the acceptance scope, record that change and remaining consequences rather than implying the old criteria passed. Return the executive decision and the next exact skill invocation; export when requested.

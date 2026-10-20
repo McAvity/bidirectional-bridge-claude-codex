@@ -233,3 +233,20 @@ Execution: `bridge_set_state`, `bridge_report_status`, `bridge_publish_artifact`
 Completion: `bridge_submit_deliverable`.
 Coordination: `bridge_delegate`, `bridge_resume_task`, `bridge_resume_delegated_task`,
 `bridge_recover`, `bridge_query_telemetry`.
+
+## Feature rejection and cancellation
+
+`bridge_feature_close` is a synchronous manager mutation guarded by the same native
+identity/workspace/instance checks as other state changes. Its exact API, replay rules,
+terminal states and migration limits are documented in
+[Feature sessions](feature-workflow.md#closing-without-acceptance).
+
+The two new feature states `rejected`/`cancelled` preserve historical task outcomes.
+An exclusive unfinished coordination root is cancelled atomically with closure and slot
+release; VERIFYING → CANCELLED is a narrow close exception, not a generic set_state edge.
+A shared or already terminal coordinator is preserved with an explicit coordinator_effect.
+Worker invocations and recovery recheck terminality inside their durable reservation;
+service-level task/lease/artifact/deliverable guards prevent bypass through generic tools.
+New refusal codes FEATURE_CLOSED, FEATURE_BUSY and FEATURE_UNSETTLED are nonretryable.
+A closure idempotency conflict remains IDEMPOTENCY_MISMATCH. Read and reconcile existing
+state instead of relaunching work after an uncertain response.

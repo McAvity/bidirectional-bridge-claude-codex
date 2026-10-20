@@ -54,6 +54,14 @@ finding carried from the previous review, state `resolved`, `progress` or `no pr
 coordinator uses this for the shared retry rule. Disclose that the reviewer is the
 coordinating session, independent of the executor but not of the coordination.
 
+## Final rejection versus review corrections
+
+`REWORK` asks for corrections within the feature; it does not reject/cancel the whole feature
+or free its slot. Executor FAIL/PARTIAL and a review finding likewise are not product decisions.
+A clear user decision to discontinue is recorded through feature-decide and, for idle bridge
+work, applied by the coordinator with bridge_feature_close. Preserve your historical verdict;
+a later product rejection does not turn PASS into FAIL or imply deletion of delivered work.
+
 ## Output
 
 For a new phase or materially different scope, write `reviews/NN-<mode>.md`. For corrections in the same phase, prefer a dated append-only entry in the existing review register, recording the reviewed revision/task, finding dispositions, checks and limitations without overwriting earlier verdicts. A further round alone does not require a new file. Start with executive summary (verdict, impact, decisions, next action). Record input references/hashes, inspected code range and limitations. Use `PASS`, `REWORK` or `BLOCKED`; missing essential evidence blocks a reliable verdict, while a demonstrated defect usually means rework.

@@ -365,3 +365,13 @@ an update, as before.
 
 References: [Linux ps](https://man7.org/linux/man-pages/man1/ps.1.html) and
 [proc fd permissions](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html).
+
+## Feature closure compatibility
+
+Rejection/cancellation requires the runtime with `bridge_feature_close` and schema6.
+Existing0.4.3 feature history is retained on the first authorized migration. Setup/update/
+rollback refuse selection of a runtime whose supported schema is below the database.
+Keep a consistent premigration SQLite backup; rollback does not restore it automatically.
+Never use old direct library `initialize` or manually rewrite a pin to bypass this check.
+The supported old launcher refuses newer state, but historical initialize did not have this
+guard. [Full compatibility and closure procedure](feature-workflow.md#schema-6-and-downgrade).
