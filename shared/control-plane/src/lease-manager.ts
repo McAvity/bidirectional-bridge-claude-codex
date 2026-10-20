@@ -1,3 +1,4 @@
+import { assertTaskFeatureOpen } from "./feature-closure.js";
 /**
  * Write-scope leases.
  *
@@ -62,6 +63,7 @@ export class LeaseManager {
    * a window for the other agent to steal the scope mid-task.
    */
   acquire(input: AcquireLeaseInput): Lease {
+    assertTaskFeatureOpen(this.store, input.task_id);
     const scope = normalizeScope(input.scope);
     if (input.ttl_ms <= 0) {
       throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "lease ttl_ms must be positive", {
@@ -117,6 +119,7 @@ export class LeaseManager {
         acquired_at: now,
         expires_at: now + input.ttl_ms,
       };
+      assertTaskFeatureOpen(this.store, input.task_id);
       this.store.insertLease(lease);
       this.store.appendEvent(
         {
@@ -153,6 +156,7 @@ export class LeaseManager {
   /** Throws unless `lease_id` is live, held by `holder`, and covers `path`. */
   assertWritable(lease_id: LeaseId, holder: AgentId, path: string): void {
     const lease = this.store.getLease(lease_id);
+    if (lease) assertTaskFeatureOpen(this.store, lease.task_id);
     if (!lease) {
       throw new BridgeError(ErrorCode.NOT_FOUND, `no such lease ${lease_id}`, { lease_id });
     }
@@ -184,6 +188,7 @@ export class LeaseManager {
   renew(lease_id: LeaseId, holder: AgentId, ttl_ms: number): Lease {
     return this.store.transaction(() => {
       const lease = this.store.getLease(lease_id);
+    if (lease) assertTaskFeatureOpen(this.store, lease.task_id);
       if (!lease) throw new BridgeError(ErrorCode.NOT_FOUND, `no such lease ${lease_id}`);
       if (lease.holder !== holder) {
         throw new BridgeError(ErrorCode.NOT_OWNER, `lease ${lease_id} is held by ${lease.holder}`);

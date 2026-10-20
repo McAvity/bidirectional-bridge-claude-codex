@@ -55,18 +55,20 @@ const VOCABULARY = {
     "INVALID_ARGUMENT", "NOT_FOUND", "ILLEGAL_TRANSITION", "NOT_OWNER", "SCOPE_CONFLICT", "LEASE_INVALID",
     "DEPENDENCY_UNSATISFIED", "DEPENDENCY_CYCLE", "IDEMPOTENCY_MISMATCH", "TIMEOUT", "ADAPTER_FAILURE",
     "RUNTIME_PROFILE_MISMATCH", "UNIMPLEMENTED", "WORKSPACE_MISMATCH", "NATIVE_CONTEXT_INVALID",
-    "MANAGER_FOREIGN_THREAD", "MANAGER_INSTANCE_FENCED", "MANAGER_FENCED", "FEATURE_CONFLICT",
+    "MANAGER_FOREIGN_THREAD", "MANAGER_INSTANCE_FENCED", "MANAGER_FENCED", "FEATURE_CONFLICT", "FEATURE_CLOSED", "FEATURE_BUSY", "FEATURE_UNSETTLED",
     "STATE_LOCKED", "INTERNAL",
   ]),
   termination_kind: new Set(["completed", "timeout", "cancelled", "crash", "failed", "unknown"]),
-  feature_state: new Set(["ready", "running", "awaiting_review", "waiting_user", "blocked", "accepted"]),
+  closure_effect: new Set(["cancelled", "terminal_preserved", "shared_preserved"]),
+  closure_outcome: new Set(["rejected", "cancelled"]),
+  feature_state: new Set(["ready", "running", "awaiting_review", "waiting_user", "blocked", "accepted", "rejected", "cancelled"]),
   phase: new Set([
     "startup", "shutdown", "guard", "handler", "runtime", "deadline", "evidence", "bookkeeping", "unguarded",
   ]),
   op: new Set(["process", "tool", "manager", "attempt", "adapter", "log"]),
   any_state: new Set([
     "PENDING", "CLAIMED", "WORKING", "VERIFYING", "BLOCKED", "DONE", "FAILED", "CANCELLED",
-    "ready", "running", "awaiting_review", "waiting_user", "blocked", "accepted",
+    "ready", "running", "awaiting_review", "waiting_user", "blocked", "accepted", "rejected", "cancelled",
   ]),
   log_event: new Set([
     "start", "serving", "stop", "warning", "transport.failed", "authorized", "instance.detached",
@@ -161,6 +163,8 @@ export function projectField(value, type, aliases) {
     case "deliverable_status":
     case "termination_kind":
     case "feature_state":
+    case "closure_effect":
+    case "closure_outcome":
     case "phase":
     case "op":
     case "any_state":
@@ -481,6 +485,9 @@ export const FEATURE_SPEC = {
   workspace_id: "id",
   manager_epoch: "count",
   question_present: "flag",
+  closure_outcome: "closure_outcome",
+  closed_at: "epoch_ms",
+  coordinator_effect: "closure_effect",
 };
 
 /** Stable short digest where a value correlates but must not travel verbatim. */

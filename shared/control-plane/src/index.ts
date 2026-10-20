@@ -119,5 +119,6 @@ export type {
   WorkspaceBindingRecord,
 } from "./store/state-store.js";
 
+export { featureTerminal, assertFeatureOpen, assertTaskFeatureOpen } from "./feature-closure.js";
 export { FeatureWorkflow } from "./feature-workflow.js";
 export type { FeatureRecord } from "./store/state-store.js";

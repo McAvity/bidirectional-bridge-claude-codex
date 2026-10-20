@@ -376,3 +376,23 @@ describe("detach, feature slots and interrupted publication (R08-05, R08-06, R08
     expect(marker["reservation_nonce"]).not.toBe("0123456789ab");
   });
 });
+
+describe("feature close authority and slot replay (W18)", () => {
+  it("rejects foreign native threads and preserves a new slot on closure replay", async () => {
+    const identity = worktree(); const owner = server(identity);
+    const {parent, feature} = await bootstrapFeature(owner, "T-close");
+    const args = {feature_id:feature, outcome:"cancelled", reason:"synthetic", decision_ref:"synthetic", idempotency_key:"closure"};
+    const foreign = await call(owner, "bridge_feature_close", args, meta("T-foreign"));
+    expect(foreign.isError).toBe(true); expect((foreign.data["error"] as {code:string}).code).toBe("MANAGER_FOREIGN_THREAD");
+    const closed = await call(owner, "bridge_feature_close", args, meta("T-close"));
+    expect(closed.isError).toBe(false);
+    const next = await call(owner,"bridge_create_task",{spec},meta("T-close"));
+    await call(owner,"bridge_claim_task",{task_id:next.data["task_id"]},meta("T-close"));
+    expect((await call(owner,"bridge_feature_create",{feature_id:"F-next",parent_task_id:next.data["task_id"]},meta("T-close"))).isError).toBe(false);
+    expect((await call(owner,"bridge_feature_close",args,meta("T-close"))).data["replayed"]).toBe(true);
+    expect((await call(owner,"bridge_feature_create",{feature_id:feature,parent_task_id:parent},meta("T-close"))).isError).toBe(false);
+    const state = new SqliteStateStore({path: resolveDatabasePath(identity), mode:"readonly"});
+    expect(state.getManagerBinding()?.active_feature_id).toBe("F-next"); state.close();
+    expect(((await call(owner,"bridge_feature_answer_user",{feature_id:feature,question_id:"q",answer:"late"},meta("T-close"))).data["error"] as {code:string}).code).toBe("FEATURE_CLOSED");
+  });
+});

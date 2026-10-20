@@ -1,3 +1,4 @@
+import { assertTaskFeatureOpen } from "./feature-closure.js";
 /**
  * Task lifecycle, ownership, and dependency gating.
  *
@@ -78,6 +79,7 @@ export class TaskService {
   /* ---------------- creation ---------------- */
 
   create(input: CreateTaskInput): Task {
+    if (input.parent_task_id) assertTaskFeatureOpen(this.store, input.parent_task_id);
     return runIdempotent(
       this.store,
       this.clock,
@@ -160,6 +162,7 @@ export class TaskService {
         };
 
         return this.store.transaction(() => {
+          if (parentTaskId) assertTaskFeatureOpen(this.store, parentTaskId);
           this.store.insertTask(task);
           this.store.appendEvent(
             {
@@ -295,13 +298,15 @@ export class TaskService {
    * and re-reads to find the task already owned.
    */
   claim(task_id: TaskId, agent: AgentId, idempotency_key?: string): Task {
+    assertTaskFeatureOpen(this.store, task_id);
     return runIdempotent(
       this.store,
       this.clock,
       { key: idempotency_key, operation: "task.claim", request: { task_id, agent } },
       () =>
         this.store.transaction(() => {
-          const task = this.get(task_id);
+          assertTaskFeatureOpen(this.store, task_id);
+      const task = this.get(task_id);
           if (task.owner && task.owner !== agent) {
             throw new BridgeError(
               ErrorCode.NOT_OWNER,
@@ -340,6 +345,7 @@ export class TaskService {
   /** Give a task back to the pool without failing it (e.g. the agent is over budget). */
   release(task_id: TaskId, agent: AgentId, reason: string): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, task_id);
       const task = this.assertOwner(this.get(task_id), agent);
       this.assertTransition(task, TaskState.PENDING);
       const now = this.clock.now();
@@ -364,6 +370,7 @@ export class TaskService {
   /** Add an edge, refusing any edge that would create a cycle (deadlock by construction). */
   addDependency(task_id: TaskId, depends_on: TaskId, agent: AgentId): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, task_id);
       const task = this.get(task_id);
       this.get(depends_on);
       if (task_id === depends_on) {
@@ -431,6 +438,7 @@ export class TaskService {
   /* ---------------- transitions ---------------- */
 
   transition(input: TransitionInput): Task {
+    assertTaskFeatureOpen(this.store, input.task_id);
     return runIdempotent(
       this.store,
       this.clock,
@@ -441,7 +449,8 @@ export class TaskService {
       },
       () =>
         this.store.transaction(() => {
-          const task = this.assertOwner(this.get(input.task_id), input.agent);
+          assertTaskFeatureOpen(this.store, input.task_id);
+      const task = this.assertOwner(this.get(input.task_id), input.agent);
           if (task.state === input.to) return task; // replay-safe no-op
           this.assertTransition(task, input.to);
 
@@ -487,6 +496,7 @@ export class TaskService {
   /** Atomically reactivate the same owned task while advancing only its attempt counter. */
   beginRecovery(input: BeginRecoveryInput): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, input.task_id);
       const task = this.assertOwner(this.get(input.task_id), input.agent);
       if (input.from_timeout === true) {
         if (task.state !== TaskState.FAILED) {
@@ -586,6 +596,7 @@ export class TaskService {
     blocker?: string;
   }): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, input.task_id);
       const task = this.assertOwner(this.get(input.task_id), input.agent);
       if (task.state === input.to) return task; // replay-safe
 
@@ -643,6 +654,7 @@ export class TaskService {
   /** Move to BLOCKED and record why. A blocker is an escalation, not a retry. */
   block(task_id: TaskId, agent: AgentId, reason: string): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, task_id);
       const task = this.assertOwner(this.get(task_id), agent);
       this.assertTransition(task, TaskState.BLOCKED);
       const now = this.clock.now();
@@ -664,6 +676,7 @@ export class TaskService {
 
   unblock(task_id: TaskId, agent: AgentId, resolution: string): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, task_id);
       const task = this.assertOwner(this.get(task_id), agent);
       if (task.state !== TaskState.BLOCKED) return task;
       const now = this.clock.now();
@@ -689,6 +702,7 @@ export class TaskService {
    */
   retry(task_id: TaskId, agent: AgentId, max_attempts: number): Task {
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, task_id);
       const task = this.get(task_id);
       if (task.state !== TaskState.FAILED) {
         throw new BridgeError(
@@ -731,7 +745,9 @@ export class TaskService {
   /* ---------------- status ---------------- */
 
   reportStatus(update: StatusUpdate): void {
+    assertTaskFeatureOpen(this.store, update.task_id);
     this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, update.task_id);
       this.assertOwner(this.get(update.task_id), update.agent);
       this.store.insertStatus(update);
       this.store.appendEvent(

@@ -29,6 +29,8 @@ import {
 } from "@bridge/protocol";
 import {
   FeatureWorkflow,
+  featureTerminal,
+  assertFeatureOpen,
   digestRef,
   loggableId,
   type ControlPlane,
@@ -293,7 +295,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           : undefined,
       );
       // One active feature per worktree (contract section 11).
-      claimFeatureSlot(c, feature_id);
+      if (!featureTerminal(created)) claimFeatureSlot(c, feature_id);
       return created;
     },
   },
@@ -384,6 +386,20 @@ export const TOOLS: readonly ToolDefinition[] = [
     },
   },
 
+  {
+    name: "bridge_feature_close",
+    title: "Reject or cancel an idle feature",
+    description: "Record an explicit rejection/cancellation decision, preserve history and release only this feature slot. Refuses active or unsettled workers. Never accepts or deletes work.",
+    inputShape: {feature_id: z.string().min(1).max(256), outcome: z.enum(["rejected", "cancelled"]),
+      reason: z.string().min(1).max(4000), decision_ref: z.string().min(1).max(1000),
+      idempotency_key: z.string().min(1).max(256), ...agentArg},
+    handler: (a, c) => new FeatureWorkflow(c.cp, c.orchestrator).close({
+      feature_id: a["feature_id"] as string, manager: who(a, c), outcome: a["outcome"] as "rejected" | "cancelled",
+      reason: a["reason"] as string, decision_ref: a["decision_ref"] as string, idempotency_key: a["idempotency_key"] as string,
+      attribution: c.managerSession ? {workspace_id: c.identity?.workspaceId ?? null,
+        native_thread_id: c.managerSession.binding.native_thread_id, epoch: c.managerSession.binding.epoch} : null,
+    }),
+  },
   {
     name: "bridge_manager_status",
     klass: "read",
@@ -1103,6 +1119,8 @@ export const TOOLS: readonly ToolDefinition[] = [
  * their first touch (contract section 11, review R09-04).
  */
 function claimFeatureSlot(ctx: ToolContext, featureId: string): void {
+  const feature = ctx.cp.store.getFeature(featureId);
+  if (feature && (feature.state === "rejected" || feature.state === "cancelled")) assertFeatureOpen(feature);
   const registry = ctx.managerRegistry;
   const binding = ctx.managerSession?.binding ?? registry?.read();
   if (!registry || !binding) return;

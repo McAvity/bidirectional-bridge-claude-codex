@@ -1,3 +1,4 @@
+import { assertTaskFeatureOpen } from "./feature-closure.js";
 /**
  * Deliverables and verification evidence.
  *
@@ -45,6 +46,7 @@ export class DeliverableService {
   /** Record evidence that a check ran. Callers must pass a real exit code. */
   recordVerification(task_id: TaskId, agent: AgentId, result: VerificationResult): void {
     this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, task_id);
       const task = this.tasks.get(task_id);
       if (task.owner !== agent) {
         throw new BridgeError(
@@ -86,6 +88,7 @@ export class DeliverableService {
     assertValid<Deliverable>(deliverable, DeliverableSchema, "Deliverable");
 
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, deliverable.task_id);
       const task = this.tasks.get(deliverable.task_id);
       if (task.owner !== deliverable.agent) {
         throw new BridgeError(

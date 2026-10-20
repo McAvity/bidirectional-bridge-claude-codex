@@ -1,3 +1,4 @@
+import { assertTaskFeatureOpen } from "./feature-closure.js";
 /**
  * Attempt records and resumable execution handles.
  *
@@ -149,6 +150,7 @@ export class AttemptService {
             started_at: now,
             updated_at: now,
           };
+      assertTaskFeatureOpen(this.store, task_id);
       this.store.upsertAttempt(record);
       if (!existing) {
         this.store.appendEvent(
@@ -212,6 +214,7 @@ export class AttemptService {
         started_at: now,
         updated_at: now,
       };
+      assertTaskFeatureOpen(this.store, task_id);
       this.store.upsertAttempt(record);
       this.store.appendEvent(
         {
@@ -250,6 +253,7 @@ export class AttemptService {
             started_at: now,
             updated_at: now,
           };
+      assertTaskFeatureOpen(this.store, task_id);
       this.store.upsertAttempt(record);
       this.store.appendEvent(
         {
@@ -271,6 +275,7 @@ export class AttemptService {
       if (!existing) return undefined;
       const now = this.clock.now();
       const record: TaskAttempt = { ...existing, updated_at: now, ended_at: now, outcome };
+      assertTaskFeatureOpen(this.store, task_id);
       this.store.upsertAttempt(record);
       this.store.appendEvent(
         { type: EventType.ATTEMPT_ENDED, task_id, agent, payload: { attempt, outcome } },
@@ -329,6 +334,7 @@ export class AttemptService {
           `final telemetry already exists for ${telemetry.task_id} attempt ${telemetry.attempt}`,
         );
       }
+      assertTaskFeatureOpen(this.store, telemetry.task_id);
       this.store.insertAttemptTelemetry(telemetry);
       this.store.appendEvent(
         {

@@ -1,3 +1,4 @@
+import { assertTaskFeatureOpen } from "./feature-closure.js";
 /**
  * Artifact registry — how agents exchange results instead of chat history.
  *
@@ -64,6 +65,7 @@ export class ArtifactRegistry {
   }
 
   publish(input: PublishArtifactInput): Artifact {
+    assertTaskFeatureOpen(this.store, input.task_id);
     if ((input.inline === undefined) === (input.path === undefined)) {
       throw new BridgeError(
         ErrorCode.INVALID_ARGUMENT,
@@ -131,6 +133,7 @@ export class ArtifactRegistry {
     assertValid<Artifact>(artifact, ArtifactSchema, "Artifact");
 
     return this.store.transaction(() => {
+      assertTaskFeatureOpen(this.store, input.task_id);
       this.store.insertArtifact(artifact);
       this.store.appendEvent(
         {

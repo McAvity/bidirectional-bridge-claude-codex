@@ -2,6 +2,7 @@ import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:chil
 import { createHash } from "node:crypto";
 import {
   existsSync,
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -46,8 +47,9 @@ class NativeHarness {
     db?: string,
     cwd = repoRoot,
     env: NodeJS.ProcessEnv = process.env,
+    launcherOverride = launcher,
   ) {
-    const args = [launcher, "--caller", caller, "--delegation", policy];
+    const args = [launcherOverride, "--caller", caller, "--delegation", policy];
     if (workspace !== undefined) args.push("--workspace", workspace);
     if (db !== undefined) args.push("--db", db);
     this.child = spawn(
@@ -1183,3 +1185,65 @@ describe("native project MCP launcher", () => {
     }
   }, 60_000);
 });
+
+for (const oldRuntime of [undefined, ...(process.env["W18_OLD_RUNTIME"] ? [process.env["W18_OLD_RUNTIME"]!] : [])]) {
+  const legacy = oldRuntime !== undefined;
+  // The old-runtime case is added only when an immutable 0.4.3 fixture is provided.
+  it(`W18 ${legacy ? "real 0.4.3 migration" : "current launcher"}: close A then run B, preserve replay and privacy`, async () => {
+    const workspace = mkdtempSync(join(tmpdir(), "bridge-close-e2e-"));
+    const bin = join(workspace,"bin"); mkdirSync(bin);
+    const fakeCli = join(repoRoot,"claude","claude-side","test","fixtures","fake-claude-cli.mjs");
+    writeFileSync(join(bin,"claude"),`#!/bin/sh\nexec "${process.execPath}" "${fakeCli}" "$@"\n`,{mode:0o755});
+    const env = {...process.env, PATH:`${bin}${delimiter}${process.env["PATH"] ?? ""}`,FAKE_CLAUDE_MODE:"ok"};
+    const db = join(workspace,".bridge","bridge.db");
+    const oldLauncher = oldRuntime ? join(oldRuntime,"scripts","native-bridge-mcp.mjs") : launcher;
+    const first = new NativeHarness("codex","allow",workspace,db,repoRoot,env,oldLauncher);
+    let current: NativeHarness | undefined; let old: NativeHarness | undefined;
+    const call = (client:NativeHarness,name:string,args:Record<string,unknown>={}) => client.callTool(name,args,nativeMeta("thread-close-e2e"));
+    try {
+      await first.initialize();
+      const parent = (await call(first,"bridge_create_task",{spec:taskSpec()})).data.task_id;
+      await call(first,"bridge_claim_task",{task_id:parent});
+      expect((await call(first,"bridge_feature_create",{feature_id:"F-A",parent_task_id:parent})).isError).toBe(false);
+      await call(first,"bridge_feature_wait_user",{feature_id:"F-A",question_id:"q1",question:"PRIVATE-CLOSURE-SENTINEL"});
+      await first.terminate();
+      current = new NativeHarness("codex","allow",workspace,db,repoRoot,env);
+      await current.initialize();
+      const args={feature_id:"F-A",outcome:"rejected",reason:"PRIVATE-CLOSURE-SENTINEL",decision_ref:"PRIVATE-CLOSURE-SENTINEL",idempotency_key:"close-A"};
+      const closed = await call(current,"bridge_feature_close",args);
+      expect(closed.isError,JSON.stringify(closed.data)).toBe(false);
+      expect(closed.data.feature).toMatchObject({state:"rejected",question:{answer:null}});
+      const next = (await call(current,"bridge_create_task",{spec:taskSpec()})).data.task_id;
+      await call(current,"bridge_claim_task",{task_id:next});
+      await call(current,"bridge_feature_create",{feature_id:"F-B",parent_task_id:next});
+      const run = await call(current,"bridge_feature_run",{feature_id:"F-B",spec:taskSpec(),deadline_ms:5000,idempotency_key:"B1"});
+      expect(run.isError,JSON.stringify(run.data)).toBe(false); expect(run.data.task.state).toBe("DONE");
+      expect((await call(current,"bridge_feature_close",args)).data.replayed).toBe(true);
+      const status=(await call(current,"bridge_manager_status")).data;
+      expect(status.manager.active_feature_id).toBe("F-B");
+      expect(JSON.stringify(logRecords(workspace))).not.toContain("PRIVATE-CLOSURE-SENTINEL");
+      await current.terminate(); current=undefined;
+      if (oldRuntime) {
+        old = new NativeHarness("codex","allow",workspace,db,repoRoot,env,oldLauncher);
+        try {
+          await old.initialize();
+          const result = await call(old,"bridge_feature_get",{feature_id:"F-A"});
+          expect(result.isError).toBe(true);
+          expect(JSON.stringify(result.data)).toMatch(/schema_unsupported|schema 6|newer/);
+        } catch (error) {
+          expect(old.stderr.join("")+String(error)).toMatch(/schema_unsupported|schema 6|newer/);
+        }
+        await old.terminate(); old=undefined;
+        // The historical library's unsafe initialize is reproduced ONLY on a disposable copy.
+        const copy=join(workspace,"unsafe-copy.db"); copyFileSync(db,copy);
+        const probe=spawnSync(process.execPath,["--input-type=module","-e",
+          'const {SqliteStateStore}=await import(process.argv[1]); const s=new SqliteStateStore({path:process.argv[2],mode:"initialize"}); console.log(s.schemaVersion()); s.close();',
+          join(oldRuntime,"shared/control-plane/dist/store/sqlite-store.js"),copy],{encoding:"utf8"});
+        expect(probe.status,probe.stderr).toBe(0); expect(probe.stdout.trim()).toBe("5");
+      }
+    } finally {
+      await first.terminate(); if(current) await current.terminate(); if(old) await old.terminate();
+      rmSync(workspace,{recursive:true,force:true});
+    }
+  },30_000);
+}

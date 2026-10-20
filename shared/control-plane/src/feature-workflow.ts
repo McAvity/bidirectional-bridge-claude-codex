@@ -1,3 +1,4 @@
+import { featureTerminal, assertFeatureOpen, assertTaskFeatureOpen } from "./feature-closure.js";
 import { BridgeError, ErrorCode, EventType, TaskState, type TaskSpec } from "@bridge/protocol";
 import type { ControlPlane } from "./control-plane.js";
 import type { Orchestrator } from "./orchestrator.js";
@@ -59,7 +60,7 @@ export class FeatureWorkflow {
    */
   derive(f: FeatureRecord): FeatureRecord {
     const copy: FeatureRecord = { ...f, task_ids: [...f.task_ids] };
-    if (!copy.latest_task_id || copy.state === "waiting_user" || copy.state === "accepted") return copy;
+    if (!copy.latest_task_id || copy.state === "waiting_user" || featureTerminal(copy)) return copy;
     const task = this.cp.tasks.get(copy.latest_task_id);
     const attempt = this.cp.attempts.list(task.task_id).at(-1);
     const held = this.cp.store.listHeldLeases().some(l => l.task_id === task.task_id);
@@ -85,7 +86,7 @@ export class FeatureWorkflow {
 
   /** Do not infer process termination from expired leases. An ended attempt is required. */
   private refresh(f: FeatureRecord): FeatureRecord {
-    if (!f.latest_task_id || f.state === "waiting_user" || f.state === "accepted") return f;
+    if (!f.latest_task_id || f.state === "waiting_user" || featureTerminal(f)) return f;
     const task = this.cp.tasks.get(f.latest_task_id);
     const attempt = this.cp.attempts.list(task.task_id).at(-1);
     const held = this.cp.store.listHeldLeases().some(l => l.task_id === task.task_id);
@@ -125,6 +126,7 @@ export class FeatureWorkflow {
           throw new BridgeError(ErrorCode.IDEMPOTENCY_MISMATCH, "feature id already has another owner or parent");
         return this.refresh(existing);
       }
+      assertTaskFeatureOpen(this.cp.store, parent_task_id);
       const parent = this.cp.tasks.get(parent_task_id);
       if (parent.owner !== manager) this.fail("manager must own the parent task");
       this.cp.tasks.assertDelegationTargetNotInAncestors(parent_task_id, "claude");
@@ -164,6 +166,7 @@ export class FeatureWorkflow {
     // Pure preflight: a request that is about to be refused must not reconcile state or append
     // events on behalf of a caller whose authority has not been checked yet (review R09-01).
     const feature = this.view(feature_id, manager);
+    assertFeatureOpen(feature);
     const replay = this.replay(key, requestHash);
     if (replay) return this.result(feature_id, manager, replay, true);
     if (feature.active_task_id || !["ready", "awaiting_review"].includes(feature.state))
@@ -186,6 +189,7 @@ export class FeatureWorkflow {
         onTaskCreated: task => {
           if (this.replay(key, requestHash)) throw new RoundReplay();
           const current = this.refresh(this.owned(feature_id, manager));
+          assertFeatureOpen(current);
           if (current.active_task_id || current.latest_task_id !== predecessor ||
               current.state !== feature.state || hashRequest(current.question) !== hashRequest(feature.question))
             this.fail("feature changed while reserving this round; read its state and retry");
@@ -244,6 +248,7 @@ export class FeatureWorkflow {
   waitUser(id: string, manager: string, question_id: string, text: string): FeatureRecord {
     return this.cp.store.transaction(() => {
       const f = this.refresh(this.owned(id, manager));
+      assertFeatureOpen(f);
       if (!question_id.trim() || !text.trim() || text.length > 8000) this.fail("question id and text required (max 8000)");
       const questionKey = `feature.question:${JSON.stringify([id, question_id])}`;
       const questionHash = hashRequest({ id, manager, question_id, text });
@@ -272,6 +277,7 @@ export class FeatureWorkflow {
   answerUser(id: string, manager: string, question_id: string, answer: string): FeatureRecord {
     return this.cp.store.transaction(() => {
       const f = this.owned(id, manager);
+      assertFeatureOpen(f);
       if (!answer.trim() || answer.length > 8000) this.fail("answer required (max 8000)");
       if (f.question?.id !== question_id) this.fail("answer refers to a stale or missing question");
       if (f.question.answer !== null) {
@@ -285,10 +291,97 @@ export class FeatureWorkflow {
     });
   }
 
+  close(input: {feature_id: string; manager: string; outcome: "rejected" | "cancelled";
+    reason: string; decision_ref: string; idempotency_key: string;
+    attribution?: NonNullable<FeatureRecord["closure"]>["attribution"];
+  }): {feature: FeatureRecord; replayed: boolean} {
+    for (const [name, limit] of Object.entries({feature_id: 256, reason: 4000, decision_ref: 1000, idempotency_key: 256})) {
+      const value = input[name as "feature_id" | "reason" | "decision_ref" | "idempotency_key"];
+      if (typeof value !== "string" || !value.trim() || value.length > limit) this.fail(`invalid ${name}`);
+    }
+    if (!["rejected", "cancelled"].includes(input.outcome)) this.fail("invalid outcome");
+    return this.cp.store.transaction(() => {
+      const store = this.cp.store;
+      const f = this.owned(input.feature_id, input.manager);
+      const key = `feature.close:${JSON.stringify([input.feature_id, input.idempotency_key])}`;
+      const requestHash = hashRequest({feature_id: input.feature_id, manager: input.manager, outcome: input.outcome, reason: input.reason, decision_ref: input.decision_ref});
+      const prior = store.getIdempotency(key);
+      if (prior && (prior.operation !== "feature.close" || prior.request_hash !== requestHash))
+        throw new BridgeError(ErrorCode.IDEMPOTENCY_MISMATCH, "close key reused with different decision");
+      const remember = () => store.putIdempotency({key, operation: "feature.close", request_hash: requestHash,
+        response_json: JSON.stringify({feature_id: f.feature_id}), created_at: this.cp.clock.now()});
+      if (featureTerminal(f)) {
+        if (!f.closure || f.closure.outcome !== input.outcome || f.closure.reason !== input.reason || f.closure.decision_ref !== input.decision_ref)
+          throw new BridgeError(ErrorCode.FEATURE_CLOSED, "feature already has a terminal decision");
+        if (!prior) remember();
+        return {feature: f, replayed: true};
+      }
+      const binding = store.getManagerBinding?.();
+      if (binding?.active_feature_id && binding.active_feature_id !== f.feature_id)
+        throw new BridgeError(ErrorCode.FEATURE_CONFLICT, "another feature owns the slot");
+      const unsettled = (message: string): never => { throw new BridgeError(ErrorCode.FEATURE_UNSETTLED, message); };
+      const busy = (message: string): never => { throw new BridgeError(ErrorCode.FEATURE_BUSY, message); };
+      const parent = store.getTask(f.parent_task_id) ?? unsettled("missing coordinator");
+      if (parent.owner !== input.manager) throw new BridgeError(ErrorCode.NOT_OWNER, "manager does not own coordinator");
+      const allFeatures = store.listFeatures();
+      const shared = allFeatures.some(other => other.feature_id !== f.feature_id && other.parent_task_id === parent.task_id && !featureTerminal(other));
+      const ids = new Set(f.task_ids);
+      if (ids.size !== f.task_ids.length || (f.latest_task_id !== null && !ids.has(f.latest_task_id)) ||
+          (f.active_task_id !== null && !ids.has(f.active_task_id)) || (ids.size && !f.latest_task_id)) unsettled("inconsistent feature task references");
+      for (const id of ids) {
+        const task = store.getTask(id) ?? unsettled("missing feature task");
+        if (task.parent_task_id !== parent.task_id) unsettled("round has inconsistent parent");
+        if (allFeatures.some(other => other.feature_id !== f.feature_id && !featureTerminal(other) && other.task_ids.includes(id))) unsettled("round is shared with another feature");
+      }
+      // Include every descendant: a direct delegation outside feature_run is not invisible work.
+      for (const task of store.listTasks()) {
+        const seen = new Set<string>();
+        let cursor = task;
+        while (cursor.parent_task_id) {
+          if (seen.has(cursor.task_id)) unsettled("cyclic task lineage");
+          seen.add(cursor.task_id);
+          if (cursor.parent_task_id === parent.task_id) { ids.add(task.task_id); break; }
+          cursor = store.getTask(cursor.parent_task_id) ?? unsettled("missing task lineage");
+        }
+      }
+      for (const id of [...ids, parent.task_id]) {
+        const task = store.getTask(id) ?? unsettled("missing task");
+        const attempts = store.listAttempts(id);
+        if (attempts.some(a => a.ended_at == null)) busy("attempt is still open");
+        if (store.listHeldLeases().some(l => l.task_id === id)) busy("task still holds a lease");
+        if (id !== parent.task_id) {
+          if (![TaskState.DONE, TaskState.FAILED, TaskState.CANCELLED, TaskState.BLOCKED].includes(task.state as never)) busy("descendant task is not settled");
+          if (f.task_ids.includes(id) && (!attempts.length || attempts.at(-1)?.attempt !== task.attempt)) unsettled("round has no matching completed attempt");
+        }
+      }
+      const now = this.cp.clock.now();
+      let effect: NonNullable<FeatureRecord["closure"]>["coordinator_effect"];
+      if (shared) effect = "shared_preserved";
+      else if ([TaskState.DONE, TaskState.FAILED, TaskState.CANCELLED].includes(parent.state as never)) effect = "terminal_preserved";
+      else {
+        effect = "cancelled";
+        // Deliberately narrow exception for VERIFYING; generic transitions stay unchanged.
+        store.updateTask({...parent, state: TaskState.CANCELLED, completed_at: now, updated_at: now, version: parent.version + 1});
+        store.appendEvent({type: EventType.TASK_STATE_CHANGED, task_id: parent.task_id, agent: input.manager,
+          payload: {from: parent.state, to: TaskState.CANCELLED, reason: `feature_${input.outcome}`, feature_id: f.feature_id}}, now);
+      }
+      f.closure = {outcome: input.outcome, reason: input.reason, decision_ref: input.decision_ref,
+        closed_at: now, manager: input.manager, attribution: input.attribution ?? null, coordinator_effect: effect};
+      f.state = input.outcome;
+      f.active_task_id = null;
+      this.save(f);
+      remember();
+      // Never acquire a slot during closure, especially on a replay after another feature starts.
+      if (binding?.active_feature_id === f.feature_id) store.putManagerBinding?.({...binding, active_feature_id: null, updated_at: now});
+      return {feature: f, replayed: false};
+    });
+  }
+
   accept(id: string, manager: string): FeatureRecord {
     return this.cp.store.transaction(() => {
       const f = this.refresh(this.owned(id, manager));
       if (f.state === "accepted") return f;
+      assertFeatureOpen(f);
       if (f.state !== "awaiting_review" || f.active_task_id) this.fail("accept requires a completed round and manager review");
       f.state = "accepted";
       return this.save(f);

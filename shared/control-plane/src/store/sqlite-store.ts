@@ -85,7 +85,7 @@ export interface SqliteStoreOptions {
   readonly mode?: StoreOpenMode;
 }
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 /** Bound concurrent native-server startup without failing immediately on schema/WAL locks. */
 const SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
@@ -331,14 +331,11 @@ export class SqliteStateStore implements StateStore {
       }
       return;
     }
+    this.assertSupportedSchema();
     this.journalMode = this.configureJournal(path, journalMode, options.onJournalFallback);
     this.db.exec("PRAGMA foreign_keys = ON");
     this.db.exec("PRAGMA synchronous = NORMAL");
-    this.db.exec(DDL);
-    this.migrateSchema();
-    this.db
-      .prepare("INSERT OR REPLACE INTO schema_meta(key, value) VALUES('schema_version', ?)")
-      .run(String(SCHEMA_VERSION));
+    this.initializeSchema();
   }
 
   /**
@@ -349,8 +346,14 @@ export class SqliteStateStore implements StateStore {
    * `PRAGMA journal_mode` is deliberately not touched here: an existing database keeps the mode
    * it already has.
    */
+  private assertSupportedSchema(): void {
+    const found = this.schemaVersion();
+    if (found > SCHEMA_VERSION) throw new BridgeError(ErrorCode.WORKSPACE_MISMATCH, "database schema is newer than this build", {reason: "schema_unsupported", found, supported: SCHEMA_VERSION});
+  }
+
   initializeSchema(): void {
     this.transaction(() => {
+      this.assertSupportedSchema();
       this.db.exec(DDL);
       this.migrateSchema();
       this.db

@@ -82,7 +82,12 @@ export interface FeatureRecord {
   latest_task_id: string | null;
   active_task_id: string | null;
   task_ids: string[];
-  state: "ready" | "running" | "awaiting_review" | "waiting_user" | "blocked" | "accepted";
+  state: "ready" | "running" | "awaiting_review" | "waiting_user" | "blocked" | "accepted" | "rejected" | "cancelled";
+  closure?: {
+    outcome: "rejected" | "cancelled"; reason: string; decision_ref: string; closed_at: number;
+    manager: AgentId; attribution: {workspace_id: string | null; native_thread_id: string; epoch: number} | null;
+    coordinator_effect: "cancelled" | "terminal_preserved" | "shared_preserved";
+  };
   question: { id: string; text: string; answer: string | null } | null;
   updated_at: number;
   /** Worktree that owns this feature (contract §11); absent on pre-isolation records. */

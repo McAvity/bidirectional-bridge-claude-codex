@@ -1,3 +1,4 @@
+import { assertTaskFeatureOpen, featureTerminal } from "./feature-closure.js";
 /**
  * Bounded delegation.
  *
@@ -554,6 +555,7 @@ export class Orchestrator {
     this.validateRecoveryRequest(request, kind);
     const task = this.cp.tasks.get(request.task_id);
     const authorization = this.authorizeRecoveryIdentity(task, request, kind);
+    assertTaskFeatureOpen(this.cp.store, task.task_id);
     const authorizationKey = this.recoveryAuthorizationKey(authorization);
 
     const active = this.activeRecoveries.get(task.task_id);
@@ -614,6 +616,7 @@ export class Orchestrator {
       // Manager authority is re-checked inside the reservation transaction, before any
       // attempt/lease/event write and before the runtime is resumed.
       options.authorize?.();
+      assertTaskFeatureOpen(this.cp.store, request.task_id);
       const racedReplay = this.readRecoveryReservation(request, kind);
       if (racedReplay !== null) return { reservation: racedReplay, replayed: true };
 
@@ -629,11 +632,12 @@ export class Orchestrator {
           );
         }
         if (
-          feature.state === "waiting_user" || feature.state === "accepted" ||
+          feature.state === "waiting_user" || featureTerminal(feature) ||
           feature.latest_task_id !== task.task_id
         ) throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "feature state prevents this recovery");
       }
       const authorization = this.authorizeRecoveryIdentity(task, request, kind);
+    assertTaskFeatureOpen(this.cp.store, task.task_id);
       const executionAgent = authorization.execution_agent;
       const messageState = mode === "timeout" ? TaskState.FAILED : TaskState.BLOCKED;
       if (request.message !== undefined && (
@@ -1150,6 +1154,7 @@ export class Orchestrator {
     }
     const task = this.cp.tasks.get(request.task_id);
     const authorization = this.authorizeRecoveryIdentity(task, request, kind);
+    assertTaskFeatureOpen(this.cp.store, task.task_id);
     const storedKind = parsed.authorization_kind ?? "owner";
     const storedRequester = parsed.requested_by ?? request.requested_by;
     const storedExecutionAgent = parsed.execution_agent ?? request.requested_by;

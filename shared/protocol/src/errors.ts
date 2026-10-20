@@ -44,6 +44,9 @@ export const ErrorCode = {
   MANAGER_FENCED: "MANAGER_FENCED",
   /** Another feature is active in this worktree. */
   FEATURE_CONFLICT: "FEATURE_CONFLICT",
+  FEATURE_CLOSED: "FEATURE_CLOSED",
+  FEATURE_BUSY: "FEATURE_BUSY",
+  FEATURE_UNSETTLED: "FEATURE_UNSETTLED",
   /** The worktree critical section is held elsewhere. */
   STATE_LOCKED: "STATE_LOCKED",
   /** Unclassified internal fault. */
