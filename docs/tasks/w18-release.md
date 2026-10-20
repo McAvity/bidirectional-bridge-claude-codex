@@ -12,3 +12,16 @@ Runtime source and release metadata use separate commits; published tags never m
 Validation and CI results, release URL, plugin refresh and per-project upgrade status
 will be appended as they occur. Active clients must not be stopped or their supervising
 runtime rebuilt. Prepared upgrades are not reported as applied.
+
+## First CI — correction required
+
+Push128790b started CI39405216813. Build, package/docs checks and the real privileged
+process observer passed. Isolated-user JS exposed four doctor failures: the new close
+operation makes seven feature tools, but doctor still required exactly six.
+No release/tag/plugin refresh or project upgrade was performed. This was masked locally
+by earlier host process-inspection refusals, not an accepted baseline defect.
+
+Correction in progress: validate required named capabilities, requiring close for
+schema6 while retaining schema5 checks. Add direct regressions and regenerate packages;
+then repin runtime source, rerun CI and only publish on PASS. The initially installed
+0.5.0-e95153d79522 preview remains immutable but will not be the released upgrade target.
