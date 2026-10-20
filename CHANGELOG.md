@@ -11,6 +11,41 @@ explicitly.
 
 ## Unreleased
 
+## 0.5.0 — 2026-10-20 (experimental)
+
+### Added
+
+- `bridge_feature_close` records rejection or cancellation of idle, settled features,
+  preserves delivered work and history, and atomically releases their own feature slot.
+  Durable replay remains safe after a new feature starts; active or unsettled work refuses.
+- Workflow skills and the lifecycle diagram distinguish final rejection/cancellation from
+  REWORK and pause, support standalone document decisions, and identify required upgrades.
+
+### Changed — state compatibility
+
+- State schema is now 6. Open feature history from 0.4.3 is retained during the first
+  authorized migration. Closed features cannot start further rounds or recovery.
+- The supported old launcher and checked installer rollback refuse schema 6. The old
+  library's direct `initialize` API is unsafe on newer state and is explicitly unsupported.
+  Runtime downgrade after migration requires separately restoring a pre-migration backup;
+  automatic rollback does not restore databases or erase newer decisions.
+
+### Fixed
+
+- Closure checks descendants delegated outside the feature round list, requiring matching
+  completed attempts rather than treating BLOCKED/DONE alone as proof of stopped execution.
+- Linux setup can opt into explicit read-only privileged process inspection with
+  `CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo`; the installer stays unprivileged.
+  Native Linux /proc and macOS ps/lsof defaults remain conservative.
+
+### Validation boundary
+
+Independent review PASS after one correction; final build and 90 focused tests pass,
+including actual 0.4.3 launcher migration and current MCP/SQLite with a scripted executor.
+Local full suites retain baseline host process-inspection failures (76 JS, 2 Python);
+140 pilot-tooling tests pass. Release CI is recorded in the release handoff.
+No real-model smoke or automatic stopping of active workers is claimed.
+
 ## 0.4.3 — 2026-09-29 (experimental)
 
 ### Fixed
