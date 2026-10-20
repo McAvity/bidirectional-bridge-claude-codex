@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W18-feature-closure",
+  "phase": "plan-review",
+  "brief": "docs/features/F-W18-feature-closure/brief.md",
+  "design": "docs/features/F-W18-feature-closure/design.md",
+  "tasks": [
+    "work-items/W18-01.md",
+    "work-items/W18-02.md",
+    "work-items/W18-03.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/features/README.md",
+    "docs/manager-identity.md",
+    "docs/recovery.md",
+    "shared/control-plane/src/feature-workflow.ts",
+    "shared/control-plane/src/store/state-store.ts",
+    "shared/protocol/src/types.ts"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "feature-review w trybie plan, następnie feature-decide. Bez implementacji; W18-02 zależy od lokalnego review kontraktu W18-01."
+}
