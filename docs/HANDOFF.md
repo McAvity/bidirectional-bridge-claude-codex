@@ -1,5 +1,20 @@
 # Current handoff
 
+## 0.5.0 published; project activation pending — 2026-10-20
+
+[v0.5.0](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.5.0)
+at5ce0b54, source12c4938. [CI39406678418](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/39406678418)
+PASS: JS657/1skip, Python113/5skips, pilot131/2skips; privileged observer17PASS.
+[Release/upgrade checkpoint](tasks/w18-release.md) records the doctor capability
+regression corrected before publication and the actual scope of validation.
+Codex bridge/workflow and Claude user workflow plugins0.5.0 installed; immutable
+runtime0.5.0-12c4938282b2 ready. No project pin applied: restricted process inspection
+refuses ACTIVE_USE_UNKNOWN, and sudo observation needs terminal authorization.
+Close affected clients normally, use the private checked activation script, then
+verify status/doctor and resume the exact existing sessions. Preserve unrelated work.
+After activation, commit this checkout's portable pin for inheritance by new branches.
+No actual project feature closure performed; no historical worktree bulk upgrade.
+
 ## F-W18 feature closure — local delivery accepted, 2026-10-20
 
 [Decision02](features/F-W18-feature-closure/decisions/02.md) records delegated
