@@ -1,18 +1,17 @@
 # Current handoff
 
-## F-W18 feature closure — locally delivered, review PASS, 2026-10-20
+## F-W18 feature closure — local delivery accepted, 2026-10-20
 
-[Implementation review03](features/F-W18-feature-closure/reviews/03-implementation.md)
-PASS after R03-01 correction. [Integration ledger](features/F-W18-feature-closure/execution/integration/01.md)
-contains task/commit mapping and validation. Final product SHA 0bdf45c on
- design/feature-closure; W18-01…03 done locally, user acceptance pending.
-New bridge_feature_close, rejected/cancelled, atomic slot release, schema6,
-guards, privacy projection and distributed instructions. No active-worker stopping.
-Independent final build/focused90 tests PASS including actual0.4.3 launcher fixture.
-Full suites retain baseline host failures: JS76, Python2; pilot140PASS.
-Native executor used because MCP bridge tools were unavailable; no real-model claim.
+[Decision02](features/F-W18-feature-closure/decisions/02.md) records delegated
+acceptance of the local delivery after [review03 PASS](features/F-W18-feature-closure/reviews/03-implementation.md).
+Final product0bdf45c, delivery checkpoint5ff9db5 on design/feature-closure.
+[Integration ledger](features/F-W18-feature-closure/execution/integration/01.md)
+contains mapping/validation: final independent build and90 focused tests PASS;
+full suites retain baseline host failures JS76/Python2, pilot140PASS.
+New close/rejected/cancelled, atomic slot release, schema6 and distributed workflow.
+No real-model smoke; native executor used due to unavailable MCP tools.
 No implementation push/merge/release/runtime upgrade or external-project mutation.
-Next: user acceptance, then separately authorized integration/publication/upgrade.
+Next: separately assign integration to feature-workflow, version bump, push/CI/release.
 
 ## Linux protected-process installer correction
 
