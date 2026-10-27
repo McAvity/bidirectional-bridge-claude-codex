@@ -1,11 +1,15 @@
 # Current handoff
 
-## Feature flow distribution — in progress
+## Feature flow 0.6.0 published — 2026-10-27
 
-Import and 0.6.0 release preparation in an isolated worktree.
-[Scope and progress](tasks/feature-flow-release.md). Preserve active runtime and
-personal original; new flow must ship in both workflow plugins and runtime instructions.
-
+[Release and validation](tasks/feature-flow-release.md): canonical feature-flow plus both
+workflow packages and executor instructions, seven public workflow skills. Preserves
+execution/acceptance gates, step commits and resumption. Source d721a83, tag v0.6.0
+at8b0eeb6. CI40540195793 PASS: JS668/1skip, Python113, pilot131, observer17.
+Independent instruction scenarios and package discovery pass; no real-model flow pilot.
+Existing runtime/project pins and personal skill remain unchanged. For adoption refresh
+feature-workflow plugin, upgrade a pinned older project through checked setup, then restart
+normally. Use the qualified plugin entry to distinguish it from the personal original.
 
 ## Portable upgrade entry; this checkout on 0.5.0 — 2026-10-20
 
