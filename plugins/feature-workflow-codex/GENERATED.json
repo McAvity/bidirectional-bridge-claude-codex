@@ -1,9 +1,10 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "feature-workflow",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
+    ".agents/skills/feature-flow",
     ".agents/skills/feature-design",
     ".agents/skills/feature-plan",
     ".agents/skills/feature-execute",
@@ -14,11 +15,11 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "0329928e71374c20c1779f801cae6ef88130122954b8364d25f5cbca5c1d0105",
+  "source_digest": "5cb188f151d1b0fc91f77dd33681f9e0ebd1a85b69851aa26c7ca49e4835df6b",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "853a1a13d0b54a2ce91f9cc744cc5653a854117d4b56d4a5eb7c57c10376c0e9"
+      "sha256": "2c212c247bd690e862c59e5fac0f138ad703d3841648e6d8619c0ca9bd6d2efa"
     },
     {
       "path": "scripts/select-source.mjs",
@@ -26,7 +27,7 @@
     },
     {
       "path": "skills/feature-decide/SKILL.md",
-      "sha256": "2fa7d10947df895514851258585ede90002f62cbfbdcc2a399af37ec0ac97442"
+      "sha256": "8b5d036525e085c86252a92b142628b7552d672c6ac8c6c7215d8ee34bd30b65"
     },
     {
       "path": "skills/feature-decide/agents/openai.yaml",
@@ -34,7 +35,7 @@
     },
     {
       "path": "skills/feature-design/SKILL.md",
-      "sha256": "1116c42211eb33987cd79109048802261470d3f18421a475d424a087c23ca92e"
+      "sha256": "0ef7f370e61a76cdaad6b0391ee2197f46a4173248a2ac5e422469e36053beca"
     },
     {
       "path": "skills/feature-design/agents/openai.yaml",
@@ -42,7 +43,7 @@
     },
     {
       "path": "skills/feature-exchange/SKILL.md",
-      "sha256": "5f64eb3e57b05cdfd188d88b78827c36b4e028d6c9ccaa666ac6c8b4331467a5"
+      "sha256": "b869c35e41dfcc7dc94deed3d1d06f858518bec032d746b748ce88a37cd67611"
     },
     {
       "path": "skills/feature-exchange/agents/openai.yaml",
@@ -54,7 +55,7 @@
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "40ea66e5033aba08deb0d1514e013b2bc1fcc51f16636e9a1b3fe3b722d8d4be"
+      "sha256": "b52fa60016c6b43ba17a8f1e74ffd7159dacc503bdf39fd73ae90dd520b3ca86"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -69,8 +70,16 @@
       "sha256": "58504b2e374a1d5e2bbe39e807984d04aa6a4e72f952ca8094f6d6310beac095"
     },
     {
+      "path": "skills/feature-flow/SKILL.md",
+      "sha256": "b20c5766093ccb06fa5c4cf7a69c60f88e793a181e8f369d4c875bf5ce2465d4"
+    },
+    {
+      "path": "skills/feature-flow/agents/openai.yaml",
+      "sha256": "d9b6c64502d8d6234040eb28a600fe789c1f8d04c0356e89bfaac6420e13e167"
+    },
+    {
       "path": "skills/feature-plan/SKILL.md",
-      "sha256": "a55461c019373eb3169272b4a22cb85dd02d7c3d35d9e5081d4737edfcc4d0a2"
+      "sha256": "7f463f8ca03033d86ea98c6b05fb87ef55a3f81626bbd0e6ae175275eef0d3c9"
     },
     {
       "path": "skills/feature-plan/agents/openai.yaml",
@@ -78,7 +87,7 @@
     },
     {
       "path": "skills/feature-review/SKILL.md",
-      "sha256": "e37684baed87b1992b6c931a21b75fe9eb2c8761b8e3ff314b30a9ddb14dfe66"
+      "sha256": "ab076ec6af2d9ff0b84297e05c9f461290cd1f5af1b36aa998b5718c6856ccc9"
     },
     {
       "path": "skills/feature-review/agents/openai.yaml",
@@ -86,7 +95,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "104abf64ce6ab0f299e499270faafc29ec5161fefd4f4998d56a429c68f44433"
+      "sha256": "c17b5acd0e17c3678d0c0e027fecc3f88dc783afd85411920dce6bda2e2d7421"
     }
   ]
 }

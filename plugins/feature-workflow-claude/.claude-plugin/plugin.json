@@ -1,7 +1,7 @@
 {
   "name": "feature-workflow",
-  "version": "0.5.0",
-  "description": "Feature workflow: design, plan, execute, review, decide and exchange feature work.",
+  "version": "0.6.0",
+  "description": "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
   "author": {
     "name": "claude-codex-bridge"
   },

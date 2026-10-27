@@ -4,7 +4,7 @@ Ten proces przechowuje intencję, zadania, dowody i decyzje w repozytorium, aby 
 
 ## Start i aktualizacja workflow
 
-Paczka workflow zawiera sześć skilli w `.agents/skills/` i ten przewodnik. Paczka konkretnego featura zawiera jego brief oraz potrzebne materiały wejściowe. Można najpierw wprowadzić workflow jako osobny commit, następnie dodać dokumenty featura i użyć nowych skilli do planowania. Nie trzeba instalować tych skilli jako osobistych skilli ChatGPT.
+Paczka workflow zawiera siedem skilli w `.agents/skills/` i ten przewodnik. Paczka konkretnego featura zawiera jego brief oraz potrzebne materiały wejściowe. Można najpierw wprowadzić workflow jako osobny commit, następnie dodać dokumenty featura i użyć nowych skilli do planowania. Nie trzeba instalować tych skilli jako osobistych skilli ChatGPT.
 
 Obie paczki mają ścieżki względem korzenia repo. Przy aktualizacji porównaj pliki workflow z lokalną wersją i zachowaj niezależne zmiany; przy niezmienionej bazie można zastąpić dostarczone pliki. Rozpakowanie nie usuwa innych plików. Nie usuwaj istniejących tasków ani dokumentów innego featura dlatego, że nowa paczka ich nie zawiera.
 
@@ -21,6 +21,22 @@ aby wyeksportować wynik do ZIP-a.
 ```
 
 Instrukcje można też wskazać przez ścieżkę `.agents/skills/feature-plan/SKILL.md`, jeśli bieżąca sesja nie wykryła jeszcze nowych skilli. Istniejący `F-001-replayability` może być dalej prowadzony tym samym procesem; jego pliki i historia nie są częścią aktualizacji workflow.
+
+## Automatyczne przejście przez cały proces
+
+`feature-flow` prowadzi kolejne fazy bez ręcznego wywoływania następnego skilla.
+Wznawia istniejący feature na podstawie dokumentów i stanu bridge'a. Zatrzymuje się
+przed pierwszą implementacją po zgodę na cały zakres oraz po review całości po odbiór.
+Wcześniejsza, konkretna zgoda zachowuje ważność. Istotne pytania i rzeczywiste blokady
+mogą wymagać odpowiedzi wcześniej; koniec taska lub techniczne PASS nie są taką bramką.
+Każdy ukończony krok ma własny commit zgodny z regułami repozytorium.
+
+Przykład: `Użyj feature-flow dla docs/features/F-001-search/brief.md`.
+W pluginie Codexa: `$feature-workflow:feature-flow`; w Claude Code:
+`/feature-workflow:feature-flow`. Bez pluginu można wskazać repozytoryjny skill.
+Nie trzeba kopiować osobistego skilla do kolejnych projektów. Runtime sprzed dodania
+tego skilla wymaga aktualizacji. Flow działa w aktywnej rozmowie, nie jest schedulerem
+ani zgodą na push, merge lub wdrożenie.
 
 ## Fazy i przekazania
 

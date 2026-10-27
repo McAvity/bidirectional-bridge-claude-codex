@@ -1,7 +1,7 @@
 """Checks of the generated feature-workflow packages (W17-02; contract 01-distribution.md).
 
 Everything here reads the *actual* generated packages under `plugins/feature-workflow-*`, never a
-candidate fixture. Static checks cover the six entries, their resources and references, the
+candidate fixture. Static checks cover the seven entries, their resources and references, the
 verbatim wave16 `local-delivery.md` and the canonical reader. Behaviour checks run the packaged
 reader and exchange helper from a copy outside the bridge checkout, with an empty bridge home and
 no MCP server. Host checks install the repository marketplace into disposable Claude Code and Codex
@@ -33,8 +33,8 @@ PACKAGES = {
     "codex": REPO_ROOT / "plugins" / "feature-workflow-codex",
 }
 BRIDGE_PACKAGES = [REPO_ROOT / "plugins" / "bridge-codex", REPO_ROOT / "plugins" / "bridge-claude"]
-SIX = ["feature-decide", "feature-design", "feature-exchange", "feature-execute", "feature-plan", "feature-review"]
-QUALIFIED = sorted(f"feature-workflow:{skill}" for skill in SIX)
+ENTRIES = ["feature-decide", "feature-design", "feature-exchange", "feature-execute", "feature-flow", "feature-plan", "feature-review"]
+QUALIFIED = sorted(f"feature-workflow:{skill}" for skill in ENTRIES)
 READER = REPO_ROOT / "scripts" / "workflow-source" / "select-source.mjs"
 LOCAL_DELIVERY = "skills/feature-execute/references/local-delivery.md"
 LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
@@ -107,11 +107,11 @@ class GeneratedWorkflowPackages(unittest.TestCase):
                 for entry in marker["files"]:
                     self.assertEqual(sha(package / entry["path"]), entry["sha256"], entry["path"])
 
-    def test_six_entries_each_open_with_the_source_preamble(self):
+    def test_seven_entries_each_open_with_the_source_preamble(self):
         for client, package in PACKAGES.items():
             reader = '${CLAUDE_PLUGIN_ROOT}/scripts/select-source.mjs' if client == "claude" else "<package>/scripts/select-source.mjs"
-            self.assertEqual(sorted(p.name for p in (package / "skills").iterdir()), SIX)
-            for skill in SIX:
+            self.assertEqual(sorted(p.name for p in (package / "skills").iterdir()), ENTRIES)
+            for skill in ENTRIES:
                 with self.subTest(client=client, skill=skill):
                     text = (package / "skills" / skill / "SKILL.md").read_text()
                     front, body = text.split("\n---\n", 1)
@@ -129,7 +129,7 @@ class GeneratedWorkflowPackages(unittest.TestCase):
             self.assertTrue((package / "scripts" / "bridge.mjs").is_file())
             self.assertTrue((package / "scripts" / "plugin-packages" / "bridge-plugin.mjs").is_file())
         # The executor package keeps the canonical skills: the runtime must never point onward.
-        for skill in SIX:
+        for skill in ENTRIES:
             self.assertNotIn("Instruction source — check first", (claude / "skills" / skill / "SKILL.md").read_text())
 
     def test_workflow_packages_carry_no_installer_upgrade_role_or_receipt_helper(self):
@@ -181,10 +181,10 @@ class GeneratedWorkflowPackages(unittest.TestCase):
                 self.assertEqual(json.loads(scan.stdout), [])
 
     def test_codex_metadata_qualifies_the_entry_it_mentions(self):
-        for skill in SIX:
+        for skill in ENTRIES:
             metadata = PACKAGES["codex"] / "skills" / skill / "agents" / "openai.yaml"
             text = metadata.read_text()
-            self.assertNotRegex(text, r"\$feature-(design|plan|execute|review|decide|exchange)\b")
+            self.assertNotRegex(text, r"\$feature-(flow|design|plan|execute|review|decide|exchange)\b")
 
 
 class OutsideTheCheckout(unittest.TestCase):
@@ -260,7 +260,7 @@ class RepositoryMarketplaceHosts(unittest.TestCase):
         L.assert_isolated(self.root)
         self.project = make_repo(self.root / "project")
 
-    def test_claude_lists_exactly_the_six_qualified_entries(self):
+    def test_claude_lists_exactly_the_seven_qualified_entries(self):
         try:
             L.claude_bin()
         except L.ProbeSkipped as exc:
@@ -288,7 +288,7 @@ class RepositoryMarketplaceHosts(unittest.TestCase):
         feature = sorted(s for s in init.get("skills", []) if re.search(r"(^|:)feature-[a-z]+$", s))
         self.assertEqual(feature, QUALIFIED)
 
-    def test_codex_lists_exactly_the_six_qualified_entries(self):
+    def test_codex_lists_exactly_the_seven_qualified_entries(self):
         try:
             L.codex_bin()
         except L.ProbeSkipped as exc:

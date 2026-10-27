@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-claude",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills",
@@ -9,11 +9,11 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "f8299132ec0ac4bf8e04c34eddd52582852713dc86ed9751abea2f231cc93e40",
+  "source_digest": "59b9214f934e01d0aeb9d5ab3620fc90185ccbd350f199c3a8fb9931b127eafa",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
-      "sha256": "f68c509e9404a63217800aee4aadbd9ca0e7477b5acec229418a21152952e5c6"
+      "sha256": "012ffec3d6cc92729f521394f62ac810cc3aee023b8131c050fc97e794635d58"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
@@ -144,6 +144,14 @@
       "sha256": "58504b2e374a1d5e2bbe39e807984d04aa6a4e72f952ca8094f6d6310beac095"
     },
     {
+      "path": "skills/feature-flow/SKILL.md",
+      "sha256": "5e2619fc6234a900bee04bb3a501e31c6dbf7e770a0f4514cd7e80443193383b"
+    },
+    {
+      "path": "skills/feature-flow/agents/openai.yaml",
+      "sha256": "9986d71092bc4a6915e9884b40aa4dde4e25aee00edfab026d93ae77b61db1b3"
+    },
+    {
       "path": "skills/feature-plan/SKILL.md",
       "sha256": "81a9f07f37a5ebfefd264bcf99d5d71fdd4690977422eae0d9776717b6798c36"
     },
@@ -185,7 +193,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "11ee7ebac63409a4961e61cbfdf1787580007bcde1518c70007ec3f73be8d087"
+      "sha256": "5323e2a658f3f79645e8580daa6d01425529e8799e46c6209983d8348bc3d47f"
     }
   ]
 }

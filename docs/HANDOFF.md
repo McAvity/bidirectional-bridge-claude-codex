@@ -1,5 +1,12 @@
 # Current handoff
 
+## Feature flow distribution — in progress
+
+Import and 0.6.0 release preparation in an isolated worktree.
+[Scope and progress](tasks/feature-flow-release.md). Preserve active runtime and
+personal original; new flow must ship in both workflow plugins and runtime instructions.
+
+
 ## Portable upgrade entry; this checkout on 0.5.0 — 2026-10-20
 
 [Portable upgrade](tasks/portable-upgrade.md): scripts/upgrade-local.sh delegates to

@@ -1,6 +1,6 @@
 {
   "name": "bridge-codex",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Manager-side entry point for the Claude Code <-> Codex bridge.",
   "author": {
     "name": "claude-codex-bridge"

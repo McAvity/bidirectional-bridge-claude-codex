@@ -5,7 +5,7 @@
 //
 // Four packages: the bridge packages `bridge-codex` / `bridge-claude` (setup, upgrade, roles; the
 // Claude one is also the runtime's executor package) and the `feature-workflow` plugin for each
-// client (the six feature-* skills with their resources and the instruction-source reader).
+// client (the seven feature-* skills with their resources and the instruction-source reader).
 //
 //   node scripts/plugin-packages/generate.mjs            write the packages
 //   node scripts/plugin-packages/generate.mjs --check     fail when the tree differs
@@ -35,8 +35,8 @@ export const CLAUDE_PACKAGE = "plugins/bridge-claude";
 export const WORKFLOW_PLUGIN = "feature-workflow";
 export const WORKFLOW_CODEX_PACKAGE = "plugins/feature-workflow-codex";
 export const WORKFLOW_CLAUDE_PACKAGE = "plugins/feature-workflow-claude";
-/** The six public entries of the workflow plugin, in workflow order. */
-export const WORKFLOW_ENTRIES = ["feature-design", "feature-plan", "feature-execute", "feature-review", "feature-decide", "feature-exchange"];
+/** The seven public entries of the workflow plugin, in workflow order. */
+export const WORKFLOW_ENTRIES = ["feature-flow", "feature-design", "feature-plan", "feature-execute", "feature-review", "feature-decide", "feature-exchange"];
 /** Canonical instruction-source reader, copied verbatim into both workflow packages. */
 export const SOURCE_READER = "scripts/workflow-source/select-source.mjs";
 export const SOURCE_PREAMBLE = "scripts/plugin-packages/templates/workflow-source-preamble.md";
@@ -287,7 +287,7 @@ function withPreamble(text, preamble) {
 
 /** Codex skill metadata: qualify the entry a default prompt mentions (`$feature-x`). */
 function qualifyMentions(text) {
-  return text.replace(/\$(feature-(?:design|plan|execute|review|decide|exchange))\b/gu, `$${WORKFLOW_PLUGIN}:$1`);
+  return text.replace(/\$(feature-(?:flow|design|plan|execute|review|decide|exchange))\b/gu, `$${WORKFLOW_PLUGIN}:$1`);
 }
 
 function workflowPackage(root, client, version) {
@@ -297,7 +297,7 @@ function workflowPackage(root, client, version) {
   const manifest = {
     name: WORKFLOW_PLUGIN,
     version,
-    description: "Feature workflow: design, plan, execute, review, decide and exchange feature work.",
+    description: "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
     author: { name: AUTHOR },
     license: "MIT",
     skills: "./skills/",
@@ -307,7 +307,7 @@ function workflowPackage(root, client, version) {
             displayName: "Feature workflow",
             shortDescription: "Plan, execute, review and decide feature work.",
             longDescription:
-              "The six feature-* skills with their references and exchange helper. Works on its own; in a " +
+              "The seven feature-* skills with their references and exchange helper. Works on its own; in a " +
               "project that pins a bridge runtime each entry follows that runtime's instructions.",
             developerName: AUTHOR,
             category: "Productivity",
@@ -362,7 +362,7 @@ export function sourceDigest(repoRoot = REPO_ROOT) {
 }
 
 /**
- * Digest of what a workflow package is generated from: the six skills, the guide, the reader and
+ * Digest of what a workflow package is generated from: the seven skills, the guide, the reader and
  * the preamble template. The reader reports it as the package's instruction identity.
  */
 export function workflowSourceDigest(repoRoot = REPO_ROOT) {
@@ -471,7 +471,7 @@ export function generate(outRoot) {
         {
           name: WORKFLOW_PLUGIN,
           source: `./${WORKFLOW_CLAUDE_PACKAGE}`,
-          description: "Feature workflow: design, plan, execute, review, decide and exchange feature work.",
+          description: "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
           version,
         },
       ],

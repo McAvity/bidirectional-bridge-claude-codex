@@ -5,10 +5,20 @@ Przewodnik użytkownika: jak prowadzić feature i zlecać jego implementację As
 we [wspólnym workflow](features/README.md); ten opis jest mapą procesu, nie nowym
 zestawem bramek ani zgód.
 
+## Jedno zlecenie zamiast osobnych poleceń
+
+`Użyj feature-flow dla docs/features/<id>/brief.md` uruchamia poniższy proces od
+rzeczywistego etapu. Agent sam przechodzi do kolejnego skilla, zapisuje commity
+ukończonych kroków i czeka na zgodę przed implementacją oraz na odbiór po review.
+Zwykła odpowiedź wystarcza do kontynuacji; nie trzeba ponownie wywoływać skilla.
+Rzeczywiste blokady i istotne pytania nadal wymagają rozstrzygnięcia. Szczegóły:
+[wspólny workflow](features/README.md).
+
 ## Cały proces
 
 ```mermaid
 flowchart TD
+    FLOW["feature-flow: koordynacja etapów i wznowienie"] --> A
     A[Pomysł i cel użytkownika] --> B["Brief: zakres i kryteria odbioru<br/>feature-design"]
     B --> C["Plan techniczny i taski<br/>feature-plan"]
     C --> D["Review planu<br/>feature-review: plan"]

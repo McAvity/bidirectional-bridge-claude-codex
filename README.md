@@ -5,7 +5,7 @@ adds persistent Claude feature sessions, explicit manager recovery messages and 
 routing. The `feature-workflow` branch contains the extensions; its upstream base is
 `a3d0d2180dbb8ae38837ead288d23bf955771421`.
 
-The six feature workflow skills live in `.agents/skills/`, with their shared guide in
+The seven feature workflow skills live in `.agents/skills/`, with their shared guide in
 [docs/features/README.md](docs/features/README.md). They are the canonical distribution
 sources and may also be used to develop this repository. Project-specific authorization
 and instructions still apply. Bridge rounds deliver commits that the manager checks in Git
@@ -40,6 +40,15 @@ automatically, or merge code for you.
 Each worktree is owned by one native Codex session: ownership is bound by the first authorized
 call, process start and reads claim nothing, and a second session must take over explicitly.
 See [docs/manager-identity.md](docs/manager-identity.md).
+
+To run a whole feature lifecycle, install the **feature-workflow** plugin from the same
+marketplace and ask: `Use feature-flow for docs/features/<id>/brief.md`.
+Codex entry: `$feature-workflow:feature-flow`; Claude Code entry:
+`/feature-workflow:feature-flow`. It advances through design, planning, review and
+implementation, commits completed steps, and waits for your execution approval and
+final acceptance. Existing approvals are reused; real blockers still require input.
+See the [workflow guide](docs/feature-workflow-guide.md). A project pinned to an older
+runtime needs an upgrade before the new flow is available there.
 
 ## Table of contents
 
@@ -182,7 +191,8 @@ Network access to GitHub and npm (or an existing cache) is needed on first setup
 
 ### The feature workflow plugin, in either client
 
-`feature-workflow` is a separate plugin with the six phases — `feature-design`,
+`feature-workflow` is a separate plugin with the continuous `feature-flow` and six
+individual phase skills — `feature-design`,
 `feature-plan`, `feature-execute`, `feature-review`, `feature-decide` and
 `feature-exchange` — for Codex and Claude Code. It works on its own: no bridge, MCP
 server, runtime or project setup is needed to plan, execute or review a feature.

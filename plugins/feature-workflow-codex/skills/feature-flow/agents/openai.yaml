@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Flow"
+  short_description: "Automatyczny workflow z dwiema bramkami odbioru"
+  default_prompt: "Użyj $feature-workflow:feature-flow dla wskazanego featura: wznów od aktualnego etapu i zatrzymaj się przed wykonaniem oraz przed odbiorem."

@@ -11,6 +11,31 @@ explicitly.
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-27 (experimental)
+
+### Added
+
+- `feature-flow` in both feature-workflow marketplace plugins and runtime instructions:
+  continue from the actual feature stage, commit completed steps, reuse existing
+  authorization, and preserve human execution and acceptance gates. No background
+  scheduler or implicit publication authority.
+- Portable `scripts/upgrade-local.sh`: plan/apply the release-pinned runtime to selected
+  projects through the existing installer, with SQLite backups and active-use checks.
+
+### Changed
+
+- Workflow packages expose seven skills. Their entrypoints explicitly require a runtime
+  upgrade when the pinned instruction set lacks the requested skill; no mixed fallback.
+- No MCP or state schema change (schema 6). Existing project pins stay unchanged until
+  explicitly upgraded. Personal copies of feature-flow are not automatically deleted.
+
+### Validation boundary
+
+Package/discovery checks and local instruction scenarios are recorded in
+[the release progress](docs/tasks/feature-flow-release.md). No real-model feature pilot
+or guarantee of unattended continuation after a client exits.
+
+
 ## 0.5.0 — 2026-10-20 (experimental)
 
 ### Added
