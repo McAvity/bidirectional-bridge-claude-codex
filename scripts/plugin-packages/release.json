@@ -1,9 +1,9 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.5.0",
+  "package_version": "0.6.0",
   "pinned": {
-    "commit": "12c4938282b2222d65e2636ecf24ec3e921e4a99",
-    "describe": "0.5.0: idle feature rejection/cancellation, schema 6 and Linux process inspection"
+    "commit": "d721a837053687fe200d76703e7194c53852f7fa",
+    "describe": "0.6.0: continuous feature-flow skill and portable release-pinned upgrade helper"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
