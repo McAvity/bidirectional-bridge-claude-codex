@@ -1,9 +1,9 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.6.0",
+  "package_version": "0.6.1",
   "pinned": {
-    "commit": "d721a837053687fe200d76703e7194c53852f7fa",
-    "describe": "0.6.0: continuous feature-flow skill and portable release-pinned upgrade helper"
+    "commit": "f98b54bb4c41319b279b5a7268849bd49755260c",
+    "describe": "0.6.1: agreed-outcome acceptance gates and complete review finding accounting"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [
