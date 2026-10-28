@@ -59,3 +59,23 @@ equivalence,233 documentation files and diff-check PASS. Focused distribution17/
 PASS, including real Claude discovery with a local API stub and exact runtime package
 precedence over personal plugins. No successful model inference was requested.
 Full suites will run in the isolated CI environment; existing baseline logs are retained.
+
+Prepared source: f98b54bb4c41319b279b5a7268849bd49755260c. Distribution commit:
+6c0235769c3231c9e596be7b73dc8978b32887fd, merged/pushed to feature-workflow.
+Exact runtime0.6.1-f98b54bb4c41 installed successfully in an isolated temporary home;
+no existing project selects it.
+[Release CI40702754524](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/40702754524)
+completed SUCCESS; monitored at five-minute intervals before publication.
+
+## Published — 2026-10-28
+
+Experimental [v0.6.1](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.6.1)
+at6c0235769c3231c9e596be7b73dc8978b32887fd; source f98b54bb4c41319b279b5a7268849bd49755260c.
+CI PASS: JS668 passed/1 skipped; Python113 tests/5 skipped; pilot131 tests/2 skipped;
+protected-process observer17/17. All build/package/docs checks passed. Local focused
+discovery17/17 included actual Claude with a local API stub, so no model pilot is claimed.
+
+Change, release manifests and tag are public on feature-workflow. No project runtime
+or personal plugin activation performed. Standalone users refresh their workflow plugin
+and restart; pinned projects additionally require an explicit runtime upgrade. Delegated
+Claude receives the pinned runtime's packages, not its user's installed workflow version.

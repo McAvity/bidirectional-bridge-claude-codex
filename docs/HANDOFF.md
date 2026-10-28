@@ -1,5 +1,15 @@
 # Current handoff
 
+## 0.6.1 published — 2026-10-28
+
+[Release checkpoint](tasks/feature-flow-goal-acceptance.md): outcome-aware acceptance
+and complete finding accounting; reviewed content unchanged. Source f98b54b, tag
+v0.6.1 at6c02357. CI40702754524 PASS: JS668/1skip, Python113/5skips,
+pilot131/2skips, privileged observer17. Model-free local discovery17/17 PASS;
+obsolete twelve-entry expectation corrected to fourteen named skills. No model pilot.
+Project pins, personal plugins and active runtimes unchanged; adoption is explicit.
+Earlier implementation/preparation entries below are historical.
+
 ## Feature-flow outcome and finding accounting — 2026-10-28
 
 [Scope and validation](tasks/feature-flow-goal-acceptance.md), branch
