@@ -1,5 +1,14 @@
 # Current handoff
 
+## F-W19 — independent workflow versions, brief ready
+
+[Brief](features/F-W19-workflow-versioning/brief.md) and
+[progress](features/F-W19-workflow-versioning/PROGRESS.md): user requested design of
+independent runtime/workflow releases in one repo/marketplace, machine-level workflow
+updates and stable per-feature instructions shared with the executor. AC-01…10.
+Design only; no product changes or execution approval. Next: feature-plan F-W19.
+
+
 ## 0.6.1 published — 2026-10-28
 
 [Release checkpoint](tasks/feature-flow-goal-acceptance.md): outcome-aware acceptance
