@@ -9,7 +9,7 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "59b9214f934e01d0aeb9d5ab3620fc90185ccbd350f199c3a8fb9931b127eafa",
+  "source_digest": "f423d7651ee85fb37d1fbc76ebf07bfb34e980981477442bfee9ae5cb9c91e85",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -145,7 +145,7 @@
     },
     {
       "path": "skills/feature-flow/SKILL.md",
-      "sha256": "5e2619fc6234a900bee04bb3a501e31c6dbf7e770a0f4514cd7e80443193383b"
+      "sha256": "f2c56b40c4e88d4d3bfc45328f1b850507eb7f47c436691f80e63f49a7037428"
     },
     {
       "path": "skills/feature-flow/agents/openai.yaml",
@@ -161,7 +161,7 @@
     },
     {
       "path": "skills/feature-review/SKILL.md",
-      "sha256": "9f976014fce77122702190b5e28b683b846588403da954578b25aaba0b9fb225"
+      "sha256": "f44d692eca0df40008aa4d77059df85ad046aec5ba7b552bb08b6072332e0a85"
     },
     {
       "path": "skills/feature-review/agents/openai.yaml",

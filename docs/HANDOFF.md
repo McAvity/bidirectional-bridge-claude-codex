@@ -1,5 +1,15 @@
 # Current handoff
 
+## Feature-flow outcome and finding accounting — 2026-10-28
+
+[Scope and validation](tasks/feature-flow-goal-acceptance.md), branch
+`fix/feature-flow-goal-acceptance`: canonical flow/review skills now verify the
+agreed outcome before acceptance and account for findings independently of
+severity. Generated plugin copies updated; build, validators, package check and
+pilot140 PASS. Full suites reproduce base failures (JS76, Python3); no new failing
+test names. No real-model pilot, release, pin switch or personal skill changes.
+Next: review, then separately authorised release/adoption.
+
 ## Feature flow 0.6.0 published — 2026-10-27
 
 [Release and validation](tasks/feature-flow-release.md): canonical feature-flow plus both

@@ -15,7 +15,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "5cb188f151d1b0fc91f77dd33681f9e0ebd1a85b69851aa26c7ca49e4835df6b",
+  "source_digest": "b1164a5dcac4a44fed74a5bea723a0fb7462d8c5debd744efe9d5bf869214746",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -71,7 +71,7 @@
     },
     {
       "path": "skills/feature-flow/SKILL.md",
-      "sha256": "46969a1e1df9cb6fea09724c9f791aca2bb46e5e9f786dc538c4142906c0fe22"
+      "sha256": "1283087ad4af34793e4e148052078b7c7937222541ab15cd802d10b98d35db9b"
     },
     {
       "path": "skills/feature-flow/agents/openai.yaml",
@@ -87,7 +87,7 @@
     },
     {
       "path": "skills/feature-review/SKILL.md",
-      "sha256": "97e6a3640613320e2d12e10e475a3c1bb37a44db5a9dd6e162d24ae372978fbc"
+      "sha256": "cfbc68f26d6c58c34027b01722e803e69c8e9003929c728341ae081b71946cd3"
     },
     {
       "path": "skills/feature-review/agents/openai.yaml",
