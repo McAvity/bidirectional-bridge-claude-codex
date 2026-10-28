@@ -11,6 +11,25 @@ explicitly.
 
 ## Unreleased
 
+## 0.6.1 — 2026-10-28 (experimental)
+
+### Fixed
+
+- `feature-flow` checks the agreed outcome before offering acceptance: a technically
+  sound experiment does not establish an unmet product threshold. Bounded investigations
+  may still complete with a negative result. Continuation respects existing scope,
+  budget, stop rules and the user's execution/acceptance gates.
+- `feature-review` separates goal achievement from execution PASS and accounts for
+  findings independently of severity. Minor requirement violations remain required;
+  optional suggestions do not become mandatory work.
+- The model-free delegated Claude discovery test checks the exact fourteen qualified
+  entries (seven per runtime package), replacing the obsolete twelve-entry expectation.
+
+No MCP or database schema change. Existing project runtime pins remain unchanged.
+No real-model lifecycle pilot is claimed; release checks are recorded in
+[the progress note](docs/tasks/feature-flow-goal-acceptance.md).
+
+
 ## 0.6.0 — 2026-10-27 (experimental)
 
 ### Added

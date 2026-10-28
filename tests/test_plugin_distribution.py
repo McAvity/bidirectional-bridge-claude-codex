@@ -534,7 +534,11 @@ class InstalledRuntimeWorkflow(unittest.TestCase):
         self.assertIn('Plugin "feature-workflow" from --plugin-dir overrides installed version', debug.read_text(errors="replace"))
         entries = sorted(s for s in init.get("skills", []) if re.search(r"(^|:)feature-[a-z]+$", s))
         self.assertEqual([s for s in entries if ":" not in s], [])
-        self.assertEqual(len(entries), 12)
+        expected_skills = ("feature-design", "feature-plan", "feature-execute",
+                           "feature-review", "feature-decide", "feature-exchange", "feature-flow")
+        self.assertEqual(entries, sorted(f"{plugin}:{skill}"
+                                        for plugin in ("bridge-claude", "feature-workflow")
+                                        for skill in expected_skills))
 
 
 if __name__ == "__main__":

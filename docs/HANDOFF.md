@@ -8,7 +8,9 @@ agreed outcome before acceptance and account for findings independently of
 severity. Generated plugin copies updated; build, validators, package check and
 pilot140 PASS. Full suites reproduce base failures (JS76, Python3); no new failing
 test names. No real-model pilot, release, pin switch or personal skill changes.
-Next: review, then separately authorised release/adoption.
+Review PASS; user authorized commit, push and release. Version0.6.1 is being
+prepared in a separate worktree; focused distribution17/17, build/packages/docs PASS.
+Publication awaits CI; project runtime activation is not part of this release.
 
 ## Feature flow 0.6.0 published — 2026-10-27
 
