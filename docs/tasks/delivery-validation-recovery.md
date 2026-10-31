@@ -61,3 +61,13 @@ Home-filesystem pilot rerun140/140 PASS. Full local JS before the review correct
 611 PASS,77 failed,7 skipped; one is the stale MCP shape now corrected and76 match
 the known protected-process setup baseline. Final full suites and isolated CI follow
 the committed release source. No claim that these local full suites passed.
+
+## Review complete — PASS
+
+The same independent Claude reviewer closed all four findings and reran195/195
+tests plus package source equivalence. No required findings remain. Reviewer scope
+was implementation and focused corrections; no real-model recovery pilot was run.
+Manager source771e797a73d3693b651806044fe3f88acd24ea02, release pin39230e9.
+Historical short reports not preserved by an old runtime remain ineligible; no proof
+is fabricated or bypassed to recover them. User's affected state has an intact report.
+Full release CI is the publication gate. No affected task has been resumed.

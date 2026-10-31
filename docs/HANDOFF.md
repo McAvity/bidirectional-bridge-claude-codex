@@ -4,7 +4,7 @@
 
 [Scope and progress](tasks/delivery-validation-recovery.md): schema-safe BLOCKED
 reports plus narrow explicit historical FAILED report recovery.195 focused tests,
-build/packages/docs PASS after review corrections; final reviewer/CI pending.
+build/packages/docs PASS after review corrections; independent review PASS. CI pending.
 Live affected state passes the proof gate in readonly mode; it was not recovered.
 Keep active runtimes immutable; release and checked target upgrade follow validation.
 
