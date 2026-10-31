@@ -1,6 +1,6 @@
 # Delivery validation recovery — 0.6.2
 
-Status: implementing. User authorized the bridge correction, release and preparation
+Status: released 0.6.2; affected project activation pending. User authorized the bridge correction, release and preparation
 of a checked project upgrade. Worktree/branch: fix/delivery-validation-recovery.
 No real project database, source or running runtime may be edited to bypass recovery.
 
@@ -36,7 +36,7 @@ Early runner validation, historical proof gate and explicit recovery mode implem
 Build and61 focused tests PASS: actual runner/adapter/control-plane path with a scripted
 CLI, historical SQLite/restart/idempotency and identity/timeout regression suites.
 Pure-read eligibility on the affected live state PASS, without opening a write store,
-reserving an attempt or exposing its session handle. No product source/state changed.
+reserving an attempt or exposing its session handle. No affected-project source/state changed.
 Both roles, loop instructions, MCP schema and protocol/recovery docs updated.
 
 First full local JS/pilot attempt hit ENOSPC on the root /tmp filesystem; results are
@@ -71,3 +71,26 @@ Manager source771e797a73d3693b651806044fe3f88acd24ea02, release pin39230e9.
 Historical short reports not preserved by an old runtime remain ineligible; no proof
 is fabricated or bypassed to recover them. User's affected state has an intact report.
 Full release CI is the publication gate. No affected task has been resumed.
+
+## Published — 2026-10-31
+
+Experimental [v0.6.2](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/v0.6.2)
+at6caae185f757a06609a3799bcc31e9ce2d471d98, source771e797a73d3693b651806044fe3f88acd24ea02.
+[CI41193161217](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/41193161217)
+PASS: JS697/1skip, Python113/5skips, pilot131/2skips; protected observer17/17.
+Final local suites: JS615PASS/76 baseline process-inspection failures/7skips;
+Python113/2 baseline installer failures; pilot140PASS. ENOSPC attempt excluded.
+
+Immutable runtime0.6.2-771e797a73d3 installed beside older versions. Real stdio
+handshake:36 tools and new recovery parameter, no state creation/model invocation.
+Independent Claude code review PASS is separate from a real task-recovery pilot.
+
+Affected project plan changes only portable pin/local selection. Apply not performed:
+ACTIVE_USE_UNKNOWN from restricted process metadata, and noninteractive sudo authorization
+is unavailable. Private stable installer/apply kit outside Git includes a consistent
+SQLite backup, exact runtime/status/doctor checks, exact existing manager resume command
+and focused recovery handoff. User must close project clients normally and run it in
+a terminal that can authorize the read-only observer. No task recovery, code correction,
+application deployment or synthetic acceptance was performed in the affected project.
+Manager must read updated runtime instructions, preserve existing task/session and use
+one explicit recover_invalid_delivery request at the previously authorized budget.

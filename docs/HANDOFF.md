@@ -1,13 +1,15 @@
 # Current handoff
 
-## Delivery validation recovery — 0.6.2 in progress
+## 0.6.2 published — 2026-10-31
 
-[Scope and progress](tasks/delivery-validation-recovery.md): schema-safe BLOCKED
-reports plus narrow explicit historical FAILED report recovery.195 focused tests,
-build/packages/docs PASS after review corrections; independent review PASS. CI pending.
-Live affected state passes the proof gate in readonly mode; it was not recovered.
-Keep active runtimes immutable; release and checked target upgrade follow validation.
-
+[Release/activation checkpoint](tasks/delivery-validation-recovery.md): malformed Claude
+reports remain BLOCKED/PARTIAL; narrow historical report rejection can explicitly resume
+same task/session. Source771e797, tag v0.6.2 at6caae18. Independent review PASS;
+CI41193161217 PASS: JS697/1skip, Python113/5skips, pilot131/2skips, observer17.
+Immutable0.6.2 installed; handshake36 tools/new parameter/no claim PASS. Real recovery
+not executed. Affected project's readonly eligibility passes; activation is deferred:
+process inspection refuses and sudo authorization needs the user's terminal. Private
+stable apply/backup/exact-resume kit prepared outside Git. Own active runtime unchanged.
 
 ## F-W19 — independent workflow versions, brief ready
 
