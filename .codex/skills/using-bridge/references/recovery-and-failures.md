@@ -34,7 +34,7 @@ Load this reference only for a blocked, failed, interrupted, or stranded bridge 
 | Child `BLOCKED` / `PARTIAL` | Consume useful evidence and blocker at the parent; resolve or report it. | Do not mutate the child as manager or upgrade it to complete. |
 | `NOT_OWNER` | Stop the mutation; read state if needed. | Do not steal ownership, finish the task, or release another holder’s lease. |
 | `SCOPE_CONFLICT` | Wait and recheck, narrow to disjoint scope, or return a blocker. | Do not steal or overlap the lease. |
-| Validation failure | Correct the payload/result once using existing real evidence. | Do not rerun completed work or invent paths/checks. |
+| Validation failure | New malformed Claude reports are BLOCKED/PARTIAL; correct from existing evidence. A historical terminal schema rejection needs the explicit mode below. | Do not rerun completed work or invent paths/checks. |
 | Round `FAILED` with attempt outcome `TIMEOUT` | Read `bridge_get_task` and its `termination_evidence` file, confirm the worker stopped, then resume once with `recover_timeout`, a justified `deadline_ms` and `max_turns`. | Do not reopen any other `FAILED`, reuse the expired deadline implicitly, or repeat after a second timeout without a decision. |
 | Failed recovery | Report the same task, new attempt, lineage, and exact reason. | Do not create a sibling task or fresh runtime thread. |
 
@@ -45,6 +45,21 @@ read historical results instead. `FEATURE_BUSY` or `FEATURE_UNSETTLED` on close 
 active or insufficiently settled work, not permission to stop a process or retry a model.
 Keep closure's idempotency key for a lost response. Missing close requires a runtime upgrade;
 never use accept to release rejected work. Closed parent/worker outcomes are not rewritten.
+
+## Historical malformed delivery
+
+A historical `FAILED` round rejected at deliverable schema validation can use
+`bridge_resume_delegated_task({task_id, recover_invalid_delivery: true,
+deadline_ms: <authorized budget>, max_turns: <sized>, message: <bounded correction>,
+idempotency_key: "<task>:report-recovery-<n>"})`. This is a separate explicit mode, never
+combined with `recover_timeout`. The bridge proves a settled Claude attempt with
+INVALID_ARGUMENT, the exact schema-rejection transition, completed/exit0 telemetry,
+a complete intact original report and preserved session; ordinary feature/identity/lease
+guards remain. Any missing proof refuses without reserving an attempt. Keep the same
+contract and correct the report/evidence or already authorised defects; never repeat the
+whole feature. New malformed Claude reports already return PARTIAL/BLOCKED with the
+original report preserved and use normal BLOCKED recovery. Missing support requires
+runtime upgrade, not a new session, direct CLI invocation or database edits.
 
 ## Termination evidence
 

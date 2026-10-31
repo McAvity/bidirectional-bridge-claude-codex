@@ -1,3 +1,4 @@
+import { assertInvalidDeliveryFailure } from "./invalid-delivery-recovery.js";
 import { assertTaskFeatureOpen, featureTerminal } from "./feature-closure.js";
 /**
  * Bounded delegation.
@@ -89,6 +90,7 @@ interface RecoveryRequest {
   readonly requested_by: AgentId;
   readonly idempotency_key?: string;
   readonly recover_timeout?: boolean;
+  readonly recover_invalid_delivery?: boolean;
   readonly deadline_ms?: number;
   readonly max_turns?: number;
 }
@@ -621,7 +623,7 @@ export class Orchestrator {
       if (racedReplay !== null) return { reservation: racedReplay, replayed: true };
 
       const task = this.cp.tasks.get(request.task_id);
-      const mode: RecoveryMode = request.recover_timeout === true ? "timeout" : "stranded";
+      const mode: RecoveryMode = request.recover_invalid_delivery === true ? "invalid_delivery" : request.recover_timeout === true ? "timeout" : "stranded";
       for (const feature of this.cp.store.listFeatures()) {
         if (!feature.task_ids.includes(task.task_id)) continue;
         if (kind === "delegated_manager" && feature.manager !== request.requested_by) {
@@ -639,19 +641,19 @@ export class Orchestrator {
       const authorization = this.authorizeRecoveryIdentity(task, request, kind);
     assertTaskFeatureOpen(this.cp.store, task.task_id);
       const executionAgent = authorization.execution_agent;
-      const messageState = mode === "timeout" ? TaskState.FAILED : TaskState.BLOCKED;
+      const messageState = mode !== "stranded" ? TaskState.FAILED : TaskState.BLOCKED;
       if (request.message !== undefined && (
         kind !== "delegated_manager" || executionAgent !== "claude" ||
         task.state !== messageState
       )) {
         throw new BridgeError(ErrorCode.INVALID_ARGUMENT,
-          "manager messages are supported only for BLOCKED or timed-out delegated Claude tasks");
+          "manager messages are supported only for BLOCKED or explicitly recoverable FAILED Claude tasks");
       }
-      if (mode === "timeout") {
+      if (mode !== "stranded") {
         if (task.state !== TaskState.FAILED) {
           throw new BridgeError(
             ErrorCode.ILLEGAL_TRANSITION,
-            `recover_timeout applies only to a FAILED task; ${task.task_id} is ${task.state}`,
+            `explicit terminal recovery applies only to a FAILED task; ${task.task_id} is ${task.state}`,
             { task_id: task.task_id, state: task.state },
           );
         }
@@ -698,6 +700,7 @@ export class Orchestrator {
         );
       }
       if (mode === "timeout") this.assertTimedOutFailure(task, prior);
+      if (mode === "invalid_delivery") assertInvalidDeliveryFailure(this.cp, task, prior);
 
       const liveLeases = this.cp.leases.listLive();
       const liveTaskLease = liveLeases.find((lease) => lease.task_id === task.task_id);
@@ -782,6 +785,7 @@ export class Orchestrator {
         agent: executionAgent,
         next_attempt: recoveredAttempt,
         ...(mode === "timeout" ? { from_timeout: true } : {}),
+        ...(mode === "invalid_delivery" ? { from_invalid_delivery: true } : {}),
       });
       this.cp.attempts.startResumed(
         task.task_id,
@@ -1144,7 +1148,7 @@ export class Orchestrator {
       !parsed.input_artifact_ids.every((artifactId) => typeof artifactId === "string") ||
       typeof parsed.requested_at !== "number" ||
       typeof parsed.deadline_ms !== "number" ||
-      (parsed.mode !== undefined && parsed.mode !== "stranded" && parsed.mode !== "timeout") ||
+      (parsed.mode !== undefined && parsed.mode !== "stranded" && parsed.mode !== "timeout" && parsed.mode !== "invalid_delivery") ||
       (parsed.max_turns !== undefined && !Number.isInteger(parsed.max_turns))
     ) {
       throw new BridgeError(
@@ -1286,6 +1290,7 @@ export class Orchestrator {
     // Fields are included only when supplied, so keys stored before they existed still match.
     const budget = {
       ...(request.recover_timeout === true ? { recover_timeout: true } : {}),
+      ...(request.recover_invalid_delivery === true ? { recover_invalid_delivery: true } : {}),
       ...(request.deadline_ms !== undefined ? { deadline_ms: request.deadline_ms } : {}),
       ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
     };
@@ -1370,6 +1375,16 @@ export class Orchestrator {
     }
     if (request.recover_timeout !== undefined && typeof request.recover_timeout !== "boolean") {
       throw invalid("recover_timeout must be true or omitted");
+    }
+    if (request.recover_invalid_delivery !== undefined && typeof request.recover_invalid_delivery !== "boolean") {
+      throw invalid("recover_invalid_delivery must be a boolean");
+    }
+    if (request.recover_invalid_delivery === true) {
+      if (request.recover_timeout === true) throw invalid("choose only one terminal recovery mode");
+      if (kind !== "delegated_manager" || !request.idempotency_key?.trim() ||
+          request.deadline_ms === undefined || !request.message?.trim()) {
+        throw invalid("invalid delivery recovery requires the direct manager, idempotency_key, deadline_ms and a correction message");
+      }
     }
     if (request.recover_timeout === true) {
       if (kind !== "delegated_manager") {

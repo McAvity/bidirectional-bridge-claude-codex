@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-claude",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills",
@@ -9,11 +9,11 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "f423d7651ee85fb37d1fbc76ebf07bfb34e980981477442bfee9ae5cb9c91e85",
+  "source_digest": "c678d728ba425fd24151e0a9ef08cb47a02e43b2f2d0a6222ca1a4e7b4f4e2b0",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
-      "sha256": "f2c1884a2db6291c03b32c919e746330660137acaa67e399e0b0e471cf371869"
+      "sha256": "f53d53e0fd374ddb2c761ddeebb32c483ecdb6ff019c202bbda213a6f5319448"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
@@ -137,7 +137,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "34bebab0525107fcf4f73094ea2dae6e593851607c345889d16749d7dbe36ddd"
+      "sha256": "cede5206c6645633714d4bef74f7b0de9ee78ffc6900802f1e36b7434273f415"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
@@ -169,7 +169,7 @@
     },
     {
       "path": "skills/using-bridge/SKILL.md",
-      "sha256": "78a2734ad4db15e8abc87107d9a3f9b8fe4104760e2d6596dbcbff5ee1ba7165"
+      "sha256": "52c210f333370856a66eaf7b8fd3163578b03399aaa42efcb6432f3569a7542c"
     },
     {
       "path": "skills/using-bridge/agents/openai.yaml",
@@ -181,7 +181,7 @@
     },
     {
       "path": "skills/using-bridge/references/recovery-and-failures.md",
-      "sha256": "461720887ffd850aac7d626b9bc3c0fda0bb9d7ea0f450ab1d0a7e28697dbb19"
+      "sha256": "46a77b4a6ec15bb50d301d7d0447cbc6db902857ee072967bdfe6701779c9d46"
     },
     {
       "path": "skills/using-bridge/references/routing-policy.md",
@@ -189,7 +189,7 @@
     },
     {
       "path": "skills/using-bridge/references/tool-map.md",
-      "sha256": "a3e1d6a00835a57e698dd171e31910ba838f33c6848743a19dc853c7a0cab04b"
+      "sha256": "13c53c3df272db5da02fc9efb9b284199e274620ea0d13dedfa2559850cc67ca"
     },
     {
       "path": "workflow/README.md",

@@ -162,6 +162,16 @@ with `bridge_resume_delegated_task({recover_timeout: true, deadline_ms, max_turn
 extra runtime is authorized. Do not blindly restart, and do not reuse the deadline that just
 expired.
 
+### Completed Claude but rejected report
+
+In 0.6.2+, malformed model-authored delivery fields preserve the original report and
+return PARTIAL/BLOCKED. Resume the same task with a correction message; do not repeat
+its completed work. Older runtimes may have left FAILED/INVALID_ARGUMENT with
+`Deliverable failed validation:`. Upgrade, then use the direct manager's explicit
+`recover_invalid_delivery` mode with message, deadline and key. Read
+[the recovery conditions](recovery.md#historical-deliverable-schema-rejection).
+An arbitrary INVALID_ARGUMENT, missing evidence or failed process does not qualify.
+
 ### Where the stopped runtime's stderr went
 
 An attempt that ends without a normal result writes

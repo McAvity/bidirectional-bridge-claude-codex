@@ -276,8 +276,12 @@ Recovery continues the same durable task and runtime session; never redelegate a
      `bridge_resume_delegated_task` from the manager client;
    - if that child is `FAILED` because the bridge stopped it at its deadline (attempt outcome
      `TIMEOUT`, session kept), add `recover_timeout: true` with an explicit `deadline_ms`, a
-     sized `max_turns` and an idempotency key, once the extra runtime is authorized. Every
-     other `FAILED` stays terminal, and this is never an automatic retry.
+     sized `max_turns` and an idempotency key, once the extra runtime is authorized;
+   - if a historical Claude child is FAILED after deliverable schema rejection, use
+     `recover_invalid_delivery: true` plus `message`, explicit `deadline_ms` and a key.
+     Durable records must prove completed/exit0 execution, intact preserved report,
+     matching rejection and session. All other FAILED stays terminal. Never combine
+     terminal modes or treat either as an automatic retry.
 4. Do not open the other native client merely for recovery. The bridge derives the child
    owner/runtime from durable state and uses that worker identity internally; do not spoof an
    owner or use a direct CLI fallback.

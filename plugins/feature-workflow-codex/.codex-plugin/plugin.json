@@ -1,6 +1,6 @@
 {
   "name": "feature-workflow",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
   "author": {
     "name": "claude-codex-bridge"

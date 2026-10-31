@@ -681,12 +681,14 @@ export const TOOLS: readonly ToolDefinition[] = [
       "the child owner remains the execution identity for its adapter, attempt, lease, " +
       "deliverable, telemetry, and persisted runtime session. This operation never transfers " +
       "ownership, accepts identity overrides, creates a replacement task, or exposes a handle. " +
-      "A FAILED child stays terminal unless recover_timeout is set and durable state proves its " +
-      "last attempt was stopped by the bridge deadline with a persisted session.",
+      "A FAILED child stays terminal unless an explicit terminal recovery mode proves a bridge " +
+      "deadline or a completed Claude attempt rejected only at deliverable schema validation.",
     inputShape: {
       task_id: z.string(),
       message: z.string().min(1).max(8000).optional()
-        .describe("Clarification for a BLOCKED or timed-out Claude child, within its existing objective and scope. Requires idempotency_key."),
+        .describe("Clarification for a BLOCKED or explicitly recoverable FAILED Claude child, within its existing objective and scope. Requires idempotency_key."),
+      recover_invalid_delivery: z.boolean().optional()
+        .describe("Recover a historical FAILED Claude delivery-schema rejection with completed/exit0 telemetry and preserved report. Requires correction message, deadline_ms and idempotency_key. Never automatically retries work."),
       recover_timeout: z.boolean().optional()
         .describe("Reopen a FAILED child whose last attempt ended at the bridge deadline (TIMEOUT) with a persisted session. Requires deadline_ms and idempotency_key; use only after the extra runtime is authorized."),
       ...recoveryBudgetArgs,
@@ -699,6 +701,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           requested_by: ctx.defaultAgent,
           ...recoveryBudget(args),
           ...(args["recover_timeout"] !== undefined ? { recover_timeout: args["recover_timeout"] as boolean } : {}),
+          ...(args["recover_invalid_delivery"] !== undefined ? { recover_invalid_delivery: args["recover_invalid_delivery"] as boolean } : {}),
           ...(args["message"] !== undefined ? { message: args["message"] as string } : {}),
           ...(args["idempotency_key"] ? { idempotency_key: args["idempotency_key"] as string } : {}),
         },

@@ -49,7 +49,7 @@ Use the live MCP schema as the final authority. Load this map only when the exac
 |---|---|
 | `bridge_recover` | Expire dead leases and report stranded tasks; it does not retry work. |
 | `bridge_resume_task` | Strictly resume one owned, recoverable task using persisted runtime state; optional `deadline_ms`/`max_turns` bound that attempt only. |
-| `bridge_resume_delegated_task` | Let a direct parent owner request strict recovery of its delegated child; the child owner remains the execution identity. With `recover_timeout: true` plus an explicit `deadline_ms` it reopens a child the bridge stopped at its deadline; no other `FAILED` is eligible. |
+| `bridge_resume_delegated_task` | Let a direct parent owner request strict recovery of its delegated child; the child owner remains the execution identity. With `recover_timeout: true` plus an explicit `deadline_ms` it reopens a child the bridge stopped at its deadline; a historical completed-Claude schema rejection uses `recover_invalid_delivery` with a correction message, deadline and key. Every other `FAILED` remains terminal. |
 | `bridge_read_events` | Read a targeted event history; do not busy-poll. |
 | `bridge_query_telemetry` | Query final attempt telemetry after completion when requested or diagnosing. |
 | `bridge_set_execution_handle` | Adapter/recovery plumbing; avoid ordinary manager use. |

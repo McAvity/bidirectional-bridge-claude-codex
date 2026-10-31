@@ -509,7 +509,7 @@ export const MAX_RECOVERY_DEADLINE_MS = 86_400_000;
  * `timeout`: a FAILED task that the bridge itself stopped at its deadline, reopened only by
  * an explicit manager request with a new deadline.
  */
-export type RecoveryMode = "stranded" | "timeout";
+export type RecoveryMode = "stranded" | "timeout" | "invalid_delivery";
 
 /** Internal request derived from a caller-bound MCP session. */
 export interface ResumeTaskRequest {

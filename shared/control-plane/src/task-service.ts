@@ -59,9 +59,11 @@ export interface BeginRecoveryInput {
   readonly next_attempt: number;
   /**
    * Reopen a FAILED task whose failure the caller has already proven was the bridge
-   * deadline. This is the only way out of FAILED; `ALLOWED_TRANSITIONS` stays terminal.
+   * deadline. Explicit proven terminal recovery leaves `ALLOWED_TRANSITIONS` terminal.
    */
   readonly from_timeout?: boolean;
+  /** Orchestrator has proved a historical completed-runtime delivery-schema rejection. */
+  readonly from_invalid_delivery?: boolean;
 }
 
 export interface DependencyReport {
@@ -498,11 +500,11 @@ export class TaskService {
     return this.store.transaction(() => {
       assertTaskFeatureOpen(this.store, input.task_id);
       const task = this.assertOwner(this.get(input.task_id), input.agent);
-      if (input.from_timeout === true) {
+      if (input.from_timeout === true || input.from_invalid_delivery === true) {
         if (task.state !== TaskState.FAILED) {
           throw new BridgeError(
             ErrorCode.ILLEGAL_TRANSITION,
-            `timeout recovery reopens only FAILED tasks; ${task.task_id} is ${task.state}`,
+            `explicit terminal recovery reopens only FAILED tasks; ${task.task_id} is ${task.state}`,
             { task_id: task.task_id, state: task.state },
           );
         }
@@ -548,7 +550,7 @@ export class TaskService {
           payload: {
             from: task.state,
             to: TaskState.WORKING,
-            reason: input.from_timeout === true ? "timeout_recovery" : "recovery",
+            reason: input.from_timeout === true ? "timeout_recovery" : input.from_invalid_delivery === true ? "invalid_delivery_recovery" : "recovery",
             attempt: input.next_attempt,
           },
         },

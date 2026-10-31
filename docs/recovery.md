@@ -63,7 +63,7 @@ direct parent and created the child; the feature (if any) is bound to that manag
 attempt has ended with outcome `TIMEOUT`, was recorded by the owner, and the FAILED
 transition that followed it gives the deadline as its reason; attempt telemetry, when
 present, records a timeout; a session handle is persisted; no later attempt, live lease or
-active recovery exists; the adapter advertises `resume`. Anything else — a crashed runtime, a
+active recovery exists; the adapter advertises `resume`. Except for the separate schema-rejection mode below, a crashed runtime, a
 rejected strict resume, a FAILED deliverable, a manual FAILED, a missing handle — stays
 terminal, and `bridge_resume_task` never reopens a timeout at all.
 
@@ -74,6 +74,27 @@ telemetry untouched, and records the reopening as `FAILED -> WORKING` with reaso
 `timeout_recovery`. A recovery attempt that times out again ends `BLOCKED`, not `FAILED`.
 Nothing about this is automatic: no retry budget triggers it, and repeating the request with
 the same key replays the original result instead of running a second worker.
+
+## Historical deliverable schema rejection
+
+A historical `FAILED` round rejected at deliverable schema validation can use
+`bridge_resume_delegated_task({task_id, recover_invalid_delivery: true,
+deadline_ms: <authorized budget>, max_turns: <sized>, message: <bounded correction>,
+idempotency_key: "<task>:report-recovery-<n>"})`. This is a separate explicit mode, never
+combined with `recover_timeout`. The bridge proves a settled Claude attempt with
+INVALID_ARGUMENT, the exact schema-rejection transition, completed/exit0 telemetry,
+a complete intact original report and preserved session; ordinary feature/identity/lease
+guards remain. Any missing proof refuses without reserving an attempt. Keep the same
+contract and correct the report/evidence or already authorised defects; never repeat the
+whole feature. New malformed Claude reports already return PARTIAL/BLOCKED with the
+original report preserved and use normal BLOCKED recovery. Missing support requires
+runtime upgrade, not a new session, direct CLI invocation or database edits.
+
+The original FAILED attempt, report and telemetry remain immutable. Reopening records
+`invalid_delivery_recovery`, returns `recovery_mode: invalid_delivery`, and reserves
+one adjacent attempt through existing strict resume and idempotency. It does not declare
+product success; a corrected report still undergoes canonical schema/evidence checks
+and independent review. No accepted deliverable is overwritten by this exception.
 
 ## Executor deadline and client tool timeout
 

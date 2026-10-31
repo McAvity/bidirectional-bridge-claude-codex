@@ -456,7 +456,7 @@ describe("MCP tool surface", () => {
       (candidate) => candidate.name === "bridge_resume_delegated_task",
     )!;
     expect(Object.keys(tool.inputShape).sort()).toEqual([
-      "deadline_ms", "idempotency_key", "max_turns", "message", "recover_timeout", "task_id",
+      "deadline_ms", "idempotency_key", "max_turns", "message", "recover_invalid_delivery", "recover_timeout", "task_id",
     ]);
     const resumed = await call(
       "bridge_resume_delegated_task",

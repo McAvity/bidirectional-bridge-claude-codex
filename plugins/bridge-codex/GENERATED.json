@@ -1,17 +1,17 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-codex",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".codex/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "f423d7651ee85fb37d1fbc76ebf07bfb34e980981477442bfee9ae5cb9c91e85",
+  "source_digest": "c678d728ba425fd24151e0a9ef08cb47a02e43b2f2d0a6222ca1a4e7b4f4e2b0",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "1dd1d570f4d14012f5f25afa25096693620d282cb5fe934fed90bcb2d58362c0"
+      "sha256": "a1d59d533181e87f629010dd85fc296571ba260c59e78a5d816407d6645f4b82"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",

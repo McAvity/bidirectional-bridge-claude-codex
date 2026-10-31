@@ -48,6 +48,8 @@ import { once } from "node:events";
 import {
   AttemptTerminationKind,
   BridgeError,
+  DeliverableSchema,
+  validate,
   DEADLINE_ABORT_REASON,
   DEFAULT_TASK_MAX_TURNS,
   ErrorCode,
@@ -997,9 +999,11 @@ export class ClaudeCodeRunner implements ClaudeRunner {
       // The runtime ran but reported failure (auth, API error, refusal). PARTIAL rather
       // than a throw: the attempt is real, the session id is persisted, and a retry can
       // resume it. Reporting COMPLETE here would be a false claim of success.
+      const artifacts = await preserveDetailedReport(text, ctx, text.length > 2000);
       return {
-        summary: `Claude runtime reported an error: ${text || frame.terminal_reason || "unknown"}`,
-        blocker: text || frame.terminal_reason || "claude runtime error",
+        summary: boundedSummary(`Claude runtime reported an error: ${text || frame.terminal_reason || "unknown"}`),
+        blocker: (text || frame.terminal_reason || "claude runtime error").slice(0, 2000),
+        artifacts,
         remaining_risks: [
           frame.terminal_reason === "api_error"
             ? "the Claude runtime could not reach the API or is not authenticated"
@@ -1028,12 +1032,39 @@ export class ClaudeCodeRunner implements ClaudeRunner {
       !snapshotPattern.test(after) ||
       before.match(snapshotPattern)?.[0].toLowerCase() === after.match(snapshotPattern)?.[0].toLowerCase()
     );
+    // Model-authored JSON is not a trusted ClaudeStructuredOutput despite its TS type.
+    // Preserve the rejected text and return a schema-safe PARTIAL; never guess changed paths.
+    const reportIssues: string[] = [];
+    const fields = ["summary", "changed_scope", "changed_files", "remaining_risks", "recommended_next_action"] as const;
+    for (const field of fields) {
+      const value = structured?.[field];
+      if (value === undefined) continue;
+      // The adapter bounds/defaults summary below; only its raw type must be a string.
+      const schema = field === "summary" ? { type: "string" as const }
+        : DeliverableSchema.properties![field === "changed_files" ? "changed_scope" : field]!;
+      const result = validate(value, schema);
+      for (const issue of result.issues) reportIssues.push(`${field}${issue.path}: ${issue.message}`);
+    }
+    if (structured?.blocker !== undefined && structured.blocker !== null &&
+        (typeof structured.blocker !== "string" || structured.blocker.length > 2000)) {
+      reportIssues.push("blocker: expected string or null, at most 2000 characters");
+    }
     const evidenceBlocker = invalidReproduction
       ? "reproduction evidence requires valid checks and distinct identified pre-fix/final snapshots"
       : null;
     // Preserve even short reports: otherwise the historical results and their snapshot
     // identities would be lost when only final checks enter the canonical deliverable.
-    const artifacts = await preserveDetailedReport(text, ctx, hasReproduction);
+    const artifacts = await preserveDetailedReport(text, ctx, hasReproduction || reportIssues.length > 0);
+    if (reportIssues.length > 0) {
+      const blocker = `Claude report failed validation: ${reportIssues.slice(0, 8).join("; ")}`.slice(0, 2000);
+      return {
+        summary: boundedSummary(typeof structured?.summary === "string" ? structured.summary : text),
+        changed_scope: [], artifacts, verification_results: verifications,
+        remaining_risks: evidenceBlocker ? [evidenceBlocker] : [],
+        recommended_next_action: "resume the same task/session to correct the report using existing evidence",
+        blocker, commit_or_diff: null, telemetry: telemetryUpdate,
+      };
+    }
 
     await ctx.report({
       state: TaskState.VERIFYING,

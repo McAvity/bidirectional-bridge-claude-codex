@@ -1,0 +1,63 @@
+# Delivery validation recovery — 0.6.2
+
+Status: implementing. User authorized the bridge correction, release and preparation
+of a checked project upgrade. Worktree/branch: fix/delivery-validation-recovery.
+No real project database, source or running runtime may be edited to bypass recovery.
+
+## Scope
+
+- Claude report fields that would violate the canonical deliverable schema become
+  explicit PARTIAL/BLOCKED output with the original report preserved, never guessed
+  changed paths, invented checks or automatic success.
+- A direct manager may explicitly recover a historical FAILED Claude task only when
+  durable records prove completed execution and rejection of its deliverable schema.
+  Preserve task, scope, feature, session, original attempt and evidence; start one new
+  adjacent attempt through strict resume. Other FAILED/INVALID_ARGUMENT stays terminal.
+- Require a recovery clarification, explicit runtime deadline and idempotency key;
+  preserve normal feature state, ownership, fencing, lease and replay guards.
+- Update both role instructions and feature loop, tests, packages and release metadata.
+
+## Validation and release gates
+
+Synthetic fixtures only, no real prompts, session handles, task IDs or user answers.
+Regressions: object changed_scope plus invalid reproduction evidence, preserved report,
+normal BLOCKED recovery, historical SQLite/restart recovery, exact same session/task,
+formal rejection without mutation for unrelated failures/missing evidence/active work,
+wrong owner, waiting/closed features, strict-resume refusal and idempotency/replay.
+Build, focused tests, required full suites and isolated CI before publication.
+Independent review of the eligibility and validation boundaries before release.
+
+Next: implement and verify; append actual results. Deployment/resume in the affected
+project must use its real bound manager and existing session, never this diagnosis client.
+
+## Implementation and first validation
+
+Early runner validation, historical proof gate and explicit recovery mode implemented.
+Build and61 focused tests PASS: actual runner/adapter/control-plane path with a scripted
+CLI, historical SQLite/restart/idempotency and identity/timeout regression suites.
+Pure-read eligibility on the affected live state PASS, without opening a write store,
+reserving an attempt or exposing its session handle. No product source/state changed.
+Both roles, loop instructions, MCP schema and protocol/recovery docs updated.
+
+First full local JS/pilot attempt hit ENOSPC on the root /tmp filesystem; results are
+invalid as release verification. Reruns use a private scratch directory on the home
+filesystem. Original Python113 tests passed with5 environment skips; it will be rerun
+after source commit to exercise the current archive. Independent read-only review runs
+through the existing pinned bridge; its supervising runtime stays immutable.
+
+## Independent review corrections
+
+The independent Claude review confirmed the historical proof/ownership/session/replay
+gate and found three code/test issues: stale exact MCP key list, rejecting already
+bounded/defaulted string summaries, and long blocker strings exceeding the canonical
+risk limit. Corrected all three; regressions cover empty/9000-character summaries
+and long blockers. Long runtime error-frame text is also preserved/bounded.
+Its fourth finding concerned instructions/metadata which were delivered after the
+initial read; all role/loop/protocol updates and 0.6.2 metadata now match.
+Manager rerun:195/195 across8 suites, plus build/packages/docs/diff-check PASS.
+The same reviewer is doing focused correction review, not a new broad audit.
+
+Home-filesystem pilot rerun140/140 PASS. Full local JS before the review corrections:
+611 PASS,77 failed,7 skipped; one is the stale MCP shape now corrected and76 match
+the known protected-process setup baseline. Final full suites and isolated CI follow
+the committed release source. No claim that these local full suites passed.

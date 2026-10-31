@@ -82,15 +82,26 @@ Both accept a `task_id`, an optional idempotency key, and an optional per-attemp
 (`deadline_ms`, `max_turns`); owner, lineage, scope, target runtime, and opaque handle are
 read from durable state, and the persisted task contract is never rewritten.
 
-`FAILED` is terminal with one explicit exception. `bridge_resume_delegated_task` with
+`FAILED` is terminal except for two narrow explicit delegated recovery modes. `bridge_resume_delegated_task` with
 `recover_timeout: true`, an explicit `deadline_ms` and an idempotency key reopens a child that
 the bridge itself stopped at its deadline, proven in durable state: the current attempt ended
 with outcome `TIMEOUT`, the owner's following `FAILED` transition names that timeout, attempt
 telemetry (when present) records a timeout, and the session handle survived. It reactivates
-the same task as `FAILED -> WORKING` with reason `timeout_recovery` — the only exit from
-`FAILED`, kept out of `ALLOWED_TRANSITIONS` so ordinary state changes cannot reach it — and
-leaves the timed-out attempt's outcome and telemetry unchanged. Any other `FAILED` stays
-terminal, and `bridge_resume_task` never accepts the flag.
+the same task as `FAILED -> WORKING` with reason `timeout_recovery` — kept out of
+`ALLOWED_TRANSITIONS` so ordinary state changes cannot reach it — and
+leaves the timed-out attempt's outcome and telemetry unchanged.
+
+The second mode, `recover_invalid_delivery: true`, requires a direct manager, explicit
+`deadline_ms`, correction `message` and idempotency key. Only a historical Claude FAILED
+schema-rejection qualifies: settled INVALID_ARGUMENT attempt, matching owner-recorded
+`Deliverable failed validation:` failure after attempt end, completed/exit0 telemetry,
+complete intact final report from that attempt, no accepted deliverable and preserved
+session. All existing feature/identity/lease guards apply. The two flags are mutually
+exclusive. It records `FAILED -> WORKING` with `invalid_delivery_recovery` and returns
+`recovery_mode: invalid_delivery`; original history stays unchanged. Other FAILED remains
+terminal; direct owner `bridge_resume_task` supports neither terminal opt-in.
+New malformed Claude report fields are preserved with a schema-safe PARTIAL/BLOCKED
+result; they do not guess paths or verification claims.
 
 Authorization identity and execution identity are distinct for delegated recovery. The
 manager is only `requested_by`; the child's persisted owner remains the execution agent for

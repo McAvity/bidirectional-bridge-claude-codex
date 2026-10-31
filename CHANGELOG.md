@@ -11,6 +11,27 @@ explicitly.
 
 ## Unreleased
 
+## 0.6.2 — 2026-10-31 (experimental)
+
+### Fixed
+
+- Malformed Claude report fields preserve the original output and return a schema-safe
+  PARTIAL/BLOCKED result, rather than turning completed work into terminal failure.
+  Changed paths and verification evidence are never inferred from grouped objects.
+- Explicit `bridge_resume_delegated_task({recover_invalid_delivery: true, ...})` can
+  recover a historical FAILED Claude schema-rejection only with matching durable
+  attempt/failure records, completed/exit0 telemetry, complete intact report, preserved
+  session and existing ownership/feature/lease guards. Requires correction message,
+  explicit deadline and idempotency key. All other FAILED remains terminal.
+- Original failed attempts/reports remain unchanged. New attempts strictly resume the
+  same task/session; replay cannot launch another worker. Timeout mode is unchanged
+  and mutually exclusive with this historical report-recovery mode.
+
+No state schema change. No real-model implementation/recovery pilot is claimed;
+validation and release status are recorded in
+[the progress note](docs/tasks/delivery-validation-recovery.md).
+
+
 ## 0.6.1 — 2026-10-28 (experimental)
 
 ### Fixed

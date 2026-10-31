@@ -256,3 +256,56 @@ describe("PARTIAL, recovery and correction in one Claude session", () => {
     expect(git("status", "--porcelain=v1", "--untracked-files=all")).toBe("");
   });
 });
+
+
+describe("malformed report fields remain recoverable", () => {
+  it.each([
+    ["changed_scope", { changed_scope: { root: ["docs/a.md"] } }],
+    ["changed_files", { changed_scope: undefined, changed_files: { root: ["docs/a.md"] } }],
+    ["remaining_risks", { remaining_risks: { warning: "unknown" } }],
+    ["recommended_next_action", { recommended_next_action: ["review"] }],
+    ["summary", { summary: { text: "done" } }],
+    ["blocker", { blocker: "x".repeat(2100) }],
+  ])("preserves %s errors as PARTIAL without inferred claims", async (field, malformed) => {
+    const text = fence({ summary: "implemented", changed_scope: [], verification_results: [pass],
+      remaining_risks: [], recommended_next_action: "review", ...malformed });
+    step({ text });
+    const out = await delegate();
+    expect(out.task.state).toBe(TaskState.BLOCKED);
+    expect(out.deliverable.status).toBe(DeliverableStatus.PARTIAL);
+    expect(out.deliverable.changed_scope).toEqual([]);
+    expect(out.task.blockers.join(" ")).toContain(field);
+    expect(out.artifacts.map(a => a.content).join("\n")).toContain(text);
+  });
+
+  it("keeps malformed scope and reproduction evidence, then resumes the same task", async () => {
+    const text = fence({ summary: "implementation retained", changed_scope: { root: ["docs/a.md"] },
+      reproduction_results: [{ command: "fixture precheck", result: "failed" }],
+      reproduction_snapshot: "a".repeat(40), verification_snapshot: "b".repeat(40),
+      verification_results: [pass], remaining_risks: [] });
+    step({ text });
+    const parent = cp.tasks.create({ spec: spec(), created_by: "codex" });
+    cp.tasks.claim(parent.task_id, "codex");
+    cp.tasks.transition({ task_id: parent.task_id, agent: "codex", to: TaskState.WORKING });
+    const first = await new Orchestrator(cp).delegate({ from: "codex", to: "claude", spec: spec(), input_artifacts: [], deadline_ms: 20_000,
+      run_id: parent.run_id, parent_task_id: parent.task_id, delegation_depth: 1 });
+    expect(cp.tasks.get(first.task_id).state).toBe(TaskState.BLOCKED);
+    expect(cp.deliverables.get(first.task_id)?.remaining_risks.join(" ")).toContain("reproduction evidence");
+    step({ text: fence({ summary: "corrected report", changed_scope: [], verification_results: [pass], remaining_risks: [] }) });
+    const result = await new Orchestrator(cp).resumeDelegatedTask({ task_id: first.task_id, requested_by: "codex",
+      message: "Correct the report using existing evidence", idempotency_key: "correct-report", deadline_ms: 20_000 });
+    expect(result).toMatchObject({ task_id: first.task_id, same_execution_handle: true, state: TaskState.DONE });
+    expect(cp.attempts.list(first.task_id)).toHaveLength(2);
+  });
+});
+
+
+describe("summary normalization keeps existing valid deliveries", () => {
+  it.each(["", "x".repeat(9000)])("bounds or defaults a string summary without blocking", async summary => {
+    step({ text: fence({ summary, changed_scope: [], verification_results: [pass], remaining_risks: [] }) });
+    const out = await delegate();
+    expect(out.task.state).toBe(TaskState.DONE);
+    expect(out.deliverable.summary.length).toBeGreaterThan(0);
+    expect(out.deliverable.summary.length).toBeLessThanOrEqual(CLAUDE_SUMMARY_MAX_CHARS);
+  });
+});

@@ -84,7 +84,7 @@ gates and remaining authorized work. Status replies and compaction are not stop 
 | `ready` | Run round 1. | Run without authorization. |
 | `running` | A round or its recovery executes. Follow using-bridge’s waiting policy: await the pending call/notification; only if polling is needed, read `bridge_feature_get` at most once per 10 minutes by default. Keep this session open; do not inspect work-in-progress files. | Start a round, ask, or recover. |
 | `awaiting_review` | Review the latest round (below) and route the result. | Treat `COMPLETE` as review or acceptance. |
-| `blocked` | `bridge_get_task(latest_task_id)`; read the blocker. Resolve within authority with `bridge_resume_delegated_task({task_id, message, idempotency_key: "<task>:resume-<task.attempt + 1>"})`; otherwise ask the user. | Run a new round, create a sibling, or delegate around the blocker. |
+| `blocked` | `bridge_get_task(latest_task_id)`; read the blocker and distinguish a BLOCKED task from an eligible FAILED exception below. Resolve within authority with `bridge_resume_delegated_task({task_id, message, idempotency_key: "<task>:resume-<task.attempt + 1>"})`; otherwise ask the user. | Run a new round, create a sibling, or delegate around the blocker. |
 | `waiting_user` | Show the pending question; wait for the user's real answer. | Run, recover, or treat silence as consent. |
 | `accepted` | Finish the root task. | Start more rounds. |
 | `rejected` / `cancelled` | Report the recorded closure; preserve delivered work and history. | New rounds/recovery, changing the decision, or fabricating acceptance. |
@@ -97,6 +97,20 @@ Before calling it: read `bridge_get_task`, confirm the attempt outcome is `TIMEO
 worker process survives, choose a deadline that reflects why the round ran out of time, and
 state the new budget to the user if the authorization did not already cover it. Repeating the
 same request replays it; it never starts a second worker.
+
+
+A historical `FAILED` round rejected at deliverable schema validation can use
+`bridge_resume_delegated_task({task_id, recover_invalid_delivery: true,
+deadline_ms: <authorized budget>, max_turns: <sized>, message: <bounded correction>,
+idempotency_key: "<task>:report-recovery-<n>"})`. This is a separate explicit mode, never
+combined with `recover_timeout`. The bridge proves a settled Claude attempt with
+INVALID_ARGUMENT, the exact schema-rejection transition, completed/exit0 telemetry,
+a complete intact original report and preserved session; ordinary feature/identity/lease
+guards remain. Any missing proof refuses without reserving an attempt. Keep the same
+contract and correct the report/evidence or already authorised defects; never repeat the
+whole feature. New malformed Claude reports already return PARTIAL/BLOCKED with the
+original report preserved and use normal BLOCKED recovery. Missing support requires
+runtime upgrade, not a new session, direct CLI invocation or database edits.
 
 Any other terminal `FAILED` round, a strict-resume failure, or a second timeout in a row is
 not recoverable by these tools: report the exact error to the user. Never start a fresh
