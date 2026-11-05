@@ -42,3 +42,17 @@ testy/model pilot nie są wykonane na etapie planowania. Main/runtime bez zmian.
 Następne: rzeczywista odpowiedź użytkownika na Gate 1 → feature-decide → cały
 feature-execute przez bridge. Nie oznaczać accepted ani nie zaczynać W20-01 bez
 zgody. Nie merge/push; istniejący worktree design/multi-repo-execution zachowany.
+
+## 2026-11-05 — wykonanie zatwierdzone
+
+Decyzja03 zapisuje Gate 1. Istniejący worktree przeniesiony z tymczasowej lokalizacji
+do ignorowanego `.worktrees/F-W20` w checkoucie koordynatora; branch/historia
+bez zmian. Git worktree move odmówił EXDEV; przeniesienie między filesystemami
+i git worktree repair zachowały HEAD/dirt. Nie było aktywnego workera.
+
+MCP koordynatora pozostaje przypięty do głównego checkoutu, runtime0.6.2; namespace
+intencji i stan featura tam. Scope MCP ma prefiks `.worktrees/F-W20/`; wszystkie
+operacje Git/receipts/commity dotyczą rzeczywistego korzenia tego worktree. Nie
+przypisujemy jego stanu obcej bazie ani nie uruchamiamy drugiego serwera.
+Produkt/review F-W20: osobny branch, kod głównego checkoutu/runtime bez zmian.
+Następne W20-01, lokalne review, potem cały już autoryzowany W20-02/03.

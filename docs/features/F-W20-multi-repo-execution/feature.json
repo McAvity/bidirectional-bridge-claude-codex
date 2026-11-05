@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W20-multi-repo-execution",
-  "phase": "decision",
+  "phase": "execution",
   "brief": "docs/features/F-W20-multi-repo-execution/brief.md",
   "design": "docs/features/F-W20-multi-repo-execution/design.md",
   "tasks": [
@@ -23,6 +23,10 @@
     "scripts/native-bridge-mcp.mjs"
   ],
   "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/01-plan.md",
-  "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/02.md",
-  "next_action": "feature-flow Gate 1: czeka na zgodę użytkownika na cały W20-01…03 według proposed decyzji02 (review planu PASS na ff426d2). Bez implementacji. Po zgodzie feature-decide zapisuje odpowiedź i feature-execute kontynuuje cały zakres; nie powtarzać planu/review."
+  "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/03.md",
+  "next_action": "feature-flow Gate 1 zatwierdzona decyzją03. Wykonać W20-01 przez bridge, lokalne review kontraktu, następnie W20-02/03, integrację i poprawki bez ponowienia zgody. Gate 2 przed odbiorem.",
+  "bridge": {
+    "feature_id": "F-W20-multi-repo-execution",
+    "parent_task_id": "task_1kxkg971wd"
+  }
 }

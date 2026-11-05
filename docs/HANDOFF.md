@@ -1,15 +1,13 @@
 # Current handoff
 
-## F-W20 — plan reviewed, awaiting execution Gate 1
+## F-W20 — execution authorized, in progress
 
-[Plan](features/F-W20-multi-repo-execution/design.md), W20-01…03 and index are ready.
-[Independent review](features/F-W20-multi-repo-execution/reviews/01-plan.md): PASS
-at ff426d2, recorded adf250d; R20-P01 resolved, notes accounted for together.
-[Proposed decision02](features/F-W20-multi-repo-execution/decisions/02.md) asks for
-whole-scope execution with integration/review/corrections/local commits. No approval
-or implementation yet. [Progress](features/F-W20-multi-repo-execution/PROGRESS.md)
-contains phase commits and checks. Resume feature-flow from the pending Gate 1,
-not from design. No target-project, runtime, merge or publication changes.
+[Decision03](features/F-W20-multi-repo-execution/decisions/03.md) records user approval
+for the whole W20-01…03 scope, integration, independent review and ordinary fixes.
+Existing design/multi-repo-execution worktree moved to ignored `.worktrees/F-W20`
+for the current coordinator's bridge access. [Progress](features/F-W20-multi-repo-execution/PROGRESS.md)
+records runtime/workspace distinction and exact next action. Begin W20-01; no new
+Gate 1. Gate 2 remains before final acceptance. No push/merge/runtime changes.
 
 ## 0.6.2 published — 2026-10-31
 
