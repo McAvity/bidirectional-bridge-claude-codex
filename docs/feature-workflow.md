@@ -125,15 +125,20 @@ builds and codegen that would write into a shared checkout block only the depend
 the binding is fixed inside the task. Shared Git metadata and ordinary tool caches are not
 violations.
 
-The repo map (`multi-repo-contract-v1`) lives in the parent's exchange namespace and in the round
-contract, not in Git. The round's `scope.paths` stays a flat list of repo-relative globs: the parent
+The repo map (`multi-repo-contract-v1`) is a file in the parent's exchange namespace, not in Git.
+The round objective carries only `REPO_MAP=<path> SHA256=<hash>`, printed by
+`multi_repo.py reference`, because the objective holds at most 2000 characters. Both roles pass that
+path and hash to the helper, which refuses a missing, linked or changed map before any check. The
+map is data: with `--round-scope`, a map glob that the round scope lacks is refused.
+`parent.baseline` records the parent's dirt at contract time, so the receipt can tell the
+executor's uncommitted parent work from preexisting or foreign dirt. The round's `scope.paths` stays a flat list of repo-relative globs: the parent
 paths plus `.feature-repos/<feature>/<repo>/…` for every write repository. The executor touches only
 mapped repositories, commits in each, and adds a second summary line,
 `REPOS=<ledger stem>.repos.json SHA256=<hash>`, plus a `PACKAGE=` line third when a package is
 required. The evidence sidecar beside the ledger holds per-repo base, head, branch, scope and dirt,
 and the tested version set. The manager runs `multi_repo.py receipt`, which applies the
-local-delivery checks to the parent and checks every repository, and then reviews the delivered
-commits. A clean parent never hides a dirty child.
+local-delivery checks to the parent (its own dirt included) and checks every repository, and then
+reviews the delivered commits. A clean parent never hides a dirty child.
 
 Before any merge, test the delivered set together on the feature branches; review needs no merge or
 push permission. An authorized merge goes dependency-first, updates pins to the real integrated

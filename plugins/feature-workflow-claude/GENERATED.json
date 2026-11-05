@@ -15,7 +15,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "2f7171721d6e7c5aeb431fd218e540833e25a4f827d5af11c13fb2e4741e8889",
+  "source_digest": "8cafb5db3a8c02ace7ae7c105dda7519279a4279e770dc6c89a8c2b5b7d63985",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -55,7 +55,7 @@
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "9df93708f95f8f3ca18c9e12f2d03f36c5906fb7bf86625629251ccd55913527"
+      "sha256": "bdf5389fe304a7aecf4d36a06009fd5ed97582421913afc4c9087dffe05f5dd7"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -63,7 +63,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "83ab4f13b4f1e9b74b5fc76bc41ce4b696f57e37aa212b42df40c62b1c811ea6"
+      "sha256": "e64fc8af394a8233408e8c6f571816dbfbbcab86e19b148ae5f466b3eddc4f53"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
@@ -71,11 +71,11 @@
     },
     {
       "path": "skills/feature-execute/references/multi-repo.md",
-      "sha256": "97d102739f52e8cf0c04ce95e47f2a4f03cfdef3c74567020136d046b9bdc63f"
+      "sha256": "654456911a1c58aa62ef42c825634d9c5e5190a581250fd594a4b1d207fa3c24"
     },
     {
       "path": "skills/feature-execute/scripts/multi_repo.py",
-      "sha256": "182f7a835615492a80af954b42f82ea9ded5881be284e6cb4a69b98e2bd0887b"
+      "sha256": "ae6916319261a2837fb640864f430632d48d2f17375aba37384e29e745581043"
     },
     {
       "path": "skills/feature-flow/SKILL.md",
@@ -103,7 +103,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "0e0cb32b65cfef4cf2ad6e52ae4136dd89cfe0c22388f14c160a7b69049cca58"
+      "sha256": "223c9f4ab4fc4204eb5d30de5de1860d27aa5d09fde3c10ef54934dea6164d34"
     }
   ]
 }

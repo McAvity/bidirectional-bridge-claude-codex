@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ControlPlane, Orchestrator } from "@bridge/control-plane";
 import {
-  DeliverableStatus, TaskState, globsOverlap, normalizePath, scopeAllows, seededRandom,
+  DeliverableStatus, TaskSpecSchema, TaskState, globsOverlap, normalizePath, scopeAllows, seededRandom, validate,
   type TaskInvocation, type TaskSpec,
 } from "@bridge/protocol";
 import { ClaudeAdapter } from "./claude-adapter.js";
@@ -218,5 +218,56 @@ describe("DELIVERY, REPOS and PACKAGE transport through the real adapter path", 
     expect(DELIVERY.test(lines[0]!)).toBe(true);
     expect(REPOS.exec(lines[1]!)?.[2]).toBe(digest);
     expect(PACKAGE.test(lines[2]!)).toBe(true);
+  });
+});
+
+describe("repo map transport by reference (R20-E02)", () => {
+  /** A representative map: six write repositories and one read-only dependency, absolute host paths. */
+  function largeMap(): string {
+    const repos: Record<string, unknown> = {};
+    for (let i = 0; i < 6; i += 1) {
+      const alias = `${TASK_DIR}/service-${i}`;
+      repos[`service-${i}`] = { role: "write", kind: "worktree", alias, realpath: join(parent, alias),
+        git_dir: join(root, "sources", `service-${i}`, ".git", "worktrees", `service-${i}`), base: "a".repeat(40),
+        branch: "design/multi-repo-execution", target: "main", scope: [`${alias}/src/**`], baseline: {} };
+    }
+    repos.dep = { role: "read", kind: "existing", alias: `${TASK_DIR}/dep`, realpath: join(root, "shared", "dep"),
+      base: "b".repeat(40), digest: "c".repeat(64) };
+    return JSON.stringify({ schema: "multi-repo-contract-v1", feature: "F-X", task: "W-01",
+      parent: { root: parent, base: "d".repeat(40), scope: SCOPE.slice(0, 3), ledger_dir: "docs/features/F-X/execution/W-01/" }, repos });
+  }
+
+  const objective = (body: string) => `F-X round 2: W-01. Authorization decisions/03.md. Follow feature-execute, section Bridge round executor, and references/multi-repo.md section 6. Contract base ${"d".repeat(40)}; deliver per local-delivery.md.\n${body}`;
+
+  it("rejects an inline map at the TaskSpec objective limit and accepts the short reference", () => {
+    const map = largeMap();
+    const mapPath = join(root, "exchange", "maps", "F-X-W-01.json");
+    mkdirSync(dirname(mapPath), { recursive: true });
+    writeFileSync(mapPath, map);
+    const reference = `REPO_MAP=${mapPath} SHA256=${createHash("sha256").update(map).digest("hex")}`;
+    const inline = { ...spec(), objective: objective(map) };
+    const byRef = { ...spec(), objective: objective(reference) };
+    expect(map.length).toBeGreaterThan(2000);
+    expect(validate(inline, TaskSpecSchema).valid).toBe(false);
+    expect(validate(inline, TaskSpecSchema).issues.map((i) => i.path)).toContain("objective");
+    expect(validate(byRef, TaskSpecSchema)).toEqual({ valid: true, issues: [] });
+    expect(byRef.objective.length).toBeLessThan(700);
+  });
+
+  it("carries the reference line verbatim into the executor prompt", async () => {
+    const reference = `REPO_MAP=${join(root, "exchange", "maps", "F-X-W-01.json")} SHA256=${"e".repeat(64)}`;
+    writeFileSync(join(queue, "001.json"), JSON.stringify({ text: "```json\n" + JSON.stringify({ summary: "no change",
+      changed_scope: [], verification_results: [pass], remaining_risks: [] }) + "\n```" }));
+    const cp = ControlPlane.open({ workspaceRoot: parent, databasePath: ":memory:", rng: seededRandom(22) });
+    try {
+      cp.adapters.register(new ClaudeAdapter({ agent: "claude", runner: new ScriptedRunner({ command: process.execPath, maxTurns: 4,
+        permissionMode: "acceptEdits", env: { ...process.env, SCRIPTED_CLAUDE_QUEUE: queue, SCRIPTED_CLAUDE_ARGV_LOG: argvLog } }) }));
+      await new Orchestrator(cp).delegate({ from: "codex", to: "claude", spec: { ...spec(), objective: objective(reference) },
+        input_artifacts: [], deadline_ms: 20_000 });
+    } finally {
+      cp.close();
+    }
+    const argv = JSON.parse(readFileSync(argvLog, "utf8").trim()) as string[];
+    expect(argv[argv.indexOf("-p") + 1]).toContain(reference);
   });
 });

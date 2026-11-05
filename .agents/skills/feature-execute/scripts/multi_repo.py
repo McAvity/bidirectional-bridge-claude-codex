@@ -8,6 +8,12 @@ moves or removes a checkout, and never executes a command named in a manifest or
 those are data. It prepares nothing; the agent prepares checkouts with ordinary Git following
 references/multi-repo.md and uses this helper to check the result.
 
+The repo map is passed by reference: `preflight`, `reuse` and `receipt` refuse a map without the
+`--sha256` the round contract names, a map whose bytes differ, and a map that is not a regular
+file. The map is data, never authorization: with `--round-scope` every glob it lists must already
+be in the round's own scope.
+
+  reference  print the short `REPO_MAP=<path> SHA256=<hash>` line a round contract carries
   identity   facts about one alias: realroot, per-worktree gitdir, common dir, branch, HEAD
   preflight  check a round contract's repo map before dependent writes
   digest     bounded byte digest of a read-only dependency (ignored files included)
@@ -217,8 +223,9 @@ def validate_contract(c):
         if not isinstance(c[k], str) or not re.match(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$', c[k]):
             errs.append(f'contract.{k}: invalid id')
     p = c['parent']
-    if _keys(p, ('root', 'base', 'scope', 'ledger_dir', 'package'), ('root', 'base', 'scope', 'ledger_dir'),
+    if _keys(p, ('root', 'base', 'scope', 'ledger_dir', 'package', 'baseline'), ('root', 'base', 'scope', 'ledger_dir'),
              'contract.parent', errs):
+        _baseline(p.get('baseline', {}), 'contract.parent.baseline', errs)
         if not isinstance(p['root'], str) or not os.path.isabs(p['root']):
             errs.append('contract.parent.root: absolute path required')
         _sha(p['base'], 'contract.parent.base', errs)
@@ -261,10 +268,7 @@ def validate_contract(c):
                 if not isinstance(e[k], str) or not e[k] or len(e[k]) > 255 or not git_ref_ok(e[k]):
                     errs.append(f'{w}.{k}: invalid branch name')
             _globs(e['scope'], f'{w}.scope', errs, prefix=e['alias'] if portable(e['alias']) else None)
-            b = e.get('baseline', {})
-            if not isinstance(b, dict) or len(b) > BOUNDS['dirt'] or any(
-                    not isinstance(k, str) or not isinstance(v, str) for k, v in b.items()):
-                errs.append(f'{w}.baseline: object path -> hash, at most {BOUNDS["dirt"]}')
+            _baseline(e.get('baseline', {}), f'{w}.baseline', errs)
             if 'external_access_verified' in e and not isinstance(e['external_access_verified'], bool):
                 errs.append(f'{w}.external_access_verified: boolean')
             if 'gitlink' in e and (e['kind'] != 'submodule' or not portable(e['gitlink'])):
@@ -278,6 +282,12 @@ def validate_contract(c):
         if not isinstance(bl, list) or len(bl) > BOUNDS['bindings'] or any(not portable(x) for x in bl):
             errs.append(f'{w}.bindings: list of portable paths relative to the alias')
     return errs
+
+
+def _baseline(b, where, errs):
+    if not isinstance(b, dict) or len(b) > BOUNDS['dirt'] or any(
+            not isinstance(k, str) or not portable(k) or not isinstance(v, str) for k, v in b.items()):
+        errs.append(f'{where}: object portable path -> hash, at most {BOUNDS["dirt"]}')
 
 
 def git_ref_ok(name):
@@ -464,7 +474,7 @@ def classify(final, baseline, alias, scope):
     """local-delivery § 3.4 per repo, by path and bytes. Paths are reported alias-prefixed."""
     out = {}
     for p, h in final.items():
-        full = f'{alias}/{p}'
+        full = f'{alias}/{p}' if alias else p
         if p in baseline:
             out[full] = 'preexisting' if baseline[p] == h else ('overlap' if matches(full, scope) else 'preexisting')
         else:
@@ -495,6 +505,13 @@ def preflight(c):
         except GitError as e:
             result['parent']['reasons'] = [str(e)]
     result['parent'].setdefault('reasons', [])
+    if pfacts:
+        now = dirt_record(parent)
+        base = c['parent'].get('baseline', {})
+        result['parent']['dirt'] = now
+        changed = sorted(x for x in set(now) | set(base) if now.get(x) != base.get(x))
+        if changed:
+            result['parent']['notes'] = [f'parent dirt differs from the contract baseline: {changed[:20]}']
     reads = {rid: e for rid, e in c['repos'].items() if e['role'] == 'read'}
     idents = {rid: identity(parent, e['alias']) for rid, e in c['repos'].items()}
     for rid, e in sorted(c['repos'].items()):
@@ -674,6 +691,12 @@ def check_receipt(c, summary):
                                  '--', ldir)))
     if earlier & touched:
         F.append(f'earlier ledger touched: {sorted(earlier & touched)}')
+    # R20-E01: the parent's own uncommitted work counts like a child's (local-delivery § 3.4).
+    pclasses = classify(dirt_record(parent), c['parent'].get('baseline', {}), '', c['parent']['scope'])
+    res['parent'] = {'dirt': pclasses}
+    pbad = sorted(x for x, k in pclasses.items() if k in ('own', 'overlap'))
+    if pbad and outcome == 'COMPLETE':
+        F.append(f'parent: own/overlap dirt in a COMPLETE delivery: {pbad[:20]}')
     rp = REPOS_RE.match(lines[1]) if len(lines) > 1 else None
     if not rp:
         F.append('line 2 is not a REPOS line in a multi-repo contract')
@@ -706,7 +729,7 @@ def check_receipt(c, summary):
     F.extend(f'contract repo missing from manifest: {x}' for x in sorted(set(c['repos']) - ids))
     pfacts = parent_identity(parent)
     idents = {r['id']: identity(parent, c['repos'][r['id']]['alias']) for r in m['repos'] if r['id'] in c['repos']}
-    partial = outcome == 'PARTIAL'
+    partial = outcome == 'PARTIAL' or bool(pbad)
     for r in m['repos']:
         e = c['repos'].get(r['id'])
         if not e:
@@ -836,46 +859,93 @@ def load_json(path):
         raise InputError(f'{path}: not UTF-8 JSON: {e}')
 
 
-def load_contract(path):
-    c = load_json(path)
+def read_map(path, sha=None, required=True):
+    """The map file named by the round contract's `REPO_MAP=<path> SHA256=<hash>` reference."""
+    if required and not sha:
+        raise InputError('the map is passed by reference: give --sha256 from the round contract\'s '
+                         'REPO_MAP=<path> SHA256=<hash> line')
+    if sha is not None and not HEX64_RE.match(sha):
+        raise InputError('--sha256 must be 64 lowercase hex')
+    try:
+        st = os.lstat(path)
+    except OSError as e:
+        raise InputError(f'map {path} is not readable: {e.strerror}')
+    import stat as _stat
+    if not _stat.S_ISREG(st.st_mode):
+        raise InputError(f'map {path} must be a regular file, not a symlink or directory')
+    if st.st_size > BOUNDS['json_bytes']:
+        raise InputError(f'map {path} is larger than {BOUNDS["json_bytes"]} bytes')
+    data = Path(path).read_bytes()
+    digest_now = hashlib.sha256(data).hexdigest()
+    if sha is not None and digest_now != sha:
+        raise InputError(f'map {path} does not match the reference SHA256 (refusing before any check)')
+    try:
+        c = json.loads(data.decode('utf-8'))
+    except (UnicodeDecodeError, ValueError) as e:
+        raise InputError(f'{path}: not UTF-8 JSON: {e}')
     errs = validate_contract(c)
     if errs:
         raise InputError('invalid contract: ' + '; '.join(errs[:20]))
-    return c
+    return c, digest_now
+
+
+def load_contract(path, sha, round_scope=None):
+    c, digest_now = read_map(path, sha)
+    if round_scope is not None:
+        listed = list(c['parent']['scope']) + [g for e in c['repos'].values() for g in e.get('scope', [])]
+        missing = [g for g in listed if g not in round_scope]
+        if missing:
+            raise InputError(f'map globs not in the round scope (the map is not authorization): {missing[:20]}')
+    return c, {'path': os.path.abspath(path), 'sha256': digest_now}
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     sub = ap.add_subparsers(dest='cmd', required=True)
+    s = sub.add_parser('reference')
+    s.add_argument('--contract', required=True)
     s = sub.add_parser('identity')
     s.add_argument('--parent', required=True)
     s.add_argument('--alias', required=True)
     s = sub.add_parser('preflight')
     s.add_argument('--contract', required=True)
+    s.add_argument('--sha256')
+    s.add_argument('--round-scope', action='append', help='a glob of the round scope.paths; repeat for each')
     s = sub.add_parser('digest')
     s.add_argument('--repo', required=True)
     s.add_argument('--max-files', type=int, default=BOUNDS['digest_files'])
     s.add_argument('--max-bytes', type=int, default=BOUNDS['digest_bytes'])
     s = sub.add_parser('reuse')
     s.add_argument('--contract', required=True)
+    s.add_argument('--sha256')
     s.add_argument('--repo', required=True)
     s.add_argument('--record', help='record JSON; omit when no record exists')
     s = sub.add_parser('manifest')
     s.add_argument('--file', required=True)
     s = sub.add_parser('receipt')
     s.add_argument('--contract', required=True)
+    s.add_argument('--sha256')
     s.add_argument('--summary', required=True, help='file holding the stored summary, - for stdin')
     s = sub.add_parser('integration')
     s.add_argument('--record', required=True)
     a = ap.parse_args(argv)
     try:
-        if a.cmd == 'identity':
+        if a.cmd == 'reference':
+            _, digest_now = read_map(a.contract, required=False)
+            path = os.path.abspath(a.contract)
+            if any(ch.isspace() for ch in path):
+                raise InputError('the map path must not contain whitespace')
+            out = {'line': f'REPO_MAP={path} SHA256={digest_now}', 'path': path, 'sha256': digest_now}
+            ok = True
+        elif a.cmd == 'identity':
             if not portable(a.alias):
                 raise InputError('alias must be a portable parent-relative path')
             out = identity(real(a.parent), a.alias)
             ok = 'error' not in out and out.get('checkout_root', False)
         elif a.cmd == 'preflight':
-            out = preflight(load_contract(a.contract))
+            c, ref = load_contract(a.contract, a.sha256, a.round_scope)
+            out = preflight(c)
+            out['map'] = ref
             ok = out['ok']
         elif a.cmd == 'digest':
             if not Path(a.repo).is_dir():
@@ -884,7 +954,9 @@ def main(argv=None):
             out = {'digest': d, 'observable': d is not None}
             ok = d is not None
         elif a.cmd == 'reuse':
-            out = reuse(load_contract(a.contract), a.repo, load_json(a.record) if a.record else None)
+            c, ref = load_contract(a.contract, a.sha256)
+            out = reuse(c, a.repo, load_json(a.record) if a.record else None)
+            out['map'] = ref
             ok = out['decision'] == 'reuse'
         elif a.cmd == 'manifest':
             try:
@@ -895,12 +967,13 @@ def main(argv=None):
             out = {'valid': not errs, 'errors': errs, 'sha256': hashlib.sha256(raw).hexdigest()}
             ok = not errs
         elif a.cmd == 'receipt':
-            c = load_contract(a.contract)
+            c, ref = load_contract(a.contract, a.sha256)
             try:
                 summary = (Path(a.summary).read_bytes() if a.summary != '-' else sys.stdin.buffer.read()).decode('utf-8')
             except (OSError, UnicodeDecodeError) as e:
                 raise InputError(f'cannot read summary: {e}')
             out = check_receipt(c, summary)
+            out['map'] = ref
             ok = not out['findings']
         else:
             out = integration(load_json(a.record))

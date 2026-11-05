@@ -283,3 +283,13 @@ W20-02 implementation (not part of the contract text above): the canonical proce
 `.agents/skills/feature-execute/scripts/multi_repo.py` with its tests in `tests/test_multi_repo.py`.
 The repo map in the round contract is `multi-repo-contract-v1` (procedure § 4). The probe
 transcriptions in `tests/test_multi_repo_contract.py` remain W20-01 evidence.
+
+Corrections R20-E01/E02 (coordinator review 02, `reviews/02-execution.md`), refining §§ 7 and 12
+within the same rules:
+- The round carries the map by reference (`REPO_MAP=<path> SHA256=<hash>`). The TaskSpec objective
+  is limited to 2000 characters, and the helper refuses a missing, linked or changed map before any
+  check. The map stays data: `--round-scope` refuses globs absent from the round scope.
+- Both roles run the full `preflight`; `identity` alone does not suffice.
+- The map's `parent.baseline` lets the receipt classify the parent's own dirt like a child's (§ 12.5
+  applies to the parent too). Own or overlap dirt in a COMPLETE delivery is a finding; preexisting
+  and foreign dirt are reported only.

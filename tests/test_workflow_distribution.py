@@ -194,13 +194,19 @@ class GeneratedWorkflowPackages(unittest.TestCase):
                 for part in (executor, coordinator):
                     self.assertIn("[references/multi-repo.md](references/multi-repo.md)", part)
                 self.assertIn("§ 6", executor)
+                self.assertIn("REPO_MAP=", executor)  # R20-E02: reference, full preflight for the worker
+                self.assertIn("full\n`preflight`", executor)
                 refs = skills / "feature-execute" / "references"
                 self.assertIn("[multi-repo.md](multi-repo.md)", (refs / "bridge-loop.md").read_text())
                 self.assertIn("[multi-repo.md](multi-repo.md)", (refs / "local-delivery.md").read_text())
                 procedure = (refs / "multi-repo.md").read_text()
                 for rule in ("## 6. Bridge round executor", "## 7. Coordinator receipt", "multi-repo-contract-v1",
-                             "REPOS=", "never runs", "info/exclude"):
+                             "REPOS=", "never runs", "info/exclude", "REPO_MAP=<absolute map path> SHA256=",
+                             "--round-scope", "parent.baseline", "`identity` alone is never a substitute"):
                     self.assertIn(rule, procedure)
+                section6 = procedure.split("## 6. Bridge round executor", 1)[1].split("\n## ", 1)[0]
+                self.assertIn("--sha256 <hash>", section6)
+                self.assertNotIn("(or `identity` per alias)", procedure)
                 for skill in ("feature-plan", "feature-review", "feature-exchange"):
                     self.assertIn("feature-execute/references/multi-repo.md", (skills / skill / "SKILL.md").read_text())
 

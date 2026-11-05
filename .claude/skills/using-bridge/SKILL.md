@@ -142,10 +142,12 @@ rounds makes them bounded exchanges, not the continuous conversation excluded ab
   line; the manager checks base, ancestry, scope, ledger and uncommitted changes in Git, reviews
   the delivered SHA and reports later drift separately (`feature-execute` reference
   `local-delivery.md`). A package is exported only when the round contract requires one.
-- A round spanning several repositories carries a repo map. The manager prepares the isolated
-  checkouts before the round. The worker touches only the mapped repositories, adds a `REPOS=`
-  line and an evidence sidecar, and the manager runs a receipt per repository (`feature-execute`
-  reference `multi-repo.md`). Scopes and leases stay textual and are not a physical sandbox.
+- A round spanning several repositories carries a `REPO_MAP=<path> SHA256=<hash>` reference to a
+  repo-map file, never the map itself, which would not fit the objective. The manager prepares the
+  isolated checkouts before the round. The worker runs the full preflight on the verified map before
+  writing, touches only the mapped repositories, and adds a `REPOS=` line and an evidence sidecar.
+  The manager runs a receipt per repository, the parent included (`feature-execute` reference
+  `multi-repo.md`). Scopes and leases stay textual and are not a physical sandbox.
 - As the Claude worker of a round, complete that contract; do not delegate or call bridge tools.
 
 In a repository with the `feature-*` workflow, drive the loop with its `feature-execute`

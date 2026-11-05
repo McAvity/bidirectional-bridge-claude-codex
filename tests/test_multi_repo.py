@@ -67,7 +67,18 @@ def commit(repo, files, message='change'):
     return out(repo, 'rev-parse', 'HEAD')
 
 
-def helper(*args, stdin=None, env=None):
+def file_sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def helper(*args, stdin=None, env=None, pin=True):
+    """Run the CLI. A `--contract` map is passed by reference with its SHA-256, as both roles must
+    (R20-E02); `pin=False` omits the hash to test the refusal."""
+    args = list(args)
+    if pin and '--contract' in args and '--sha256' not in args:
+        path = args[args.index('--contract') + 1]
+        if os.path.isfile(path):
+            args += ['--sha256', file_sha(path)]
     p = subprocess.run([sys.executable, '-I', str(HELPER), *args], capture_output=True, text=True,
                        env=env or ENV, input=stdin)
     try:
@@ -569,6 +580,37 @@ class Receipt(Delivers, World):
         self.assertEqual((rc, res['findings']), (0, []))
         self.assertIn('integration drift', res['repos']['child-a']['drift'])
 
+    def test_parent_own_dirt_is_partial_not_complete(self):
+        """R20-E01: uncommitted own work in the parent scope can no longer pass as COMPLETE."""
+        summary, _ = self.deliver(worktree='dirty:1')  # no parent baseline: nothing was dirty at start
+        write(self.parent / 'app' / 'x.txt', 'unfinished edit\n')
+        rc, res = self.run_receipt(summary)
+        self.assertEqual((rc, res['outcome']), (1, 'PARTIAL'), res)
+        self.assertIn("parent: own/overlap dirt in a COMPLETE delivery: ['app/x.txt']", res['findings'])
+        self.assertEqual(res['parent']['dirt'], {'app/x.txt': 'own'})
+        rc, res = self.run_receipt(summary.replace('OUTCOME=COMPLETE', 'OUTCOME=PARTIAL'))
+        self.assertEqual((rc, res['outcome'], res['findings']), (0, 'PARTIAL', []))  # honest PARTIAL is consistent
+
+    def test_parent_preexisting_and_foreign_dirt_are_reported_not_attributed(self):
+        write(self.parent / 'notes.md', 'user notes\n')  # outside the scope, dirty at start
+        self.c['parent']['baseline'] = {'notes.md': out(self.parent, 'hash-object', '--', 'notes.md')}
+        summary, _ = self.deliver(worktree='dirty:2')
+        write(self.parent / 'other' / 'y.txt', 'someone else\n')  # appears later, outside the scope
+        rc, res = self.run_receipt(summary)
+        self.assertEqual((rc, res['outcome'], res['findings']), (0, 'COMPLETE', []), res)
+        self.assertEqual(res['parent']['dirt'], {'notes.md': 'preexisting', 'other/y.txt': 'foreign'})
+
+    def test_parent_overlap_with_a_preexisting_in_scope_path_is_partial(self):
+        write(self.parent / 'app' / 'pre.txt', 'user draft\n')
+        self.c['parent']['baseline'] = {'app/pre.txt': out(self.parent, 'hash-object', '--', 'app/pre.txt')}
+        summary, _ = self.deliver(worktree='dirty:1')
+        rc, res = self.run_receipt(summary)
+        self.assertEqual((rc, res['findings']), (0, []), res)  # unchanged bytes: preexisting
+        write(self.parent / 'app' / 'pre.txt', 'user draft, edited during the round\n')
+        rc, res = self.run_receipt(summary)
+        self.assertEqual((rc, res['outcome']), (1, 'PARTIAL'))
+        self.assertEqual(res['parent']['dirt'], {'app/pre.txt': 'overlap'})
+
     def test_preexisting_child_dirt_is_not_attributed(self):
         child = self.parent / self.c['repos']['child-a']['alias']
         write(child / 'notes.txt', 'user\n')
@@ -578,6 +620,75 @@ class Receipt(Delivers, World):
         rc, res = self.run_receipt(summary)
         self.assertEqual((rc, res['findings']), (0, []), res)
         self.assertEqual(res['repos']['child-a']['dirt'], {f'{TASK_DIR}/child-a/notes.txt': 'preexisting'})
+
+
+class MapReference(World):
+    """R20-E02: the map travels as an immutable file reference (path + SHA-256), not inline."""
+
+    def large_map(self):
+        self.exclude()
+        repos = {}
+        for i in range(6):
+            rid = f'service-{i}'
+            src = self.root / 'sources' / rid
+            src.mkdir(parents=True)
+            git(src, 'init', '-q')
+            commit(src, {'src/main.txt': f'{rid}\n'})
+            alias = self.worktree(rid, src, branch='design/multi-repo-execution')
+            repos[rid] = self.entry(rid, alias, branch='design/multi-repo-execution',
+                                    bindings=['node_modules/shared'] if i == 0 else [])
+        os.symlink(self.dep, self.parent / TASK_DIR / 'dep')
+        (self.parent / TASK_DIR / 'service-0' / 'node_modules').mkdir()
+        os.symlink(self.parent / TASK_DIR / 'dep', self.parent / TASK_DIR / 'service-0' / 'node_modules' / 'shared')
+        repos['dep'] = self.entry('dep', f'{TASK_DIR}/dep', role='read', kind='existing',
+                                  digest=helper('digest', '--repo', str(self.dep))[1]['digest'])
+        return self.contract(repos)
+
+    def test_large_map_is_passed_by_a_short_verified_reference(self):
+        c = self.large_map()
+        path = self.save('map.json', c)
+        self.assertGreater(len(json.dumps(c, separators=(',', ':'))), 2000)  # too large to inline
+        rc, ref = helper('reference', '--contract', path, pin=False)
+        self.assertEqual(rc, 0, ref)
+        self.assertEqual(ref['line'], f'REPO_MAP={path} SHA256={file_sha(path)}')
+        self.assertLess(len(ref['line']), 400)
+        rc, res = helper('preflight', '--contract', path, '--sha256', file_sha(path))
+        self.assertEqual(rc, 0, res)
+        self.assertEqual(res['repos']['service-0']['bindings'], {'node_modules/shared': 'read:dep'})
+        self.assertEqual(res['map'], {'path': path, 'sha256': file_sha(path)})
+
+    def test_missing_tampered_or_linked_map_is_refused_before_any_check(self):
+        c = self.large_map()
+        path = self.save('map.json', c)
+        good = file_sha(path)
+        rc, res = helper('preflight', '--contract', path, pin=False)
+        self.assertEqual(rc, 2)
+        self.assertIn('--sha256', res['error'])
+        c['repos']['service-1']['scope'] = [f'{TASK_DIR}/service-1/**']  # widened after the reference was issued
+        self.save('map.json', c)
+        for cmd in (['preflight'], ['receipt', '--summary', str(self.work / 'none.txt')], ['reuse', '--repo', 'service-1']):
+            with self.subTest(cmd[0]):
+                rc, res = helper(cmd[0], '--contract', path, '--sha256', good, *cmd[1:])
+                self.assertEqual(rc, 2, res)
+                self.assertIn('does not match the reference', res['error'])
+        rc, res = helper('preflight', '--contract', str(self.work / 'gone.json'), '--sha256', good)
+        self.assertEqual(rc, 2)
+        link = self.work / 'link.json'
+        link.symlink_to(path)
+        rc, res = helper('preflight', '--contract', str(link), '--sha256', file_sha(path))
+        self.assertEqual(rc, 2)
+        self.assertIn('regular file', res['error'])
+
+    def test_map_is_data_not_authorization(self):
+        """Every write glob of the map must already be in the round's own scope.paths."""
+        c = self.large_map()
+        path = self.save('map.json', c)
+        scope = list(c['parent']['scope']) + [g for e in c['repos'].values() for g in e.get('scope', [])]
+        rc, res = helper('preflight', '--contract', path, *sum((['--round-scope', g] for g in scope), []))
+        self.assertEqual(rc, 0, res)
+        rc, res = helper('preflight', '--contract', path, *sum((['--round-scope', g] for g in scope[:-1]), []))
+        self.assertEqual(rc, 2)
+        self.assertIn('not in the round scope', res['error'])
 
 
 class IntegrationStatus(World):

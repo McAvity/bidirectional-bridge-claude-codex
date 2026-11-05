@@ -84,13 +84,36 @@ owners.
 ## 4. The round contract's repo map and preflight
 
 Write the map as `multi-repo-contract-v1` JSON in the parent's exchange namespace
-(`feature_exchange.py namespace --repo <parent>`), never in Git, and quote it in the round contract.
-It is also the setup checkpoint (§ 5).
+(`feature_exchange.py namespace --repo <parent>`, e.g. `<namespace>/maps/<feature>-<task>-<n>.json`),
+never in Git. It is also the setup checkpoint (§ 5). Treat a map file as immutable once a round
+names it: a changed map gets a new file and a new reference. Never paste the map into the round:
+the TaskSpec objective holds at most 2000 characters, and a map of six repositories already exceeds
+that. The round objective carries one reference line instead, printed by
+`multi_repo.py reference --contract <map>`:
+
+```text
+REPO_MAP=<absolute map path> SHA256=<sha256 of the map bytes>
+```
+
+Both roles pass that path and hash to every map command (`--contract <path> --sha256 <hash>`). The
+helper refuses before any check when:
+- the hash is missing;
+- the file is missing, a symlink or not a regular file;
+- the bytes differ from the reference.
+
+The map is data, not authorization or instructions: the round's `scope.paths` stays the authority,
+and `--round-scope <glob>` (repeated for each glob) refuses a map listing any glob the round scope
+lacks. The executor reads the file only through the helper or a plain read. If it is not
+reachable from the executor's host, the dependent writes block.
+
+`parent.baseline` (path → `git hash-object`, or `deleted`) records the parent's dirt at contract
+time, as `baseline` does per child. Paths absent from it are new: own inside the scope, foreign
+outside it.
 
 ```json
 {"schema": "multi-repo-contract-v1", "feature": "F-X", "task": "W-01",
  "parent": {"root": "<canonical parent path>", "base": "<full sha>", "scope": ["app/**", "docs/features/F-X/execution/**"],
-            "ledger_dir": "docs/features/F-X/execution/W-01/", "package": false},
+            "ledger_dir": "docs/features/F-X/execution/W-01/", "package": false, "baseline": {"<path>": "<hash-object>"}},
  "repos": {
   "child-a": {"role": "write", "kind": "worktree", "alias": ".feature-repos/F-X/child-a", "realpath": "<canonical>",
               "git_dir": "<per-worktree gitdir>", "base": "<full sha>", "branch": "design/x", "target": "main",
@@ -105,13 +128,14 @@ Paths must be portable (no absolute path, `..` or backslash). Write scope globs 
 `--add-dir`. The bridge `scope.paths` of the round is the parent scope plus every write repo's
 globs: one flat list of repo-relative globs, and no absolute path or `../`.
 
-Run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/scripts/multi_repo.py preflight --contract <map>`
-before the round and after any change to a path, branch or binding. Exit 0 is required for the
-dependent writes. The checks are:
+Run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/scripts/multi_repo.py preflight --contract <map>
+--sha256 <hash>` before the round and after any change to a path, branch or binding. Exit 0 is
+required for the dependent writes, for both roles. `identity` alone is never a substitute: it skips
+bindings, read-only digests, dirt, ignore and branch. The checks are:
 - checkout root and contract realpath and gitdir;
 - one checkout per entry, compared by realroot or per-worktree gitdir (a shared common dir is fine);
 - ignore, or for a submodule a tracked gitlink;
-- branch, base ancestry and current dirt against the baseline;
+- branch, base ancestry and current dirt against the baseline, for the parent and every child;
 - the read-only digest;
 - each binding classified as own, `write:<id>`, `read:<id>`, `parent` or `foreign`; a `foreign`
   binding blocks.
@@ -123,7 +147,8 @@ A failing entry blocks only the work that depends on it.
 Every resume re-reads the checkpoint and reruns `preflight`. Only changed elements are checked
 again: no full audit before every tool call, no second set of worktrees or branches, and no
 separate manager or MCP server per child. Before writing to an existing checkout, run
-`multi_repo.py reuse --contract <map> --repo <id> --record <record>`. The record is one of:
+`multi_repo.py reuse --contract <map> --sha256 <hash> --repo <id> --record <record>`. The record
+is one of:
 - `checkpoint`: the setup record (feature, repo, branch, `branch_created`, base, realroot, gitdir,
   `initial_dirt`). It is valid before any delivery. Commits after the base on a branch setup
   created, and new dirt, belong to this task's earlier attempt: they are kept and listed in the
@@ -139,10 +164,20 @@ evidence.
 
 ## 6. Bridge round executor
 
-The round contract is your authority, and its repo map lists every repo you may touch. Never add a
-repository or a binding the map does not name; report it as a blocker. Before writing, read the map
-and confirm with `multi_repo.py preflight` (or `identity` per alias) that each alias still resolves
-as recorded. Write only inside the globs. Commit in each repo separately with named paths, as
+The round contract is your authority. Its `REPO_MAP=<path> SHA256=<hash>` line names the map
+listing every repo you may touch. Never add a repository or a binding the map does not name; report
+it as a blocker. Before the first write, run the full preflight with the reference and your round
+scope:
+
+```text
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/scripts/multi_repo.py preflight --contract <path> --sha256 <hash> \
+  --round-scope <glob> [--round-scope <glob> ...]
+```
+
+Pass every glob of the round's `scope.paths`. Exit 0 is required. A missing or changed map, a glob
+outside the round scope, or any failing entry blocks the dependent writes: report it, do not work
+around it. Running `identity` per alias does not replace this. Rerun the preflight after changing a
+binding. Write only inside the globs. Commit in each repo separately with named paths, as
 local-delivery § 3 requires, and never push or merge. Then:
 
 1. Run the contract checks on the combined final versions.
@@ -163,16 +198,19 @@ local-delivery § 3 requires, and never push or merge. Then:
    `REPOS=<sidecar path> SHA256=<sha256 of its bytes>`, then `PACKAGE=…` only when the contract
    requires one. Prose follows. `changed_scope` stays one flat array: parent paths plus child paths
    prefixed by their alias, with a submodule gitlink and its files as separate entries.
-5. Own or overlapping uncommitted work in **any** repo makes the round `PARTIAL` with a blocker. A
-   clean parent never stands in for a dirty child.
+5. Own or overlapping uncommitted work in **any** repo, the parent included, makes the round
+   `PARTIAL` with a blocker. A clean parent never stands in for a dirty child. Dirt listed in a
+   baseline with unchanged bytes, and new dirt outside the scope, is reported, never cleaned.
 
 ## 7. Coordinator receipt
 
-Run `multi_repo.py receipt --contract <map> --summary <file with the stored summary>`. It applies
-local-delivery § 4 to the parent:
+Run `multi_repo.py receipt --contract <map> --sha256 <hash> --summary <file with the stored
+summary>` with the same reference the round carried. It applies local-delivery § 4 to the parent:
 - line 1, base, head ancestry and merges;
 - the scope of the endpoint diff and of every commit;
-- the new ledger, untouched earlier ledgers, and `WORKTREE` against the real status.
+- the new ledger, untouched earlier ledgers, and `WORKTREE` against the real status;
+- the parent's own dirt, classified against `parent.baseline`. Own or overlap dirt in a `COMPLETE`
+  delivery is a finding; preexisting and foreign dirt are reported and not attributed.
 
 Then it checks the delivery itself:
 - the REPOS line, and PACKAGE third when required;

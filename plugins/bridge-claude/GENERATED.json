@@ -9,7 +9,7 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "5d8a91e8b7c64939fc417acb3ba40287b5d405243ddf6197f2c623965d25d54d",
+  "source_digest": "155ee41b931fad04e9c5459b23200bd98e390593d41934c73c550358bb82c7ca",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -129,7 +129,7 @@
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "0d077aa7edcc151abb9420cca5521491344e6be7e2ed4a8673c8ec16b3d392cd"
+      "sha256": "838d96bfb83530a0963762ef235d79e1a9ec3dc45d31908c68a2e7baed802dd5"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -137,7 +137,7 @@
     },
     {
       "path": "skills/feature-execute/references/bridge-loop.md",
-      "sha256": "83ab4f13b4f1e9b74b5fc76bc41ce4b696f57e37aa212b42df40c62b1c811ea6"
+      "sha256": "e64fc8af394a8233408e8c6f571816dbfbbcab86e19b148ae5f466b3eddc4f53"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
@@ -145,11 +145,11 @@
     },
     {
       "path": "skills/feature-execute/references/multi-repo.md",
-      "sha256": "97d102739f52e8cf0c04ce95e47f2a4f03cfdef3c74567020136d046b9bdc63f"
+      "sha256": "654456911a1c58aa62ef42c825634d9c5e5190a581250fd594a4b1d207fa3c24"
     },
     {
       "path": "skills/feature-execute/scripts/multi_repo.py",
-      "sha256": "182f7a835615492a80af954b42f82ea9ded5881be284e6cb4a69b98e2bd0887b"
+      "sha256": "ae6916319261a2837fb640864f430632d48d2f17375aba37384e29e745581043"
     },
     {
       "path": "skills/feature-flow/SKILL.md",
@@ -177,7 +177,7 @@
     },
     {
       "path": "skills/using-bridge/SKILL.md",
-      "sha256": "22c5c0f54fd78933c11dd90d864a41debad5e36a74832784068f95da7e2db572"
+      "sha256": "7f7e3f0a8e1861fc0714304a23ed216bbc10572f868d3f29cc9254a6bbb37bbd"
     },
     {
       "path": "skills/using-bridge/agents/openai.yaml",
@@ -201,7 +201,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "0e0cb32b65cfef4cf2ad6e52ae4136dd89cfe0c22388f14c160a7b69049cca58"
+      "sha256": "223c9f4ab4fc4204eb5d30de5de1860d27aa5d09fde3c10ef54934dea6164d34"
     }
   ]
 }

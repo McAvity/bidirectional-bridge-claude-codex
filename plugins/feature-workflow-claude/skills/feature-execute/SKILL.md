@@ -83,11 +83,13 @@ same task. So does a task resumed after the bridge stopped the previous attempt 
 deadline: check what your earlier attempt already changed and committed, keep it, and continue
 from there within the same contract instead of restarting the work.
 
-When the contract carries a repo map (more than one repository), also follow
-[references/multi-repo.md](references/multi-repo.md) § 6: it applies inside a round despite this
-section replacing the rest of the skill. Touch only the repositories and bindings the map names,
-deliver a per-repo evidence sidecar and the `REPOS=` line, and report `PARTIAL` when any repository
-keeps own uncommitted work.
+When the contract carries a repo-map reference (`REPO_MAP=<path> SHA256=<hash>`, more than one
+repository), also follow [references/multi-repo.md](references/multi-repo.md) § 6: it applies inside
+a round despite this section replacing the rest of the skill. Before the first write, run its full
+`preflight` on the verified map with your round scope; `identity` alone is not enough, and a
+missing or changed map blocks the dependent writes. Touch only the repositories and bindings the
+map names, deliver a per-repo evidence sidecar and the `REPOS=` line, and report `PARTIAL` when any
+repository, the parent included, keeps own uncommitted work.
 
 Deliver through Git as [references/local-delivery.md](references/local-delivery.md) specifies:
 
