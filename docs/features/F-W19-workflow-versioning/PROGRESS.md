@@ -52,3 +52,25 @@ Dopisek w reviews/01-plan.md zachowuje pierwotne REWORK, nie nadpisuje historii.
 P03…08 rozliczone; opcjonalne P09/P10 rozliczy najbliższa propozycja Gate 1,
 bez kolejnej pętli. Nie uruchomiono produktu ani testów klientów nowej funkcji.
 Następne: proposed feature-decide całego W19-01…06 i rzeczywista zgoda użytkownika.
+
+## Punkt wznowienia — Gate 1, 2026-11-05
+
+Ukończone kroki/commity W19-P01: fb3e6c5 plan; 648dc92 review REWORK;
+0a8b418 delegowana decyzja korekt; c8575e7 poprawki; 1d4798a review PASS.
+Decyzja02 proposed obejmuje cały W19-01…06, integrację, niezależne review,
+poprawki i lokalne commity oraz izolowany pilot do sześciu rund / 180 min.
+Wszystkie wykonawcze taski pozostają pending. Brak bridge featura F-W19,
+żadnej aktywnej rundy implementacyjnej i żadnej zgody/akceptacji w imieniu użytkownika.
+Techniczny root zakończyć raportem przygotowania po finalnym commicie/checkach;
+nie jest slotem featura. Nie publikowano i nie zmieniano runtime ani projektów.
+
+Kontrole: indeks/ścieżki/dependencies/hash briefu, linki i git diff --check PASS;
+nie wykonywano testów produktu ani pilota nowych klientów. Niezależne review
+przeprowadzone przez Claude’a, autor planu nie przyznał sobie niezależnego PASS.
+Pozostałe ryzyka: legacy compatibility, izolacja/auth klientów i przeładowanie
+instrukcji w zachowanych sesjach wymagają wykonania W19-01/06; nie są wynikami.
+
+Oczekujące pytanie i dokładny zakres: decisions/02.md. Następne po realnej zgodzie:
+feature-decide zapisuje decyzję03 → feature-execute w ramach tej samej autoryzacji.
+Przy statusie/compaction nie zaczynać ponownie design/plan/review, nie tworzyć
+zastępczej sesji, nie uznawać milczenia za zgodę. Gate 2 nadal przed odbiorem produktu.

@@ -1,14 +1,15 @@
-## F-W19 — przygotowanie feature-flow, 2026-11-05
-
-[Projekt](features/F-W19-workflow-versioning/design.md) i
-[indeks](features/F-W19-workflow-versioning/feature.json): brief uzgodniony,
-W19-01…06 zaplanowane; W19-P01 tylko przygotowanie/review/propozycja Gate 1.
-Następne: niezależny plan review, feature-decide i zgoda użytkownika przed
-implementacją. Root review nie jest bridge feature ani zgodą na wykonanie.
-Szczegóły: [progress](features/F-W19-workflow-versioning/PROGRESS.md).
-Kod, runtime, projekty i publikacja nietknięte.
-
 # Current handoff
+
+## F-W19 — plan zrecenzowany, oczekuje Gate 1, 2026-11-05
+
+[Projekt](features/F-W19-workflow-versioning/design.md),
+[review PASS](features/F-W19-workflow-versioning/reviews/01-plan.md) na c8575e7 i
+[propozycja02](features/F-W19-workflow-versioning/decisions/02.md): W19-P01 done,
+W19-01…06 pending. Wykonanie/pilot wymaga odpowiedzi użytkownika na Gate 1.
+Po zgodzie: decyzja03 i feature-execute całego zakresu, bez powtarzania review/gate.
+[Progress](features/F-W19-workflow-versioning/PROGRESS.md) zawiera checkpoint.
+Branch plan/workflow-versioning, baza417ddc2; wyłącznie dokumenty. Bez implementacji,
+publikacji, bridge featura, upgrade projektów lub zmiany aktywnego runtime’u.
 
 ## 0.6.2 published — 2026-10-31
 
