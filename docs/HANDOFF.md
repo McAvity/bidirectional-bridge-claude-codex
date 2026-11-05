@@ -1,3 +1,13 @@
+## F-W19 — przygotowanie feature-flow, 2026-11-05
+
+[Projekt](features/F-W19-workflow-versioning/design.md) i
+[indeks](features/F-W19-workflow-versioning/feature.json): brief uzgodniony,
+W19-01…06 zaplanowane; W19-P01 tylko przygotowanie/review/propozycja Gate 1.
+Następne: niezależny plan review, feature-decide i zgoda użytkownika przed
+implementacją. Root review nie jest bridge feature ani zgodą na wykonanie.
+Szczegóły: [progress](features/F-W19-workflow-versioning/PROGRESS.md).
+Kod, runtime, projekty i publikacja nietknięte.
+
 # Current handoff
 
 ## 0.6.2 published — 2026-10-31

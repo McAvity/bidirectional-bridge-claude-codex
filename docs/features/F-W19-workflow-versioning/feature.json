@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W19-workflow-versioning",
+  "phase": "plan-review",
+  "brief": "docs/features/F-W19-workflow-versioning/brief.md",
+  "design": "docs/features/F-W19-workflow-versioning/design.md",
+  "tasks": [
+    "work-items/W19-P01.md",
+    "work-items/W19-01.md",
+    "work-items/W19-02.md",
+    "work-items/W19-03.md",
+    "work-items/W19-04.md",
+    "work-items/W19-05.md",
+    "work-items/W19-06.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/features/README.md",
+    "scripts/plugin-packages/generate.mjs",
+    "scripts/plugin-packages/release.json",
+    "scripts/workflow-source/select-source.mjs",
+    "scripts/native-bridge-mcp.mjs",
+    "shared/control-plane/src/feature-workflow.ts",
+    "shared/control-plane/src/store/state-store.ts",
+    "claude/claude-side/src/adapters/claude-code-runner.ts"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "feature-flow F-W19: niezależne feature-review w trybie plan; potem feature-decide przygotuje Gate 1 dla całego W19-01…06. Brak zgody na wykonanie."
+}
