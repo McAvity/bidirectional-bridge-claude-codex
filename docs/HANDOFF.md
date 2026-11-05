@@ -1,16 +1,17 @@
 # Current handoff
 
-## Project runtime upgrade requested — 2026-11-05
+## Project runtime 0.6.2 active — verified 2026-11-05
 
-F-W19 preparation pushed at201f4a8. User requested this checkout's runtime upgrade
-from0.5.0-12c4938282b2 to released0.6.2-771e797a73d3 (source771e797).
-Target immutable files verified intact. Installed workflow/bridge plugins refreshed;
-project apply remains pending: installer refuses ACTIVE_USE_UNKNOWN and this client
-is active. Pin unchanged. Stable private activation kit prepared outside Git; close
-clients normally, apply through existing upgrade-local wrapper with the read-only
-observer, verify doctor, then resume the exact manager. Do not bypass guards or
-rebuild the supervising runtime. Only commit the verified portable project pin;
-F-W19 implementation/pilot remain unstarted and separately scoped.
+This checkout selects0.6.2-771e797a73d3 (source771e797). Portable pin committed
+and pushed in c2e296d; local/remote branch matched and worktree was clean.
+Status ready; runtime and30 instruction files intact; profile configuration,
+schema6 and MCP handshake36 tools pass. Live MCP exposes invalid-delivery recovery.
+The same manager resumed normally with bridge_manager_resume_instance; current
+instance active, no active feature and no recovery pending. No worker was launched.
+Doctor remains incomplete only for ACTIVE_USE_UNKNOWN (restricted process inspection);
+Codex0.166.0 is unverified but native identity checks remain enforced. No additional
+upgrade or client restart is needed for this completed activation. F-W19 implementation
+and pilot remain unstarted; its existing execution approval is unchanged.
 
 ## F-W19 — Gate 1 zatwierdzona, plan scalony, 2026-11-05
 
