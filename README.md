@@ -278,6 +278,15 @@ still selects the observer explicitly from the start. Never run the installer wi
 client restart still follow the upgrade procedure above. No machine paths or session
 IDs are stored in the script. More examples: [portable upgrade](docs/tasks/portable-upgrade.md).
 
+The final `RESULT` distinguishes green `OK` (exit 0), yellow `WARN
+[APPLIED_VERIFICATION_FAILED]` (exit 2: runtime selected but doctor failed), and red
+`ERROR` (exit 1: upgrade failed before verified selection). A warning does not roll
+back the applied update or certify readiness: fix the named doctor finding and rerun
+doctor, without repeating the upgrade. Doctor checks keep their own ok/warn/error
+severity. Colors are terminal-only; redirected output and `NO_COLOR` remain plain.
+When a shell wrapper supplies a Codex profile, pass that same `--codex-profile NAME`
+to upgrade/doctor, or set `CLAUDE_CODEX_BRIDGE_CODEX_PROFILE=NAME`.
+
 ## Quick start
 
 1. Open a terminal at the **root of your project's Git repository** and run `codex`.

@@ -92,3 +92,30 @@ real temporary-database test. Build, Node/Bash syntax, CLI help, documentation l
 and diff check pass. No real sudo/password prompt or macOS execution is claimed.
 The script in this checkout is ready to use with the ordinary --yes command; no new
 bridge runtime version is needed. Publication is not part of this local change.
+
+
+## Explicit outcome and terminal status — 2026-11-05
+
+User reported a successful apply followed by a generic exit-1 error. Read-only
+inspection confirmed the target pin, runtime contents and MCP handshake; the failing
+project-trust check queried the default Codex context instead of the interactive
+shell's profile. With the explicit matching profile the project check passed. The
+agent's separate active-use observation remained incomplete without terminal sudo
+credentials, so this is not a claim that the entire doctor rerun passed.
+
+Changes on `fix/upgrade-auto-observer`:
+- Per-project final result: OK/SUCCESS or OK/PLAN_OK (0), WARN/APPLIED_VERIFICATION_FAILED
+  (2, verified selection followed by doctor failure), ERROR/FAILED (1 otherwise).
+- Errors include the stage and distinguish apply not started from attempted writes.
+  No implicit rollback or repeated apply; later workspaces stop and previous successes
+  remain valid. Startup failures also print a final ERROR.
+- Green/yellow/red terminal labels for outcomes and doctor checks; underlying errors
+  remain errors. Pipes, NO_COLOR and dumb terminals receive plain text; JSON unchanged.
+- Profiles remain explicit: the installer does not execute shell wrappers or change trust.
+
+Validation: 39 tests passed and 1 privileged-host test skipped across upgrade orchestration,
+process observation and terminal formatting; package generation/check, syntax and docs
+checks passed. Generated installer copies match source. No runtime or target-project
+changes, release, push, model calls or personal configuration edits. Next: user can rerun
+only doctor in the matching profile with terminal observer authorization; future upgrades
+should pass that profile or its environment override.

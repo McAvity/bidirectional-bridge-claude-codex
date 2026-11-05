@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { bridgeHome, SetupError } from "./setup/common.mjs";
+import { bridgeHome, SetupError, statusLabel } from "./setup/common.mjs";
 import { listRuntimes, installRuntime } from "./setup/runtime.mjs";
 import { acquireSource, readRelease } from "./plugin-packages/acquire.mjs";
 import { status } from "./bridge-project/locate.mjs";
@@ -25,6 +25,9 @@ sudo may ask for your password; without a terminal it uses cached authorization 
 Never run the installer as root. macOS keeps native ps/lsof, without this fallback.
 Bridge home and Codex profile environment overrides are preserved.
 Close affected Codex/Claude clients before applying; refusals stop the sequence.
+Exit codes: 0 = requested plan/apply completed; 1 = failed before verified selection;
+2 = WARN: runtime selection verified, but doctor failed. Applied changes are not rolled back.
+If your interactive Codex uses a profile, pass --codex-profile NAME for doctor.
 This command does not refresh marketplace plugins, commit, push or restart clients.
 `;
 
@@ -131,6 +134,7 @@ export async function upgrade(options, dependencies = {}) {
   let runtime = getRuntimes(home).find(r => !r.error && r.manifest?.source.commit === commit);
   if (!runtime && !options.apply) {
     out("Plan only: the pinned runtime would be installed; no build, fetch or project writes performed.");
+    out(`RESULT: ${statusLabel("OK", "ok")} [PLAN_OK] | runtime installation required before apply`);
     for (const p of projects) out(`${p.action}: ${p.workspace}`);
     return;
   }
@@ -149,32 +153,52 @@ export async function upgrade(options, dependencies = {}) {
     const args = action === "legacy"
       ? [cli, "update", "--workspace", workspace, "--runtime", runtime.id, "--home", home]
       : [plugin, action, "--to", runtime.id, "--home", home];
-    // Both phases use the existing guard; apply checks again after backup and any race.
+    let stage = "plan";
     try {
-      run(process.execPath, args, { cwd: workspace, env });
+      // Both phases use the existing guard; apply checks again after backup and any race.
+      try {
+        run(process.execPath, args, { cwd: workspace, env });
+      } catch (error) {
+        if (error.signal || [130, 143].includes(error.exitCode) ||
+            !options.apply || platform !== "linux" || env.CODEX_SANDBOX ||
+            ![undefined, "native"].includes(env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION) ||
+            !needsObserver(args, { cwd: workspace, env })) throw error;
+        out("Native process inspection is incomplete. Authenticating the read-only sudo observer and repeating the plan once.");
+        // Only authentication/observation is privileged, never the installer or backup.
+        run("sudo", interactive ? ["-v"] : ["-n", "-v"], { env });
+        env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION = "sudo";
+        run(process.execPath, args, { cwd: workspace, env });
+      }
+      if (!options.apply) {
+        out(`RESULT: ${statusLabel("OK", "ok")} [PLAN_OK] | ${workspace} | no project changes applied`);
+        continue;
+      }
+      stage = "backup";
+      run("python3", ["-c", BACKUP, workspace, home], { env });
+      stage = "apply";
+      run(process.execPath, [...args, "--yes"], { cwd: workspace, env });
+      stage = "selection verification";
+      const after = inspect(workspace, env);
+      if (after.selection.runtime_id !== runtime.id || (action !== "legacy" &&
+          (after.state !== "ready" || after.runtime.commit !== commit))) {
+        throw new Error(`runtime selection verification failed for ${workspace}`);
+      }
+      const doctor = [cli, "doctor", "--workspace", workspace, "--home", home];
+      if (options.codexProfile) doctor.push("--codex-profile", options.codexProfile);
+      stage = "doctor";
+      run(process.execPath, doctor, { cwd: workspace, env });
+      out(`RESULT: ${statusLabel("OK", "ok")} [SUCCESS] | ${workspace} | ${runtime.id} selected; doctor passed`);
     } catch (error) {
-      if (error.signal || [130, 143].includes(error.exitCode) ||
-          !options.apply || platform !== "linux" || env.CODEX_SANDBOX ||
-          ![undefined, "native"].includes(env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION) ||
-          !needsObserver(args, { cwd: workspace, env })) throw error;
-      out("Native process inspection is incomplete. Authenticating the read-only sudo observer and repeating the plan once.");
-      // Only authentication/observation is privileged, never the installer or backup.
-      run("sudo", interactive ? ["-v"] : ["-n", "-v"], { env });
-      env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION = "sudo";
-      run(process.execPath, args, { cwd: workspace, env });
+      const selected = stage === "doctor";
+      const outcome = selected ? "APPLIED_VERIFICATION_FAILED" : "FAILED";
+      const detail = selected
+        ? `${runtime.id} selection verified; doctor failed. Changes remain applied; no rollback. Fix the doctor finding and rerun doctor (with --codex-profile NAME if your client uses one); do not repeat the upgrade just to recheck it.`
+        : stage === "apply" || stage === "selection verification"
+          ? "Apply was attempted; project changes may exist. Inspect status before retrying; no rollback."
+          : "Project apply was not started for this workspace.";
+      throw Object.assign(new Error(`RESULT: ${statusLabel(selected ? "WARN" : "ERROR", selected ? "warn" : "error", { stream: process.stderr })} [${outcome}] | ${workspace} | stage: ${stage}\n${detail}\nCause: ${error.message}\nStopped; later workspaces were not processed. Earlier successful results remain valid.`),
+        { upgradeExitCode: selected ? 2 : 1 });
     }
-    if (!options.apply) continue;
-    run("python3", ["-c", BACKUP, workspace, home], { env });
-    run(process.execPath, [...args, "--yes"], { cwd: workspace, env });
-    const after = inspect(workspace, env);
-    if (after.selection.runtime_id !== runtime.id || (action !== "legacy" &&
-        (after.state !== "ready" || after.runtime.commit !== commit))) {
-      throw new Error(`runtime selection verification failed for ${workspace}`);
-    }
-    const doctor = [cli, "doctor", "--workspace", workspace, "--home", home];
-    if (options.codexProfile) doctor.push("--codex-profile", options.codexProfile);
-    run(process.execPath, doctor, { cwd: workspace, env });
-    out(`Verified ${workspace}: ${runtime.id}`);
   }
   if (options.apply) out("Restart affected clients to load the new runtime and skills. Review project pin changes before committing.");
 }
@@ -186,6 +210,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     else await upgrade(options);
   } catch (error) {
     console.error(error instanceof SetupError ? `${error.code}: ${error.message}` : error.message);
-    process.exitCode = 1;
+    if (!error.upgradeExitCode) console.error(`RESULT: ${statusLabel("ERROR", "error", { stream: process.stderr })} [FAILED] | upgrade did not complete; see the error above`);
+    process.exitCode = error.upgradeExitCode ?? 1;
   }
 }

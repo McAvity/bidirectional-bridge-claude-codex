@@ -172,6 +172,43 @@ describe("portable upgrade orchestration", () => {
     expect(planNeedsObserver([script],{})).toBe(false);
     expect(planNeedsObserver([script,"--yes"],{})).toBe(false);
   });
+  it("reports successful apply and dry-run separately", async () => {
+    for (const apply of [false, true]) {
+      const f=fixture(), logs:string[]=[];f.deps.log=(line:string)=>logs.push(line);
+      await upgrade({...f.options,apply},f.deps);
+      expect(logs.some(line=>line.startsWith(`RESULT: OK [${apply ? "SUCCESS" : "PLAN_OK"}] |`))).toBe(true);
+      expect(logs.some(line=>line.includes("FAILED"))).toBe(false);
+    }
+  });
+  it("distinguishes doctor failure after verified apply and stops later workspaces", async () => {
+    const f=fixture(), run=f.deps.command, inspect=f.deps.status, logs:string[]=[];
+    const later=join(f.root,"later");
+    f.deps.status=(path:string)=>({...inspect(),workspace:{in_git_repository:true,root:path}});
+    f.deps.log=(line:string)=>logs.push(line);
+    f.deps.command=(program:string,args:string[],opts:any)=>{
+      run(program,args,opts);
+      if(args.includes("doctor")) throw new Error("CODEX_PROJECT_UNTRUSTED");
+    };
+    const result=upgrade({...f.options,workspaces:[f.workspace,later]},f.deps);
+    await expect(result).rejects.toMatchObject({upgradeExitCode:2});
+    await expect(result).rejects.toThrow("APPLIED_VERIFICATION_FAILED");
+    await expect(result).rejects.toThrow("Changes remain applied");
+    await expect(result).rejects.toThrow("CODEX_PROJECT_UNTRUSTED");
+    expect(f.calls.filter(c=>c.args.includes("--yes"))).toHaveLength(1);
+    expect(f.calls.some(c=>c.opts.cwd===later)).toBe(false);
+    expect(logs.some(line=>line.startsWith("RESULT: OK [SUCCESS]"))).toBe(false);
+  });
+  it("does not claim apply succeeded or nothing changed when apply itself fails", async () => {
+    const f=fixture(), run=f.deps.command;
+    f.deps.command=(program:string,args:string[],opts:any)=>{
+      run(program,args,opts);
+      if(args.includes("--yes")) throw new Error("write failed");
+    };
+    const result=upgrade(f.options,f.deps);
+    await expect(result).rejects.toMatchObject({upgradeExitCode:1});
+    await expect(result).rejects.toThrow("project changes may exist");
+    expect(f.calls.some(c=>c.args.includes("doctor"))).toBe(false);
+  });
   it("makes an exclusive private SQLite backup that includes committed WAL data", async () => {
     const f=fixture();mkdirSync(join(f.workspace,".bridge"));
     const db=new DatabaseSync(join(f.workspace,".bridge/bridge.db"));

@@ -65,7 +65,7 @@
     },
     {
       "path": "scripts/setup/common.mjs",
-      "sha256": "1606622549375ace4babce60e5d71e0fad20c993ebfd381bdc51c3c242902685"
+      "sha256": "9e65f3f68ad2c275ff5b0c63b7fca81829ec218f0a2f3065ed922afac27f59a5"
     },
     {
       "path": "scripts/setup/diff.mjs",
@@ -77,7 +77,7 @@
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "86b1b06ff516d568e1f2bbb6dd27644dddfcccc847d141f2f3ba63650d01f2de"
+      "sha256": "93a85d73aa22d5efe91e59eb7cd7c8f309d7f9a08394af27ca44339d747d8704"
     },
     {
       "path": "scripts/setup/process-observer.py",

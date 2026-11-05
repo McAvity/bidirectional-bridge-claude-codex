@@ -20,6 +20,13 @@ import {
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
+// Color labels only in terminals. Redirected output and NO_COLOR stay plain text.
+export function statusLabel(text, severity, { stream = process.stdout, env = process.env } = {}) {
+  const code = { ok: 32, warn: 33, error: 31 }[severity];
+  return code && stream.isTTY && env.NO_COLOR === undefined && env.TERM !== "dumb"
+    ? `\x1b[${code}m${text}\x1b[0m` : text;
+}
+
 export const HOME_ENV = "CLAUDE_CODEX_BRIDGE_HOME";
 /** Per-worktree local setup directory: runtime selection and its record. Never versioned. */
 export const LOCAL_DIR = ".bridge-runtime";

@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { LOCAL_DIR, SetupError, canonical, newTag, readJson, readOptional, run, sha256 } from "./common.mjs";
+import { statusLabel, LOCAL_DIR, SetupError, canonical, newTag, readJson, readOptional, run, sha256 } from "./common.mjs";
 import { readBounded } from "../diagnostics/safe-read.mjs";
 import { distributionMetadata } from "./distribution.mjs";
 import { findActiveUse } from "./processes.mjs";
@@ -902,11 +902,13 @@ function integrationSourceOf(root) {
   return "unknown";
 }
 
-export function formatDoctor(report) {
-  const lines = [`bridge doctor: ${report.workspace}`, `status: ${report.status}`];
+export function formatDoctor(report, colorOptions) {
+  const severity = value => value === "ok" ? "ok" : ["error", "problems"].includes(value) ? "error" : "warn";
+  const label = value => statusLabel(value, severity(value), colorOptions);
+  const lines = [`bridge doctor: ${report.workspace}`, `status: ${label(report.status)}`];
   if (report.codex_context) lines.push(`codex context: ${describeCodexContext(report.codex_context)}${report.codex_context.invalid ? " (invalid)" : ""}`);
   for (const check of report.checks) {
-    lines.push(`  ${check.status.padEnd(7)} ${check.id.padEnd(14)} ${check.code === "OK" ? "" : `${check.code}  `}${check.summary}`);
+    lines.push(`  ${statusLabel(check.status.padEnd(7), severity(check.status), colorOptions)} ${check.id.padEnd(14)} ${check.code === "OK" ? "" : `${check.code}  `}${check.summary}`);
     if (check.next_step && check.status !== "ok") lines.push(`  ${"".padEnd(7)} ${"".padEnd(14)} next: ${check.next_step}`);
   }
   if (report.next_step) lines.push(`next step: ${report.next_step}`);
