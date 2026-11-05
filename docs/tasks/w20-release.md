@@ -25,3 +25,9 @@ generate packages, integrate feature-workflow, push to McAvity fork, check CI, a
 v0.7.0 tag and experimental GitHub release. Preserve active project pins. Test adoption
 later in a selected fresh project/worktree; compare checkout paths before/after and
 verify writes stay in the intended parent/children. No paid pilot has been authorized here.
+
+Prepared source: 6ed9a4537e376165aa72bbd5a52cb0c41988a90a. Release descriptor pins this immutable source;
+tag follows descriptor packaging commit, as in earlier releases. Source and packages
+share canonical digest155ee41b931f. npm ci/build/packages/docs passed. Dependency
+audit reports15 inherited advisories (1low/5moderate/6high/3critical), lockfile
+dependency contents unchanged; no claim of security certification or unrelated audit fix.
