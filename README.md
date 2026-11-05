@@ -278,9 +278,11 @@ still selects the observer explicitly from the start. Never run the installer wi
 client restart still follow the upgrade procedure above. No machine paths or session
 IDs are stored in the script. More examples: [portable upgrade](docs/tasks/portable-upgrade.md).
 
-The final `RESULT` distinguishes green `OK` (exit 0), yellow `WARN
+The last `FINAL` line distinguishes green `OK` (exit 0), yellow `WARN
 [APPLIED_VERIFICATION_FAILED]` (exit 2: runtime selected but doctor failed), and red
-`ERROR` (exit 1: upgrade failed before verified selection). A warning does not roll
+`ERROR` (exit 1: upgrade failed before verified selection). On Linux, if only doctor
+reports `ACTIVE_USE_UNKNOWN` after an already-current setup, the wrapper also authenticates
+the observer and repeats doctor once, without repeating apply. A warning does not roll
 back the applied update or certify readiness: fix the named doctor finding and rerun
 doctor, without repeating the upgrade. Doctor checks keep their own ok/warn/error
 severity. Colors are terminal-only; redirected output and `NO_COLOR` remain plain.

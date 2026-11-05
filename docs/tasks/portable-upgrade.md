@@ -119,3 +119,25 @@ checks passed. Generated installer copies match source. No runtime or target-pro
 changes, release, push, model calls or personal configuration edits. Next: user can rerun
 only doctor in the matching profile with terminal observer authorization; future upgrades
 should pass that profile or its environment override.
+
+
+## Already-current setup and final summary — 2026-11-05
+
+A user rerun confirmed another path: the installer returns successfully without process
+inspection when there are no changes, so only doctor encounters ACTIVE_USE_UNKNOWN.
+The wrapper now diagnoses that failure through a read-only JSON doctor report. Only
+an incomplete report whose blockers are exclusively active_use/unknown/ACTIVE_USE_UNKNOWN
+allows Linux observer authentication and one doctor retry. Ordinary warnings can coexist;
+unrelated errors, sandbox, macOS, interruption or already-selected sudo do not trigger it.
+Apply is never repeated. Noninteractive authentication uses cached credentials only.
+
+Every normal execution finishes with a last FINAL line including OK/WARN/ERROR, numeric
+exit code and plain-language outcome. Exit 2 explicitly says runtime selection is OK but
+verification is incomplete; it does not claim full success. Successful plans are clearly
+separated from successful apply+doctor. Detailed stage errors remain above the summary.
+
+Validation: 25 upgrade tests and 3 output tests PASS, including no-op-path doctor fallback,
+failed sudo/retry, platform/interruption restrictions, mixed blockers, summary ordering
+and read-only plan outputs. Syntax/docs/diff checks PASS. No real project apply, runtime
+change, new release or push. User may rerun the same upgrade command with their profile;
+terminal sudo authentication can now be requested at the doctor stage too.

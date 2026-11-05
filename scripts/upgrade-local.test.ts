@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 // @ts-expect-error JS CLI
-import { parseUpgradeArgs, planNeedsObserver, upgrade } from "./upgrade-local.mjs";
+import { parseUpgradeArgs, planNeedsObserver, doctorNeedsObserver, finalOutcome, upgrade } from "./upgrade-local.mjs";
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach(d => rmSync(d, {recursive:true,force:true})));
@@ -20,7 +20,7 @@ function fixture() {
   let applied=false;
   const calls: any[]=[];
   const deps: any={source:root,env:{CLAUDE_CODEX_BRIDGE_HOME:home,CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION:"native",CODEX_SANDBOX:undefined},log:()=>{},
-    platform:"linux",interactive:true,planNeedsObserver:()=>false,
+    platform:"linux",interactive:true,planNeedsObserver:()=>false,doctorNeedsObserver:()=>false,
     listRuntimes:()=>[runtime],
     status:()=>({state:"ready",workspace:{in_git_repository:true,root:workspace},declaration:{enabled:true},selection:{kind:"valid",runtime_id:applied?runtime.id:"old"},runtime:{commit}}),
     command:(program:string,args:string[],opts:any)=>{calls.push({program,args,opts});if(args.includes("--yes"))applied=true;},
@@ -208,6 +208,83 @@ describe("portable upgrade orchestration", () => {
     await expect(result).rejects.toMatchObject({upgradeExitCode:1});
     await expect(result).rejects.toThrow("project changes may exist");
     expect(f.calls.some(c=>c.args.includes("doctor"))).toBe(false);
+  });
+  it("authenticates on doctor-only unknown use without repeating apply", async () => {
+    const f=fixture(), run=f.deps.command, logs:string[]=[];
+    f.deps.doctorNeedsObserver=()=>true; f.deps.log=(line:string)=>logs.push(line);
+    f.deps.command=(program:string,args:string[],opts:any)=>{
+      run(program,args,{...opts,env:{...opts.env}});
+      if(args[1]==="doctor" && opts.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION!=="sudo") throw new Error("unknown use");
+    };
+    await upgrade(f.options,f.deps);
+    expect(f.calls.map(c=>c.program==="sudo"?"sudo":c.program==="python3"?"backup":c.args[1])).toEqual(["update","backup","update","doctor","sudo","doctor"]);
+    expect(f.calls.filter(c=>c.args.includes("--yes"))).toHaveLength(1);
+    expect(logs.at(-1)).toBe(finalOutcome(0));
+    expect(logs.at(-1)).toContain("SUCCESS");
+  });
+  it("ends with explicit incomplete verification if privileged doctor or authorization fails", async () => {
+    for(const failure of ["doctor","sudo"]) {
+      const f=fixture(),run=f.deps.command; f.deps.doctorNeedsObserver=()=>true;f.deps.interactive=false;
+      f.deps.command=(program:string,args:string[],opts:any)=>{
+        run(program,args,opts);
+        if(args[1]==="doctor" || program==="sudo" && failure==="sudo") throw new Error("inspection unavailable");
+      };
+      const result=upgrade(f.options,f.deps);
+      await expect(result).rejects.toMatchObject({upgradeExitCode:2});
+      try { await result; } catch(error:any) {
+        expect(error.message.split("\n").at(-1)).toBe(finalOutcome(2,{stream:process.stderr}));
+      }
+      expect(f.calls.filter(c=>c.program==="sudo")).toHaveLength(1);
+      expect(f.calls.find(c=>c.program==="sudo").args).toEqual(["-n","-v"]);
+      expect(f.calls.filter(c=>c.args[1]==="doctor")).toHaveLength(failure==="sudo"?1:2);
+      expect(f.calls.filter(c=>c.args.includes("--yes"))).toHaveLength(1);
+    }
+  });
+  it("never escalates doctor on macOS, in sandbox, after interruption or when sudo already selected", async () => {
+    for(const variant of ["mac","sandbox","signal","sudo","invalid"]) {
+      const f=fixture(),run=f.deps.command;
+      if(variant==="mac") f.deps.platform="darwin";
+      if(variant==="sandbox") f.deps.env.CODEX_SANDBOX="restricted";
+      if(variant==="sudo" || variant==="invalid") f.deps.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=variant;
+      f.deps.doctorNeedsObserver=()=>{throw new Error("unexpected probe");};
+      f.deps.command=(program:string,args:string[],opts:any)=>{
+        run(program,args,opts);
+        if(args[1]==="doctor") throw Object.assign(new Error("doctor failed"),variant==="signal"?{signal:"SIGINT"}:{});
+      };
+      await expect(upgrade(f.options,f.deps)).rejects.toThrow("doctor failed");
+      expect(f.calls.filter(c=>c.program==="sudo")).toHaveLength(variant==="sudo"?1:0);
+    }
+  });
+  it("uses structured doctor blockers, never unrelated failures, to authorize observation", () => {
+    const script=join(temp(),"fake-doctor.cjs");
+    const unknown={id:"active_use",status:"unknown",code:"ACTIVE_USE_UNKNOWN"};
+    const base={format:"claude-codex-bridge.doctor/v1",status:"incomplete",checks:[unknown]};
+    for(const [report,exit,expected] of [
+      [base,1,true],
+      [{...base,checks:[unknown,{status:"warn",code:"CODEX_VERSION_UNVERIFIED"}]},1,true],
+      [{...base,checks:[unknown,{status:"error",code:"CODEX_PROJECT_UNTRUSTED"}]},1,false],
+      [{...base,checks:[{...unknown,code:"ACTIVE_SESSION"}]},1,false],
+      [{...base,checks:[]},1,false],
+      [{...base,checks:[null]},1,false],
+      [{...base,status:"problems"},1,false],
+      [base,0,false], [null,1,false],
+    ] as const) {
+      writeFileSync(script,`console.log(${JSON.stringify(JSON.stringify(report))});process.exit(${exit});`);
+      expect(doctorNeedsObserver([script,"doctor"],{})).toBe(expected);
+    }
+    writeFileSync(script,"console.log('ACTIVE_USE_UNKNOWN');process.exit(1)");
+    expect(doctorNeedsObserver([script,"doctor"],{})).toBe(false);
+    expect(doctorNeedsObserver([script,"update"],{})).toBe(false);
+  });
+  it("puts the final summary last for plans and makes exit outcomes explicit", async () => {
+    for(const installed of [true,false]) {
+      const f=fixture(),logs:string[]=[];f.deps.log=(line:string)=>logs.push(line);
+      if(!installed)f.deps.listRuntimes=()=>[];
+      await upgrade({...f.options,apply:false},f.deps);
+      expect(logs.at(-1)).toBe(finalOutcome(0,{apply:false}));
+    }
+    expect(finalOutcome(2,{stream:{isTTY:false}})).toContain("FINAL: WARN (exit 2)");
+    expect(finalOutcome(1,{stream:{isTTY:false}})).toContain("FINAL: ERROR (exit 1)");
   });
   it("makes an exclusive private SQLite backup that includes committed WAL data", async () => {
     const f=fixture();mkdirSync(join(f.workspace,".bridge"));

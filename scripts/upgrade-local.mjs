@@ -19,7 +19,7 @@ plans only; an absent runtime is reported without installing or fetching anythin
 --yes installs the pinned runtime if needed, backs up existing SQLite state,
 applies the checked setup/update, verifies its selection and runs doctor.
 On Linux, --yes automatically authenticates the read-only sudo observer when the
-native plan refuses ACTIVE_USE_UNKNOWN, then repeats the plan once. In a terminal
+native plan or doctor reports only ACTIVE_USE_UNKNOWN, then repeats that check once. In a terminal
 sudo may ask for your password; without a terminal it uses cached authorization only.
 --sudo-observer selects that observer from the start. Plans never authenticate sudo.
 Never run the installer as root. macOS keeps native ps/lsof, without this fallback.
@@ -77,6 +77,35 @@ export function planNeedsObserver(args, options) {
   }
 }
 
+// Doctor can be the first process check when setup is already current (a no-op).
+export function doctorNeedsObserver(args, options) {
+  if (args[1] !== "doctor" || args.includes("--yes")) return false;
+  const result = spawnSync(process.execPath, [...args, "--json"], {
+    ...options, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8",
+    timeout: 30_000, maxBuffer: 4 * 1024 * 1024,
+  });
+  if (result.error || result.status !== 1) return false;
+  try {
+    const report = JSON.parse(result.stdout);
+    if (report.format !== "claude-codex-bridge.doctor/v1" || report.status !== "incomplete" ||
+        !Array.isArray(report.checks) || !report.checks.length) return false;
+    const blockers = report.checks.filter(check => !["ok", "warn"].includes(check?.status));
+    return blockers.length > 0 && blockers.every(check =>
+      check?.id === "active_use" && check.status === "unknown" && check.code === "ACTIVE_USE_UNKNOWN");
+  } catch { return false; }
+}
+
+export function finalOutcome(code, { apply = true, stream = process.stdout, env = process.env } = {}) {
+  const severity = code === 0 ? "ok" : code === 2 ? "warn" : "error";
+  const label = code === 0 ? "OK" : code === 2 ? "WARN" : "ERROR";
+  const text = code === 0
+    ? apply ? "SUCCESS: target runtime selected and doctor passed for all requested worktrees."
+      : "PLAN COMPLETE: no project upgrade applied."
+    : code === 2 ? "Runtime selection OK; verification INCOMPLETE. Upgrade is NOT fully verified."
+      : "FAILED: upgrade did not complete. See the failed stage above.";
+  return `FINAL: ${statusLabel(label, severity, { stream, env })} (exit ${code}) | ${text}`;
+}
+
 // Private persistent SQLite snapshots, not raw DB/WAL copies. The CLI plan runs first.
 const BACKUP = `
 from pathlib import Path
@@ -115,6 +144,7 @@ export async function upgrade(options, dependencies = {}) {
   const out = dependencies.log ?? console.log;
   const platform = dependencies.platform ?? process.platform;
   const needsObserver = dependencies.planNeedsObserver ?? planNeedsObserver;
+  const doctorObserver = dependencies.doctorNeedsObserver ?? doctorNeedsObserver;
   const interactive = dependencies.interactive ?? Boolean(process.stdin.isTTY);
   const release = readRelease(join(source, "scripts/plugin-packages/release.json"));
   const commit = release.pinned.commit;
@@ -136,6 +166,7 @@ export async function upgrade(options, dependencies = {}) {
     out("Plan only: the pinned runtime would be installed; no build, fetch or project writes performed.");
     out(`RESULT: ${statusLabel("OK", "ok")} [PLAN_OK] | runtime installation required before apply`);
     for (const p of projects) out(`${p.action}: ${p.workspace}`);
+    out(finalOutcome(0, { apply: false }));
     return;
   }
   if (options.apply && platform === "linux" && env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION === "sudo") {
@@ -186,7 +217,18 @@ export async function upgrade(options, dependencies = {}) {
       const doctor = [cli, "doctor", "--workspace", workspace, "--home", home];
       if (options.codexProfile) doctor.push("--codex-profile", options.codexProfile);
       stage = "doctor";
-      run(process.execPath, doctor, { cwd: workspace, env });
+      try {
+        run(process.execPath, doctor, { cwd: workspace, env });
+      } catch (error) {
+        if (error.signal || [130, 143].includes(error.exitCode) ||
+            platform !== "linux" || env.CODEX_SANDBOX ||
+            ![undefined, "native"].includes(env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION) ||
+            !doctorObserver(doctor, { cwd: workspace, env })) throw error;
+        out("Doctor cannot inspect processes. Authenticating the read-only sudo observer and repeating doctor once; setup/apply will not be repeated.");
+        run("sudo", interactive ? ["-v"] : ["-n", "-v"], { env });
+        env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION = "sudo";
+        run(process.execPath, doctor, { cwd: workspace, env });
+      }
       out(`RESULT: ${statusLabel("OK", "ok")} [SUCCESS] | ${workspace} | ${runtime.id} selected; doctor passed`);
     } catch (error) {
       const selected = stage === "doctor";
@@ -196,11 +238,12 @@ export async function upgrade(options, dependencies = {}) {
         : stage === "apply" || stage === "selection verification"
           ? "Apply was attempted; project changes may exist. Inspect status before retrying; no rollback."
           : "Project apply was not started for this workspace.";
-      throw Object.assign(new Error(`RESULT: ${statusLabel(selected ? "WARN" : "ERROR", selected ? "warn" : "error", { stream: process.stderr })} [${outcome}] | ${workspace} | stage: ${stage}\n${detail}\nCause: ${error.message}\nStopped; later workspaces were not processed. Earlier successful results remain valid.`),
+      throw Object.assign(new Error(`RESULT: ${statusLabel(selected ? "WARN" : "ERROR", selected ? "warn" : "error", { stream: process.stderr })} [${outcome}] | ${workspace} | stage: ${stage}\n${detail}\nCause: ${error.message}\nStopped; later workspaces were not processed. Earlier successful results remain valid.\n${finalOutcome(selected ? 2 : 1, { stream: process.stderr })}`),
         { upgradeExitCode: selected ? 2 : 1 });
     }
   }
   if (options.apply) out("Restart affected clients to load the new runtime and skills. Review project pin changes before committing.");
+  out(finalOutcome(0, { apply: options.apply }));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -210,7 +253,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     else await upgrade(options);
   } catch (error) {
     console.error(error instanceof SetupError ? `${error.code}: ${error.message}` : error.message);
-    if (!error.upgradeExitCode) console.error(`RESULT: ${statusLabel("ERROR", "error", { stream: process.stderr })} [FAILED] | upgrade did not complete; see the error above`);
+    if (!error.upgradeExitCode) console.error(finalOutcome(1, { stream: process.stderr }));
     process.exitCode = error.upgradeExitCode ?? 1;
   }
 }
