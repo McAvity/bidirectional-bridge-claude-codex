@@ -101,3 +101,44 @@ Cel użytkownika nie jest jeszcze osiągnięty, bo istnieje tylko plan. Wszystki
 Raport niezależnego Claude przez bridge. Oryginalny artefakt: SHA-256 `914fe927f00caf503c431d502427b66ea2b2d6a92a7a6af540b01a1cbda79887`; integralność sprawdzona. Publiczna kopia pomija powielony JSON i lokalizację hosta. Wszystkie findingi zachowane.
 
 Uściślenie koordynatora: normalizePath usuwa początkowy `/`, a nie odrzuca wszystkich ścieżek absolutnych. Plan nadal prawidłowo wymaga wyłącznie repo-relative globs; nie korzysta z tej normalizacji jako mapowania ścieżek absolutnych.
+
+
+## 2026-11-05 — focused corrections review
+
+## Verdict: PASS. R20-P01 is resolved, and no required issue remains.
+
+**Revision reviewed:** `design/multi-repo-execution (worktree)` at HEAD `ff426d2da6b4622f6ca9efe18b7c451919fb6198`, read only. I checked the diff `9867321..ff426d2`: PROGRESS.md, design.md, feature.json, W20-01.md and W20-03.md. I also read `reviews/01-plan.md` and `decisions/01.md`. The brief's SHA-256 is still `ae8bca34…33ebdc7d`, so it is unchanged. This is a review of the plan only. It does not approve implementation or Gate 1.
+
+### R20-P01: resolved
+I checked each of the review's five recommended points against the corrected plan and the code.
+
+1. **Default placement.** New checkouts now default to a physical directory inside the parent, in a private untracked task directory (`.feature-repos/<feature-id>/<repo-id>`), with no symlinks on the path. An external alias is allowed only after access is shown for both roles. Existing external environments are not moved silently. Because the default is under `cwd`, it no longer depends on how Claude Code resolves symlinks.
+2. **Ignoring the directory.** The plan adds only the exact task directory to the file returned by `git rev-parse --git-path info/exclude`, keeps existing entries, and leaves the tracked `.gitignore` alone. It notes this file may be shared Git metadata, uses `check-ignore` plus parent status as proof, and keeps a tracked submodule gitlink tracked. I tested this in a throwaway repo:
+   - in a linked worktree, the exclude file is the shared one in the main repo's `.git`;
+   - `git status --porcelain=v1 --untracked-files=all` came back empty, so `WORKTREE` stays clean;
+   - `check-ignore` matched the entry.
+3. **Runner argv test.** W20-01 now covers runner argv for both a physical child and an alias. This matches the code: `claude-code-runner.ts:678-687` turns scope prefixes into `--add-dir` paths relative to the parent.
+4. **Client permissions.** The plan names the real limits: the runner's `acceptEdits` plus `--add-dir`, and the manager's own sandbox and writable roots. It says an argv test does not prove Edit/Write works through a symlink, and it forbids getting around an Edit/Write refusal with Bash. It also forbids turning off the sandbox, and states that a local worktree may need writes to the child's Git directory outside the parent.
+5. **Fallback when access is unproven.** The plan falls back in order: a physical local checkout, then a new isolated clone inside the parent that keeps the authorized source and base. If neither works, only the dependent writes are blocked. This stays within the brief's line 167 (check, don't assume, the need for new engine capabilities). It also fits AC-02 and AC-06 (one setup path that works without new runtime features) and AC-10 (no product gate; host-level prompts are only stated as a limitation).
+
+`context_files` now includes the runner and `native-bridge-mcp.mjs`. Scope globs under `.feature-repos/...` still pass `normalizePath`, because single dots are fine and only `..` is rejected. The erratum on `normalizePath` is recorded, and the plan still requires repo-relative scopes.
+
+### R20-P02 to P06: all adopted, no regressions found
+- **P02:** the exception for committing the ledger after the checks now also covers the evidence-only manifest.
+- **P03:** the line order is DELIVERY, REPOS, PACKAGE when a ZIP is required, within the 4000-character limit and without truncating hashes. Single-repo order stays DELIVERY, PACKAGE.
+- **P04:** the minimum reuse evidence is now defined: a ledger or manifest naming repo, feature, branch and base, confirmed by the actual checkout, commits and ancestry. A branch name or shared remote alone is not enough.
+- **P05:** after a non-fast-forward merge or pin update, the resulting SHAs are re-checked, and the pin commit is reviewed separately as integration drift. This is in the design and W20-03.
+- **P06:** W20-01 now probes the submodule's Git directory location in a linked parent and what `submodule init` writes to the shared config.
+
+### Optional notes (not gates; can go into the W20-01 contract)
+- **O1. Losing commits in the clone fallback (tested).** In the throwaway repo, `git worktree remove <parent>` without `--force` succeeded. It deleted the parent along with an ignored nested child repo that held a commit. For the default nested worktree, the child's commits survive in its own repo and only uncommitted work is lost. For an in-parent clone, though, commits not yet integrated exist only inside the parent. The contract and docs should say the nested checkout lives and dies with the parent: integrate or move the clone before removing the parent worktree. Automatic cleanup stays out of scope, as the brief says.
+- **O2. Delegated Codex can't escalate.** Delegated Codex runs with `approval_policy: "never"` and the `workspace-write` sandbox (`native-bridge-mcp.mjs:198-204`), so the plan's "permissions/escalation" option does not exist for it. When choosing between a worktree and a clone, the deciding question should be whether that executor can write the child's Git directory outside the parent. Failing that safely is already covered by the clone fallback or a block.
+- **O3. Parent tools may scan the nested checkout.** The parent's own build, test, lint or search commands may descend into `.feature-repos/`. The contract could tell them to exclude it.
+- **O4. Name the WORKTREE effect.** The design could say outright that `WORKTREE` stays clean. The test above confirms it does.
+
+### Limitations
+- I did not run any models or check Claude Code's symlink behaviour in practice. That is now correctly a W20-01 probe, not a premise of the plan.
+- The scratch Git test ran in a temporary directory, which I deleted afterwards. Nothing in the target repo was written, committed or installed, and the runtime and modelpilot were not touched.
+
+
+Oryginalny artefakt SHA-256 `3a8e8e329b6efcaf54232af8aa350b17493c16d665056dce654c897b9d24b443`; integralność potwierdzona. Usunięto wyłącznie lokalną ścieżkę hosta i powielony JSON. O1…O4 zachowane jako nieblokujące uwagi tego review.
