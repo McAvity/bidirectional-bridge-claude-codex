@@ -1,5 +1,17 @@
 # Current handoff
 
+## Project runtime upgrade requested — 2026-11-05
+
+F-W19 preparation pushed at201f4a8. User requested this checkout's runtime upgrade
+from0.5.0-12c4938282b2 to released0.6.2-771e797a73d3 (source771e797).
+Target immutable files verified intact. Installed workflow/bridge plugins refreshed;
+project apply remains pending: installer refuses ACTIVE_USE_UNKNOWN and this client
+is active. Pin unchanged. Stable private activation kit prepared outside Git; close
+clients normally, apply through existing upgrade-local wrapper with the read-only
+observer, verify doctor, then resume the exact manager. Do not bypass guards or
+rebuild the supervising runtime. Only commit the verified portable project pin;
+F-W19 implementation/pilot remain unstarted and separately scoped.
+
 ## F-W19 — Gate 1 zatwierdzona, plan scalony, 2026-11-05
 
 [Decyzja03](features/F-W19-workflow-versioning/decisions/03.md) zapisuje rzeczywistą
