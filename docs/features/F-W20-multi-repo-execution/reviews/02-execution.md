@@ -80,3 +80,51 @@ dla W20-03, nie udajemy pełnej zielonej regresji. Nie blokuje implementacji hel
 Lokalna bramka W20-01 zwolniona: kontrakt PASS, W20-02/03 już autoryzowane. To nie
 jest PASS implementacji ani odbiór produktu. Testy prototypu nie zastępują testów
 produkcyjnego helpera; W20-02 ma go dostarczyć zgodnie z planem (nie opcjonalnie).
+
+
+## 2026-11-05 — wspólne review W20-02/03, REWORK
+
+Niezależny reviewer: koordynator Codex, nie autor implementacji Claude. Dostawa
+021686bd→2fddd673, task_3kfd3z3thk DONE; receipt PASS: cztery commity, każdy w scope,
+nowe ledgery, czysty worktree. Przejrzano kanoniczne instrukcje, helper, testy,
+wiązanie obu ról i generowane pakiety. Nie ponawiamy review zamkniętego planu.
+
+### R20-E01 — COMPLETE mimo własnej pracy w parent (required, AC-08)
+
+`check_receipt` klasyfikuje dirt dzieci, lecz w parent sprawdza jedynie liczbę wpisów
+WORKTREE. Niezależna reprodukcja na jednorazowych repo przez fixture `Receipt`:
+`deliver(worktree="dirty:1")`, następnie niezacommitowana zmiana `app/x.txt` w scope.
+Wynik CLI: exit0, outcome COMPLETE, findings=[] mimo `M app/x.txt`. Instrukcja §6.5
+wymaga PARTIAL dla własnego/overlap dirt w dowolnym repo, a obecny helper tego nie
+sprawdza. Dodać jawny baseline parent, klasyfikację oraz regresje własnej pracy,
+zachowanego cudzego dirt i nakładania zmian; nie karać automatycznie każdego dirty.
+Status: open. Skutek: błędne potwierdzenie kompletności dostawy; naprawa wymagana.
+
+### R20-E02 — mapa nie mieści się w objective (required, AC-06)
+
+bridge-loop nakazuje umieścić całą mapę w objective, ale TaskSpec ma maxLength2000
+(shared/protocol/src/schemas.ts). Już mapa sześciu write repo + read dependency
+z polami obowiązkowymi może mieć 2814 znaków w zwartym JSON; helper dopuszcza32repo
+oraz64KiB. Żądanie odpadnie przed delegacją. Nie rozszerzać protokołu MCP: użyć
+krótkiego odwołania do istniejącego lokalnego pliku mapy z hashem i sprawdzaniem
+jego treści/tożsamości przed zapisem, dostępnego obu rolom; inline tylko gdy mieści
+się razem z celem. Plik jest danymi, nie dodatkową autoryzacją ani instrukcjami.
+Test przekazania reprezentatywnej większej mapy, brak/zmiana pliku i limit schematu.
+Przy tym ujednolicić pełny preflight obu ról: samo `identity per alias` nie zastępuje
+kontroli bindings/read-only/dirt. Nie dodawać nowego silnika egzekucji runtime.
+Status: open. Skutek: zgodny z dokumentacją zwykły kontrakt nie uruchamia wykonawcy.
+
+### Walidacja wspólna i R20-I01
+
+Na dostawie: build i focused checks wykonawcy PASS. Niezależnie pełne npm test:
+623 PASS,76 FAIL,7 skipped (706); Python188 PASS/2 FAIL (190); pilot140/140 PASS.
+Na czystej bazie417ddc2: npm615 PASS/76 FAIL/7 skipped (698); Python111 PASS/2 FAIL
+(113). Te same dwa pliki JS instalatora/setup i dwie kontrole CodexHost Python
+odmawiają ACTIVE_USE_UNKNOWN przy niepełnym wglądzie w procesy hosta. Pełnej
+regresji nie oznaczamy PASS. To odtworzone ograniczenie bazowe, bez zmiany guardów,
+bez naprawy instalatora poza zakresem i bez potrzeby powtarzania go w każdej rundzie.
+
+Autoryzacja decyzji03 obejmuje zbiorczą korektę E01/E02 i focused re-review.
+Następna runda w tym samym feature/session, nowe ledgery, bez zmiany briefu,
+wersji/runtime ani merge/push. Po niej tylko review materialnych zmian i końcowa
+walidacja; dodatkowy niezależny agent nie jest potrzebny do powtórzenia tego review.

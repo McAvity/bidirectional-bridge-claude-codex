@@ -62,3 +62,9 @@ sesji. C01…03 zamknięte w reviews/02-execution.md; 39 Python/8 TS niezależni
 R20-I01 to potwierdzony baseline host problem, nie zaliczone testy ogólne.
 Następne W20-02/03 razem z osobnymi ledgerami, review dopiero całej implementacji.
 Bootstrap/round/resume intencje w namespace głównego checkoutu; bez nowych rootów.
+
+W20-02/03 dostarczone 2fddd673 (b3b81a9e implementation,3470b9f tests/docs).
+Wspólne review REWORK E01/E02 w tym samym rejestrze; zbiorcza korekta w zakresie
+decyzji03. Pełna walidacja: JS623/76fail/7skip, Python188/2fail, pilot140PASS.
+Identyczne failures instalatora na czystej bazie potwierdzają R20-I01; nie PASS.
+Następna runda: ten sam feature/sesja, nowe ledgery, bez runtime/merge/push.
