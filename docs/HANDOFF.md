@@ -7,7 +7,9 @@
 belongs to feature-execute in the supplied parent worktree; planning stays portable.
 Includes physical dependency paths, resumption, per-repo delivery and authorized merge.
 AC-01…10; design only. F-W19 is still unimplemented; existing runtime pinning applies.
-Next: feature-plan F-W20. No product, target-project or runtime changes.
+Current: feature-flow plan prepared in design/multi-repo-execution; W20-01…03 pending.
+Next: independent plan review, decision and human Gate 1. No execution approval.
+No product, target-project or runtime changes.
 
 
 ## 0.6.2 published — 2026-10-31

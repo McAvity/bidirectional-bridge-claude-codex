@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W20-multi-repo-execution",
+  "phase": "plan-review",
+  "brief": "docs/features/F-W20-multi-repo-execution/brief.md",
+  "design": "docs/features/F-W20-multi-repo-execution/design.md",
+  "tasks": [
+    "work-items/W20-P01.md",
+    "work-items/W20-01.md",
+    "work-items/W20-02.md",
+    "work-items/W20-03.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/features/README.md",
+    ".agents/skills/feature-execute/SKILL.md",
+    ".agents/skills/feature-execute/references/local-delivery.md",
+    "shared/protocol/src/scope.ts",
+    "shared/protocol/src/schemas.ts",
+    "tests/test_local_delivery.py",
+    "scripts/plugin-packages/generate.mjs"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "feature-flow: niezależne feature-review planu, rozliczenie ustaleń i proposed decision; Gate 1 przed wykonaniem W20-01…03."
+}

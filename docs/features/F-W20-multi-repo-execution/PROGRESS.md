@@ -12,3 +12,11 @@ jest dostarczona. Zależność i obecny sposób adopcji są opisane w briefie F-
 
 Następny krok: feature-plan F-W20, potem review planu i decyzja o wykonaniu.
 Walidacja dokumentacji:238 plików PASS; git diff --check PASS. Brak testów produktu/pilotów.
+
+## 2026-11-05 — feature-flow / plan
+
+Reuse istniejącego worktree design/multi-repo-execution; produkt bez zmian.
+Utworzono W20-P01 i W20-01…03, design i indeks. Brief niezmieniony.
+Wykonanie niezatwierdzone; następne niezależne review dokładnego commitu planu,
+rozliczenie ustaleń i Gate 1. Brak merge/push. F-W19 plan zatwierdzony na głównym
+branchu, implementacja nieobecna; dystrybucja F-W20 nie zakłada jej istnienia.
