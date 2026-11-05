@@ -46,3 +46,9 @@ a nowemu diagnoza upgrade; pilot tylko izolowane profile/cache/bridge-home.
 Uwagi P03…08 rozliczone w decyzji i kanonicznym planie/taskach. Wymagane P01/P02
 czekają na skupione niezależne potwierdzenie; nie oznaczono ich jeszcze verified.
 Następne: commit tej korekty planu i jedno skupione re-review, potem Gate 1.
+
+Skupione niezależne re-review c8575e7: PASS, R19-P01/P02 resolved i verified.
+Dopisek w reviews/01-plan.md zachowuje pierwotne REWORK, nie nadpisuje historii.
+P03…08 rozliczone; opcjonalne P09/P10 rozliczy najbliższa propozycja Gate 1,
+bez kolejnej pętli. Nie uruchomiono produktu ani testów klientów nowej funkcji.
+Następne: proposed feature-decide całego W19-01…06 i rzeczywista zgoda użytkownika.

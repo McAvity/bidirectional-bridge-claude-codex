@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W19-workflow-versioning",
-  "phase": "plan-review",
+  "phase": "decision",
   "brief": "docs/features/F-W19-workflow-versioning/brief.md",
   "design": "docs/features/F-W19-workflow-versioning/design.md",
   "tasks": [
@@ -26,5 +26,5 @@
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/01.md",
-  "next_action": "feature-flow F-W19: skupione niezależne re-review korekt decyzji01 (P01/P02, P03…08 rozliczone). Po PASS proposed decision Gate 1, bez wykonania."
+  "next_action": "feature-flow F-W19: aktualne niezależne plan review PASS (c8575e7); feature-decide przygotowuje proposed execution scope/Gate 1. Brak zgody na wykonanie."
 }

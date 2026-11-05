@@ -136,3 +136,75 @@ Pełny raport pozostaje w prywatnym artefakcie bridge’a; hash treści:
 Bez produktu, pilota ani akceptacji użytkownika. Reguły kontynuacji wynikają ze skilli
 oraz preferencji użytkownika: step-back przy trzecim review tego samego problemu,
 impas po dwóch rundach bez postępu; sam kolejny numer review nie jest blokadą.
+
+---
+
+## Dopisek 2026-11-05: skupione review korekt (tryb `corrections`), wynik PASS
+
+**Podsumowanie.** Wynik: **PASS**. Obie wymagane poprawki są rozwiązane: R19-P01 i R19-P02 mają status `resolved`. Brief się nie zmienił, a korekty nie osłabiają żadnego AC. Uwagi P03…P08 są rozliczone zgodnie z decyzją 01. Nie znalazłem żadnej nowej regresji, która blokowałaby plan. Plan może przejść do przygotowania proponowanej decyzji Gate 1 (feature-decide). Ten PASS to rekomendacja reviewera. Nie jest zgodą użytkownika na wykonanie ani na pilot.
+
+**Co sprawdziłem**
+- Commit z korektami: `c8575e743c1a9c7b3ad44f2d3e17d0255517c4c6` w worktree planowania. HEAD wskazuje ten commit, worktree jest czysty.
+- Zakres diffu `0a8b418..c8575e7`: 8 plików, +73/−11, tylko dokumentacja: `design.md`, `feature.json`, `PROGRESS.md`, `work-items/W19-01, 02, 04, 05, 06`.
+- Brief: SHA-256 `3856ac25d1c0f754846fefb6a88cc61e67e0ac3fe8b34a01d8a15ae898d6ee31`, zgodny z oczekiwanym. Diff nie zmienia briefu, `reviews/` ani `decisions/`.
+- Punkty odniesienia: review `reviews/01-plan.md` (plan `fb3e6c5`) oraz decyzja `decisions/01.md` (commit `0a8b418`).
+- Niezależność: nie jestem autorem planu ani korekt. Pracowałem tylko w trybie odczytu, niczego nie delegowałem i nie zapisałem.
+
+### Status wymaganych poprawek
+
+**R19-P01: `resolved`.** Każdy z trzech przypadków z review ma teraz w planie konkretny zapis:
+- **(a) Legacy nie zawiera ról runtime'u** (brief w. 45–47).
+  - `design.md`, sekcja Migracja: snapshot legacy bierze tylko `feature-*`, guide i ich zasoby. `using-bridge`, `bridge-upgrade` i reguły API zawsze pochodzą z bieżącego runtime'u.
+  - Plan zabrania przekazywania dawnej `bridge-claude`, bo nadpisałaby obecne role po nazwie pluginu.
+  - Adapter opakowania ma własną proweniencję i hash.
+  - Usunięte zostało zdanie „warianty… także gdy wymagają dawnych kopii w bridge-claude”, które pozwalało na naruszenie.
+  - W19-01, pole Odbiór: fixture „legacy wyodrębnia wyłącznie workflow, aktualne role/API z runtime”.
+- **(b) Profil zgodności legacy** (brief pkt 9).
+  - Legacy bez manifestu dostaje jawny profil zgodności z dokładnym pochodzeniem.
+  - Profil jest sprawdzany względem nowego silnika i formatu dostaw. Legacy nie jest z tej kontroli zwolnione.
+  - Jeśli zgodności nie da się potwierdzić, zależny zakres zostaje zatrzymany.
+  - W19-01 ma odpowiadający temu fixture.
+- **(c) Nowy plugin przy starym pinie** (brief pkt 11, AC-07).
+  - Ten przypadek jest opisany jako osobna gałąź.
+  - Istniejący feature działa dalej na dotychczasowym selektorze i runtime, według udowodnionego starego zestawu. Plugin nie wybiera nowego workflow i nie udaje bindingu.
+  - Nowy feature dostaje diagnozę i wskazanie jednorazowego upgrade. Upgrade nie uruchamia się automatycznie.
+  - Brak dowodu albo brak danego wejścia w starym zestawie kończy się konkretną odmową.
+  - W19-01 ma fixtures osobno dla starego i dla nowego featura.
+
+Tak jak zakładało review, nazwy i formaty zostają w kontrakcie W19-01.
+
+**R19-P02: `resolved`.** Zapis jest w `design.md` (akapit o pilocie) i w W19-06 (w. 19–23):
+- Pilot działa tylko w izolowanych konfiguracjach i cache'ach obu klientów (`CODEX_HOME` / `CLAUDE_CONFIG_DIR`), w osobnym bridge-home i na syntetycznych projektach.
+- Instalacja A/B, usuwanie cache'u, trust i restarty nigdy nie dotykają osobistych profili.
+- Przed startem trzeba potwierdzić efektywne ścieżki. Jeśli klient nie honoruje izolacji, pilot zatrzymuje się przed zmianą profilu.
+- Logowanie subskrypcyjne wolno użyć tylko wspieraną drogą w izolacji. Jeśli to niemożliwe: checkpoint i konkretne pytanie, bez przenoszenia próby do prawdziwego profilu ani na API.
+- Nie ma osobistych zmian, więc nie trzeba niczego przywracać. Dowody prywatne zostają zachowane.
+- W19-01 sprawdza wcześniej efektywne ścieżki i dostęp do logowania.
+- Budżet pilota się nie zmienił.
+
+### Rozliczenie uwag nieblokujących
+- **P03:** design mówi teraz, że równoległość wymaga replanu zależności (W19-04 zależy od 03). Rozliczone.
+- **P04:** design i W19-05: doctor i docs wykrywają stare osobiste wejścia `bridge-claude:feature-*` i zalecają upgrade lub wyłączenie, bez usuwania i bez obietnicy kontroli nad załadowanymi skillami. Rozliczone.
+- **P05:** design i W19-04: gwarancja dotyczy tylko kierunku Codex-manager → Claude-worker. Nieobsługiwany wykonawca jest odrzucany pod nowym bindingiem. Interaktywne klienty i standalone pozostają w zakresie. Rozliczone.
+- **P06:** design i W19-01 opisują przejście ze ścieżki roboczej do docelowego ID, w tym kolizję i przerwanie, bez drugiego cyklu życia featura. Rozliczone.
+- **P07:** design i W19-02: we wspólnym marketplace porównuje się tylko wpis drugiego komponentu. Paczki nadal muszą być identyczne co do bajtu. Rozliczone.
+- **P08:** decyzja 01 świadomie zostawia to ryzyko, bez wczesnej próby z modelem. Plan nie wymagał zmiany. Rozliczone.
+
+### Drobne uwagi, nieblokujące (nie tworzą nowej bramki)
+- **R19-P09:** reguła izolacji jest zapisana dla pilota i dla części bez modeli w W19-06. Dla prób na prawdziwych klientach bez modeli w W19-01 i W19-04 nie jest zapisana wprost. Najprościej dopisać jedno zdanie w proponowanej decyzji Gate 1: te próby też działają tylko w izolowanych profilach.
+- **R19-P10:** wiersz 07 tabeli dowodów nie wymienia okna „nowy plugin + stary pin”. Ten przypadek jest jednak pokryty fixtures W19-01. Dopisanie jest opcjonalne.
+- Literówki typograficzne w nowym tekście („od03”, „obecnie04”) są do poprawienia przy okazji.
+
+### Ograniczenia, które nadal pozostają (wykonalność)
+- Nie wiadomo jeszcze, czy oba klienty honorują `CODEX_HOME` / `CLAUDE_CONFIG_DIR` dla pluginów, cache'u i trust. Nie wiadomo też, czy logowanie subskrypcyjne zadziała w izolacji. Rozstrzygną to próby W19-01, a regułę stopu plan już ma.
+- Jeśli profil zgodności legacy dla zestawów 0.6.x nie przejdzie kontroli, stary feature zatrzyma się, zamiast kontynuować. W takim przypadku AC-07 wymagałoby dowodu z W19-01 albo jawnego switch.
+- Ponowne wczytanie instrukcji w tej samej sesji da się udowodnić dopiero w pilocie W19-06 (P08).
+- Nie uruchamiałem testów, buildów, klientów ani modeli, bo plan nie zawiera kodu.
+
+**Następny krok:** feature-decide przygotowuje proponowaną decyzję Gate 1 (cały zakres i pilot z izolacją, opcjonalnie z P09). Wykonanie nadal wymaga zgody użytkownika.
+
+
+Nota koordynatora: pełny raport zachowany w prywatnym artefakcie, hash
+`c6884875f41b58d9274601eeea55eb262d1cd51df53017c17879f36a41926cd5`.
+P01/P02 independently verified; P09/P10 do rozliczenia przy propozycji Gate 1,
+bez nowej pętli korekt lub kolejnego review. Cały produkt nadal niezaimplementowany.
