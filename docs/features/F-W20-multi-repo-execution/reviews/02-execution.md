@@ -128,3 +128,54 @@ Autoryzacja decyzji03 obejmuje zbiorczą korektę E01/E02 i focused re-review.
 Następna runda w tym samym feature/session, nowe ledgery, bez zmiany briefu,
 wersji/runtime ani merge/push. Po niej tylko review materialnych zmian i końcowa
 walidacja; dodatkowy niezależny agent nie jest potrzebny do powtórzenia tego review.
+
+
+## 2026-11-05 — focused corrections i zintegrowana dostawa: PASS
+
+Reviewer: koordynator Codex, niezależny od autora implementacji Claude, nie od
+koordynacji. Sprawdzono task_vd6jq8ga6c, BASE01eb20da → HEAD09b88a32, kod fd01ab36.
+Receipt PASS: dokładna baza, oba commity w scope, nowe ledgery02, wcześniejsze
+ledgery/koordynatorskie pliki nietknięte, czysty worktree. Brief ma nadal SHA-256
+`ae8bca3467690b6ab884b40ddfcfabc8bdeac4986a0694cb0ffb3abd33ebdc7d`.
+
+- R20-E01 **resolved**: parent.baseline i klasyfikacja bez prefiksu dla parent;
+  ta sama niezależna reprodukcja własnego `app/x.txt` teraz exit1/PARTIAL z findingiem.
+  Testy obejmują także nietknięty preexisting, nowy foreign i overlap, bez czyszczenia.
+- R20-E02 **resolved**: REPO_MAP path+SHA256 zamiast inline, walidacja pliku/hash
+  przed preflight/reuse/receipt; scope pozostaje autoryzacją rundy. Test na realnym
+  TaskSpecSchema odrzuca duży inline i akceptuje referencję, adapter przenosi ją
+  dosłownie. Model w tym teście jest atrapą. Brak/tamper/symlink mapy odrzucane.
+  Obie role wymagają pełnego preflight; `identity` nie jest jego substytutem.
+- R20-C01…03 pozostają **resolved**, 39 dawnych probes PASS. Nie ma nowej zmiany,
+  która uzasadniałaby otwieranie tych ustaleń albo trzeci audyt tego samego problemu.
+- R20-I01 **osobne ograniczenie środowiska**, open: pełne suite nie są zielone.
+  Na09b88a32 JS625PASS/76FAIL/7skip, Python194PASS/2FAIL. Listy nieudanych przypadków
+  identyczne z czystą bazą417ddc2, bez nowych failures. Nie wyłączono guardów.
+
+Build, packages:check (digest155ee41b931f), dokumentacja251 i diff check PASS.
+Pilot tooling140/140 na2fddd673; odtąd brak zmian tools/pilot i zależności.
+Komendy, wersje, zakres i pokrycie AC w [ledgerze integracji](../execution/integration/01.md).
+Wszystkie nowe testy funkcji (41 helper +39 kontrakt +10 TS transport) przechodzą,
+podobnie testy local-delivery/exchange/pakietów. Nie przypisujemy ich modelom.
+
+### R20-N01 — doprecyzowanie zakresu kontroli pinów (P3, nonblocking follow-up)
+
+Helper `integration` mechanicznie porównuje SHA wpisu `git ls-tree`; pole `pins`
+obsługuje więc gitlinki, a nie dowolny format lockfile/manifestu pakietów. Instrukcja
+§8 ogólnie wymaga aktualizacji pinów wszystkich repo i review wynikowej integracji;
+konkretne pliki zależności nadal wymagają kontroli projektu przez koordynatora.
+Dowód: `integration()` / pętla pins, test IntegrationStatus na gitlinku. Skutek:
+nie traktować zielonego helpera jako dowodu poprawności dowolnego lockfile.
+Rekomendacja: doprecyzować opis pola pins przy następnej zmianie dokumentacji;
+nie dodawać uniwersalnego parsera ani nowej rundy featura. Status: deferred jako
+nieblokujące doprecyzowanie dokumentacji w ramach stałej preferencji użytkownika.
+Nie zwalnia to z obecnego wymagania review wszystkich zależności/pinów (AC-09).
+
+### Wynik i granice
+
+Cały uzgodniony wynik W20-01…03 dostarczony na poziomie workflow/helpera oraz
+zatwierdzonych syntetycznych scenariuszy; brak wymaganych korekt produktu.
+PASS dotyczy tego zakresu, nie pełnego zielonego środowiska ani dowodu posłuszeństwa
+modeli. Nie było real-agent pilota nowej procedury, zmian rzeczywistych child repo,
+merge/push/release/upgrade. Helper jest tylko do odczytu, nie sandboxem/runtime guardem.
+Rekomendacja Gate2: przedstawić tę lokalną dostawę do rzeczywistego odbioru użytkownika.

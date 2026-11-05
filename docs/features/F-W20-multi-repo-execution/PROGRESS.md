@@ -68,3 +68,20 @@ Wspólne review REWORK E01/E02 w tym samym rejestrze; zbiorcza korekta w zakresi
 decyzji03. Pełna walidacja: JS623/76fail/7skip, Python188/2fail, pilot140PASS.
 Identyczne failures instalatora na czystej bazie potwierdzają R20-I01; nie PASS.
 Następna runda: ten sam feature/sesja, nowe ledgery, bez runtime/merge/push.
+
+## 2026-11-05 — implementacja gotowa, Gate 2
+
+Dostawa09b88a325bef3588152268850dbcbb3028669fbe, kod fd01ab368be9a41cce952652708c5e2f0c22a2e7.
+Task task_vd6jq8ga6c DONE. E01/E02 resolved, C01…03 nadal resolved; niezależne
+review02 PASS. W20-01…03 done. Pełne komendy/pokrycie/limity: execution/integration/01.md.
+Końcowe JS625PASS/76FAIL/7skip, Python194PASS/2FAIL; wszystkie failure names jak
+na czystej bazie. Pilot140PASS (niezmieniony), build/pakiety/docs/diff PASS.
+R20-I01 to otwarte ograniczenie hosta; R20-N01 nieblokujące doprecyzowanie zakresu
+kontroli pinów helpera, do kolejnej partii. Brak real-agent pilota nowej procedury.
+
+Następne: rzeczywisty odbiór użytkownika (Gate2, q-01). Feature/root niezamknięte,
+bez aktywnej rundy. Intencje i bridge stan nadal w namespace głównego checkoutu;
+root task_1kxkg971wd; żadnej nowej sesji/zastępczego taska. Po zgodzie zapisać
+feature-decide, końcowy commit, bridge_feature_accept i root completion we właściwej
+kolejności. Nie trzeba kolejnego review/testów bez nowych zmian. Bez merge/push,
+release ani upgrade runtime; główny checkout5257ca6 i runtime0.6.2 nietknięte.

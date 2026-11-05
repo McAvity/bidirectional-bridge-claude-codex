@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W20-multi-repo-execution",
-  "phase": "execution",
+  "phase": "decision",
   "brief": "docs/features/F-W20-multi-repo-execution/brief.md",
   "design": "docs/features/F-W20-multi-repo-execution/design.md",
   "tasks": [
@@ -24,7 +24,7 @@
   ],
   "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/03.md",
-  "next_action": "W20-02/03 dostarczone 2fddd673, review REWORK E01/E02. W tej samej sesji Claude wykonać jedną partię korekt i nowe ledgery; następnie focused review i Gate 2. R20-I01 odtworzone na bazie, nie PASS.",
+  "next_action": "feature-flow Gate 2: oczekuje rzeczywistego odbioru całej lokalnej dostawy 09b88a32 (kod fd01ab36), review02 PASS. W20-01…03 done. R20-I01 bazowe failures hosta i N01 drobne doprecyzowanie jawne w integration/01. Po zgodzie feature-decide + końcowy commit + bridge_feature_accept/root closure; bez merge/push/upgrade.",
   "bridge": {
     "feature_id": "F-W20-multi-repo-execution",
     "parent_task_id": "task_1kxkg971wd"
