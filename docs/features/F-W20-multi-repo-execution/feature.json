@@ -22,9 +22,9 @@
     "claude/claude-side/src/adapters/claude-code-runner.ts",
     "scripts/native-bridge-mcp.mjs"
   ],
-  "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/01-plan.md",
+  "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/03.md",
-  "next_action": "feature-flow Gate 1 zatwierdzona decyzją03. Wykonać W20-01 przez bridge, lokalne review kontraktu, następnie W20-02/03, integrację i poprawki bez ponowienia zgody. Gate 2 przed odbiorem.",
+  "next_action": "W20-01 kontrakt PASS e84845b6. Kontynuować już zatwierdzone W20-02 i następnie W20-03 w jednej sesji Claude; pełny odbiór po integracji. R20-I01 host baseline failure zachować w dowodach.",
   "bridge": {
     "feature_id": "F-W20-multi-repo-execution",
     "parent_task_id": "task_1kxkg971wd"

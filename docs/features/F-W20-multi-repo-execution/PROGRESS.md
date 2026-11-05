@@ -56,3 +56,9 @@ operacje Git/receipts/commity dotyczą rzeczywistego korzenia tego worktree. Nie
 przypisujemy jego stanu obcej bazie ani nie uruchamiamy drugiego serwera.
 Produkt/review F-W20: osobny branch, kod głównego checkoutu/runtime bez zmian.
 Następne W20-01, lokalne review, potem cały już autoryzowany W20-02/03.
+
+W20-01: d4fd6b44→e84845b6, task_4tpqsy4j2q DONE po jednej poprawce w tej samej
+sesji. C01…03 zamknięte w reviews/02-execution.md; 39 Python/8 TS niezależnie PASS.
+R20-I01 to potwierdzony baseline host problem, nie zaliczone testy ogólne.
+Następne W20-02/03 razem z osobnymi ledgerami, review dopiero całej implementacji.
+Bootstrap/round/resume intencje w namespace głównego checkoutu; bez nowych rootów.
