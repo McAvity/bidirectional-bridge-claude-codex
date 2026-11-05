@@ -24,7 +24,7 @@
     "shared/control-plane/src/store/state-store.ts",
     "claude/claude-side/src/adapters/claude-code-runner.ts"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
   "latest_decision": null,
-  "next_action": "feature-flow F-W19: niezależne feature-review w trybie plan; potem feature-decide przygotuje Gate 1 dla całego W19-01…06. Brak zgody na wykonanie."
+  "next_action": "feature-flow F-W19: feature-decide dla delegowanych korekt planu R19-P01/P02 i rozliczenia uwag; wykonanie nadal bez zgody."
 }

@@ -29,3 +29,9 @@ wpływu, jeden rejestr review, bez osobnej pętli dla każdego drobiazgu.
 Następne: commit planu → niezależne review → ewentualne delegowane poprawki planu
 → proposed decision obejmująca całość i budżet pilota → pytanie Gate 1. Bez kodu,
 push/merge/release/upgrade i bez uruchamiania pilota przed zgodą.
+
+Niezależny Claude, review planu fb3e6c5: REWORK. Dwie wymagane korekty tekstu
+R19-P01 (legacy/zgodność/okno przejściowe) i P02 (izolacja klientów w pilocie).
+Uwagi P03…08 pozostają w tym samym rejestrze do rozliczenia jedną partią.
+Brief niezmieniony; reviewer wyłącznie odczytał dokumenty/kod, bez implementacji.
+Następne: delegowana decyzja korekt planu, poprawki i skupione re-review.
