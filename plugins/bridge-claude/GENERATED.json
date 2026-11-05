@@ -9,7 +9,7 @@
     "docs/features/README.md",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "1950964d6c9f50aa0d4f1f305a7ffbef66d85d52821702c81f2677bcc2479e88",
+  "source_digest": "5d8a91e8b7c64939fc417acb3ba40287b5d405243ddf6197f2c623965d25d54d",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -201,7 +201,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "a29421a429916e3d9b94ec47b1dce5d4821fda3d08f6ec17643fd9d371ca62cf"
+      "sha256": "0e0cb32b65cfef4cf2ad6e52ae4136dd89cfe0c22388f14c160a7b69049cca58"
     }
   ]
 }

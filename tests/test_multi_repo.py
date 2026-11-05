@@ -441,11 +441,8 @@ class DigestAndReuse(World):
         self.assertEqual(helper('reuse', '--contract', c, '--repo', 'child-a', '--record', self.save('r.json', {'kind': 'guess'}))[0], 2)
 
 
-class Receipt(World):
-    def setUp(self):
-        super().setUp()
-        self.c = self.standard()
-        self.base = self.c['parent']['base']
+class Delivers:
+    """An executor's delivery (child commits, parent work, ledger + sidecar) and the coordinator receipt."""
 
     def deliver(self, mutate=None, evidence_extra=None, outcome='COMPLETE', worktree='clean', package=False,
                 child_files=None):
@@ -483,6 +480,13 @@ class Receipt(World):
         s = self.work / 'summary.txt'
         s.write_text(summary)
         return helper('receipt', '--contract', self.save('c.json', contract or self.c), '--summary', str(s))
+
+
+class Receipt(Delivers, World):
+    def setUp(self):
+        super().setUp()
+        self.c = self.standard()
+        self.base = self.c['parent']['base']
 
     def test_complete_delivery_passes(self):
         self.c['parent']['package'] = True
@@ -635,6 +639,160 @@ class ReadOnly(World):
                      ['receipt', '--contract', cp, '--summary', str(summary)]):
             helper(*args)
         self.assertEqual(snapshot(self.root), before)
+
+
+
+class Scenarios(Delivers, World):
+    """W20-03: the accepted scenarios end to end, with the helper CLI and ordinary Git only.
+
+    The fixture plays the agent: it prepares checkouts with Git as the procedure says, commits as an
+    executor would, and asks the helper. No model runs; this proves the procedure's checks, not that
+    an agent performs them (no real-agent pilot was part of this scope).
+    """
+
+    def prepared(self):
+        self.c = self.standard()
+        self.base = self.c['parent']['base']
+
+    def test_documents_on_main_new_parent_without_child_then_routine_preparation(self):
+        """AC-01/AC-10: the plan lives in the parent; the child appears only at execute."""
+        self.assertFalse((self.parent / '.feature-repos').exists())
+        self.assertEqual(out(self.parent, 'ls-files', 'docs/features/F-X'), 'docs/features/F-X/brief.md')
+        rc, f = helper('identity', '--parent', str(self.parent), '--alias', f'{TASK_DIR}/child-a')
+        self.assertEqual(rc, 1)  # absent child: a preparation step, not a user question
+        self.prepared()
+        rc, res = helper('preflight', '--contract', self.save('c.json', self.c))
+        self.assertEqual(rc, 0, res)
+        self.assertEqual(out(self.parent, 'status', '--porcelain=v1', '--untracked-files=all'), '')
+
+    def test_clone_fallback_keeps_its_history_inside_the_parent(self):
+        """O2 fallback: a clone at the alias; its gitdir is inside the parent."""
+        self.exclude()
+        alias = f'{TASK_DIR}/child-a'
+        git(self.root, 'clone', '-q', str(self.src['child-a']), str(self.parent / alias))
+        git(self.parent / alias, 'switch', '-q', '-c', 'design/x')
+        e = self.entry('child-a', alias, kind='clone')
+        rc, res = helper('preflight', '--contract', self.save('c.json', self.contract({'child-a': e})))
+        self.assertEqual(rc, 0, res)
+        self.assertTrue(res['repos']['child-a']['facts']['common_dir'].startswith(str(self.parent)))
+        head = commit(self.parent / alias, {'src/c.txt': 'c\n'})
+        self.assertEqual(out(self.parent / alias, 'rev-list', '--branches', '--not', '--remotes'), head)  # handoff list (O1)
+
+    def test_branch_collision_and_foreign_dirt_are_preserved(self):
+        """AC-03."""
+        src = self.src['child-a']
+        foreign = commit(src, {'src/other.txt': 'o\n'}, 'other work')
+        git(src, 'branch', 'design/x', foreign)
+        write(src / 'src' / 'uncommitted.txt', 'someone else\n')
+        self.assertEqual(git(src, 'show-ref', '--verify', '--quiet', 'refs/heads/design/x', check=False).returncode, 0)
+        self.exclude()
+        alias = self.worktree('child-a', src, branch=f'design/x--{FEATURE}', base='HEAD~1')
+        rc, res = helper('preflight', '--contract', self.save('c.json', self.contract(
+            {'child-a': self.entry('child-a', alias, branch=f'design/x--{FEATURE}')})))
+        self.assertEqual(rc, 0, res)
+        self.assertEqual(out(src, 'rev-parse', 'design/x'), foreign)
+        self.assertEqual((src / 'src' / 'uncommitted.txt').read_text(), 'someone else\n')
+
+    def test_alias_to_a_shared_checkout_blocks_writes(self):
+        """AC-04: a path into the user's shared checkout is detected before any write."""
+        self.exclude()
+        (self.parent / TASK_DIR).mkdir(parents=True)
+        os.symlink(self.src['child-a'], self.parent / TASK_DIR / 'child-a')  # the shared main checkout
+        e = self.entry('child-a', f'{TASK_DIR}/child-a', branch='main')
+        rc, res = helper('preflight', '--contract', self.save('c.json', self.contract({'child-a': e})))
+        self.assertEqual(rc, 1)
+        self.assertIn('external alias without verified write access', ' '.join(res['repos']['child-a']['reasons']))
+
+    def test_resume_without_drift_reuses_and_with_drift_rechecks(self):
+        """AC-07: no second set of worktrees; a changed branch or binding is checked again."""
+        self.prepared()
+        cp = self.save('c.json', self.c)
+        e = self.c['repos']['child-a']
+        rec = self.save('r.json', {'kind': 'checkpoint', 'feature': FEATURE, 'repo': 'child-a', 'branch': 'design/x',
+                                   'branch_created': True, 'base': e['base'], 'realroot': e['realpath'],
+                                   'git_dir': e['git_dir'], 'initial_dirt': {}})
+        worktrees = out(self.src['child-a'], 'worktree', 'list', '--porcelain').count('worktree ')
+        for _ in range(2):
+            self.assertEqual(helper('reuse', '--contract', cp, '--repo', 'child-a', '--record', rec)[0], 0)
+            self.assertEqual(helper('preflight', '--contract', cp)[0], 0)
+        self.assertEqual(out(self.src['child-a'], 'worktree', 'list', '--porcelain').count('worktree '), worktrees)
+        child = self.parent / e['alias']
+        git(child, 'switch', '-q', '-c', 'someone-else')
+        self.assertEqual(helper('reuse', '--contract', cp, '--repo', 'child-a', '--record', rec)[0], 1)
+        self.assertEqual(helper('preflight', '--contract', cp)[0], 1)
+        git(child, 'switch', '-q', 'design/x')
+        (child / 'node_modules').mkdir()
+        os.symlink(self.src['child-b'], child / 'node_modules' / 'b')  # binding drift into a shared checkout
+        self.c['repos']['child-a']['bindings'] = ['node_modules/b']
+        rc, res = helper('preflight', '--contract', self.save('c.json', self.c))
+        self.assertEqual(rc, 1)
+        self.assertEqual(res['repos']['child-a']['bindings'], {'node_modules/b': 'foreign'})
+
+    def test_missing_child_manifest(self):
+        self.prepared()
+        summary, _ = self.deliver()
+        bad = summary.replace(SIDECAR, LEDGER_DIR + '02.repos.json')
+        rc, res = self.run_receipt(bad)
+        self.assertEqual(rc, 1)
+        self.assertIn('sidecar not in parent HEAD', res['findings'])
+
+    def test_local_integration_before_merge_needs_no_merge(self):
+        """AC-08/AC-09: the delivered set is tested and received on feature branches only."""
+        self.prepared()
+        targets = {r: out(self.src[r], 'rev-parse', 'main') for r in self.src}
+        summary, heads = self.deliver()
+        rc, res = self.run_receipt(summary)
+        self.assertEqual((rc, res['outcome']), (0, 'COMPLETE'), res)
+        self.assertEqual({r: out(self.src[r], 'rev-parse', 'main') for r in self.src}, targets)
+        m = json.loads(out(self.parent, 'show', f'HEAD:{SIDECAR}'))
+        self.assertEqual({k: v for k, v in m['integration']['tested_set'].items() if k in heads}, heads)
+
+    def test_full_flow_through_interrupted_merge_and_retest(self):
+        """AC-09: dependency-first merge, interruption, continuation, retest of new SHAs."""
+        self.prepared()
+        summary, heads = self.deliver()
+        self.assertEqual(self.run_receipt(summary)[0], 0)
+        for r in self.src:
+            commit(self.src[r], {'src/concurrent.txt': 'c\n'}, 'concurrent main work')  # forces non-FF
+        rec = {'schema': 'multi-repo-integration-v1', 'order': ['child-a', 'child-b'],
+               'repos': {r: {'path': str(self.src[r]), 'target': 'main', 'delivered': heads[r], 'state': 'pending'}
+                         for r in self.src}}
+        git(self.src['child-a'], 'merge', '-q', '--no-edit', heads['child-a'])
+        rec['repos']['child-a'].update(state='merged', integrated=out(self.src['child-a'], 'rev-parse', 'HEAD'))
+        rc, res = helper('integration', '--record', self.save('i.json', rec))
+        self.assertEqual((rc, res['status'], res['next']), (1, 'PARTIAL', 'child-b'))  # interrupted: visible
+        merged_a = out(self.src['child-a'], 'rev-parse', 'main')
+        git(self.src['child-b'], 'merge', '-q', '--no-edit', heads['child-b'])
+        rec['repos']['child-b'].update(state='merged', integrated=out(self.src['child-b'], 'rev-parse', 'HEAD'))
+        rc, res = helper('integration', '--record', self.save('i.json', rec))
+        self.assertEqual((rc, res['status']), (0, 'COMPLETE'), res)
+        self.assertTrue(all(res['repos'][r]['retest_required'] for r in self.src))
+        self.assertEqual(out(self.src['child-a'], 'rev-parse', 'main'), merged_a)  # continuation did not redo child-a
+
+    def test_shared_metadata_and_caches_are_not_violations(self):
+        self.prepared()
+        cache = self.root / 'home' / '.cache' / 'tool'
+        write(cache / 'blob', 'cached\n')
+        child = self.parent / self.c['repos']['child-a']['alias']
+        (child / '.cache-link').symlink_to(cache)
+        git(child, 'config', '--local', 'core.abbrev', '12')  # common config of the source: shared metadata
+        excl = Path(out(self.parent, 'rev-parse', '--path-format=absolute', '--git-path', 'info/exclude'))
+        self.assertEqual(os.path.realpath(excl), os.path.realpath(self.main / '.git' / 'info' / 'exclude'))
+        rc, res = helper('preflight', '--contract', self.save('c.json', self.c))
+        self.assertEqual(rc, 0, res)
+
+    def test_external_zip_covers_only_the_parent(self):
+        """AC-10: an exchange archive never packs ignored child checkouts."""
+        self.prepared()
+        archive = self.work / 'parent.zip'
+        exporter = REPO_ROOT / '.agents/skills/feature-exchange/scripts/feature_exchange.py'
+        p = subprocess.run([sys.executable, '-I', str(exporter), 'export', '--repo', str(self.parent), '--feature',
+                            'docs/features/F-X', '--purpose', 'plan-review', '--output', str(archive)],
+                           capture_output=True, text=True, env=ENV)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        import zipfile
+        names = zipfile.ZipFile(archive).namelist()
+        self.assertFalse(any('.feature-repos' in n or n.startswith('src/') for n in names), names)
 
 
 if __name__ == '__main__':

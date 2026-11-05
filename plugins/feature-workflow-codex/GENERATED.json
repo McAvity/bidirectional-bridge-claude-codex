@@ -15,7 +15,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "febb087e19855d61d4b0c17451fcc774306ac77d53b99d4de779c12b28f25ca2",
+  "source_digest": "2f7171721d6e7c5aeb431fd218e540833e25a4f827d5af11c13fb2e4741e8889",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -103,7 +103,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "44fd359e3477d84446e946315bd5f851661edbc47b31ed939c4784e24e613a06"
+      "sha256": "5449b1af38341bcccd1cd32b63753778bdc40f29074b622784ea580d26a48f02"
     }
   ]
 }

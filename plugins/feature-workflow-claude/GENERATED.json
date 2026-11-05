@@ -15,7 +15,7 @@
     "scripts/workflow-source/select-source.mjs",
     "scripts/plugin-packages/templates/workflow-source-preamble.md"
   ],
-  "source_digest": "febb087e19855d61d4b0c17451fcc774306ac77d53b99d4de779c12b28f25ca2",
+  "source_digest": "2f7171721d6e7c5aeb431fd218e540833e25a4f827d5af11c13fb2e4741e8889",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -103,7 +103,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "a29421a429916e3d9b94ec47b1dce5d4821fda3d08f6ec17643fd9d371ca62cf"
+      "sha256": "0e0cb32b65cfef4cf2ad6e52ae4136dd89cfe0c22388f14c160a7b69049cca58"
     }
   ]
 }
