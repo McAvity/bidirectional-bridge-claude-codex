@@ -103,7 +103,8 @@ export function finalOutcome(code, { apply = true, stream = process.stdout, env 
       : "PLAN COMPLETE: no project upgrade applied."
     : code === 2 ? "Runtime selection OK; verification INCOMPLETE. Upgrade is NOT fully verified."
       : "FAILED: upgrade did not complete. See the failed stage above.";
-  return `FINAL: ${statusLabel(label, severity, { stream, env })} (exit ${code}) | ${text}`;
+  const icon = code === 0 ? "🟢" : code === 2 ? "🟡" : "🔴";
+  return `${icon} FINAL: ${statusLabel(label, severity, { stream, env })} (exit ${code}) | ${text}`;
 }
 
 // Private persistent SQLite snapshots, not raw DB/WAL copies. The CLI plan runs first.

@@ -141,3 +141,7 @@ failed sudo/retry, platform/interruption restrictions, mixed blockers, summary o
 and read-only plan outputs. Syntax/docs/diff checks PASS. No real project apply, runtime
 change, new release or push. User may rerun the same upgrade command with their profile;
 terminal sudo authentication can now be requested at the doctor stage too.
+
+Final-output follow-up (2026-11-05): added literal 🟢/🟡/🔴 before FINAL, in addition
+to terminal text colors. Exit codes and upgrade behavior unchanged. Checked all three
+rendered outcomes directly; no project update repeated.
