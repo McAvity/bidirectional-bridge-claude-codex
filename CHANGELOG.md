@@ -11,6 +11,31 @@ explicitly.
 
 ## Unreleased
 
+## 0.7.0 — 2026-11-05 (experimental)
+
+### Added
+
+- Multi-repository execution through the existing `feature-execute`: prepare or reuse
+  isolated child worktrees/clones at execution time, protect other checkouts and resolve
+  dependency bindings before commands can write through them. Planning does not require
+  creating the future execution environment.
+- A read-only `multi_repo.py` helper for checkout identity, preflight, checkpoint reuse,
+  per-repository delivery receipts and integration records. Parent and child uncommitted
+  work are checked separately; a clean parent cannot hide unfinished child work.
+- A SHA-256-pinned map reference in the bridge round, avoiding the objective size limit.
+  Both coordinator and executor follow the same procedure; the map grants no extra scope.
+- Dependency-first integration guidance, truthful partial-merge state and explicit
+  single-repository coverage for external ZIP handoffs. Generated packages carry the
+  procedure, helper and role references.
+
+No MCP protocol or database schema change. Existing single-repository delivery is unchanged.
+This is workflow guidance with read-only checks, not a new process sandbox or automatic
+multi-repository merge service. Helper pin checks cover gitlinks; other dependency formats
+still need their project-specific checks. No real-agent multi-repository pilot is claimed.
+See [F-W20 validation](docs/features/F-W20-multi-repo-execution/execution/integration/01.md)
+and [release progress](docs/tasks/w20-release.md). Workflow/runtime version separation
+(F-W19) is still pending; adoption requires a project runtime upgrade.
+
 ## 0.6.2 — 2026-10-31 (experimental)
 
 ### Fixed

@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-claude",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills",
@@ -13,7 +13,7 @@
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
-      "sha256": "f53d53e0fd374ddb2c761ddeebb32c483ecdb6ff019c202bbda213a6f5319448"
+      "sha256": "aa9af64a2be477d756dae5ac7b73f3611d292e68cbce11ad73b1e2b0fc7751ff"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
