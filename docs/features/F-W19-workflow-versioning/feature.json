@@ -26,5 +26,5 @@
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
-  "next_action": "Gate 1 zatwierdzona decyzją03. Scal przygotowanie do feature-workflow; następnie feature-execute F-W19 może rozpocząć W19-01…06 w osobnym worktree wykonawczym w ramach istniejącej zgody i budżetu. Nie powtarzać planowania/review/Gate 1. Implementacja i pilot nieuruchomione; Gate 2 nadal przed odbiorem."
+  "next_action": "Gate 1 zatwierdzona decyzją03; plan scalony do feature-workflow w2056a51. Następne: feature-execute F-W19 rozpoczyna W19-01…06 w osobnym worktree wykonawczym, w ramach istniejącej zgody i budżetu. Bez ponawiania design/plan/review/Gate 1. Implementacja/pilot nieuruchomione; Gate 2 przed odbiorem."
 }

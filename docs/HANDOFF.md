@@ -1,11 +1,12 @@
 # Current handoff
 
-## F-W19 — Gate 1 zatwierdzona, plan do integracji, 2026-11-05
+## F-W19 — Gate 1 zatwierdzona, plan scalony, 2026-11-05
 
 [Decyzja03](features/F-W19-workflow-versioning/decisions/03.md) zapisuje rzeczywistą
 zgodę na cały W19-01…06 i pilot z propozycji02 oraz polecenie merge dokumentacji
 do feature-workflow. [Review planu PASS](features/F-W19-workflow-versioning/reviews/01-plan.md).
-Implementacja/pilot nieuruchomione; taski pending. Następne po merge: feature-execute
+Scalenie do feature-workflow: fast-forward2056a51, kontrole dokumentacji PASS.
+Implementacja/pilot nieuruchomione; taski pending. Następne: feature-execute
 F-W19 w osobnym worktree, zaczynając od W19-01, bez ponawiania Gate 1.
 [Progress](features/F-W19-workflow-versioning/PROGRESS.md) zawiera checkpoint i granice.
 Gate 2 przed odbiorem produktu; bez publikacji/upgrade i zmiany aktywnego runtime’u.

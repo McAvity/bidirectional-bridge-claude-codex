@@ -91,3 +91,10 @@ Metoda: osobny commit decyzji/statusów na plan/workflow-versioning → lokalne
 scalenie fast-forward do feature-workflow → linki/JSON/diff/status/ancestry.
 Bez push, publikacji, runtime upgrade, nowych modeli i zmiany sąsiedniego F-W20.
 Po integracji źródłem wznowienia jest feature.json i zatwierdzona decyzja03.
+
+Scalenie wykonane: feature-workflow417ddc2 → 2056a51, fast-forward,
+bez konfliktów. Zawiera plan, taski, niezależne review i decyzję03 ze zgodą.
+Po merge: check-doc-links241 PASS, git diff --check PASS, ancestor plan branch PASS,
+drzewo czyste. Tylko dokumentacja/taski; testy produktu niepotrzebne dla tego kroku.
+Następne: feature-execute w osobnym worktree od aktualnego feature-workflow,
+W19-01 jako pierwszy task; bez ponownego Gate 1. Nie wykonano push ani modeli.
