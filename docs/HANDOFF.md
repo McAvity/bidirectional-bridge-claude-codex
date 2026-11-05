@@ -1,15 +1,14 @@
 # Current handoff
 
-## F-W19 — plan zrecenzowany, oczekuje Gate 1, 2026-11-05
+## F-W19 — Gate 1 zatwierdzona, plan do integracji, 2026-11-05
 
-[Projekt](features/F-W19-workflow-versioning/design.md),
-[review PASS](features/F-W19-workflow-versioning/reviews/01-plan.md) na c8575e7 i
-[propozycja02](features/F-W19-workflow-versioning/decisions/02.md): W19-P01 done,
-W19-01…06 pending. Wykonanie/pilot wymaga odpowiedzi użytkownika na Gate 1.
-Po zgodzie: decyzja03 i feature-execute całego zakresu, bez powtarzania review/gate.
-[Progress](features/F-W19-workflow-versioning/PROGRESS.md) zawiera checkpoint.
-Branch plan/workflow-versioning, baza417ddc2; wyłącznie dokumenty. Bez implementacji,
-publikacji, bridge featura, upgrade projektów lub zmiany aktywnego runtime’u.
+[Decyzja03](features/F-W19-workflow-versioning/decisions/03.md) zapisuje rzeczywistą
+zgodę na cały W19-01…06 i pilot z propozycji02 oraz polecenie merge dokumentacji
+do feature-workflow. [Review planu PASS](features/F-W19-workflow-versioning/reviews/01-plan.md).
+Implementacja/pilot nieuruchomione; taski pending. Następne po merge: feature-execute
+F-W19 w osobnym worktree, zaczynając od W19-01, bez ponawiania Gate 1.
+[Progress](features/F-W19-workflow-versioning/PROGRESS.md) zawiera checkpoint i granice.
+Gate 2 przed odbiorem produktu; bez publikacji/upgrade i zmiany aktywnego runtime’u.
 
 ## 0.6.2 published — 2026-10-31
 
@@ -22,7 +21,7 @@ not executed. Affected project's readonly eligibility passes; activation is defe
 process inspection refuses and sudo authorization needs the user's terminal. Private
 stable apply/backup/exact-resume kit prepared outside Git. Own active runtime unchanged.
 
-## F-W19 — independent workflow versions, brief ready
+## F-W19 — historical design checkpoint, 2026-10-28
 
 [Brief](features/F-W19-workflow-versioning/brief.md) and
 [progress](features/F-W19-workflow-versioning/PROGRESS.md): user requested design of

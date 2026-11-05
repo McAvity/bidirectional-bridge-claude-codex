@@ -25,6 +25,6 @@
     "claude/claude-side/src/adapters/claude-code-runner.ts"
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
-  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/02.md",
-  "next_action": "feature-flow F-W19: Gate 1 pending. Oczekuj rzeczywistej zgody użytkownika na cały W19-01…06 i pilot z decyzji02; potem feature-decide zapisze odpowiedź w decyzji03 i feature-execute kontynuuje. Nie rekonstruować pytania, nie powtarzać review ani uruchamiać implementacji przed odpowiedzią."
+  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
+  "next_action": "Gate 1 zatwierdzona decyzją03. Scal przygotowanie do feature-workflow; następnie feature-execute F-W19 może rozpocząć W19-01…06 w osobnym worktree wykonawczym w ramach istniejącej zgody i budżetu. Nie powtarzać planowania/review/Gate 1. Implementacja i pilot nieuruchomione; Gate 2 nadal przed odbiorem."
 }

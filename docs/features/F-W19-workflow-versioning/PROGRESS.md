@@ -74,3 +74,20 @@ Oczekujące pytanie i dokładny zakres: decisions/02.md. Następne po realnej zg
 feature-decide zapisuje decyzję03 → feature-execute w ramach tej samej autoryzacji.
 Przy statusie/compaction nie zaczynać ponownie design/plan/review, nie tworzyć
 zastępczej sesji, nie uznawać milczenia za zgodę. Gate 2 nadal przed odbiorem produktu.
+
+## 2026-11-05 — Gate 1 zatwierdzona; integracja dokumentacji
+
+Rzeczywista odpowiedź użytkownika zapisana w decisions/03.md: zatwierdzono cały
+zakres propozycji02 i zlecono merge przygotowania do feature-workflow.
+Gate 1 zamknięta; zgody nie trzeba uzyskiwać ponownie przy starcie W19-01.
+Kontynuacja W19-01…06 przewidziana w osobnym worktree wykonawczym; samo bieżące
+polecenie merge nie uruchamia workerów w checkoutcie integracyjnym. Taski nadal
+pending, pilot nieuruchomiony i AC produktu nieprzetestowane. Gate 2 pozostaje.
+Root technicznego przygotowania zakończony DONE/COMPLETE po 99a328a; brak bridge
+featura F-W19 i brak aktywnej rundy. Nie tworzyć go tylko dla zapisu decyzji.
+
+Baza scalenia: feature-workflow417ddc2; plan przed zapisem zgody99a328a.
+Metoda: osobny commit decyzji/statusów na plan/workflow-versioning → lokalne
+scalenie fast-forward do feature-workflow → linki/JSON/diff/status/ancestry.
+Bez push, publikacji, runtime upgrade, nowych modeli i zmiany sąsiedniego F-W20.
+Po integracji źródłem wznowienia jest feature.json i zatwierdzona decyzja03.
