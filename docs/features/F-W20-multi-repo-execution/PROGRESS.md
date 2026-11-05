@@ -25,3 +25,20 @@ Review e1cbddc: R20-P01 wymagane, P02…06 nieblokujące; delegowana decyzja9867
 przyjmuje je w jednej partii. Skorygowano fizyczną lokalizację/ignore/uprawnienia,
 dowody reuse, kolejność dostawy i testy wyników merge. Nie wykonano prób produktu.
 Następne: focused independent review R20-P01, bez pełnego kolejnego audytu.
+
+## Checkpoint — Gate 1, bez implementacji
+
+Commity etapów: 082e4b7 plan, e1cbddc review REWORK, 9867321 delegowana decyzja
+korekt, ff426d2 korekta, adf250d focused independent PASS. Propozycja wykonania
+w decisions/02.md; W20-P01 done, W20-01…03 pending. Uwagi O1…04 rozliczone tam
+jako doprecyzowanie kontraktu, bez kolejnego audytu. Review artefakty mają hashe
+w reviews/01-plan.md, surowe dane pozostają lokalnie poza Git.
+
+Wykonano: dokumentacja241 plików PASS, diff check, index paths/unikalne taski,
+status pending i niezmienny brief hash. Reviewer przeprowadził jednorazową próbę
+ignore i usunięcia parent z nested repo; szczegóły/limity w review. Build/product
+testy/model pilot nie są wykonane na etapie planowania. Main/runtime bez zmian.
+
+Następne: rzeczywista odpowiedź użytkownika na Gate 1 → feature-decide → cały
+feature-execute przez bridge. Nie oznaczać accepted ani nie zaczynać W20-01 bez
+zgody. Nie merge/push; istniejący worktree design/multi-repo-execution zachowany.

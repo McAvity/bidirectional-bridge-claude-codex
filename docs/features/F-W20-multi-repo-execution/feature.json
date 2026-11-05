@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W20-multi-repo-execution",
-  "phase": "plan-review",
+  "phase": "decision",
   "brief": "docs/features/F-W20-multi-repo-execution/brief.md",
   "design": "docs/features/F-W20-multi-repo-execution/design.md",
   "tasks": [
@@ -23,6 +23,6 @@
     "scripts/native-bridge-mcp.mjs"
   ],
   "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/01-plan.md",
-  "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/01.md",
-  "next_action": "feature-flow: focused review korekty R20-P01; następnie proposed decision/Gate 1. Brak zgody wykonawczej."
+  "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/02.md",
+  "next_action": "feature-flow Gate 1: czeka na zgodę użytkownika na cały W20-01…03 według proposed decyzji02 (review planu PASS na ff426d2). Bez implementacji. Po zgodzie feature-decide zapisuje odpowiedź i feature-execute kontynuuje cały zakres; nie powtarzać planu/review."
 }

@@ -1,16 +1,15 @@
 # Current handoff
 
-## F-W20 — multi-repository execution, brief ready
+## F-W20 — plan reviewed, awaiting execution Gate 1
 
-[Brief](features/F-W20-multi-repo-execution/brief.md) and
-[progress](features/F-W20-multi-repo-execution/PROGRESS.md): child checkout preparation
-belongs to feature-execute in the supplied parent worktree; planning stays portable.
-Includes physical dependency paths, resumption, per-repo delivery and authorized merge.
-AC-01…10; design only. F-W19 is still unimplemented; existing runtime pinning applies.
-Current: feature-flow plan prepared in design/multi-repo-execution; W20-01…03 pending.
-Next: independent plan review, decision and human Gate 1. No execution approval.
-No product, target-project or runtime changes.
-
+[Plan](features/F-W20-multi-repo-execution/design.md), W20-01…03 and index are ready.
+[Independent review](features/F-W20-multi-repo-execution/reviews/01-plan.md): PASS
+at ff426d2, recorded adf250d; R20-P01 resolved, notes accounted for together.
+[Proposed decision02](features/F-W20-multi-repo-execution/decisions/02.md) asks for
+whole-scope execution with integration/review/corrections/local commits. No approval
+or implementation yet. [Progress](features/F-W20-multi-repo-execution/PROGRESS.md)
+contains phase commits and checks. Resume feature-flow from the pending Gate 1,
+not from design. No target-project, runtime, merge or publication changes.
 
 ## 0.6.2 published — 2026-10-31
 
