@@ -48,7 +48,11 @@ records, new ledger, worktree dirt (preexisting separate from unfinished executo
 evidence; a failed check is a required finding. When the contract required a package, also run
 `feature_exchange.py verify` with the expected feature, purpose, base and head. Then review the
 delivered `HEAD` itself: the `base..head` range, the files at that commit, and the decisive
-checks rerun by you on it. Describe later integration drift separately and attribute it to
+checks rerun by you on it. For a multi-repo round, the receipt and review cover every repository
+of its map ([multi-repo.md](../feature-execute/references/multi-repo.md) § 7): base, head, every
+commit's scope and dirt per repository, the read-only dependencies and the tested version set.
+Name exactly which repositories and versions you checked. A clean parent never stands in for a
+child. Describe later integration drift separately and attribute it to
 nobody by default. Name the reviewed task id and delivered SHA. For each required
 finding carried from the previous review, state `resolved`, `progress` or `no progress`; the
 coordinator uses this for the shared retry rule. Disclose that the reviewer is the

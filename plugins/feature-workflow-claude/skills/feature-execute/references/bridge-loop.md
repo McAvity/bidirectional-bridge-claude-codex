@@ -54,6 +54,11 @@ on it alone:
   literal location is genuinely required).
 - `scope.paths`: code/test globs of the task plus `docs/features/<id>/execution/**`.
   Exclude `feature.json`, `reviews/`, `decisions/` and other features.
+- More than one repository: prepare and preflight the checkouts first, then put the
+  `REPO_MAP=<path> SHA256=<hash>` reference line in the objective instead of the map. The objective
+  holds at most 2000 characters ([multi-repo.md](multi-repo.md) §§ 3–4). The scope then also lists
+  each write repo's alias-prefixed globs, and the expected deliverable includes the `REPOS=` line
+  and the evidence sidecar.
 - `expected_deliverable`: the delivery line (full base and head, ledger, outcome, worktree
   state), committed ledger and checks; plus package path and SHA-256 only when required.
 - `verification_criteria`: concrete commands that must pass on the final code.
@@ -127,7 +132,10 @@ diagnostic, not round input.
    and any path in the summary are claims.
 2. Run the receipt checks of `local-delivery.md` § 4: delivery line, contract base, head
    ancestry, merges, scope of the diff and of every commit, untouched coordinator files, new
-   ledger, worktree dirt against the start record, and evidence.
+   ledger, worktree dirt against the start record, and evidence. For a repo map, also run the
+   per-repo receipt of [multi-repo.md](multi-repo.md) § 7 (`multi_repo.py receipt` with the
+   round's map reference), which also classifies the parent's own dirt. A clean parent never stands
+   in for a child.
 3. Review the delivered `HEAD`, not the branch tip; describe later integration drift separately
    (`local-delivery.md` § 5). When the contract required a package (every contract issued under
    an earlier runtime), also run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/feature-exchange/scripts/feature_exchange.py

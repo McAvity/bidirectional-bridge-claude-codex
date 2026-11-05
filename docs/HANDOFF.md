@@ -1,5 +1,14 @@
 # Current handoff
 
+## F-W20 — accepted; release authorized
+
+User accepted acc9d39 (executor09b88a32, code fd01ab36), decision04.
+[Decision](features/F-W20-multi-repo-execution/decisions/04.md) and
+[progress](features/F-W20-multi-repo-execution/PROGRESS.md) preserve exact scope and limits.
+Next: bridge acceptance, integrate into feature-workflow preserving its F-W19 planning,
+release0.7.0 to the McAvity fork after CI. No automatic runtime/project activation.
+Historical host test failures remain recorded; do not fabricate root COMPLETE.
+
 ## Project runtime 0.6.2 active — verified 2026-11-05
 
 This checkout selects0.6.2-771e797a73d3 (source771e797). Portable pin committed

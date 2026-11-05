@@ -203,6 +203,23 @@ Koordynator wyznacza niezależne zakresy i integratora. Przy autoryzowanej pracy
 
 Feature kończy się po potwierdzeniu kryteriów na zintegrowanym kodzie, rozliczeniu istotnych ustaleń i wymaganych decyzjach/odbiorach. Po poprawkach badaj ich zakres i związane regresje; nie uruchamiaj bez powodu całego procesu od nowa. Zmiany dokumentów muszą trafić do aktualnych dokumentów kanonicznych, a nie pozostać wyłącznie w pliku decyzji.
 
+## Feature w wielu repozytoriach
+
+Design, plan i review mogą powstać w dowolnym checkoutcie. Plan wskazuje logiczne repozytoria, ich źródła, wersje lub piny, role zapisu albo odczytu oraz docelowe gałęzie, ale nie przyszłe lokalne ścieżki. Po przeniesieniu dokumentacji do nowego parent worktree wystarczy zwykłe `feature-execute F-XXX`. Brak child checkoutu nie wymaga ręcznego setupu ani nowego planu: to zadanie przygotowawcze execute.
+
+Execute przed pierwszym zależnym zapisem:
+
+- przygotowuje zwykłym Gitem po jednym izolowanym checkoutcie dla każdego zapisywanego repozytorium, domyślnie fizycznie pod `.feature-repos/<feature>/<repo>`;
+- ignoruje ten katalog wyłącznie przez `info/exclude`;
+- przy kolizji gałęzi wybiera nową nazwę i zapisuje mapowanie;
+- sprawdza powiązania lokalnych pakietów, buildów i codegenu oraz zależności tylko do odczytu.
+
+Wspólne metadane Git i zwykłe cache narzędzi nie są błędem. Utrata izolacji blokuje tylko dotknięty zakres.
+
+Mapa repozytoriów to plik w lokalnej przestrzeni wymiany, poza Gitem. Kontrakt rundy zawiera tylko linię `REPO_MAP=<ścieżka> SHA256=<hash>`, bo objective mieści najwyżej 2000 znaków. Obie role przed zapisem uruchamiają pełny preflight na zweryfikowanym pliku; brak albo zmiana pliku blokuje zależne zapisy. Logiczne mapowanie trafia do ledgera, a `parent.baseline` odróżnia własną pracę w parent od zastanego dirt. Dostawa obejmuje każde zmienione repozytorium: jego bazę, HEAD, commity, zakres i dirt. Służy do tego plik `<ledger>.repos.json` obok ledgera oraz linia `REPOS=` po linii `DELIVERY=`. Czysty parent nie maskuje niedokończonego child repo. Lokalna integracja zestawu wersji poprzedza merge i nie wymaga zgody na merge. Autoryzowany merge przebiega w kolejności zależności, z pinami ustawionymi na rzeczywiste SHA. Częściowy merge pozostaje widoczny i możliwy do kontynuacji.
+
+Procedura: `.agents/skills/feature-execute/references/multi-repo.md`. Jej odczytowy helper: `.agents/skills/feature-execute/scripts/multi_repo.py`. Helper sprawdza mapę, digest, reuse, receipt i integrację, lecz niczego nie przygotowuje ani nie uruchamia. Zakresy bridge’a pozostają tekstowe; to nie jest sandbox runtime’u. Child wewnątrz parenta znika razem z nim, więc usunięcie parent worktree nie jest bezpiecznym sprzątaniem, dopóki jego historia nie jest zintegrowana albo zachowana.
+
 ## Wykonanie przez bridge: koordynator i rundy Claude’a
 
 Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature_*`, implementację wykonują rundy Claude Code w jednej sesji przypisanej do featura. Procedura koordynatora jest w `.agents/skills/feature-execute/references/bridge-loop.md`, zasady wykonawcy w sekcji „Bridge round executor” skilla `feature-execute`. Pozostałe zasady tego przewodnika obowiązują bez zmian.
@@ -219,7 +236,7 @@ Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature
 
 ## Opcjonalna wymiana ZIP-ów
 
-ZIP jest potrzebny tylko odbiorcy bez dostępu do repozytorium i wskazanych commitów albo na jawne żądanie; odbiorca z takim dostępem, także zewnętrzny reviewer, dostaje commity i dokumenty w repo. Wymiana odbywa się w przestrzeni nazw danego worktree: `~/tmp/bridge-exchange/ws_<16 hex>/` z katalogami `packages/`, `incoming/` i `staging/`. Klucz to pierwsze 16 znaków SHA-256(kanoniczny root worktree + NUL + kanoniczny katalog git tego worktree), więc dwa worktree jednego repozytorium nie kolidują nawet przy identycznych nazwach featura, celu i rundy; to nigdy nie jest nazwa brancha, ID featura ani sesji. Ścieżkę wypisuje `feature_exchange.py namespace --repo <ścieżka>`; wybór jest tylko do odczytu i niczego nie przejmuje. Eksportuj przez `--name <plik>.zip`, staging przez `--stage-name <nazwa>`; jawne `--output`/`--staging` pozostają dosłowne. Zwrotkę pobraną gdzie indziej skopiuj najpierw do `incoming/` tej przestrzeni. Staging pozostaje nowym katalogiem poza repo, a oryginalne ZIP-y nie są nadpisywane. Dawne płaskie przykłady `~/tmp/<feature>-<cel>-<n>.zip` w historycznych ledgerach i review opisują ówczesny stan i nie są przepisywane.
+ZIP jest potrzebny tylko odbiorcy bez dostępu do repozytorium i wskazanych commitów albo na jawne żądanie; odbiorca z takim dostępem, także zewnętrzny reviewer, dostaje commity i dokumenty w repo. Wymiana odbywa się w przestrzeni nazw danego worktree: `~/tmp/bridge-exchange/ws_<16 hex>/` z katalogami `packages/`, `incoming/` i `staging/`. Klucz to pierwsze 16 znaków SHA-256(kanoniczny root worktree + NUL + kanoniczny katalog git tego worktree), więc dwa worktree jednego repozytorium nie kolidują nawet przy identycznych nazwach featura, celu i rundy; to nigdy nie jest nazwa brancha, ID featura ani sesji. Ścieżkę wypisuje `feature_exchange.py namespace --repo <ścieżka>`; wybór jest tylko do odczytu i niczego nie przejmuje. Eksportuj przez `--name <plik>.zip`, staging przez `--stage-name <nazwa>`; jawne `--output`/`--staging` pozostają dosłowne. Zwrotkę pobraną gdzie indziej skopiuj najpierw do `incoming/` tej przestrzeni. Staging pozostaje nowym katalogiem poza repo, a oryginalne ZIP-y nie są nadpisywane. Dawne płaskie przykłady `~/tmp/<feature>-<cel>-<n>.zip` w historycznych ledgerach i review opisują ówczesny stan i nie są przepisywane. ZIP obejmuje jedno repozytorium: to wskazane przez `--repo`. Ignorowanych child checkoutów, zawartości submodule ani celów symlinków nie pakuje. Przy featurze w wielu repozytoriach handoff jawnie mówi, które repozytoria i wersje obejmuje archiwum, a pozostałe wskazuje dostarczonymi HEAD z pliku `.repos.json`. Brak archiwum wielu repozytoriów nie blokuje lokalnej dostawy przez Git.
 
 Skill `feature-exchange` zawiera skrypt Python 3.9+ bez dodatkowych zależności. Eksport zawsze obejmuje pełny katalog featura, zarejestrowane taski, ten przewodnik i jawny kontekst. Manifest zapisuje SHA-256 każdego pliku, HEAD repo, cel i granice materiału. Opcjonalny zakres kodu pochodzi z commitów; dokumenty pochodzą z bieżących plików. To rozróżnienie jest jawne.
 

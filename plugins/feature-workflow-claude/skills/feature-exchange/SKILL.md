@@ -86,6 +86,13 @@ by the first summary line; the coordinator checks them with Git and reviews the 
 archive `verify` or import is part of that loop. Keep `.bridge/` git-ignored so its database does
 not mark the worktree dirty.
 
+An archive covers one repository: the one `--repo` names. Ignored child checkouts
+(`.feature-repos/…`), submodule contents and symlink targets are not packed. For a multi-repo
+feature, state in the handoff which repositories and versions the archive covers, and give the
+other repositories' delivered heads from the evidence sidecar
+([multi-repo.md](../feature-execute/references/multi-repo.md) § 9). Do not extend the exporter
+into a multi-repo format. A missing multi-repo archive never blocks local Git delivery.
+
 A round exports a package only when its contract explicitly requires one: every contract issued
 under an earlier runtime, or a round whose result goes to a recipient without repository access.
 Then use `implementation-review` for new scope or `corrections-review` for a correction round,

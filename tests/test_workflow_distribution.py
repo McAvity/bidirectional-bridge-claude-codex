@@ -180,6 +180,42 @@ class GeneratedWorkflowPackages(unittest.TestCase):
                     capture_output=True, text=True, check=True)
                 self.assertEqual(json.loads(scan.stdout), [])
 
+    def test_both_roles_load_the_multi_repo_procedure(self):
+        """F-W20: the executor section replaces the rest of feature-execute, so it links the
+        procedure itself; the coordinator part, bridge-loop and local-delivery link it too."""
+        roots = {"canonical": REPO_ROOT / ".agents" / "skills"}
+        roots.update({client: package / "skills" for client, package in PACKAGES.items()})
+        roots["bridge-claude"] = BRIDGE_PACKAGES[1] / "skills"
+        for name, skills in roots.items():
+            with self.subTest(source=name):
+                text = (skills / "feature-execute" / "SKILL.md").read_text()
+                executor = text.split("## Bridge round executor", 1)[1].split("\n## ", 1)[0]
+                coordinator = text.split("## Bridge mode", 1)[0]
+                for part in (executor, coordinator):
+                    self.assertIn("[references/multi-repo.md](references/multi-repo.md)", part)
+                self.assertIn("§ 6", executor)
+                self.assertIn("REPO_MAP=", executor)  # R20-E02: reference, full preflight for the worker
+                self.assertIn("full\n`preflight`", executor)
+                refs = skills / "feature-execute" / "references"
+                self.assertIn("[multi-repo.md](multi-repo.md)", (refs / "bridge-loop.md").read_text())
+                self.assertIn("[multi-repo.md](multi-repo.md)", (refs / "local-delivery.md").read_text())
+                procedure = (refs / "multi-repo.md").read_text()
+                for rule in ("## 6. Bridge round executor", "## 7. Coordinator receipt", "multi-repo-contract-v1",
+                             "REPOS=", "never runs", "info/exclude", "REPO_MAP=<absolute map path> SHA256=",
+                             "--round-scope", "parent.baseline", "`identity` alone is never a substitute"):
+                    self.assertIn(rule, procedure)
+                section6 = procedure.split("## 6. Bridge round executor", 1)[1].split("\n## ", 1)[0]
+                self.assertIn("--sha256 <hash>", section6)
+                self.assertNotIn("(or `identity` per alias)", procedure)
+                for skill in ("feature-plan", "feature-review", "feature-exchange"):
+                    self.assertIn("feature-execute/references/multi-repo.md", (skills / skill / "SKILL.md").read_text())
+
+    def test_packaged_multi_repo_helper_is_the_canonical_file(self):
+        source = REPO_ROOT / ".agents" / "skills" / "feature-execute" / "scripts" / "multi_repo.py"
+        for package in [*PACKAGES.values(), BRIDGE_PACKAGES[1]]:
+            with self.subTest(package=package.name):
+                self.assertEqual(sha(package / "skills" / "feature-execute" / "scripts" / "multi_repo.py"), sha(source))
+
     def test_codex_metadata_qualifies_the_entry_it_mentions(self):
         for skill in ENTRIES:
             metadata = PACKAGES["codex"] / "skills" / skill / "agents" / "openai.yaml"
@@ -226,6 +262,30 @@ class OutsideTheCheckout(unittest.TestCase):
         self.assertEqual((code, answer["source"], answer["code"]), (3, "none", "RUNTIME_MISSING"))
         code, answer = run_reader(package, project, self.home, "--standalone")
         self.assertEqual((code, answer["code"], answer["pin_not_used"]), (0, "EXPLICIT_STANDALONE", "RUNTIME_MISSING"))
+
+    def test_the_packaged_multi_repo_helper_runs_outside_the_checkout_and_writes_nothing(self):
+        project = make_repo(self.root / "parent")
+        manifest = self.root / "sidecar.json"
+        manifest.write_text(json.dumps({"schema": "multi-repo-v1", "feature": "F-X", "task": "W-01",
+                                        "parent": {"base": "a" * 40, "scope": ["app/**"]},
+                                        "repos": [{"id": "dep", "role": "read", "kind": "existing", "alias": ".feature-repos/F-X/dep",
+                                                   "base": "b" * 40, "head": "b" * 40, "digest": "c" * 64}]}))
+        for client in PACKAGES:
+            with self.subTest(client=client):
+                helper = self.copy(client) / "skills" / "feature-execute" / "scripts" / "multi_repo.py"
+                before = {p: sha(p) for p in project.rglob("*") if p.is_file()}
+                run = subprocess.run([sys.executable, "-I", str(helper), "manifest", "--file", str(manifest)],
+                                     capture_output=True, text=True, cwd=self.root)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+                self.assertTrue(json.loads(run.stdout)["valid"])
+                ident = subprocess.run([sys.executable, "-I", str(helper), "identity", "--parent", str(project), "--alias", "."],
+                                       capture_output=True, text=True)
+                self.assertEqual(ident.returncode, 2, ident.stdout)  # '.' is not a portable alias
+                digest = subprocess.run([sys.executable, "-I", str(helper), "digest", "--repo", str(project)],
+                                        capture_output=True, text=True, env=L.git_env())
+                self.assertEqual(digest.returncode, 0, digest.stdout + digest.stderr)
+                self.assertEqual(before, {p: sha(p) for p in project.rglob("*") if p.is_file()})
+                shutil.rmtree(self.root / "cache" / client)
 
     def test_the_packaged_exchange_helper_exports_and_verifies_a_foreign_repository(self):
         repo = make_repo(self.root / "foreign")

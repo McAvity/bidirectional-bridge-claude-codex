@@ -104,6 +104,59 @@ refused until it resumes or takes over explicitly. See
 refusal codes. A takeover never cancels a running round: the worker keeps going and its result is
 recorded as usual.
 
+## Features spanning several repositories
+
+Plan anywhere; execute in a new parent worktree. The design, plan and review name logical
+repositories, sources, pins, roles and target branches, never future local paths. Merge the
+documents into the parent's main branch, create a new parent worktree, and ask for the ordinary
+`feature-execute F-XXX`: no extra skill and no manual child setup. A missing child checkout is a
+routine preparation step of execute, done before the first dependent write.
+
+The coordinator prepares one isolated checkout per write repository with ordinary Git:
+- by default a worktree under `.feature-repos/<feature>/<repo>`, ignored through `info/exclude`;
+- a clone at the same place when the writing executor cannot write the source's Git directory
+  (delegated Codex);
+- an existing external checkout only when write access was shown for both roles.
+
+It checks the result with the read-only helper
+`python3 .agents/skills/feature-execute/scripts/multi_repo.py preflight --contract <map>`. Branch
+collisions get a recorded new name, and other people's branches and dirt are kept. Local packages,
+builds and codegen that would write into a shared checkout block only the dependent commands until
+the binding is fixed inside the task. Shared Git metadata and ordinary tool caches are not
+violations.
+
+The repo map (`multi-repo-contract-v1`) is a file in the parent's exchange namespace, not in Git.
+The round objective carries only `REPO_MAP=<path> SHA256=<hash>`, printed by
+`multi_repo.py reference`, because the objective holds at most 2000 characters. Both roles pass that
+path and hash to the helper, which refuses a missing, linked or changed map before any check. The
+map is data: with `--round-scope`, a map glob that the round scope lacks is refused.
+`parent.baseline` records the parent's dirt at contract time, so the receipt can tell the
+executor's uncommitted parent work from preexisting or foreign dirt. The round's `scope.paths` stays a flat list of repo-relative globs: the parent
+paths plus `.feature-repos/<feature>/<repo>/…` for every write repository. The executor touches only
+mapped repositories, commits in each, and adds a second summary line,
+`REPOS=<ledger stem>.repos.json SHA256=<hash>`, plus a `PACKAGE=` line third when a package is
+required. The evidence sidecar beside the ledger holds per-repo base, head, branch, scope and dirt,
+and the tested version set. The manager runs `multi_repo.py receipt`, which applies the
+local-delivery checks to the parent (its own dirt included) and checks every repository, and then
+reviews the delivered commits. A clean parent never hides a dirty child.
+
+Before any merge, test the delivered set together on the feature branches; review needs no merge or
+push permission. An authorized merge goes dependency-first, updates pins to the real integrated
+SHAs, and keeps an integration record (`multi_repo.py integration`). An interrupted merge stays
+`PARTIAL`, names the next step and continues without resetting repositories already merged. New
+SHAs from a non-fast-forward merge are retested, separately from the delivery review.
+
+Limits:
+- an exchange ZIP covers one repository and never packs ignored child checkouts, so a handoff
+  states which repositories it covers;
+- removing the parent worktree deletes nested children, so integrate or preserve their history
+  first;
+- bridge scopes and leases are textual, not a physical sandbox, and whether Claude Code's Edit/Write
+  follows a symlinked `--add-dir` is unproven, so the physical in-parent checkout is the default;
+- the helper and scenario tests do not show that a model follows the procedure.
+
+Procedure: [multi-repo.md](../.agents/skills/feature-execute/references/multi-repo.md).
+
 ## Operational limits
 
 This first version supports a Codex manager, one Claude session per feature and
