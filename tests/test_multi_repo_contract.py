@@ -184,14 +184,35 @@ def classify(repo, baseline, alias, scope):
     return classes
 
 
-def ignored_digest(repo):
-    """Digest of HEAD plus every status record including ignored files: a read-only dependency check."""
-    h = hashlib.sha256(out(repo, 'rev-parse', 'HEAD').encode())
-    for rec in sorted(status_records(repo, ignored=True)):
-        p = Path(repo) / rec[3:]
+def ignored_digest(repo, max_files=10000, max_bytes=256 << 20):
+    """Read-only dependency digest (R20-C02): HEAD, status records, and the bytes of every changed,
+    untracked and ignored file, enumerated file by file (`ls-files --others [--ignored]`), so a
+    rewrite inside an ignored directory changes it. Symlinks contribute their target text and are
+    never followed. Returns None when the bounded observation is incomplete: no digest, no PASS."""
+    root = Path(repo)
+    h = hashlib.sha256(out(repo, 'rev-parse', 'HEAD').encode() + b'\0')
+    records = sorted(status_records(repo))
+    for rec in records:
         h.update(rec.encode() + b'\0')
-        if p.is_file():
-            h.update(p.read_bytes())
+    paths = {rec[3:] for rec in records if len(rec) > 3 and rec[2] == ' '}
+    paths |= set(zlist(repo, 'ls-files', '-z', '--others', '--exclude-standard'))
+    paths |= set(zlist(repo, 'ls-files', '-z', '--others', '--ignored', '--exclude-standard'))
+    if len(paths) > max_files:
+        return None
+    total = 0
+    for rel in sorted(paths):
+        f = root / rel
+        h.update(rel.encode() + b'\0')
+        if f.is_symlink():
+            h.update(b'L' + os.readlink(f).encode() + b'\0')
+        elif f.is_file():
+            data = f.read_bytes()
+            total += len(data)
+            if total > max_bytes:
+                return None
+            h.update(b'F' + str(len(data)).encode() + b'\0' + data)
+        else:
+            h.update(b'D' if f.is_dir() else b'-')
     return h.hexdigest()
 
 
@@ -270,6 +291,11 @@ def validate_manifest(raw):
     return errs
 
 
+def same_checkout(a, b):
+    """(realroot, gitdir) pairs: equal realroot or equal per-worktree gitdir is one checkout."""
+    return a[0] == b[0] or a[1] == b[1]
+
+
 def per_repo_paths(repo, base, head):
     return set(zlist(repo, 'diff', '--no-renames', '--name-only', '-z', base, head)) | \
         set(zlist(repo, 'log', '--no-renames', '--name-only', '-z', '--format=', f'{base}..{head}'))
@@ -321,7 +347,7 @@ def multi_receipt(parent, summary, contract):
         f.append(f'manifest repo outside contract: {extra}')
     for missing in sorted(set(contract['repos']) - ids):
         f.append(f'contract repo missing from manifest: {missing}')
-    reals = {}
+    seen = {'parent': (os.path.realpath(parent), os.path.realpath(out(parent, 'rev-parse', '--absolute-git-dir')))}
     partial = outcome == 'PARTIAL'
     for r in m['repos']:
         c = contract['repos'].get(r['id'])
@@ -334,14 +360,23 @@ def multi_receipt(parent, summary, contract):
         ident = identity(parent, r['alias'])
         if ident['realpath'] != c['realpath'] or not ident['checkout_root']:
             f.append(f'{r["id"]}: alias does not resolve to the contract checkout root')
-        if ident['realpath'] in reals or ident['common_dir'] == os.path.realpath(Path(parent) / out(parent, 'rev-parse', '--git-common-dir')):
-            f.append(f'{r["id"]}: same physical checkout/repository as {reals.get(ident["realpath"], "parent")}')
-        reals[ident['realpath']] = r['id']
+        # R20-C01: one checkout = same realroot or same per-worktree gitdir. A shared common dir
+        # (worktrees of one repository, including the parent's) is normal shared metadata.
+        mine = (ident['realpath'], os.path.realpath(ident['git_dir']))
+        clash = next((k for k, v in seen.items() if same_checkout(v, mine)), None)
+        if clash:
+            f.append(f'{r["id"]}: same physical checkout as {clash}')
+        seen[r['id']] = mine
         actual = out(path, 'rev-parse', 'HEAD')
         if r['role'] == 'read':
-            if r['head'] != c['base'] or actual != c['base'] or ignored_digest(path) != c['digest']:
+            now = ignored_digest(path)
+            if now is None:
+                f.append(f'{r["id"]}: read-only dependency not fully observable')
+            elif r['head'] != c['base'] or actual != c['base'] or now != c['digest']:
                 f.append(f'{r["id"]}: read-only dependency drift or write')
             continue
+        if git(path, 'symbolic-ref', '-q', '--short', 'HEAD', check=False).stdout.strip() != r['branch']:
+            f.append(f'{r["id"]}: checkout is not on the manifest branch')
         if r['base'] != c['base']:
             f.append(f'{r["id"]}: base differs from contract')
         if git(path, 'cat-file', '-e', f'{r["head"]}^{{commit}}', check=False).returncode or \
@@ -374,16 +409,37 @@ def multi_receipt(parent, summary, contract):
 
 
 def reuse_proof(parent, record, alias, contract_real):
-    """Minimal reuse evidence: a committed record plus the checkout's own Git facts."""
+    """Minimal reuse evidence, confirmed by the checkout's own Git facts. `record['kind']`:
+    `checkpoint` (validated setup checkpoint, before or after delivery), `contract` (checkpoint
+    lost; the bridge round contract's alias/realroot/base/branch) or `delivered` (committed
+    ledger/manifest naming the delivered head; the default)."""
     if not record:
-        return 'blocked: no committed record (a branch name alone proves nothing)'
+        return 'blocked: no checkpoint, contract or committed record (a branch name alone proves nothing)'
     path = Path(parent) / alias
-    if not path.exists() or os.path.realpath(path) != contract_real:
+    real = os.path.realpath(path)
+    if not path.exists() or real != contract_real or record.get('realroot', real) != real:
         return 'blocked: checkout path changed; rerun placement checks'
-    if record['feature'] != FEATURE or out(path, 'symbolic-ref', '--short', 'HEAD') != record['branch']:
+    if os.path.realpath(out(path, 'rev-parse', '--show-toplevel')) != real:
+        return 'blocked: alias is not a checkout root'
+    if 'git_dir' in record and out(path, 'rev-parse', '--absolute-git-dir') != record['git_dir']:
+        return 'blocked: gitdir differs from the checkpoint (checkout replaced)'
+    branch = git(path, 'symbolic-ref', '-q', '--short', 'HEAD', check=False).stdout.strip()
+    if record['feature'] != FEATURE or branch != record['branch']:
         return 'blocked: feature or branch differs from the record'
     if git(path, 'merge-base', '--is-ancestor', record['base'], 'HEAD', check=False).returncode:
         return 'blocked: recorded base is not an ancestor'
+    kind = record.get('kind', 'delivered')
+    if kind in ('checkpoint', 'contract'):
+        commits = out(path, 'rev-list', f'{record["base"]}..HEAD').split()
+        if kind == 'checkpoint':
+            if commits and not record.get('branch_created'):
+                return f'blocked: {len(commits)} unrecorded commit(s) after the base on a branch setup did not create'
+            return 'reuse'
+        dirty = dirt_hashes(path)
+        if commits or dirty:
+            return (f'blocked: checkpoint lost; ownership unresolved for {len(commits)} commit(s) '
+                    f'and {len(dirty)} dirty path(s)')
+        return 'reuse'
     if git(path, 'merge-base', '--is-ancestor', record['head'], 'HEAD', check=False).returncode:
         return 'blocked: recorded head is not an ancestor'
     unexplained = [c for c in out(path, 'rev-list', f'{record["head"]}..HEAD').split()
@@ -391,6 +447,14 @@ def reuse_proof(parent, record, alias, contract_real):
     if unexplained:
         return f'blocked: {len(unexplained)} unrecorded commit(s) after the recorded head'
     return 'reuse'
+
+
+def resume_inventory(path, record):
+    """What an earlier, undelivered attempt left: its commits after base and its dirt, by class."""
+    init = record.get('initial_dirt', {})
+    dirt = {p: ('preexisting' if init[p] == h else 'overlap') if p in init else 'attempt'
+            for p, h in dirt_hashes(path).items()}
+    return {'commits': out(path, 'rev-list', '--reverse', f'{record["base"]}..HEAD').split(), 'dirt': dirt}
 
 
 def integration_status(record, order):
@@ -614,7 +678,7 @@ class BranchAndReuseTests(World):
         real = os.path.realpath(child)
         rec = {'feature': FEATURE, 'branch': 'design/x', 'base': base, 'head': head}
         self.assertEqual(reuse_proof(self.parent, rec, alias, real), 'reuse')
-        self.assertIn('no committed record', reuse_proof(self.parent, None, alias, real))
+        self.assertIn('no checkpoint, contract or committed record', reuse_proof(self.parent, None, alias, real))
         self.assertIn('feature or branch', reuse_proof(self.parent, {**rec, 'feature': 'F-Y'}, alias, real))
         later = commit(child, {'src/b.txt': 'b\n'}, 'unknown')
         self.assertIn('1 unrecorded', reuse_proof(self.parent, rec, alias, real))
@@ -650,19 +714,27 @@ class ReceiptTests(World):
         self.contract = {'base': self.base, 'parent_scope': PARENT_SCOPE, 'repos': {
             r: {'alias': self.alias[r], 'realpath': os.path.realpath(self.parent / self.alias[r]),
                 'base': self.cbase[r], 'scope': [f'{self.alias[r]}/src/**'], 'baseline': {}} for r in self.src}}
+        self.branch = {}
         self.contract['repos']['dep'] = {'alias': f'{TASK_DIR}/dep', 'realpath': str(self.dep),
                                          'base': self.dep_head, 'digest': self.digest}
 
+    def add_writer(self, rid, source, branch):
+        alias = prepare_worktree(self.parent, source, rid, branch, 'HEAD')
+        self.alias[rid], self.branch[rid] = alias, branch
+        self.cbase[rid] = out(self.parent / alias, 'rev-parse', 'HEAD')
+        self.contract['repos'][rid] = {'alias': alias, 'realpath': os.path.realpath(self.parent / alias),
+                                       'base': self.cbase[rid], 'scope': [f'{alias}/src/**'], 'baseline': {}}
+
     def deliver(self, mutate=None, evidence_extra=None, outcome='COMPLETE', worktree='clean', package=False):
-        heads = {r: commit(self.parent / self.alias[r], {'src/feature.txt': f'{r}\n'}, f'{r} feature') for r in self.src}
+        heads = {r: commit(self.parent / self.alias[r], {'src/feature.txt': f'{r}\n'}, f'{r} feature') for r in self.alias}
         commit(self.parent, {'app/x.txt': 'x2\n'}, 'parent work')
         manifest = {'schema': 'multi-repo-v1', 'feature': FEATURE, 'task': TASK,
                     'parent': {'base': self.base, 'scope': PARENT_SCOPE},
                     'repos': [{'id': r, 'role': 'write', 'kind': 'worktree',
                                'source': {'locator': f'example/{r}', 'roots': [self.cbase[r]]},
-                               'alias': self.alias[r], 'branch': 'design/x', 'target': 'main',
+                               'alias': self.alias[r], 'branch': self.branch.get(r, 'design/x'), 'target': 'main',
                                'base': self.cbase[r], 'head': heads[r], 'scope': [f'{self.alias[r]}/src/**'],
-                               'dirt': {'baseline': [], 'final': []}} for r in sorted(self.src)] +
+                               'dirt': {'baseline': [], 'final': []}} for r in sorted(self.alias)] +
                              [{'id': 'dep', 'role': 'read', 'kind': 'existing', 'alias': f'{TASK_DIR}/dep',
                                'source': {'locator': 'example/dep'}, 'base': self.dep_head, 'head': self.dep_head,
                                'digest': self.digest, 'dirt': {}}],
@@ -762,10 +834,108 @@ class ReceiptTests(World):
         f = multi_receipt(self.parent, summary, self.contract)['findings']
         self.assertTrue(any('same physical checkout' in x for x in f))
 
+    def test_worktrees_sharing_a_common_dir_are_distinct_checkouts(self):
+        """R20-C01: shared Git metadata is not one checkout; distinct realroot/gitdir/branch pass."""
+        commit(self.main, {'src/main.txt': 'parent src\n'}, 'parent src')
+        self.add_writer('child-a2', self.src['child-a'], f'design/x--{FEATURE}')  # same source repo
+        self.add_writer('parent-docs', self.main, f'design/x--{FEATURE}')  # worktree of the parent repo
+        a, a2 = identity(self.parent, self.alias['child-a']), identity(self.parent, self.alias['child-a2'])
+        self.assertEqual(a['common_dir'], a2['common_dir'])
+        self.assertNotEqual((a['realpath'], a['git_dir']), (a2['realpath'], a2['git_dir']))
+        summary, _ = self.deliver()
+        self.assertEqual(multi_receipt(self.parent, summary, self.contract), {'findings': [], 'outcome': 'COMPLETE'})
+
+    def test_symlink_alias_to_another_entry_checkout_still_blocks(self):
+        os.symlink(self.parent / self.alias['child-a'], self.parent / TASK_DIR / 'alias-a')
+        summary, _ = self.deliver(mutate=lambda x: x['repos'][2].update(alias=f'{TASK_DIR}/alias-a', digest='0' * 64))
+        self.contract['repos']['dep'].update(alias=f'{TASK_DIR}/alias-a', realpath=self.contract['repos']['child-a']['realpath'])
+        f = multi_receipt(self.parent, summary, self.contract)['findings']
+        self.assertTrue(any(x.startswith('dep: same physical checkout as child-a') for x in f), f)
+
     def test_tested_set_must_match_delivered_heads(self):
         summary, _ = self.deliver(mutate=lambda x: x['integration']['tested_set'].update({'child-a': 'b' * 40}))
         self.assertIn('child-a: tested version differs from delivered head',
                       multi_receipt(self.parent, summary, self.contract)['findings'])
+
+
+class IgnoredDigestTests(World):
+    """R20-C02: a read-only dependency digest observes bytes inside ignored directories."""
+
+    def test_rewrite_of_existing_ignored_file_changes_digest(self):
+        write(self.dep / 'dist' / 'out.js', 'v1\n')
+        before = ignored_digest(self.dep)
+        self.assertIn('!! dist/', status_records(self.dep, ignored=True))
+        write(self.dep / 'dist' / 'out.js', 'v2\n')
+        self.assertIn('!! dist/', status_records(self.dep, ignored=True))  # status alone is unchanged
+        self.assertNotEqual(ignored_digest(self.dep), before)
+
+    def test_nested_ignored_file_and_symlink_target_text(self):
+        outside = self.root / 'outside.txt'
+        write(outside, 'o1\n')
+        write(self.dep / 'dist' / 'deep' / 'a.js', 'a\n')
+        (self.dep / 'dist' / 'link').symlink_to(outside)
+        before = ignored_digest(self.dep)
+        write(outside, 'o2\n')  # symlinks are not followed outside the dependency
+        self.assertEqual(ignored_digest(self.dep), before)
+        write(self.dep / 'dist' / 'deep' / 'a.js', 'b\n')
+        changed = ignored_digest(self.dep)
+        self.assertNotEqual(changed, before)
+        (self.dep / 'dist' / 'link').unlink()
+        (self.dep / 'dist' / 'link').symlink_to(self.root / 'other.txt')
+        self.assertNotEqual(ignored_digest(self.dep), changed)
+
+    def test_unbounded_observation_is_not_a_digest(self):
+        for i in range(5):
+            write(self.dep / 'dist' / f'{i}.js', 'x\n')
+        self.assertIsNone(ignored_digest(self.dep, max_files=4))  # no full observation: no PASS
+
+
+class ResumeBeforeDeliveryTests(World):
+    """R20-C03: reuse after setup, before any delivery, from a validated checkpoint or contract."""
+
+    def setUp(self):
+        super().setUp()
+        exclude_task_dir(self.parent)
+        src = self.src['child-a']
+        self.cb = out(src, 'rev-parse', 'HEAD')
+        self.al = prepare_worktree(self.parent, src, 'child-a', 'design/x', self.cb)
+        self.path = self.parent / self.al
+        write(self.path / 'notes.txt', 'user note\n')  # initial dirt at setup
+        ident = identity(self.parent, self.al)
+        self.real = ident['realpath']
+        self.checkpoint = {'kind': 'checkpoint', 'feature': FEATURE, 'repo': 'child-a', 'branch': 'design/x',
+                           'branch_created': True, 'base': self.cb, 'realroot': ident['realpath'],
+                           'git_dir': ident['git_dir'], 'initial_dirt': dirt_hashes(self.path)}
+
+    def test_setup_checkpoint_without_delivery_is_reused(self):
+        self.assertEqual(reuse_proof(self.parent, self.checkpoint, self.al, self.real), 'reuse')
+        self.assertEqual(resume_inventory(self.path, self.checkpoint), {'commits': [], 'dirt': {'notes.txt': 'preexisting'}})
+
+    def test_interrupted_first_attempt_keeps_its_commits_and_dirt(self):
+        c = commit(self.path, {'src/a.txt': 'a\n'}, 'attempt 1 work')
+        write(self.path / 'src' / 'wip.txt', 'wip\n')
+        write(self.path / 'notes.txt', 'edited\n')
+        self.assertEqual(reuse_proof(self.parent, self.checkpoint, self.al, self.real), 'reuse')
+        self.assertEqual(resume_inventory(self.path, self.checkpoint),
+                         {'commits': [c], 'dirt': {'notes.txt': 'overlap', 'src/wip.txt': 'attempt'}})
+
+    def test_replaced_checkout_or_wrong_branch_blocks(self):
+        self.assertIn('gitdir', reuse_proof(self.parent, {**self.checkpoint, 'git_dir': '/elsewhere'}, self.al, self.real))
+        self.assertIn('branch', reuse_proof(self.parent, {**self.checkpoint, 'branch': 'other'}, self.al, self.real))
+        self.assertIn('feature', reuse_proof(self.parent, {**self.checkpoint, 'feature': 'F-Y'}, self.al, self.real))
+
+    def test_existing_branch_with_commits_after_base_is_not_attributed(self):
+        commit(self.path, {'src/a.txt': 'a\n'}, 'unknown work')
+        self.assertIn('unrecorded commit', reuse_proof(self.parent, {**self.checkpoint, 'branch_created': False}, self.al, self.real))
+
+    def test_lost_checkpoint_recovers_from_contract_only_when_nothing_to_attribute(self):
+        contract = {'kind': 'contract', 'feature': FEATURE, 'repo': 'child-a', 'branch': 'design/x',
+                    'base': self.cb, 'realroot': self.real}
+        (self.path / 'notes.txt').unlink()
+        self.assertEqual(reuse_proof(self.parent, contract, self.al, self.real), 'reuse')
+        commit(self.path, {'src/a.txt': 'a\n'}, 'attempt work')
+        self.assertIn('ownership unresolved', reuse_proof(self.parent, contract, self.al, self.real))
+        self.assertIn('no checkpoint, contract or committed record', reuse_proof(self.parent, None, self.al, self.real))
 
 
 class ManifestBoundsTests(unittest.TestCase):

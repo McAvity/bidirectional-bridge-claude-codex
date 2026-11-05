@@ -5,7 +5,8 @@ contract review releases it. It is not user acceptance. Authority:
 [decision 03](../decisions/03.md) (whole scope W20-01…03), which carries
 [decision 02](../decisions/02.md) including O1…O4; plan [design](../design.md) and
 [brief](../brief.md) (SHA-256 `ae8bca34…33ebdc7d`), [plan review](../reviews/01-plan.md)
-(R20-P01 resolved, P02…P06 adopted). Code inspected at base `d4fd6b44`; the runner, launcher
+(R20-P01 resolved, P02…P06 adopted). Revised for R20-C01…C03 of
+coordinator review 02 (`reviews/02-execution.md`) (§§ 2.6, 4, 5, 8, 12). Code inspected at base `d4fd6b44`; the runner, launcher
 and scope sources are unchanged since `771e797a`.
 
 No runtime, MCP, schema, database, adapter or helper change. Everything below works with the
@@ -46,9 +47,15 @@ A plain single-repo round keeps `local-v1` exactly as
    task directory. Allowed only for an existing environment and only after both roles' write access
    was shown on the real client (§ 3); otherwise that entry blocks. It is never created as the first
    setup and an external environment is not moved silently.
-6. Two aliases with the same realpath, or an alias whose realpath or Git common dir is the parent's
-   or another entry's, are one physical checkout: a finding that blocks the dependent writes.
-   Scope globs and leases are textual and cannot see this (TS probe `two aliases`).
+6. **One checkout** means the same realroot (`realpath` of the checkout root) or the same
+   per-worktree gitdir (`git rev-parse --absolute-git-dir`). Two entries, or an entry and the
+   parent, that are one checkout are a finding that blocks the dependent writes. A shared
+   **common dir** is not: Git worktrees of one repository, including worktrees of the parent's own
+   repository, share objects, refs and config by design, and each has its own realroot, gitdir and
+   branch (Git refuses one branch in two worktrees). Each entry records its branch and binding; the
+   receipt checks the checkout is on it (R20-C01, probes `worktrees_sharing_a_common_dir…`,
+   `symlink_alias_to_another_entry…`). Scope globs and leases are textual and cannot see a second
+   alias of one checkout (TS probe `two aliases`).
 7. The task directory holds only child checkouts. Checkpoints live in the per-worktree exchange
    namespace (§ 8): a parent `git clean -fdX` skips nested repositories but deletes loose files
    there, and `git clean -ffdX` deletes the whole task directory with every child checkout.
@@ -73,12 +80,26 @@ the dependent writes; that is a host limit, not a new product gate.
 - The base is the plan's version, present in the source (`rev-parse --verify <base>^{commit}`).
   An old review SHA is not an identity for other bytes; a change of base needs an in-scope reason or
   a decision.
-- **Reuse** of an existing checkout needs all of: a committed ledger/manifest naming repo ID,
-  feature, branch, base and delivered head; the alias still resolving to the recorded realpath; the
-  checkout on that branch; base and recorded head ancestors of its `HEAD`; every commit after the
-  recorded head explained by a later own record. A branch name, the same remote or an unrelated
-  history with the same name is not evidence (probes `reuse_requires…`, `same_branch_name…`).
-  Without evidence the checkout is not written; ownership is clarified first.
+- **Reuse** of an existing checkout always needs current Git to confirm a record: the alias still
+  resolves to the recorded realroot and is a checkout root, it is on the recorded branch, and the
+  recorded base is an ancestor of its `HEAD`. A branch name, the same remote or an unrelated history
+  with the same name is never evidence. The record is one of (R20-C03):
+  1. **Setup checkpoint** (§ 7), valid before and after any delivery: feature, repo ID, branch and
+     whether setup created it, base, realroot, per-worktree gitdir and initial dirt with
+     `hash-object` values. A different gitdir means the checkout was replaced: blocked. Commits after
+     the base on a branch setup created, and dirt not in the initial record, belong to this task's
+     earlier, undelivered attempts: they are kept and inventoried (`resume_inventory`: commits,
+     dirt as `preexisting`/`overlap`/`attempt`), never reset or cleaned, and the resumed attempt
+     delivers or discloses them. On a branch setup did not create, commits after the base are
+     unrecorded: blocked.
+  2. **Lost checkpoint, nothing delivered yet**: the bridge round contract still names alias,
+     realroot, base and branch. It suffices only while the checkout has no commit after the base and
+     no dirt; otherwise ownership is unresolved and the checkout is not written until clarified.
+  3. **After a delivery**: a committed ledger/manifest naming the delivered head; that head is an
+     ancestor of `HEAD` and every later commit is explained by a later own record.
+
+  With no checkpoint, contract or committed record the checkout is not written; ownership is
+  clarified first (probes `ResumeBeforeDeliveryTests`, `reuse_requires…`, `same_branch_name…`).
 
 ## 5. Commands, dependencies and parent tools (AC-05, O3)
 
@@ -88,10 +109,16 @@ checkout, another feature or the main checkout blocks that command; the binding 
 task environment. A command whose target is unknown waits until it is known. Normal tool caches and
 shared Git metadata are not violations.
 
-- A **read** dependency may stay shared only while no command writes it. Its evidence is HEAD plus a
-  digest of `git status --porcelain=v1 -z --untracked-files=all --ignored=matching` and those
-  files' bytes, taken before and after. Plain `git status` is blind to writes into ignored outputs
-  such as `dist/` (probe `build_through_symlinked_dependency`).
+- A **read** dependency may stay shared only while no command writes it. Its evidence is a digest
+  taken before and after: HEAD, the `git status --porcelain=v1 -z --untracked-files=all` records,
+  and every changed, untracked and ignored file enumerated one by one
+  (`git ls-files -z --others --exclude-standard`, and the same with `--ignored`) with its size and
+  bytes. A symlink contributes its target text and is never followed. Plain `git status` is blind to
+  writes into ignored outputs such as `dist/`, and `--ignored=matching` only reports `!! dist/`, so
+  a rewrite of an existing ignored file needs the per-file bytes (R20-C02, probes
+  `rewrite_of_existing_ignored_file…`, `nested_ignored_file_and_symlink…`). The observation is
+  bounded (probe defaults: 10 000 files, 256 MiB); beyond the bound there is no digest, and a
+  dependency without a complete observation is not shown read-only: no PASS.
 - **O3.** Parent tools that walk the filesystem (`find`, recursive globbing, some test runners and
   linters) descend into `.feature-repos/`; Git enumeration (`git ls-files`, `git grep`) does not.
   The same command-target check confirms each parent command excludes the task directory, or the
@@ -119,9 +146,10 @@ verified realpath, base, scope and baseline dirt per repo so the receipt has its
 ## 8. Resume
 
 Each resume reads the checkpoint and re-checks realroot, gitdir, branch, identity (root commits,
-source) and bindings; only changed elements repeat their checks. A missing checkpoint is rebuilt
-from § 4 evidence, never by cloning a second set. No full audit before every tool call; no new
-worktree or branch for the same task.
+source) and bindings; only changed elements repeat their checks. A setup checkpoint alone permits
+reuse before the first delivery (§ 4). A missing checkpoint is rebuilt from the round contract or a
+committed record under § 4, never by cloning a second set; without either evidence the dependent
+writes block. No full audit before every tool call; no new worktree or branch for the same task.
 
 ## 9. Manifest `multi-repo-v1` (bounded)
 
@@ -182,7 +210,8 @@ The coordinator applies local-delivery § 4 to the parent, then:
 3. The entry set equals the contract: an extra ID is "manifest repo outside contract", a missing
    one an incomplete delivery.
 4. Per entry: alias equals the contract; realpath equals the contract realpath and is a checkout
-   root; no two entries and no entry with the parent share a realpath or common dir.
+   root; no two entries, and no entry with the parent, share a realroot or per-worktree gitdir
+   (§ 2.6). A shared common dir is allowed. A `write` checkout is on its manifest branch.
 5. `write`: base equals contract; head exists and descends from base; no merges unless allowed;
    every path of `diff --no-renames --name-only -z base head` and of
    `log --no-renames --name-only -z --format= base..head`, prefixed by the alias, matches the
@@ -192,12 +221,13 @@ The coordinator applies local-delivery § 4 to the parent, then:
 6. A checkout `HEAD` later than the delivered head is integration drift, reviewed separately and
    not attributed to the executor; the reviewed range stays `base..head`.
 7. `read`: contract base, manifest head and actual HEAD agree and the § 5 digest is unchanged;
-   otherwise "read-only dependency drift or write".
+   otherwise "read-only dependency drift or write". A digest beyond the bound is "not fully
+   observable", also a finding.
 8. `submodule`: the parent gitlink at HEAD (`ls-tree`) pins the delivered child head.
 9. `integration.tested_set` equals the delivered heads; checks on other versions do not count.
 
 Dispositions follow local-delivery § 6 per repo. A COMPLETE line with any per-repo finding is
-effective PARTIAL. The probe transcription is `multi_receipt` in the test file (§ 13).
+effective PARTIAL. The probe transcription is `multi_receipt` in the test file (§ 15).
 
 ## 13. Integration, partial merge and lifetime (R20-P05, O1)
 
@@ -233,13 +263,16 @@ adds a repo the contract does not name.
 | Placement, exclude, O4, plain dir, external alias, symlink component | `tests/test_multi_repo_contract.py` `PlacementAndIgnoreTests` | §§ 1–2 |
 | Gitdir writes outside parent, O1 removal, submodule gitdir/config | `GitdirAndLifetimeTests` | §§ 3, 6, 13 |
 | O3 walkers vs Git, `git clean`, dependency write, read-only digest | `ParentToolsAndDependencyTests` | §§ 2.7, 5 |
+| Ignored-directory rewrite, nested files, symlink text, bound (R20-C02) | `IgnoredDigestTests` | § 5 |
+| Reuse after setup, interrupted attempt, replaced checkout, lost checkpoint (R20-C03) | `ResumeBeforeDeliveryTests` | §§ 4, 8 |
 | Branch collision, reuse evidence | `BranchAndReuseTests` | § 4 |
-| Receipt: complete, child dirt, preexisting, outside contract, hash, no head, sidecar commit, scope, drift, read-only, alias collision, tested set | `ReceiptTests` | §§ 9–12 |
+| Receipt: complete, child dirt, preexisting, outside contract, hash, no head, sidecar commit, scope, drift, read-only, alias collision, shared common dir (R20-C01), tested set | `ReceiptTests` | §§ 2.6, 9–12 |
 | Manifest bounds, worst-case header | `ManifestBoundsTests` | §§ 9–10 |
 | Partial integration | `PartialIntegrationTests` | § 13 |
 | Runner argv, textual scope, line transport, flat `changed_scope` | `claude/claude-side/src/adapters/multi-repo-contract.test.ts` | §§ 2.6, 3, 10 |
 
-Commands, versions and results are in the [W20-01 ledger](../execution/W20-01/01.md). Limits:
+Commands, versions and results are in the W20-01 ledgers [01](../execution/W20-01/01.md) and
+[02](../execution/W20-01/02.md) (R20-C01…C03). Limits:
 the probes use synthetic repositories and a scripted CLI; they prove Git behaviour, receipt rules
 and bridge transport, not that a model follows the procedure, and not Claude Code's symlink
 handling for `--add-dir`. The receipt and validator are test transcriptions; W20-02 decides
