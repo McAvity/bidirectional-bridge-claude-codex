@@ -24,7 +24,7 @@
   ],
   "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/04.md",
-  "next_action": "Odebrane decyzją04: zakończyć bridge acceptance, integrować feature-workflow i wydać0.7.0 z CI. F-W19 i upgrade projektów osobno. R20-I01 host baseline failures pozostają historycznym ograniczeniem; nie przepisywać weryfikacji.",
+  "next_action": "Odebrane decyzją04 i wydane jako0.7.0: source6ed9a45, tagb77de56, exact-SHA CI42007132875 PASS. Dalszy opcjonalny krok to upgrade wybranego nowego worktree i pilot; aktualny runtime0.6.2 nietknięty. F-W19 nadal osobno. Root PARTIAL zachowuje historyczne failures hosta, bez brakującej implementacji produktu.",
   "bridge": {
     "feature_id": "F-W20-multi-repo-execution",
     "parent_task_id": "task_1kxkg971wd"

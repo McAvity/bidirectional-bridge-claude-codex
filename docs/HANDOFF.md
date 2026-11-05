@@ -1,13 +1,17 @@
 # Current handoff
 
-## F-W20 — accepted; release authorized
+## 0.7.0 published — F-W20 accepted,2026-11-05
 
-User accepted acc9d39 (executor09b88a32, code fd01ab36), decision04.
-[Decision](features/F-W20-multi-repo-execution/decisions/04.md) and
-[progress](features/F-W20-multi-repo-execution/PROGRESS.md) preserve exact scope and limits.
-Next: bridge acceptance, integrate into feature-workflow preserving its F-W19 planning,
-release0.7.0 to the McAvity fork after CI. No automatic runtime/project activation.
-Historical host test failures remain recorded; do not fabricate root COMPLETE.
+[Release checkpoint](tasks/w20-release.md): F-W20 accepted by user, integrated with
+newer F-W19 planning preserved, source6ed9a45, tagv0.7.0 atb77de56. Full exact-SHA
+CI42007132875 SUCCESS (JS707pass/1skip, Python196tests/5skip, pilot131tests/2skip,
+observer17pass). Pinned runtime installation and MCP36-tool handshake passed in
+an isolated temporary home without models/claim/database. No real-agent multi-repo pilot.
+This project's active pin remains0.6.2; publication did not activate0.7.0 in projects.
+Next optional step: a small feature in a new project worktree after explicit upgrade;
+see the checkpoint. F-W19 remains separately approved for implementation, not delivered.
+F-W20's product is accepted; its old root preserves PARTIAL for historical host-test
+failures that the runtime cannot waive. No need to restart its workers.
 
 ## Project runtime 0.6.2 active — verified 2026-11-05
 

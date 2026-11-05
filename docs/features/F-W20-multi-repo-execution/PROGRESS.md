@@ -93,3 +93,11 @@ Odpowiedź q-01 zapisana w bridge; po commicie bridge_feature_accept i uczciwy
 raport root (historyczne failures nie mogą zostać wymazane). Następna integracja
 do feature-workflow, bump0.7.0, publiczny fork McAvity, CI/tag/release.
 F-W19 bez implementacji, żaden aktywny runtime/projekt nie jest automatycznie aktualizowany.
+
+## 2026-11-05 — opublikowane0.7.0
+
+Odbiórbe3613e zapisany w bridge (accepted), root PARTIAL/BLOCKED zachowuje historyczne
+failures hosta. Scalenie8f05032 do feature-workflow, źródło6ed9a45, pin/tagb77de56.
+Pełne CI42007132875 SUCCESS. Release/checkpoint: docs/tasks/w20-release.md.
+Aktywny runtime nieprzełączony. Dalej opcjonalny test w nowym worktree wybranego
+projektu po upgrade; F-W19 osobno. Żadnej brakującej implementacji F-W20.
