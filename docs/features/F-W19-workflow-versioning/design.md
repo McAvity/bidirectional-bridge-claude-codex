@@ -1,6 +1,6 @@
 # F-W19 — projekt niezależnego wydawania i wyboru workflow
 
-Status: plan do niezależnego review, 2026-11-05. Bez implementacji.
+Status: korekty planu według decyzji01, do skupionego re-review, 2026-11-05. Bez implementacji.
 Wejście: [brief](brief.md), SHA-256
 `3856ac25d1c0f754846fefb6a88cc61e67e0ac3fe8b34a01d8a15ae898d6ee31`.
 Badany kod: `417ddc2a846a56422a1cb04e463fc89bbfc42a27` (feature-workflow).
@@ -37,6 +37,8 @@ Generator ma niezależne wejścia/digests i wybór komponentu do generacji/spraw
 Przy workflow-only zmienia tylko dwa pluginy feature-workflow i ich wpisy marketplace;
 przy bridge-only pozostawia workflow bajtowo identyczny. Test porównuje całe drzewa,
 łącznie z GENERATED.json, manifestami, helperami i pinem, a nie tylko numery wersji.
+Wspólny plik marketplace może się zmienić: porównujemy niezmieniony wpis drugiego
+komponentu, nie cały plik. Nie dotyczy to niezmienności pełnego drzewa jego paczek.
 Wydanie istniejącego numeru o innych bajtach jest odrzucane. Generator nie może
 wbudować bieżącego HEAD ani wspólnego digestu w niezmieniony komponent.
 
@@ -76,7 +78,8 @@ featura: wersja/identity/manifest hash, generacja wyboru i pochodzenie. Nie zawi
 rejestrem wyboru instrukcji, nie drugim indeksem/procesem featura. Helper może
 utworzyć katalog i lock zanim powstanie brief lub feature.json. Po przydzieleniu
 ID przez design ten sam katalog/lock jest rejestrowany w zwykłym indeksie.
-Przy przeniesieniu/zmianie ID zachowujemy identity i kontrolujemy konflikt.
+Przy przeniesieniu/zmianie ID zachowujemy identity i kontrolujemy konflikt; W19-01
+definiuje draft path → final ID, wznowienie przenoszenia i kolizję katalogów.
 
 `select-source` pozostaje czystym odczytem; zwraca wybraną paczkę lub jawne
 `selection required` przed pracą. Jawny begin/select helper zapisuje kopię i lock
@@ -130,9 +133,25 @@ Upgrade zachowuje dokładny dotychczasowy runtime/instrukcje i pochodzenie przed
 zmianą wyboru. Dla starych featurów bez locka przygotowuje legacy snapshot z tego
 zestawu, nie z aktualnego marketplace. Sam odczyt nie przypisuje żadnej wersji.
 Jawna operacja migracji/bind z autoryzacją managera zapisuje pochodzenie bez
-przepisywania dawnych prób. Snapshot legacy zachowuje dotychczasowe warianty
-klientowe, także gdy wymagają dawnych kopii w bridge-claude. Wszystkie nowe rundy
-używają tej referencji aż do jawnego switch. W19-01 musi pokazać fixtures obejmujące
+przepisywania dawnych prób. Snapshot legacy zachowuje dotychczasową treść należącą do workflow, a nie cały
+stary plugin bridge-claude. Wyciągamy tylko feature-*, guide i ich zasoby;
+using-bridge, bridge-upgrade i techniczne reguły API zawsze dostarcza bieżący runtime.
+Adapter opakowania nie zmienia starych reguł workflow i ma własną proweniencję/hash;
+nie wolno przekazać dawnej bridge-claude, która nadpisze obecne role po nazwie pluginu.
+Legacy bez manifestu dostaje jawny profil zgodności/deklarację z dokładnym pochodzeniem,
+sprawdzaną względem nowego silnika i formatu dostaw; nie jest zwolniony z kontroli
+kompatybilności. Niepotwierdzona zgodność zatrzymuje zależny zakres i wymaga dowodu.
+Wszystkie nowe rundy używają tej referencji aż do jawnego switch.
+
+Okno przejściowe nowy plugin + projekt nadal na starym pinie jest osobną gałęzią:
+istniejący legacy feature kontynuuje przez dotychczasowy selector/runtime według
+udowodnionego starego zestawu, bez wybrania nowego pluginu i bez udawania bindingu.
+Nowy feature wymagający niezależnego wyboru otrzymuje diagnozę brakującego kontraktu
+oraz wskazanie jednorazowego upgrade; plugin nie wykonuje go automatycznie.
+Brak dowodu starego zestawu lub brak danego entry w nim daje konkretną odmowę,
+nie cichą adopcję nowego workflow. W19-01 obejmuje fixtures tych trzech przypadków:
+rozłączność ról, deklaracja legacy i oba rodzaje featura przy starym pinie.
+W19-01 musi także pokazać fixtures obejmujące
 trwający feature, przerwany upgrade i niejednoznaczną historię. Jeśli nie ma dowodu
 starego zestawu, odmowa i wskazanie brakującego źródła; nie wybór najnowszego.
 Downgrade runtime’u sprawdza schemat i kontrakt przed zapisem. Historycznych paczek
@@ -148,12 +167,20 @@ wymaga rzeczywistej pracy i odczytu specyficznych instrukcji w próbie klienta.
 Diagnostyka ma allowlistę tych pól; bez treści skilli, promptów, ścieżek prywatnych
 czy identyfikatorów natywnych. Eksport feature-exchange zachowuje lock/proweniencję,
 nie bezwiednie nowszy workflow. Import nie zmienia lokalnego wyboru po cichu.
+Doctor/docs wskazują rozpoznane stare osobiste entry bridge-claude:feature-* bez
+bootstrapu i zalecają upgrade lub wyłączenie, bez automatycznego usuwania pluginu.
+Nie udajemy kontroli nad dowolnym już załadowanym skillem. Gwarancja delegacji
+w tym feature dotyczy Codex-manager → Claude-worker. Odwrotny kierunek pozostaje
+przy obecnym kontrakcie poza nowym bindingiem; nowy binding nie może uruchomić
+nieobsługiwanego wykonawcy z udawaną gwarancją. Oba interaktywne klienty i standalone
+pozostają w zakresie.
 
 W19-01 posiada wspólny kontrakt; W19-02 helper/formats i generator; W19-03 bazę,
 rezerwacje i recovery; W19-04 wejścia skilli, bootstrap i runner; W19-05 diagnostykę
 oraz instrukcje użytkownika; W19-06 integrację/review/testy klientów. Taski zawierają
 zależności wykonania i są źródłem prawdy. Potencjalne równoległe prace W19-03/04
-wymagają zamrożonego W19-01/02, rozłącznych plików i integratora; domyślnie sekwencja
+wymagają najpierw jawnego replanu zależności (obecnie04 zależy od03),
+zamrożonego kontraktu, rozłącznych plików i integratora; domyślnie sekwencja
 bez mnożenia agentów/worktree. Koordynator jest integratorem i właścicielem indeksu,
 review/decyzji; wykonawca zapisuje taskowe ledgery i commity w swoim zakresie.
 
@@ -177,7 +204,18 @@ odróżniać przez porównanie z 417ddc2, nie usuwać testów ani zmieniać hist
 fixture’ów, żeby uzyskać zielony wynik. Ograniczone miejsce /tmp: duże scratch na
 woluminie home, bez czyszczenia cudzych dowodów.
 
-Proponowany pilot W19-06: syntetyczne dane, dwa projekty, A/B, najwyżej sześć rund
+Proponowany pilot W19-06 działa wyłącznie w izolowanych konfiguracjach i cache’ach
+klientów (wspierane przez ich CLI CODEX_HOME / CLAUDE_CONFIG_DIR, zweryfikowane
+w próbach W19-01), osobnym bridge-home i syntetycznych projektach. Instalacja A/B,
+usuwanie cache’u, trust i restarty dotyczą tylko tych katalogów, nigdy osobistych
+instalacji/projektów. Polecenia potwierdzają efektywne ścieżki; jeśli klient nie
+honoruje izolacji, zatrzymać pilot przed zmianą profilu. Istniejące logowanie
+subskrypcyjne można wykorzystać jedynie wspieraną drogą w izolacji; brak takiej
+możliwości to checkpoint i konkretne pytanie o dostęp, bez cichego przeniesienia
+próby do prawdziwego profilu lub nowego API. Dowody prywatne zachować do odbioru,
+bez automatycznego czyszczenia; nie ma osobistych zmian do przywracania.
+
+Pilot: syntetyczne dane, dwa projekty, A/B, najwyżej sześć rund
 Claude’a po max_turns=64, deadline 75 min/runda, timeout MCP 90 min. Łączny czas
 części modelowej do 180 min i do 24 tur Astry; limity per-runda nie znoszą całości.
 Test obejmuje pierwszą pracę, zachowanie A po upgrade/cache deletion, nowy B i jawny

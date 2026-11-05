@@ -39,3 +39,10 @@ Następne: delegowana decyzja korekt planu, poprawki i skupione re-review.
 Decyzja01 koordynatora zatwierdza jedną partię korekt planu P01/P02 i rozlicza
 wszystkie uwagi P03…08. Źródło: delegacja feature-flow, nie zgoda użytkownika
 na wykonanie. Następne: feature-plan stosuje korekty → skupione review.
+
+Korekty decyzji01 wprowadzone jedną partią: legacy workflow bez podmiany nowych
+ról silnika, jawny profil zgodności, zachowanie starego featura na starym pinie,
+a nowemu diagnoza upgrade; pilot tylko izolowane profile/cache/bridge-home.
+Uwagi P03…08 rozliczone w decyzji i kanonicznym planie/taskach. Wymagane P01/P02
+czekają na skupione niezależne potwierdzenie; nie oznaczono ich jeszcze verified.
+Następne: commit tej korekty planu i jedno skupione re-review, potem Gate 1.
