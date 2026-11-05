@@ -20,3 +20,8 @@ Utworzono W20-P01 i W20-01…03, design i indeks. Brief niezmieniony.
 Wykonanie niezatwierdzone; następne niezależne review dokładnego commitu planu,
 rozliczenie ustaleń i Gate 1. Brak merge/push. F-W19 plan zatwierdzony na głównym
 branchu, implementacja nieobecna; dystrybucja F-W20 nie zakłada jej istnienia.
+
+Review e1cbddc: R20-P01 wymagane, P02…06 nieblokujące; delegowana decyzja9867321
+przyjmuje je w jednej partii. Skorygowano fizyczną lokalizację/ignore/uprawnienia,
+dowody reuse, kolejność dostawy i testy wyników merge. Nie wykonano prób produktu.
+Następne: focused independent review R20-P01, bez pełnego kolejnego audytu.

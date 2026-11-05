@@ -37,6 +37,16 @@ base, target branch, checkout i jego przypisanie do featura. Źródło bez dost�
 niejednoznaczny pin blokuje zależne zapisy, nie niezależne taski. Baza z planu ma
 być obecna i zgodna; zmiana wymaga uzasadnienia w istniejącym zakresie albo decyzji.
 Brak child checkoutu: agent przygotowuje worktree, ewentualnie izolowany klon.
+Domyślnie jego fizyczny katalog jest wewnątrz parenta, w prywatnym, nieśledzonym
+katalogu zadania (np. `.feature-repos/<feature-id>/<repo-id>`), bez symlinków po drodze.
+Przed utworzeniem agent sprawdza brak kolizji i dodaje wyłącznie dokładny katalog
+zadania do pliku wskazanego przez `git rev-parse --git-path info/exclude`, zachowując
+zastane wpisy; nie zmienia śledzonego .gitignore. Ten plik może być wspólną metadaną
+Git: nie kasować go ani nie zastępować całości. `git check-ignore` i status parenta
+potwierdzają ignorowanie; konfigurację/dirt początkowy zapisujemy po przygotowaniu,
+nie próbujemy commitować child repo/aliasu ani ukrywać innych zmian użytkownika.
+Submodule pod śledzonym gitlinkiem pozostaje śledzony: nie ignorujemy gitlinku,
+a jego zmiana jest osobnym elementem scope/receipt parenta.
 Reuse wymaga dowodu tego samego featura i zgodności bazy/brancha/dependencies;
 nazwa brancha sama nie świadczy o własności. Domyślna nazwa jak parent; kolizja
 z inną pracą daje nową nazwę i zapis mapowania, nigdy reset/przejęcie. Zastany dirt
@@ -59,10 +69,16 @@ checkpointcie pod per-worktree exchange namespace; bez sekretów i bez drugiego
 statusu zadania. Każde wznowienie odczytuje ten checkpoint i sprawdza realroot,
 gitdir, branch, tożsamość repo i bindings. Zmienione elementy wymagają powtórzenia
 odpowiednich kontroli; brak checkpointu wymaga odtworzenia z dowodów, nie klonowania
-kolejnego zestawu na ślepo. Nie wykonujemy pełnego audytu przed każdym narzędziem.
+kolejnego zestawu na ślepo. Minimalny dowód reuse: wcześniejszy ledger/manifest
+identyfikuje repo, feature, branch i bazę, a rzeczywisty checkout/commity/ancestry
+potwierdzają tę relację, bez konfliktu z cudzą pracą. Sama nazwa lub wspólne remote
+nie wystarcza; przy braku dowodu blokujemy jego użycie do zapisu i wyjaśniamy własność.
+Nie wykonujemy pełnego audytu przed każdym narzędziem.
 
 MCP nadal używa repo-relative globs. Każdy write child ma jednoznaczny dostęp spod
 parenta: istniejącą ścieżkę albo lokalny ignorowany alias do własnego checkoutu.
+Nowe checkouty domyślnie leżą fizycznie pod parentem. Zewnętrzny alias jest
+wariantem reuse/niestandardowego układu dopiero po wykazaniu dostępności dla obu ról.
 Alias można utworzyć w prywatnym katalogu parenta, tylko gdy nie koliduje z plikiem,
 repo ID lub cudzym środowiskiem. Zewnętrzne worktree pozostaje poza parentem;
 alias nie zmienia jego Git ani nie daje fizycznej ochrony lease. Nie wkładamy
@@ -72,6 +88,18 @@ zweryfikowane realpaths, mapowanie repo ID, bases, bindings i zakres per repo.
 jego aliasu. Dla submodule gitlink parenta i pliki child to dwa odrębne wpisy.
 Nie polegamy na diff parenta dla ignorowanego child. Worker sprawdza mapę przed
 zapisem i nie dopisuje nowych repo bez kontraktu. Obie role ładują wspólną procedurę.
+Uprawnienia klienta są rzeczywistym ograniczeniem: runner ma acceptEdits oraz
+--add-dir z prefiksów scope, manager własny sandbox/writable roots. Test argv
+bez modelu dowodzi tylko przekazania katalogu, nie semantyki symlinków Edit/Write.
+Zewnętrznego dostępu nie wolno uznać za PASS na tej podstawie ani zastępować odmowy
+Edit/Write obejściem przez Bash. Bez dowodu wybieramy fizyczny lokalny checkout
+przy pierwszym setupie; istniejącego zewnętrznego środowiska/sesji nie przenosimy
+po cichu. Lokalny Git worktree może potrzebować zapisu do wspólnego gitdir poza
+parentem; stosujemy zwykłe uprawnienia klienta/eskalację, nie wyłączamy sandboxa.
+Gdy ich brak, nowy izolowany klon wewnątrz parenta jest alternatywą tylko jeśli
+zachowuje autoryzowane źródło/bazę i nie zastępuje istniejącej pracy. Brak wszystkich
+zgodnych wariantów blokuje zależne zapisy. To ograniczenie hosta, nie nowa bramka
+produktowa ani obietnica całkowitego braku promptów polityki klienta.
 W19 ma pogodzić to z wyborem wersji instrukcji; F-W20 nie tworzy własnego selektora.
 
 ## Dostawa i kontrola
@@ -79,7 +107,13 @@ W19 ma pogodzić to z wyborem wersji instrukcji; F-W20 nie tworzy własnego sele
 Pierwsza linia zostaje dokładnie `DELIVERY=local-v1 ...` dla parenta. Druga linia
 w kontrakcie multi-repo wskazuje `REPOS=<relative-json-path> SHA256=<hash>` przed
 opisem; obie muszą zmieścić się w utrwalanym summary (4000 znaków). Nowy JSON jest
-załącznikiem nowego ledgera parenta, commitowanym w tej samej rundzie. Zawiera wersję
+załącznikiem nowego ledgera parenta, commitowanym w tej samej rundzie.
+Wyjątek local-delivery dla commitu ledgera po kontrolach obejmuje także ten
+załącznik (wyłącznie dowody, bez kodu). Kiedy jawnie wymagano ZIP, kolejność to
+DELIVERY, REPOS, PACKAGE; odbiorca sprawdza wszystkie linie przed opisem oraz
+limit 4000 znaków, nie skraca krytycznych referencji. Single-repo zachowuje swoją
+kolejność DELIVERY, PACKAGE. Zbyt długie referencje trzeba skrócić w planie ścieżek,
+a nie obcinać hash lub po cichu pomijać wymaganą paczkę. Zawiera wersję
 `multi-repo-v1`, logiczne ID i source identity, alias, base/head child, branch/target,
 zakresy, baseline/final dirt z klasyfikacją własności i dowody testowanego zestawu.
 Parent HEAD pochodzi z pierwszej linii, nie z wnętrza własnego commitu: bez cyklu
@@ -97,7 +131,10 @@ dryfem integracji i wymaga osobnego sprawdzenia, nie przypisania workerowi.
 
 W20-01 doprecyzuje pola/walidacje i fixtures w krótkim kontrakcie technicznym,
 w tym kolizje aliasów, manifest poza kontraktem, readonly dependency drift,
-single-repo fallback i transport obu linii. To lokalna bramka techniczna przed
+single-repo fallback i transport DELIVERY/REPOS/PACKAGE. Próby obejmują argv
+runnera dla fizycznego child i zewnętrznego aliasu, ignore/status, rzeczywistą
+lokalizację gitdir submodule w linked worktree oraz zmiany wspólnego configu
+przy init. Te normalne metadane odróżnić od nieautoryzowanej zmiany checkoutu. To lokalna bramka techniczna przed
 konsumentami, bez nowego pytania użytkownika. Wymóg zmiany runtime/API zamiast
 opisanej zgodności wymaga konkretnego wykazania i oceny zakresu, nie cichego rozszerzenia.
 
@@ -107,7 +144,9 @@ Koordynator integruje lokalnie zgodny zestaw feature HEADs i testuje go przed me
 Późniejsze autoryzowane merge odbywa się dependency-first do target branch każdego
 repo; aktualizuje piny do rzeczywistych wynikowych SHA i zapisuje delivery→integration.
 Przerwanie zostawia per-repo wynik i dokładny kolejny krok, bez resetu częściowo
-scalonych repo i bez udawanej atomowości. Cykliczne zależności wymagają jawnego
+scalonych repo i bez udawanej atomowości. Po merge innym niż FF oraz zmianie pinów
+ponownie sprawdzamy wynikowy zestaw SHA; commit pinów oceniany oddzielnie jako
+dryf integracji, a wcześniejszych testów nie przypisujemy nowym bajtom. Cykliczne zależności wymagają jawnego
 zestawu kompatybilnych wersji i kolejności etapowej. Push/deploy pozostają osobne.
 ZIP jawnie wskazuje pokryte repo; nie rozszerzamy eksportera do nowego formatu.
 

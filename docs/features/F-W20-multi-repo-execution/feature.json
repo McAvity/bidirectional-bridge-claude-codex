@@ -18,9 +18,11 @@
     "shared/protocol/src/scope.ts",
     "shared/protocol/src/schemas.ts",
     "tests/test_local_delivery.py",
-    "scripts/plugin-packages/generate.mjs"
+    "scripts/plugin-packages/generate.mjs",
+    "claude/claude-side/src/adapters/claude-code-runner.ts",
+    "scripts/native-bridge-mcp.mjs"
   ],
-  "latest_review": null,
-  "latest_decision": null,
-  "next_action": "feature-flow: niezależne feature-review planu, rozliczenie ustaleń i proposed decision; Gate 1 przed wykonaniem W20-01…03."
+  "latest_review": "docs/features/F-W20-multi-repo-execution/reviews/01-plan.md",
+  "latest_decision": "docs/features/F-W20-multi-repo-execution/decisions/01.md",
+  "next_action": "feature-flow: focused review korekty R20-P01; następnie proposed decision/Gate 1. Brak zgody wykonawczej."
 }
