@@ -269,8 +269,11 @@ installs that immutable runtime if needed, backs up the default `.bridge/bridge.
 bridge home, and uses the existing installer guards. With no project argument it
 targets the current worktree; multiple explicit project paths are accepted. Close
 their clients first. It preserves legacy installation layouts and environment overrides.
-For restricted Linux process access, add `--sudo-observer` (the read-only observer
-authenticates with `sudo -v`; never run the installer with sudo). Pass
+On Linux, `--yes` automatically switches to the read-only sudo observer if the native
+plan refuses `ACTIVE_USE_UNKNOWN`. It may ask for your password, then repeats the plan
+once before backup/apply. Without a terminal it uses cached sudo authorization only.
+Plans without `--yes` never authenticate; macOS keeps native ps/lsof. `--sudo-observer`
+still selects the observer explicitly from the start. Never run the installer with sudo. Pass
 `--codex-profile NAME` only when using that profile. Marketplace plugin refresh and
 client restart still follow the upgrade procedure above. No machine paths or session
 IDs are stored in the script. More examples: [portable upgrade](docs/tasks/portable-upgrade.md).

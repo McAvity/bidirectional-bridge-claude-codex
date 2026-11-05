@@ -18,8 +18,11 @@ Without WORKTREE, use the current directory's Git worktree. Without --yes, show
 plans only; an absent runtime is reported without installing or fetching anything.
 --yes installs the pinned runtime if needed, backs up existing SQLite state,
 applies the checked setup/update, verifies its selection and runs doctor.
---sudo-observer explicitly enables the Linux read-only observer; --yes then runs
-sudo -v. Never run the installer as root. macOS uses native ps/lsof.
+On Linux, --yes automatically authenticates the read-only sudo observer when the
+native plan refuses ACTIVE_USE_UNKNOWN, then repeats the plan once. In a terminal
+sudo may ask for your password; without a terminal it uses cached authorization only.
+--sudo-observer selects that observer from the start. Plans never authenticate sudo.
+Never run the installer as root. macOS keeps native ps/lsof, without this fallback.
 Bridge home and Codex profile environment overrides are preserved.
 Close affected Codex/Claude clients before applying; refusals stop the sequence.
 This command does not refresh marketplace plugins, commit, push or restart clients.
@@ -47,7 +50,28 @@ export function parseUpgradeArgs(argv, cwd = process.cwd()) {
 
 function command(program, args, options) {
   const result = spawnSync(program, args, { ...options, stdio: "inherit" });
-  if (result.error || result.status !== 0) throw new Error(`${program} failed (${result.status ?? result.error?.message}); stopped, no automatic retry`);
+  if (result.error || result.status !== 0) {
+    throw Object.assign(new Error(`${program} failed (${result.status ?? result.error?.message}); stopped, no automatic retry`),
+      { signal: result.signal, exitCode: result.status });
+  }
+}
+
+// Diagnose only a failed read-only plan, using machine codes rather than console text.
+// The real installer remains the authority; this probe cannot apply project changes.
+export function planNeedsObserver(args, options) {
+  if (args.includes("--yes")) return false;
+  const result = spawnSync(process.execPath, [...args, "--json"], {
+    ...options, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8",
+    timeout: 30_000, maxBuffer: 4 * 1024 * 1024,
+  });
+  if (result.error || result.status !== 1) return false;
+  try {
+    const report = JSON.parse(result.stdout);
+    return report.applied === false && Array.isArray(report.refusals) &&
+      report.refusals.length > 0 && report.refusals.every(r => r?.code === "ACTIVE_USE_UNKNOWN");
+  } catch {
+    return false;
+  }
 }
 
 // Private persistent SQLite snapshots, not raw DB/WAL copies. The CLI plan runs first.
@@ -87,6 +111,8 @@ export async function upgrade(options, dependencies = {}) {
   const acquire = dependencies.acquireSource ?? acquireSource;
   const out = dependencies.log ?? console.log;
   const platform = dependencies.platform ?? process.platform;
+  const needsObserver = dependencies.planNeedsObserver ?? planNeedsObserver;
+  const interactive = dependencies.interactive ?? Boolean(process.stdin.isTTY);
   const release = readRelease(join(source, "scripts/plugin-packages/release.json"));
   const commit = release.pinned.commit;
   const home = bridgeHome(env);
@@ -124,7 +150,19 @@ export async function upgrade(options, dependencies = {}) {
       ? [cli, "update", "--workspace", workspace, "--runtime", runtime.id, "--home", home]
       : [plugin, action, "--to", runtime.id, "--home", home];
     // Both phases use the existing guard; apply checks again after backup and any race.
-    run(process.execPath, args, { cwd: workspace, env });
+    try {
+      run(process.execPath, args, { cwd: workspace, env });
+    } catch (error) {
+      if (error.signal || [130, 143].includes(error.exitCode) ||
+          !options.apply || platform !== "linux" || env.CODEX_SANDBOX ||
+          ![undefined, "native"].includes(env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION) ||
+          !needsObserver(args, { cwd: workspace, env })) throw error;
+      out("Native process inspection is incomplete. Authenticating the read-only sudo observer and repeating the plan once.");
+      // Only authentication/observation is privileged, never the installer or backup.
+      run("sudo", interactive ? ["-v"] : ["-n", "-v"], { env });
+      env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION = "sudo";
+      run(process.execPath, args, { cwd: workspace, env });
+    }
     if (!options.apply) continue;
     run("python3", ["-c", BACKUP, workspace, home], { env });
     run(process.execPath, [...args, "--yes"], { cwd: workspace, env });

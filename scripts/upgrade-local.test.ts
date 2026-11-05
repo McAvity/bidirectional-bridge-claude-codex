@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 // @ts-expect-error JS CLI
-import { parseUpgradeArgs, upgrade } from "./upgrade-local.mjs";
+import { parseUpgradeArgs, planNeedsObserver, upgrade } from "./upgrade-local.mjs";
 
 const dirs: string[] = [];
 afterEach(() => dirs.splice(0).forEach(d => rmSync(d, {recursive:true,force:true})));
@@ -19,7 +19,8 @@ function fixture() {
   writeFileSync(join(root,"scripts/plugin-packages/release.json"),JSON.stringify({format:"claude-codex-bridge.release/v1",package_version:"9.0.0",pinned:{commit},repository:"https://example.invalid/bridge.git"}));
   let applied=false;
   const calls: any[]=[];
-  const deps: any={source:root,env:{CLAUDE_CODEX_BRIDGE_HOME:home,CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION:"native"},log:()=>{},
+  const deps: any={source:root,env:{CLAUDE_CODEX_BRIDGE_HOME:home,CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION:"native",CODEX_SANDBOX:undefined},log:()=>{},
+    platform:"linux",interactive:true,planNeedsObserver:()=>false,
     listRuntimes:()=>[runtime],
     status:()=>({state:"ready",workspace:{in_git_repository:true,root:workspace},declaration:{enabled:true},selection:{kind:"valid",runtime_id:applied?runtime.id:"old"},runtime:{commit}}),
     command:(program:string,args:string[],opts:any)=>{calls.push({program,args,opts});if(args.includes("--yes"))applied=true;},
@@ -100,6 +101,76 @@ describe("portable upgrade orchestration", () => {
     await upgrade({...f.options,sudoObserver:true},{...f.deps,platform:"linux"});
     expect(f.calls[0]).toMatchObject({program:"sudo",args:["-v"]});
     expect(f.calls[1].opts.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION).toBe("sudo");
+  });
+  it("automatically authenticates after an unknown native plan, then rechecks before backup/apply", async () => {
+    const f=fixture(), run=f.deps.command;
+    f.deps.planNeedsObserver=()=>true;
+    f.deps.command=(program:string,args:string[],opts:any)=>{
+      run(program,args,{...opts,env:{...opts.env}});
+      if(program===process.execPath && args[1]==="update" && opts.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION!=="sudo") throw new Error("plan refused");
+    };
+    await upgrade(f.options,f.deps);
+    expect(f.calls.map(c=>c.program==="sudo"?"sudo":c.program==="python3"?"backup":c.args[1])).toEqual(["update","sudo","update","backup","update","doctor"]);
+    expect(f.calls[0].opts.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION).toBe("native");
+    expect(f.calls[1].args).toEqual(["-v"]);
+    expect(f.calls[2].opts.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION).toBe("sudo");
+    expect(f.calls.filter(c=>c.args.includes("--yes"))).toHaveLength(1);
+  });
+  it("keeps refusals after sudo and never retries a mutation", async () => {
+    for(const failAt of ["privileged-plan","apply"]) {
+      const f=fixture(), run=f.deps.command;f.deps.planNeedsObserver=()=>true;
+      f.deps.command=(program:string,args:string[],opts:any)=>{
+        run(program,args,opts);
+        if(program===process.execPath && args[1]==="update" &&
+          (opts.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION!=="sudo" || failAt==="privileged-plan" || args.includes("--yes"))) throw new Error("guard refused");
+      };
+      await expect(upgrade(f.options,f.deps)).rejects.toThrow("guard refused");
+      expect(f.calls.filter(c=>c.program==="sudo")).toHaveLength(1);
+      expect(f.calls.filter(c=>c.args.includes("--yes"))).toHaveLength(failAt==="apply"?1:0);
+      expect(f.calls.some(c=>c.args.includes("doctor"))).toBe(false);
+    }
+  });
+  it("cannot escalate a plan, macOS or sandbox refusal", async () => {
+    for(const variant of ["plan","mac","sandbox","invalid-mode"]) {
+      const f=fixture();f.deps.planNeedsObserver=()=>{throw new Error("unexpected probe");};
+      f.deps.command=(program:string)=>{f.calls.push({program});throw new Error("original refusal");};
+      if(variant==="mac")f.deps.platform="darwin";
+      if(variant==="sandbox")f.deps.env.CODEX_SANDBOX="restricted";
+      if(variant==="invalid-mode")f.deps.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION="invalid";
+      await expect(upgrade({...f.options,apply:variant!=="plan"},f.deps)).rejects.toThrow("original refusal");
+      expect(f.calls).toHaveLength(1);expect(f.calls[0].program).toBe(process.execPath);
+    }
+  });
+  it("uses noninteractive authorization without a terminal and stops if it fails", async () => {
+    const f=fixture();f.deps.interactive=false;f.deps.planNeedsObserver=()=>true;
+    f.deps.command=(program:string,args:string[])=>{f.calls.push({program,args});throw new Error(program==="sudo"?"sudo denied":"plan refused");};
+    await expect(upgrade(f.options,f.deps)).rejects.toThrow("sudo denied");
+    expect(f.calls).toHaveLength(2);expect(f.calls[1]).toEqual({program:"sudo",args:["-n","-v"]});
+  });
+  it("does not diagnose or authenticate after an interrupted plan", async () => {
+    for(const detail of [{signal:"SIGINT"},{exitCode:130},{exitCode:143}]) {
+      const f=fixture();f.deps.planNeedsObserver=()=>{throw new Error("unexpected probe");};
+      f.deps.command=()=>{throw Object.assign(new Error("interrupted"),detail);};
+      await expect(upgrade(f.options,f.deps)).rejects.toThrow("interrupted");
+    }
+  });
+  it("recognizes only structured unknown-use refusals from a failing read-only plan", () => {
+    const dir=temp(), script=join(dir,"fake-plan.cjs");
+    for(const [report,exit,expected] of [
+      [{applied:false,refusals:[{code:"ACTIVE_USE_UNKNOWN"}]},1,true],
+      [{applied:false,refusals:[{code:"ACTIVE_SESSION"}]},1,false],
+      [{applied:false,refusals:[{code:"ACTIVE_USE_UNKNOWN"},{code:"CONFIG_CONFLICT"}]},1,false],
+      [{applied:true,refusals:[{code:"ACTIVE_USE_UNKNOWN"}]},1,false],
+      [{applied:false,refusals:[{code:"ACTIVE_USE_UNKNOWN"}]},0,false],
+      [{message:"ACTIVE_USE_UNKNOWN"},1,false],
+      [null,1,false],
+    ] as const) {
+      writeFileSync(script,`console.log(${JSON.stringify(JSON.stringify(report))});process.exit(${exit});`);
+      expect(planNeedsObserver([script],{})).toBe(expected);
+    }
+    writeFileSync(script,"console.log('not JSON ACTIVE_USE_UNKNOWN');process.exit(1)");
+    expect(planNeedsObserver([script],{})).toBe(false);
+    expect(planNeedsObserver([script,"--yes"],{})).toBe(false);
   });
   it("makes an exclusive private SQLite backup that includes committed WAL data", async () => {
     const f=fixture();mkdirSync(join(f.workspace,".bridge"));

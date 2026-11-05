@@ -18,7 +18,11 @@ bash scripts/upgrade-local.sh --yes /path/to/a /path/to/b
 bash scripts/upgrade-local.sh --yes --sudo-observer --codex-profile my-profile /path/to/project
 ```
 
-The last form is for Linux hosts needing explicit privileged process observation.
+On Linux, `--yes` now falls back automatically when the native read-only plan refuses
+only `ACTIVE_USE_UNKNOWN`. A second read-only JSON plan confirms the machine code;
+console text never triggers elevation. The wrapper authenticates the existing read-only
+observer with `sudo -v` (or `sudo -n -v` without a terminal), then repeats the plan once.
+Only a successful plan permits backup/apply. The last form selects that observer upfront.
 macOS keeps ps/lsof. Existing bridge home/profile environment variables are preserved;
 no machine-specific home, project list, profile, runtime id or native session id is fixed.
 Missing runtime plans do not fetch/build or create a bridge home. Applying installs the
@@ -62,3 +66,29 @@ README and this checkpoint. Target version remains the published release descrip
 this operator helper needs no new runtime pin or version bump. Existing immutable
 runtime and local state remain unchanged. Continue by invoking it from a normal shell
 with explicit project paths after closing their clients.
+
+
+## Automatic Linux observer fallback — 2026-11-05
+
+User requested automatic sudo observation for the recurring Ubuntu refusal. Branch
+fix/upgrade-auto-observer. Only the source-clone operator wrapper and its documentation
+change; no runtime/plugin rebuild, release pin change, project apply or privileged
+command was performed during implementation.
+
+With --yes, a failed native Linux plan is diagnosed through the CLI's read-only JSON
+output. Only a non-applied plan with exclusively ACTIVE_USE_UNKNOWN refusals permits
+sudo authentication and one re-plan. Authentication does not elevate backup, installer
+or doctor. An active session, other/mixed refusal, malformed probe, invalid mode,
+sandbox, interrupted process, macOS or plan-only invocation keeps the original stop.
+Without a terminal automatic authentication uses sudo -n -v, so there is no unattended
+password prompt. Explicit --sudo-observer remains supported. A refusal from the new
+plan or from apply stops; mutations are never retried automatically.
+
+Validation: upgrade orchestration17/17 and process observer16/17 pass, one privileged
+host test skipped (33 pass/1 skip total). New tests cover actual JSON subprocess
+responses plus injected authentication/command sequencing, refusal after escalation,
+no mutation replay, noninteractive denial and interruption. SQLite backup remains a
+real temporary-database test. Build, Node/Bash syntax, CLI help, documentation links
+and diff check pass. No real sudo/password prompt or macOS execution is claimed.
+The script in this checkout is ready to use with the ordinary --yes command; no new
+bridge runtime version is needed. Publication is not part of this local change.
