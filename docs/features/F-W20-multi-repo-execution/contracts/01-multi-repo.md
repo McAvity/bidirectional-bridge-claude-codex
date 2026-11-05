@@ -277,3 +277,9 @@ the probes use synthetic repositories and a scripted CLI; they prove Git behavio
 and bridge transport, not that a model follows the procedure, and not Claude Code's symlink
 handling for `--add-dir`. The receipt and validator are test transcriptions; W20-02 decides
 whether a read-only helper ships and links the canonical procedure from both roles.
+
+W20-02 implementation (not part of the contract text above): the canonical procedure is
+`.agents/skills/feature-execute/references/multi-repo.md`, and the shipped read-only helper is
+`.agents/skills/feature-execute/scripts/multi_repo.py` with its tests in `tests/test_multi_repo.py`.
+The repo map in the round contract is `multi-repo-contract-v1` (procedure § 4). The probe
+transcriptions in `tests/test_multi_repo_contract.py` remain W20-01 evidence.

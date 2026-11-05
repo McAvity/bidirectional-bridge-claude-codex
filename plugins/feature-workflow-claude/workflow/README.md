@@ -203,6 +203,23 @@ Koordynator wyznacza niezależne zakresy i integratora. Przy autoryzowanej pracy
 
 Feature kończy się po potwierdzeniu kryteriów na zintegrowanym kodzie, rozliczeniu istotnych ustaleń i wymaganych decyzjach/odbiorach. Po poprawkach badaj ich zakres i związane regresje; nie uruchamiaj bez powodu całego procesu od nowa. Zmiany dokumentów muszą trafić do aktualnych dokumentów kanonicznych, a nie pozostać wyłącznie w pliku decyzji.
 
+## Feature w wielu repozytoriach
+
+Design, plan i review mogą powstać w dowolnym checkoutcie. Plan wskazuje logiczne repozytoria, ich źródła, wersje lub piny, role zapisu albo odczytu oraz docelowe gałęzie, ale nie przyszłe lokalne ścieżki. Po przeniesieniu dokumentacji do nowego parent worktree wystarczy zwykłe `feature-execute F-XXX`. Brak child checkoutu nie wymaga ręcznego setupu ani nowego planu: to zadanie przygotowawcze execute.
+
+Execute przed pierwszym zależnym zapisem:
+
+- przygotowuje zwykłym Gitem po jednym izolowanym checkoutcie dla każdego zapisywanego repozytorium, domyślnie fizycznie pod `.feature-repos/<feature>/<repo>`;
+- ignoruje ten katalog wyłącznie przez `info/exclude`;
+- przy kolizji gałęzi wybiera nową nazwę i zapisuje mapowanie;
+- sprawdza powiązania lokalnych pakietów, buildów i codegenu oraz zależności tylko do odczytu.
+
+Wspólne metadane Git i zwykłe cache narzędzi nie są błędem. Utrata izolacji blokuje tylko dotknięty zakres.
+
+Mapa repozytoriów trafia do kontraktu rundy i lokalnego checkpointu poza Gitem, a logiczne mapowanie do ledgera. Dostawa obejmuje każde zmienione repozytorium: jego bazę, HEAD, commity, zakres i dirt. Służy do tego plik `<ledger>.repos.json` obok ledgera oraz linia `REPOS=` po linii `DELIVERY=`. Czysty parent nie maskuje niedokończonego child repo. Lokalna integracja zestawu wersji poprzedza merge i nie wymaga zgody na merge. Autoryzowany merge przebiega w kolejności zależności, z pinami ustawionymi na rzeczywiste SHA. Częściowy merge pozostaje widoczny i możliwy do kontynuacji.
+
+Procedura: `${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/references/multi-repo.md`. Jej odczytowy helper: `${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/scripts/multi_repo.py`. Helper sprawdza mapę, digest, reuse, receipt i integrację, lecz niczego nie przygotowuje ani nie uruchamia. Zakresy bridge’a pozostają tekstowe; to nie jest sandbox runtime’u. Child wewnątrz parenta znika razem z nim, więc usunięcie parent worktree nie jest bezpiecznym sprzątaniem, dopóki jego historia nie jest zintegrowana albo zachowana.
+
 ## Wykonanie przez bridge: koordynator i rundy Claude’a
 
 Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature_*`, implementację wykonują rundy Claude Code w jednej sesji przypisanej do featura. Procedura koordynatora jest w `${CLAUDE_PLUGIN_ROOT}/skills/feature-execute/references/bridge-loop.md`, zasady wykonawcy w sekcji „Bridge round executor” skilla `feature-execute`. Pozostałe zasady tego przewodnika obowiązują bez zmian.

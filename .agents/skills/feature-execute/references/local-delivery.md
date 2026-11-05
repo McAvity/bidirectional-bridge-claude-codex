@@ -46,7 +46,8 @@ Exactly this key order, single spaces, first line of `summary`; prose follows on
 
 `changed_scope` lists `git diff --no-renames --name-only -z BASE HEAD` (both sides of a move).
 When a contract explicitly requires a package, its `PACKAGE=… SHA256=… PURPOSE=… RANGE=BASE..HEAD
-LEDGER=…` line comes second.
+LEDGER=…` line comes second. A multi-repo contract puts `REPOS=<sidecar> SHA256=<hash>` second
+and any `PACKAGE=` line third; its rules are in [multi-repo.md](multi-repo.md).
 
 ## 3. Executor procedure
 
@@ -59,8 +60,9 @@ LEDGER=…` line comes second.
 3. Implement, run the contract checks on the final code, write the ledger. Commit only your own
    in-scope paths, named both when staging and when committing (`git add -- <paths>` then
    `git commit -m <message> -- <paths>`; never `-A`, `.` or a bare `git commit`): a bare commit
-   also records whatever someone else had already staged. Only the ledger may be committed
-   after the checks; if code changes, rerun them. Never push or merge.
+   also records whatever someone else had already staged. Only the ledger (and, for a
+   multi-repo contract, its evidence sidecar in the same directory) may be committed after the
+   checks; if code changes, rerun them. Never push or merge.
 4. Classify the final status against the start record by path and bytes, not by status
    letters (staging does not change ownership): an entry present at start with unchanged
    bytes is `preexisting`; a new entry inside your write scope is `own`; a new entry outside it

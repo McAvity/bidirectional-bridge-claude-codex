@@ -28,6 +28,8 @@ Read [the shared workflow](../../workflow/README.md) first, then the relevant re
 
 Read the selected task(s), `feature.json`, brief, design, relevant contracts and governing decision. Respect the user's requested scope (one task, an accepted wave, integration, or corrections). Check dependencies and the actual Yumi lifecycle. A recorded user instruction already approving these inputs is sufficient; record it rather than asking again. If no approved scope exists, prepare the concrete blocker/decision needed and do not silently approve your own design.
 
+When the scope writes, builds or tests across more than one Git repository (nested or external repository, submodule, local package or linked dependency), follow [references/multi-repo.md](references/multi-repo.md) before the first dependent write: prepare one isolated checkout per write repository yourself with ordinary Git, check it with its read-only helper, and record the map. A missing child checkout is a preparation step, not a reason for new planning or user setup.
+
 Inspect Git state, protect unrelated changes, record input hashes and starting revision. If work is uncommitted or mixed, keep a precise changed-file/snapshot record; do not claim HEAD identifies those bytes. Create `execution/<TASK-ID>/<next-number>.md` and update it at meaningful checkpoints. A contract/design task can be authorized to produce proposed contracts even while downstream implementation remains gated. Record round-local write scope separately from authorization for the remaining feature; a technical dependency passing releases already authorized downstream work, but does not expand a task-only instruction.
 
 When the user authorizes implementation of the feature, default to its entire remaining agreed scope, including integration, independent local review and corrections restoring agreed behavior. Preserve explicitly narrower authorization and experiment budgets. Approval of a plan alone is not an instruction to execute. Installing this workflow does not expand an earlier task-only decision.
@@ -46,7 +48,7 @@ When a new product, contract or scope decision is needed, stop only affected wor
 
 Only delegate when the user or applicable repo instructions authorize it. For an authorized wave, assign bounded tasks, separate worktrees, frozen input contracts and distinct ledgers. Check shared file/service/migration conflicts; coordinate merges using repository rules. Workers do not edit the shared feature index concurrently. The coordinator owns that update.
 
-For integration, inspect what actually reached the integration branch, record task commit-to-integrated-commit mapping when rebased/cherry-picked, and verify the combined behavior. Write `execution/integration/<next-number>.md` when relevant. Passing isolated task checks alone does not complete the feature.
+For integration, inspect what actually reached the integration branch, record task commit-to-integrated-commit mapping when rebased/cherry-picked, and verify the combined behavior. Write `execution/integration/<next-number>.md` when relevant. Passing isolated task checks alone does not complete the feature. Across several repositories, test the delivered set together before any merge, merge dependency-first only when authorized, and keep the per-repo integration record of [references/multi-repo.md](references/multi-repo.md) § 8; a parent merge alone does not complete the set.
 
 ## Continue locally
 
@@ -80,6 +82,12 @@ unless the contract changes it. A resumed task with a manager clarification cont
 same task. So does a task resumed after the bridge stopped the previous attempt at its
 deadline: check what your earlier attempt already changed and committed, keep it, and continue
 from there within the same contract instead of restarting the work.
+
+When the contract carries a repo map (more than one repository), also follow
+[references/multi-repo.md](references/multi-repo.md) § 6: it applies inside a round despite this
+section replacing the rest of the skill. Touch only the repositories and bindings the map names,
+deliver a per-repo evidence sidecar and the `REPOS=` line, and report `PARTIAL` when any repository
+keeps own uncommitted work.
 
 Deliver through Git as [references/local-delivery.md](references/local-delivery.md) specifies:
 
