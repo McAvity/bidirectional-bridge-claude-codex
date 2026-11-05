@@ -1,18 +1,13 @@
 # Current handoff
 
-## F-W20 — local delivery ready for acceptance (Gate 2)
+## F-W20 — accepted; release authorized
 
-W20-01…03 delivered on design/multi-repo-execution, HEAD09b88a32 (code fd01ab36).
-[Independent review PASS](features/F-W20-multi-repo-execution/reviews/02-execution.md),
-[validation and AC coverage](features/F-W20-multi-repo-execution/execution/integration/01.md),
-[resume point](features/F-W20-multi-repo-execution/PROGRESS.md). Required corrections closed;
-625 JS pass/76 baseline host failures/7 skipped;194 Python pass/2 identical baseline
-failures;pilot140 pass. Build/packages/docs pass. No real-agent multi-repo pilot.
-R20-I01 host limitation and N01 nonblocking pin-documentation note remain explicit.
-Wait for the user's actual acceptance; then record decision and close the existing
-bridge feature/root. No merge, push, publication or runtime change authorized here.
-Main checkout5257ca6 remains separate and unchanged; preserve its newer F-W19 planning
-and runtime activation notes when integration is separately requested.
+User accepted acc9d39 (executor09b88a32, code fd01ab36), decision04.
+[Decision](features/F-W20-multi-repo-execution/decisions/04.md) and
+[progress](features/F-W20-multi-repo-execution/PROGRESS.md) preserve exact scope and limits.
+Next: bridge acceptance, integrate into feature-workflow preserving its F-W19 planning,
+release0.7.0 to the McAvity fork after CI. No automatic runtime/project activation.
+Historical host test failures remain recorded; do not fabricate root COMPLETE.
 
 ## 0.6.2 published — 2026-10-31
 

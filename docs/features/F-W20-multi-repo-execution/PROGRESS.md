@@ -85,3 +85,11 @@ root task_1kxkg971wd; żadnej nowej sesji/zastępczego taska. Po zgodzie zapisa�
 feature-decide, końcowy commit, bridge_feature_accept i root completion we właściwej
 kolejności. Nie trzeba kolejnego review/testów bez nowych zmian. Bez merge/push,
 release ani upgrade runtime; główny checkout5257ca6 i runtime0.6.2 nietknięte.
+
+## 2026-11-05 — Gate2 odebrana
+
+Decyzja04: użytkownik przyjął acc9d39/09b88a32 i zlecił wydanie.
+Odpowiedź q-01 zapisana w bridge; po commicie bridge_feature_accept i uczciwy
+raport root (historyczne failures nie mogą zostać wymazane). Następna integracja
+do feature-workflow, bump0.7.0, publiczny fork McAvity, CI/tag/release.
+F-W19 bez implementacji, żaden aktywny runtime/projekt nie jest automatycznie aktualizowany.
