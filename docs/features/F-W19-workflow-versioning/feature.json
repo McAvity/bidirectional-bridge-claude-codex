@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W19-workflow-versioning",
-  "phase": "plan-review",
+  "phase": "planning",
   "brief": "docs/features/F-W19-workflow-versioning/brief.md",
   "design": "docs/features/F-W19-workflow-versioning/design.md",
   "tasks": [
@@ -25,6 +25,6 @@
     "claude/claude-side/src/adapters/claude-code-runner.ts"
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
-  "latest_decision": null,
-  "next_action": "feature-flow F-W19: feature-decide dla delegowanych korekt planu R19-P01/P02 i rozliczenia uwag; wykonanie nadal bez zgody."
+  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/01.md",
+  "next_action": "feature-flow F-W19: feature-plan stosuje decyzję01 (wyłącznie korekty dokumentacji), potem skupione plan re-review. Gate 1 nadal wymagana."
 }

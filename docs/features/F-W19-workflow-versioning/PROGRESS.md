@@ -35,3 +35,7 @@ R19-P01 (legacy/zgodność/okno przejściowe) i P02 (izolacja klientów w piloci
 Uwagi P03…08 pozostają w tym samym rejestrze do rozliczenia jedną partią.
 Brief niezmieniony; reviewer wyłącznie odczytał dokumenty/kod, bez implementacji.
 Następne: delegowana decyzja korekt planu, poprawki i skupione re-review.
+
+Decyzja01 koordynatora zatwierdza jedną partię korekt planu P01/P02 i rozlicza
+wszystkie uwagi P03…08. Źródło: delegacja feature-flow, nie zgoda użytkownika
+na wykonanie. Następne: feature-plan stosuje korekty → skupione review.
