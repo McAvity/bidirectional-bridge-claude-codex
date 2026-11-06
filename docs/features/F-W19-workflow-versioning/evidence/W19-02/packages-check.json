@@ -6,6 +6,6 @@
   "source_digest": "1593472d002a50d2b78b4d3eec8afb95245663a3294fe3e58a0c8777ec86153c",
   "bridge_version": "0.7.0",
   "workflow_version": "1.0.0",
-  "workflow_identity": "sha256:1441fdc46a1be214bdc0e5da39bf2e9a07abc39f0985719ad54f0c47760950f2",
-  "workflow_id": "1.0.0-1441fdc46a1b"
+  "workflow_identity": "sha256:9c99f82bd40a2cabb89635cff7a8a61f01bde96ee92a8549d54a6bb4bfc1b43c",
+  "workflow_id": "1.0.0-9c99f82bd40a"
 }

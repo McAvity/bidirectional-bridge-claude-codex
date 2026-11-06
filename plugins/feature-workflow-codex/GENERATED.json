@@ -18,7 +18,7 @@
     "scripts/workflow-source/workflow-lib.mjs",
     "scripts/workflow-source/release.json"
   ],
-  "source_digest": "6d19a8b654a37e4fc5d91b5ad78bfd56716c3c25bd6158acea62d37c421d4d60",
+  "source_digest": "e92cbd4df515bdfd0319334ba1e4c1e89135f658157df69a206d78e0192f5d1e",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -26,7 +26,7 @@
     },
     {
       "path": "bundle/bundle.json",
-      "sha256": "b5ca203c13364c89c505c9a1867b9fa80e8029ba7082c3225122819df2da8552"
+      "sha256": "bb7faf5ab2a097912dffd197dfe3191e26193c4392d7b764c68e3d6558602ed6"
     },
     {
       "path": "bundle/claude/.claude-plugin/plugin.json",
@@ -38,11 +38,11 @@
     },
     {
       "path": "bundle/claude/scripts/workflow-lib.mjs",
-      "sha256": "2a464e59a039e7af5364a9eac59683e75659ee257467a542741ea00b099a8857"
+      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
     },
     {
       "path": "bundle/claude/scripts/workflow.mjs",
-      "sha256": "8d044a54a8558ac4af88c2506c06689cf712d0caeccc0c49e83ef4f141b2a151"
+      "sha256": "4dfb0467a98cbf716ef8762756964730d47a74f50972581c5bd585d1cd468b7a"
     },
     {
       "path": "bundle/claude/skills/feature-decide/SKILL.md",
@@ -134,11 +134,11 @@
     },
     {
       "path": "bundle/codex/scripts/workflow-lib.mjs",
-      "sha256": "2a464e59a039e7af5364a9eac59683e75659ee257467a542741ea00b099a8857"
+      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
     },
     {
       "path": "bundle/codex/scripts/workflow.mjs",
-      "sha256": "8d044a54a8558ac4af88c2506c06689cf712d0caeccc0c49e83ef4f141b2a151"
+      "sha256": "4dfb0467a98cbf716ef8762756964730d47a74f50972581c5bd585d1cd468b7a"
     },
     {
       "path": "bundle/codex/skills/feature-decide/SKILL.md",
@@ -226,11 +226,11 @@
     },
     {
       "path": "scripts/workflow-lib.mjs",
-      "sha256": "2a464e59a039e7af5364a9eac59683e75659ee257467a542741ea00b099a8857"
+      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
     },
     {
       "path": "scripts/workflow.mjs",
-      "sha256": "8d044a54a8558ac4af88c2506c06689cf712d0caeccc0c49e83ef4f141b2a151"
+      "sha256": "4dfb0467a98cbf716ef8762756964730d47a74f50972581c5bd585d1cd468b7a"
     },
     {
       "path": "skills/feature-decide/SKILL.md",

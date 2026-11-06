@@ -221,6 +221,27 @@ Wynik: jeden obiekt `feature-workflow.helper/v1` (`operation`, `ok`, `code`, dan
 (biblioteka bez procesów potomnych; helper uruchamia tylko `git` i `tar`). `FEATURE_MISSING`:
 wskazany feature nie istnieje (dla nowego `begin`/`resolve --new`).
 
+**Zarządzane ścieżki zapisu (R19-I01, W19-02/02).** Przed pierwszym skutkiem ubocznym każdej
+operacji zapisującej (`begin`, `adopt`, `finalize`, `switch`, `restore`, `sweep-staging`, publikacja,
+kwarantanna) helper sprawdza:
+
+- nazwę katalogu featura: ID `[A-Za-z0-9][A-Za-z0-9._-]{0,127}` bez `..` albo `.draft-<8 hex>`
+  (`--feature-id` przyjmuje tylko ID; pusty, ze ścieżką lub `..` → `FEATURE_ID_INVALID`);
+  argument `--feature` będący ścieżką musi wskazywać dokładnie `docs/features/<nazwa>` w tym
+  worktree (inaczej `FEATURE_PATH_OUTSIDE`);
+- kotwice zaufania: korzeń worktree i bridge-home. Dowiązania **nad** kotwicą są rozwiązywane
+  (macOS `/tmp` → `/private/tmp`, jawnie zewnętrzny bridge-home), a każdy istniejący składnik
+  **pod** nią (`docs`, `docs/features`, katalog featura, `workflow.lock.json`, `workflows`, wpis
+  magazynu) musi być zwykłym katalogiem/plikiem, nie dowiązaniem (`PATH_REDIRECTED`,
+  `PATH_NOT_DIRECTORY`);
+- `sweep-staging` usuwa tylko katalogi `.staging-*`; dowiązanie lub plik o tej nazwie jest
+  pomijany i raportowany (`skipped`). Wpis magazynu będący dowiązaniem nie jest przenoszony do
+  kwarantanny (`PATH_REDIRECTED`).
+
+Odmowa nie zmienia niczego w projekcie, magazynie ani w miejscu docelowym dowiązania (testy
+`tests/test_workflow_bundle.py::ManagedPaths`). Ochrona dotyczy przekierowania przez ścieżki,
+nie wyścigu z równoczesnym procesem tego samego użytkownika.
+
 `select-source.mjs` zostaje jako zgodny alias: bez argumentu featura zwraca format v1 jak dziś;
 z `--feature`/`--new` deleguje do `resolve` (v2). Status/doctor nie wywołują operacji zapisujących.
 
@@ -481,6 +502,7 @@ bez zmian; import nie zmienia lokalnego wyboru.
 | `DRAFT_MISSING`, `DRAFT_ALREADY_ASSIGNED`, `FEATURE_DIR_COLLISION`, `ID_CHANGE_AFTER_BIND` | § 4.4 | decyzja użytkownika o katalogach |
 | `SELECTION_REQUIRED`, `ENTRY_WITHOUT_BUNDLE`, `ENTRY_NOT_IN_BUNDLE`, `ENTRY_BUNDLE_CORRUPT` | § 4.2 | `begin`/`adopt`, aktualizacja pluginu |
 | `FEATURE_MISSING`, `LOCK_EXISTS`, `EXPLICIT_CHOICE_REQUIRED` | § 4.1 | wskazać istniejący feature / nie zastępować locka / jawna decyzja |
+| `FEATURE_ID_INVALID`, `FEATURE_PATH_OUTSIDE`, `PATH_REDIRECTED`, `PATH_NOT_DIRECTORY`, `PATH_UNSAFE` | § 4.1 zarządzane ścieżki | poprawić ID/usunąć dowiązanie; nic nie zostało zapisane |
 | `RUNTIME_WITHOUT_BINDING`, `RUNTIME_MISSING`, `BINDING_CONTRACT_UNSUPPORTED`, `CAPABILITY_MISSING`, `RUNTIME_KNOWN_INCOMPATIBLE`, `WORKFLOW_INCOMPATIBLE`, `DOWNGRADE_WOULD_ORPHAN_BINDING` | § 5 | wskazany upgrade; nic automatycznie |
 | `WORKFLOW_UNBOUND`, `WORKFLOW_ALREADY_BOUND`, `WORKFLOW_ACK_MISMATCH`, `WORKFLOW_EXECUTOR_UNSUPPORTED` | § 6 | bind / ponowny `resolve` |
 | `WORKFLOW_SWITCH_ACTIVE_ATTEMPT`, `WORKFLOW_SWITCH_WAITING_USER`, `WORKFLOW_GENERATION_CONFLICT`, `WORKFLOW_SWITCH_PENDING`, `SWITCH_REQUIRES_BRIDGE` | § 7 | rozliczyć próbę / dokończyć tym samym kluczem |

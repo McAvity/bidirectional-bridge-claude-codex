@@ -10,10 +10,10 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import {
-  chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, writeFileSync,
+  chmodSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmdirSync, rmSync, writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, posix, resolve } from "node:path";
+import { dirname, isAbsolute, join, parse as parsePath, posix, resolve, sep } from "node:path";
 
 export const RELEASE_FORMAT = "feature-workflow.release/v1";
 export const RELEASES_FORMAT = "feature-workflow.releases/v1";
@@ -171,6 +171,93 @@ export function makeWritable(root) {
     const path = join(root, entry.rel);
     chmodSync(path, lstatSync(path).mode | 0o200);
   }
+}
+
+// ---------------------------------------------------------------------------
+// managed write paths (R19-I01): bounded names, no redirection below a trust anchor
+// ---------------------------------------------------------------------------
+
+/**
+ * A trust anchor (worktree root, bridge home) in canonical form. Symbolic links *above* the anchor
+ * are resolved (macOS `/tmp` → `/private/tmp`, an explicitly external bridge home); everything the
+ * helper creates or replaces *below* it is checked with lstat and never followed.
+ */
+export function canonicalAnchor(path) {
+  try {
+    return realpathSync(path);
+  } catch {
+    return resolve(path);
+  }
+}
+
+/**
+ * `anchor/<parts…>` after checking that every existing component below the anchor is a real
+ * directory (the last one: real directory or absent). Nothing is created here; call it before any
+ * side effect. Throws PATH_REDIRECTED (a symbolic link) or PATH_NOT_DIRECTORY.
+ */
+export function managedPath(anchor, parts) {
+  let current = anchor;
+  for (const [index, part] of parts.entries()) {
+    if (!part || part === "." || part === ".." || part.includes("/") || part.includes("\\") || part.includes("\0")) {
+      throw new WorkflowError("PATH_UNSAFE", parts.join("/"));
+    }
+    current = join(current, part);
+    const kind = lkind(current);
+    if (kind === "symlink") throw new WorkflowError("PATH_REDIRECTED", current, { reason: "symbolic link below a managed root; nothing was written", anchor });
+    if (kind === "missing") {
+      // Every deeper component is missing too, so it is created fresh by the caller.
+      return join(anchor, ...parts);
+    }
+    if (kind !== "dir") throw new WorkflowError("PATH_NOT_DIRECTORY", current, { index });
+  }
+  return current;
+}
+
+/**
+ * Components of `path` below `anchor`, or null when `path` is not inside it. Ancestors of `path`
+ * are compared through realpath only until one equals the anchor, so a link above the anchor is
+ * tolerated and nothing below it is followed.
+ */
+export function relativeToAnchor(anchor, path) {
+  const absolute = resolve(path);
+  const { root } = parsePath(absolute);
+  const parts = absolute.slice(root.length).split(sep).filter(Boolean);
+  let current = root;
+  if (canonicalAnchor(current) === anchor) return parts;
+  for (let index = 0; index < parts.length; index += 1) {
+    current = join(current, parts[index]);
+    if (lkind(current) === "missing") return null;
+    if (canonicalAnchor(current) === anchor) return parts.slice(index + 1);
+  }
+  return null;
+}
+
+const FEATURE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
+const DRAFT_NAME = /^\.draft-[0-9a-f]{8}$/u;
+
+/** Bounded feature directory names: an id (`F-001-x`) or a draft (`.draft-<8 hex>`). */
+export function checkFeatureName(name, { allowDraft = true } = {}) {
+  const ok = (FEATURE_ID.test(String(name)) && !String(name).includes("..")) || (allowDraft && DRAFT_NAME.test(String(name)));
+  if (!ok) throw new WorkflowError("FEATURE_ID_INVALID", String(name), { rule: "[A-Za-z0-9][A-Za-z0-9._-]{0,127} without '..', or .draft-<8 hex>" });
+  return name;
+}
+
+/** `<worktree>/docs/features`, guarded. */
+export function featuresRoot(worktree) {
+  return managedPath(canonicalAnchor(worktree), ["docs", "features"]);
+}
+
+/** `<worktree>/docs/features/<name>`, guarded; `name` is validated first. */
+export function featurePath(worktree, name, options) {
+  checkFeatureName(name, options);
+  return managedPath(canonicalAnchor(worktree), ["docs", "features", name]);
+}
+
+/** The store directory itself must not be a link or a non-directory (the home may be external). */
+function assertStore(store) {
+  const kind = lkind(store);
+  if (kind === "symlink") throw new WorkflowError("PATH_REDIRECTED", store, { reason: "the workflow store is a symbolic link; nothing was written" });
+  if (kind !== "missing" && kind !== "dir") throw new WorkflowError("PATH_NOT_DIRECTORY", store);
 }
 
 // ---------------------------------------------------------------------------
@@ -354,8 +441,9 @@ export function bridgeHome(env = process.env) {
   return join(data, "claude-codex-bridge");
 }
 
+/** `<bridge-home>/workflows`, guarded: the home may be anywhere, `workflows` may not be redirected. */
 export function storeRoot(env = process.env) {
-  return join(bridgeHome(env), "workflows");
+  return managedPath(canonicalAnchor(bridgeHome(env)), ["workflows"]);
 }
 
 function checkWorkflowId(id) {
@@ -387,6 +475,7 @@ export function storeEntry(store, identity) {
  * `failAfter` is a test hook naming a crash point ("copy").
  */
 export function storePublish(store, bundleDir, { failAfter = null } = {}) {
+  assertStore(store);
   const manifest = verifyBundle(bundleDir);
   checkWorkflowId(manifest.workflow_id);
   const target = join(store, manifest.workflow_id);
@@ -415,14 +504,21 @@ export function storePublish(store, bundleDir, { failAfter = null } = {}) {
 
 /** Interrupted publications are invisible (`.staging-*`); this removes them on explicit request. */
 export function sweepStaging(store) {
-  if (lkind(store) !== "dir") return [];
+  assertStore(store);
+  if (lkind(store) !== "dir") return { removed: [], skipped: [] };
   const removed = [];
+  const skipped = [];
   for (const name of readdirSync(store).filter((n) => n.startsWith(STAGING_PREFIX)).sort(byBytes)) {
+    // Only directories this helper could have staged; a link or file with that name is reported.
+    if (lkind(join(store, name)) !== "dir") {
+      skipped.push(name);
+      continue;
+    }
     makeWritable(join(store, name));
     rmSync(join(store, name), { recursive: true, force: true });
     removed.push(name);
   }
-  return removed;
+  return { removed, skipped };
 }
 
 /**
@@ -434,6 +530,7 @@ export function sweepStaging(store) {
  * identity is refused before anything moves.
  */
 export function storeRestore(store, identity, sourceBundleDir, { now = new Date() } = {}) {
+  assertStore(store);
   const source = verifyBundle(sourceBundleDir, identity);
   const before = storeEntry(store, identity);
   if (before.state === "verified") return { result: "ALREADY_PRESENT", workflow_id: source.workflow_id, identity, path: before.path, quarantined: null };
@@ -445,6 +542,8 @@ export function storeRestore(store, identity, sourceBundleDir, { now = new Date(
   const target = join(store, source.workflow_id);
   const damaged = lkind(target) !== "missing" ? target : before.path;
   if (damaged) {
+    // A link under the entry's name is not damage this helper may move: refuse, change nothing.
+    if (lkind(damaged) === "symlink") throw new WorkflowError("PATH_REDIRECTED", damaged, { reason: "store entry is a symbolic link; nothing was moved" });
     const stamp = now.toISOString().replace(/[-:]/gu, "").replace(/\.\d+Z$/u, "Z");
     const name = `${QUARANTINE_PREFIX}${posix.basename(damaged)}-${stamp}-${randomBytes(3).toString("hex")}`;
     const record = {
@@ -600,6 +699,9 @@ export function readLock(featureDir) {
 
 export function writeLock(featureDir, lock) {
   validateLock(lock);
+  for (const path of [featureDir, join(featureDir, LOCK_NAME)]) {
+    if (lkind(path) === "symlink") throw new WorkflowError("PATH_REDIRECTED", path, { reason: "symbolic link in a managed feature path; nothing was written" });
+  }
   writeAtomic(join(featureDir, LOCK_NAME), jsonBytes(lock));
 }
 
@@ -608,15 +710,20 @@ export function newDraftToken() {
 }
 
 function checkFeatureId(id) {
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(String(id)) || id.startsWith(DRAFT_PREFIX)) throw new WorkflowError("FORMAT_INVALID", `feature id ${id}`);
+  checkFeatureName(id, { allowDraft: false });
 }
 
 /** Draft path → final feature id (§ 4.4). Idempotent and resumable; `failAfter` = "mark"|"move". */
 export function finalizeDraft(featuresRoot, draftToken, featureId, { failAfter = null } = {}) {
   checkFeatureId(featureId);
   if (!/^[0-9a-f]{8}$/u.test(String(draftToken))) throw new WorkflowError("FORMAT_INVALID", `draft token ${draftToken}`);
+  const root = lkind(featuresRoot);
+  if (root === "symlink") throw new WorkflowError("PATH_REDIRECTED", featuresRoot, { reason: "docs/features is a symbolic link; nothing was written" });
   const draft = join(featuresRoot, `${DRAFT_PREFIX}${draftToken}`);
   const target = join(featuresRoot, featureId);
+  for (const path of [draft, target, join(draft, LOCK_NAME), join(target, LOCK_NAME)]) {
+    if (lkind(path) === "symlink") throw new WorkflowError("PATH_REDIRECTED", path, { reason: "symbolic link in a managed feature path; nothing was written" });
+  }
   const targetKind = lkind(target);
   if (targetKind !== "missing" && targetKind !== "dir") throw new WorkflowError("FEATURE_DIR_COLLISION", featureId, { reason: "target is not a directory" });
   const targetLock = targetKind === "dir" ? readLock(target) : null;

@@ -31,16 +31,30 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 function worktreeOf(cwd) {
   const top = spawnSync("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { encoding: "utf8" });
-  return top.status === 0 && top.stdout.trim() ? resolve(top.stdout.trim()) : null;
+  return top.status === 0 && top.stdout.trim() ? W.canonicalAnchor(top.stdout.trim()) : null;
 }
 
+/**
+ * An existing feature directory: `<id>` or a path to `docs/features/<id|.draft-x>` inside this
+ * worktree. Names are bounded and no component below the worktree may be a symbolic link
+ * (R19-I01), so a feature argument can never redirect a write outside the project.
+ */
 function featureDirOf(worktree, value) {
   if (!value) throw new W.WorkflowError("FORMAT_INVALID", "--feature is required");
-  const asPath = isAbsolute(value) ? value : resolve(worktree, value);
-  if (existsSync(asPath) && statSync(asPath).isDirectory() && (value.includes("/") || isAbsolute(value))) return asPath;
-  const byId = join(worktree, "docs", "features", value);
-  if (existsSync(byId) && statSync(byId).isDirectory()) return byId;
-  throw new W.WorkflowError("FEATURE_MISSING", value, { next_step: "for a new feature use `begin` (or `resolve --new`)" });
+  const anchor = W.canonicalAnchor(worktree);
+  let name = value;
+  if (value.includes("/") || value.includes("\\") || isAbsolute(value)) {
+    const parts = W.relativeToAnchor(anchor, isAbsolute(value) ? value : resolve(worktree, value));
+    if (!parts || parts.length !== 3 || parts[0] !== "docs" || parts[1] !== "features") {
+      throw new W.WorkflowError("FEATURE_PATH_OUTSIDE", value, { rule: "a feature is docs/features/<id> inside this worktree" });
+    }
+    name = parts[2];
+  }
+  const dir = W.featurePath(anchor, name);
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+    throw new W.WorkflowError("FEATURE_MISSING", value, { next_step: "for a new feature use `begin` (or `resolve --new`)" });
+  }
+  return dir;
 }
 
 function rel(worktree, path) {
@@ -175,21 +189,19 @@ export async function resolveSource({ cwd, env, packageRoot, feature = null, isN
 async function begin({ cwd, env, packageRoot, featureId = null, standalone = false, now }) {
   const answer = await resolveSource({ cwd, env, packageRoot, isNew: true, standalone });
   if (answer.code !== "SELECTION_REQUIRED") return { refused: true, code: answer.code, next_step: answer.next_step, resolve: answer };
+  // Every managed path is validated before the first side effect (R19-I01).
   const own = W.ownBundle(packageRoot);
-  const published = W.storePublish(W.storeRoot(env), own.bundleDir);
-  const features = join(answer.worktree, "docs", "features");
-  let dir;
-  let token = null;
-  if (featureId) {
-    dir = join(features, featureId);
-    mkdirSync(dir, { recursive: true });
-    if (W.readLock(dir)) throw new W.WorkflowError("LOCK_EXISTS", featureId, { next_step: "resolve the existing lock; begin never replaces it" });
-  } else {
-    mkdirSync(features, { recursive: true });
-    token = W.newDraftToken();
-    dir = join(features, `${W.DRAFT_PREFIX}${token}`);
-    mkdirSync(dir, { recursive: false });
-  }
+  const store = W.storeRoot(env);
+  const features = W.featuresRoot(answer.worktree);
+  if (featureId !== null) W.checkFeatureName(featureId, { allowDraft: false }); // "" is refused, never a draft
+  const token = featureId !== null ? null : W.newDraftToken();
+  const dir = featureId !== null ? W.featurePath(answer.worktree, featureId, { allowDraft: false }) : W.featurePath(answer.worktree, `${W.DRAFT_PREFIX}${token}`);
+  if (featureId && existsSync(dir) && W.readLock(dir)) throw new W.WorkflowError("LOCK_EXISTS", featureId, { next_step: "resolve the existing lock; begin never replaces it" });
+  const published = W.storePublish(store, own.bundleDir);
+  mkdirSync(features, { recursive: true });
+  W.featuresRoot(answer.worktree); // re-check after creation: still not redirected
+  mkdirSync(dir, { recursive: featureId !== null });
+  W.featurePath(answer.worktree, featureId ?? `${W.DRAFT_PREFIX}${token}`);
   const lock = W.newLock(own.manifest, { origin: { kind: "active-plugin", client: own.client, plugin_version: own.manifest.version }, at: now, draftToken: token, featureId });
   W.writeLock(dir, lock);
   return { code: "BEGUN", feature_dir: rel(answer.worktree, dir), draft_token: token, store: published.result, lock };
@@ -200,8 +212,8 @@ async function adopt({ cwd, env, packageRoot, feature, explicit, now }) {
   const answer = await resolveSource({ cwd, env, packageRoot, feature });
   if (answer.code !== "SELECTION_REQUIRED") return { refused: true, code: answer.code === "BOUND_BUNDLE" ? "LOCK_EXISTS" : answer.code, next_step: answer.next_step, resolve: answer };
   const own = W.ownBundle(packageRoot);
-  const published = W.storePublish(W.storeRoot(env), own.bundleDir);
   const dir = featureDirOf(answer.worktree, feature);
+  const published = W.storePublish(W.storeRoot(env), own.bundleDir);
   const lock = W.newLock(own.manifest, { origin: { kind: "adopt", client: own.client, plugin_version: own.manifest.version }, at: now, featureId: dir.split(/[\\/]/u).at(-1) });
   W.writeLock(dir, lock);
   return { code: "ADOPTED", feature_dir: rel(answer.worktree, dir), store: published.result, lock };
@@ -258,9 +270,10 @@ function restoreSourceBundle({ from, source, commit }) {
 }
 
 function restore({ env, identity, from, source, commit }) {
+  const store = W.storeRoot(env); // refused before the source is even prepared
   const { dir, cleanup } = restoreSourceBundle({ from, source, commit });
   try {
-    return { code: "RESTORE", ...W.storeRestore(W.storeRoot(env), identity, dir) };
+    return { code: "RESTORE", ...W.storeRestore(store, identity, dir) };
   } finally {
     cleanup();
   }
@@ -306,11 +319,11 @@ function parse(argv) {
 
 export async function run(argv, env = process.env, now = new Date().toISOString()) {
   const o = parse(argv);
-  const store = W.storeRoot(env);
+  const store = () => W.storeRoot(env); // guarded lazily: only operations that use the store
   switch (o.operation) {
     case "verify": {
       if (o.bundle) return { code: "VERIFIED", manifest_identity: W.verifyBundle(o.bundle, o.identity ?? null).identity };
-      const entry = W.storeEntry(store, o.identity);
+      const entry = W.storeEntry(store(), o.identity);
       if (entry.state !== "verified") return { refused: true, code: entry.code, path: entry.path };
       return { code: "VERIFIED", identity: entry.manifest.identity, workflow_id: entry.manifest.workflow_id, path: entry.path };
     }
@@ -327,7 +340,8 @@ export async function run(argv, env = process.env, now = new Date().toISOString(
       return begin({ cwd: o.cwd, env, packageRoot: o.packageRoot, featureId: o.featureId ?? null, standalone: Boolean(o.standalone), now });
     case "finalize": {
       const worktree = worktreeOf(o.cwd) ?? resolve(o.cwd);
-      return { code: "FINALIZE", ...W.finalizeDraft(join(worktree, "docs", "features"), o.draft, o.featureId) };
+      W.checkFeatureName(o.featureId, { allowDraft: false });
+      return { code: "FINALIZE", ...W.finalizeDraft(W.featuresRoot(worktree), o.draft, o.featureId) };
     }
     case "adopt":
       return adopt({ cwd: o.cwd, env, packageRoot: o.packageRoot, feature: o.feature, explicit: Boolean(o.explicit), now });
@@ -337,7 +351,7 @@ export async function run(argv, env = process.env, now = new Date().toISOString(
     case "restore":
       return restore({ env, identity: o.identity, from: o.from, source: o.source, commit: o.commit });
     case "sweep-staging":
-      return { code: "SWEPT", removed: W.sweepStaging(store) };
+      return { code: "SWEPT", ...W.sweepStaging(store()) };
     default:
       throw new W.WorkflowError("FORMAT_INVALID", `unknown operation ${o.operation ?? "(none)"}`);
   }

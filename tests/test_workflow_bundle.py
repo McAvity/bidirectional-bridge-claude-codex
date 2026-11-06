@@ -402,7 +402,7 @@ catch (e) { process.stdout.write(JSON.stringify({result: e.code, detail: e.detai
         self.assertEqual(self.entry()["state"], "missing")
         self.assertTrue(all(p.name.startswith(".staging-") for p in self.store.iterdir()))
         swept = lib("process.stdout.write(JSON.stringify(W.sweepStaging(argv[0])));", str(self.store))
-        self.assertEqual(len(swept), 1)
+        self.assertEqual((len(swept["removed"]), swept["skipped"]), (1, []))
         self.assertEqual(self.publish()["result"], "PUBLISHED")
 
     def test_another_valid_bundle_under_the_same_name_is_never_overwritten(self):
@@ -644,6 +644,121 @@ class Helper(Workspace):
         self.assertEqual((code, answer["code"]), (3, "WORKFLOW_INCOMPATIBLE"))
         self.assertEqual(answer["resolve"]["problems"][0], {"code": "CAPABILITY_MISSING", "missing": ["feature.close/v1"]})
         self.assertFalse(self.store.exists())
+
+
+class ManagedPaths(Workspace):
+    """R19-I01: bounded feature ids and no redirected managed write path, refused before any side effect."""
+
+    def setUp(self):
+        super().setUp()
+        self.external = self.root / "external"
+        (self.external / "keep").mkdir(parents=True)
+        (self.external / "keep" / "data.txt").write_text("unrelated data\n")
+        self.script = self.plugin_copy("claude") / "scripts/workflow.mjs"
+
+    def snapshot(self) -> dict:
+        return {str(p.relative_to(self.root)): (sha(p) if p.is_file() and not p.is_symlink() else ("<link>" if p.is_symlink() else "<dir>"))
+                for p in sorted(self.root.rglob("*")) if "cache" not in p.relative_to(self.root).parts and ".git" not in p.parts}
+
+    def refused(self, project: Path, *args: str) -> str:
+        before = self.snapshot()
+        code, answer = self.helper(self.script, *args, cwd=project)
+        self.assertEqual(code, 3, answer)
+        self.assertEqual(self.snapshot(), before, f"{args} changed the filesystem")
+        return answer["code"]
+
+    def test_symlinked_features_root_is_refused_for_every_operation(self):
+        project = self.project()
+        (project / "docs").mkdir()
+        os.symlink(self.external, project / "docs/features")
+        (self.external / "F-x").mkdir()
+        (self.external / ".draft-0badf00d").mkdir()
+        for args in (("begin", "--feature-id", "F-test"), ("begin",), ("adopt", "--feature", "F-x", "--explicit"),
+                     ("resolve", "--feature", "F-x"), ("switch", "--feature", "F-x", "--to", "sha256:" + "0" * 64, "--expected-generation", "1"),
+                     ("finalize", "--draft", "0badf00d", "--feature-id", "F-final")):
+            with self.subTest(args=args):
+                self.assertEqual(self.refused(project, *args), "PATH_REDIRECTED")
+        self.assertFalse(self.store.exists())  # refused before the store was touched
+
+    def test_symlinked_docs_and_feature_directories_are_refused(self):
+        project = self.project()
+        os.symlink(self.external, project / "docs")
+        self.assertEqual(self.refused(project, "begin", "--feature-id", "F-a"), "PATH_REDIRECTED")
+        os.unlink(project / "docs")
+        (project / "docs/features").mkdir(parents=True)
+        os.symlink(self.external / "keep", project / "docs/features/F-link")
+        for args in (("begin", "--feature-id", "F-link"), ("adopt", "--feature", "F-link", "--explicit"), ("resolve", "--feature", "F-link"),
+                     ("resolve", "--feature", "docs/features/F-link")):
+            with self.subTest(args=args):
+                self.assertEqual(self.refused(project, *args), "PATH_REDIRECTED")
+
+    def test_a_symlinked_lock_is_never_written_through(self):
+        project = self.project()
+        (project / "docs/features/F-lock").mkdir(parents=True)
+        os.symlink(self.external / "keep" / "data.txt", project / "docs/features/F-lock/workflow.lock.json")
+        self.assertEqual(self.refused(project, "adopt", "--feature", "F-lock", "--explicit"), "LOCK_INVALID")
+        self.assertEqual(self.refused(project, "begin", "--feature-id", "F-lock"), "LOCK_INVALID")
+        self.assertEqual((self.external / "keep" / "data.txt").read_text(), "unrelated data\n")
+
+    def test_feature_ids_and_paths_are_bounded(self):
+        project = self.project()
+        for bad in ("../../../outside", "..", "a/b", "/abs/path", ".hidden", "a..b", "x" * 200, "", "-lead", "F x"):
+            with self.subTest(begin=bad):
+                self.assertEqual(self.refused(project, "begin", "--feature-id", bad), "FEATURE_ID_INVALID")
+        _, draft = self.helper(self.script, "begin", cwd=project)
+        for bad in ("../outside", "..", "a/b", ".draft-0badf00d"):
+            with self.subTest(finalize=bad):
+                self.assertEqual(self.refused(project, "finalize", "--draft", draft["draft_token"], "--feature-id", bad), "FEATURE_ID_INVALID")
+        for bad in ("../../outside", str(self.external), "docs/F-x", "docs/features/F-x/sub"):
+            with self.subTest(feature=bad):
+                self.assertEqual(self.refused(project, "resolve", "--feature", bad), "FEATURE_PATH_OUTSIDE")
+        self.assertFalse(any(self.root.glob("outside*")))
+
+    def test_redirected_store_entries_and_staging_are_refused(self):
+        project = self.project()
+        (self.home).mkdir()
+        os.symlink(self.external, self.store)
+        for args in (("begin",), ("restore", "--identity", "sha256:" + "0" * 64, "--from", str(PLUGINS["claude"])), ("sweep-staging",),
+                     ("verify", "--identity", "sha256:" + "0" * 64)):
+            with self.subTest(args=args):
+                self.assertEqual(self.refused(project, *args), "PATH_REDIRECTED")
+        self.assertFalse((project / "docs").exists())  # begin refused before creating the draft
+        os.unlink(self.store)
+        self.store.mkdir()
+        manifest = json.loads((PLUGINS["claude"] / "bundle/bundle.json").read_text())
+        shutil.copytree(PLUGINS["claude"] / "bundle", self.external / "bundle-copy")
+        os.symlink(self.external / "bundle-copy", self.store / manifest["workflow_id"])
+        os.symlink(self.external / "keep", self.store / ".staging-evil")
+        before = self.snapshot()
+        code, answer = self.helper(HELPER, "restore", "--identity", manifest["identity"], "--from", str(PLUGINS["claude"]))
+        self.assertEqual((code, answer["code"]), (3, "PATH_REDIRECTED"))
+        code, answer = self.helper(HELPER, "sweep-staging")
+        self.assertEqual((code, answer["removed"], answer["skipped"]), (0, [], [".staging-evil"]))
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(lib("try { W.storePublish(argv[0], argv[1]); process.stdout.write('\"PUBLISHED\"'); } catch (e) { process.stdout.write(JSON.stringify(e.code)); }",
+                             str(self.store), str(PLUGINS["claude"] / "bundle")), "BUNDLE_SYMLINK")
+        self.assertEqual(self.snapshot(), before)
+
+    def test_links_above_the_trust_anchors_are_allowed(self):
+        """An external bridge home and a project reached through a linked parent (macOS /tmp) work."""
+        real_home = self.root / "real-home"
+        real_home.mkdir()
+        os.symlink(real_home, self.home)  # explicit home given through a link: allowed by design
+        real_parent = self.root / "private"
+        real_parent.mkdir()
+        project = real_parent / "proj"
+        project.mkdir()
+        git(project, "init", "-q", "-b", "main")
+        os.symlink(real_parent, self.root / "tmp")
+        via_link = self.root / "tmp" / "proj"
+        code, begun = self.helper(self.script, "begin", "--feature-id", "F-ok", cwd=via_link)
+        self.assertEqual((code, begun["code"]), (0, "BEGUN"), begun)
+        self.assertTrue((project / "docs/features/F-ok/workflow.lock.json").is_file())
+        self.assertTrue((real_home / "workflows" / begun["lock"]["workflow"]["workflow_id"]).is_dir())
+        for feature in ("F-ok", str(via_link / "docs/features/F-ok"), str(project / "docs/features/F-ok"), "docs/features/F-ok"):
+            with self.subTest(feature=feature):
+                code, answer = self.helper(self.script, "resolve", "--feature", feature, cwd=via_link)
+                self.assertEqual((code, answer["code"]), (0, "BOUND_BUNDLE"), answer)
 
 
 class ReferenceModelAgreement(Workspace):
