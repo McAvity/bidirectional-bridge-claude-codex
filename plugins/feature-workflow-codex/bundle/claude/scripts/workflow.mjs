@@ -364,4 +364,3 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   process.exitCode = await main();
 }
-
