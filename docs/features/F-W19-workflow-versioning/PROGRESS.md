@@ -115,3 +115,11 @@ Koordynator niezależnie recenzuje kontrakt przed zależną implementacją; dals
 główny ciąg W19-02…06 bez dodatkowych zgód, nieblokujące findingi jedną partią.
 Pilot produktu ma osobny limit decyzji03:6 rund/180min/24 tury Astr, nieuruchomiony.
 Bez merge/push/release/real-project upgrades; końcowy odbiór przez użytkownika.
+
+W19-01 dostarczony f8d092f (task_62fwmq4nrm); receipt i niezależne review02 PASS.
+Powtórzone fixtures10/10,11 przykładów i no-model próby obu klientów: zgodne findings.
+R19-C01…04 do partii implementacyjnej, PILOT-AUTH/ENV pozostają przed pilotem.
+W19-02 rozpoczęty, dalsza zgoda03 ważna. Baza8540de7: build PASS; JS642pass/76fail/7skip
+(2 znane pliki instalatora/process visibility), Python196/2 znane failures klienta,
+pilot tooling140/140 PASS. Pełne logi bazowe poza Git; nowe regresje oceniać względem
+tego punktu, nie kasować ani nie maskować starych failures.

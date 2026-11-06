@@ -24,9 +24,9 @@
     "shared/control-plane/src/store/state-store.ts",
     "claude/claude-side/src/adapters/claude-code-runner.ts"
   ],
-  "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
+  "latest_review": "docs/features/F-W19-workflow-versioning/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
-  "next_action": "W19-01 kontrakt i izolowane próby bez modeli → lokalne niezależne review → W19-02…06 według decyzji03. Wykonanie w .worktrees/F-W19; MCP/intencje w checkoucie koordynatora. Cała implementacja i pilot już autoryzowane; Gate2 przed odbiorem.",
+  "next_action": "W19-01 contract review PASS; kontynuuj W19-02 i dalej W19-03…06. Warunki R19-C01…04 w jednym rejestrze review; pilot auth/env przed W19-06, bez nowego Gate1.",
   "bridge": {
     "feature_id": "F-W19-workflow-versioning",
     "parent_task_id": "task_vf2ajb3t4d"
