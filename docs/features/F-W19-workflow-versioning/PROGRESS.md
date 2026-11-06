@@ -98,3 +98,20 @@ Po merge: check-doc-links241 PASS, git diff --check PASS, ancestor plan branch P
 drzewo czyste. Tylko dokumentacja/taski; testy produktu niepotrzebne dla tego kroku.
 Następne: feature-execute w osobnym worktree od aktualnego feature-workflow,
 W19-01 jako pierwszy task; bez ponownego Gate 1. Nie wykonano push ani modeli.
+
+## 2026-11-06 — rozpoczęcie wykonania po integracji F-W20
+
+Użytkownik: „dobra to teraz idziemy do F-W19”. Wznawiamy zatwierdzony zakres
+decyzji03, bez nowego Gate1. Baza wykonania8540de7 zawiera wydane F-W20 i lokalne
+poprawki skryptu upgrade; zachować je. Branch feature/F-W19-workflow-versioning,
+osobny worktree .worktrees/F-W19. Nie ma cudzych zmian w tym worktree.
+MCP związany z checkoutem koordynatora; scope ma prefiks .worktrees/F-W19/,
+a wszystkie Git/ledgery i dostawy dotyczą rzeczywistego korzenia worktree.
+Intencje w namespace koordynatora. Feature F-W19-workflow-versioning,
+root task_vf2ajb3t4d. Nadzorujący immutable runtime0.6.2 pozostaje bez zmian.
+
+W19-01 rozpoczęty: Claude dostarczy kontrakt i próby klientów bez modeli.
+Koordynator niezależnie recenzuje kontrakt przed zależną implementacją; dalszy
+główny ciąg W19-02…06 bez dodatkowych zgód, nieblokujące findingi jedną partią.
+Pilot produktu ma osobny limit decyzji03:6 rund/180min/24 tury Astr, nieuruchomiony.
+Bez merge/push/release/real-project upgrades; końcowy odbiór przez użytkownika.

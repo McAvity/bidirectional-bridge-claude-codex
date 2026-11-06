@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W19-workflow-versioning",
-  "phase": "decision",
+  "phase": "execution",
   "brief": "docs/features/F-W19-workflow-versioning/brief.md",
   "design": "docs/features/F-W19-workflow-versioning/design.md",
   "tasks": [
@@ -26,5 +26,9 @@
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/01-plan.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
-  "next_action": "Gate 1 zatwierdzona decyzją03; plan scalony do feature-workflow w2056a51. Następne: feature-execute F-W19 rozpoczyna W19-01…06 w osobnym worktree wykonawczym, w ramach istniejącej zgody i budżetu. Bez ponawiania design/plan/review/Gate 1. Implementacja/pilot nieuruchomione; Gate 2 przed odbiorem."
+  "next_action": "W19-01 kontrakt i izolowane próby bez modeli → lokalne niezależne review → W19-02…06 według decyzji03. Wykonanie w .worktrees/F-W19; MCP/intencje w checkoucie koordynatora. Cała implementacja i pilot już autoryzowane; Gate2 przed odbiorem.",
+  "bridge": {
+    "feature_id": "F-W19-workflow-versioning",
+    "parent_task_id": "task_vf2ajb3t4d"
+  }
 }
