@@ -544,6 +544,16 @@ locka względem DB: `in-sync`, `projection-behind`, `lock-missing`, `diverged`, 
 treści skilli, promptów, ścieżek osobistych i natywnych ID. Eksport `feature-exchange` przenosi lock
 bez zmian; import nie zmienia lokalnego wyboru.
 
+Zrealizowane w W19-05 ([ledger](../execution/W19-05/01.md)): `scripts/setup/workflow-status.mjs`
+(doctor: check `workflow` i pole raportu `workflow`; blok `distribution.workflow`), warstwy
+`configured` / `verified` / `admitted` / `observed` (zawsze `null` bez rzeczywistego przebiegu),
+wykrywanie starych osobistych wejść z metadanych klientów (tylko odczyt), eksport incydentu
+`records/feature-workflow.json` i `records/attempt-workflows.json` przez typowane allowlisty,
+`feature_exchange.py`: manifest `workflow` (proweniencja locka), `verify` porównuje lock lokalny z
+pakietem, `inspect-return` odrzuca zmianę `workflow.lock.json` (`selection-change-refused`, bez
+stagingu). Baza otwierana readonly; SQLite może utworzyć pliki `-shm`/`-wal` przy odczycie bazy WAL
+(jak dotychczasowa sonda stanu doctora), sam plik bazy pozostaje bez zmian.
+
 ## 9. Kody
 
 | Kod | Kiedy | Następny krok |
@@ -598,6 +608,12 @@ różne → `LEGACY_AMBIGUOUS` z kandydatami i jawnym wyborem użytkownika (LEGA
 (LEGACY-05). Nigdy wybór najnowszego.
 
 ### 10.4 Nowy plugin przy starym pinie
+
+R19-I04 (W19-05): na runtime’ie z bindingiem udowodniony stary zestaw daje `LEGACY_BIND_REQUIRED` z
+polem `bind_legacy = {feature_dir, runtime_id, expected_set_sha256}` (pełny digest potwierdzony z
+manifestu zainstalowanego runtime’u, inaczej `LEGACY_SOURCE_MISSING`) i krokiem
+`bridge_workflow_bind_legacy`; preambuła wejść obsługuje ten kod przed ogólnym stopem, zachowując fazę
+i bramki. `LEGACY_AMBIGUOUS`/`LEGACY_UNPROVEN` wymagają wyboru użytkownika (`explicit_choice: true`).
 
 Istniejący feature: `LEGACY_PINNED_RUNTIME`, ścieżka v1, bez locka i udawanego bindingu
 (RESOLVE-04). Nowy feature: `RUNTIME_WITHOUT_BINDING` z diagnozą brakującego kontraktu i wskazaniem

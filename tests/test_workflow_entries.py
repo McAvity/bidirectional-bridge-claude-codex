@@ -23,6 +23,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import test_workflow_bundle as B  # noqa: E402
 from test_workflow_bundle import PLUGINS, Workspace, git, lib, rmtree, sha  # noqa: E402
 
 ENTRIES = ["feature-decide", "feature-design", "feature-exchange", "feature-execute", "feature-flow", "feature-plan", "feature-review"]
@@ -151,6 +152,42 @@ process.stdout.write(JSON.stringify(m.identity));
         self.assertNotIn("Workflow selection — check first", text)  # old rules are not rewritten
         code, answer = self.resolve(script, project, "--feature", "F-L", "--entry", "feature-review")
         self.assertEqual((code, answer["code"]), (3, "ENTRY_NOT_IN_BUNDLE"))  # no fallback to the plugin copy
+
+    def test_r19_i04_proven_legacy_has_an_actionable_bind_route_and_choice_is_still_required(self):
+        """A proven old set yields the exact bind_legacy arguments; ambiguous/unproven ask the user."""
+        B.Helper.fake_runtime(self, "0.8.0-aaaaaaaaaaaa", binding=True)
+        old = B.Helper.fake_runtime(self, "0.7.0-6ed9a4537e37", binding=False)
+        full_set = "8c05792ad75e7550eddc00c4ef26eb1c7096951e2be384508321e39bfb78a4ed"
+        manifest = json.loads((old / "runtime-manifest.json").read_text())
+        manifest["instructions"] = {"set_sha256": full_set, "files": []}
+        (old / "runtime-manifest.json").write_text(json.dumps(manifest))
+        project = self.project()
+        B.Helper.pin(self, project, "0.8.0-aaaaaaaaaaaa")
+        script = self.plugin_copy("codex") / "scripts/workflow.mjs"
+        for name, records in (("F-proven", [f"INSTRUCTIONS=runtime:0.7.0-6ed9a4537e37 SET={full_set[:12]}"]),
+                              ("F-amb", ["INSTRUCTIONS=runtime:0.7.0-6ed9a4537e37 SET=aaaa", "INSTRUCTIONS=runtime:0.6.2-771e797a73d3 SET=bbbb"])):
+            ledger = self._feature_dir(project, name) / "execution/W-1"
+            ledger.mkdir(parents=True)
+            (ledger / "01.md").write_text("\n".join(f"`{r}`" for r in records) + "\n")
+        before = {str(p): sha(p) for p in project.rglob("*") if p.is_file() and ".git" not in p.parts}
+        code, answer = self.resolve(script, project, "--feature", "F-proven", "--entry", "feature-execute")
+        self.assertEqual((code, answer["code"]), (3, "LEGACY_BIND_REQUIRED"))
+        self.assertEqual(answer["bind_legacy"], {"feature_dir": "docs/features/F-proven", "runtime_id": "0.7.0-6ed9a4537e37", "expected_set_sha256": full_set})
+        self.assertIn("bridge_workflow_bind_legacy", answer["next_step"])
+        self.assertIn("keeps its phase and gates", answer["next_step"])
+        code, answer = self.resolve(script, project, "--feature", "F-amb")
+        self.assertEqual((code, answer["code"]), (3, "LEGACY_AMBIGUOUS"))
+        self.assertIn("ask the user", answer["next_step"])
+        self.assertIn("explicit_choice: true", answer["next_step"])
+        self.assertNotIn("bind_legacy", answer)
+        self.assertEqual(before, {str(p): sha(p) for p in project.rglob("*") if p.is_file() and ".git" not in p.parts})  # pure read
+        for client, package in PLUGINS.items():
+            for entry in ENTRIES:
+                text = (package / "skills" / entry / "SKILL.md").read_text()
+                with self.subTest(client=client, entry=entry):
+                    head = text.split("\n---\n", 1)[1].split("\n\n#", 1)[0]
+                    self.assertLess(head.index("LEGACY_BIND_REQUIRED"), head.index("any other `source: none`"))
+                    self.assertIn("explicit_choice: true", head)
 
     def _feature_dir(self, project: Path, name: str) -> Path:
         path = project / "docs/features" / name

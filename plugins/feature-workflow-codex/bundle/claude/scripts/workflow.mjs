@@ -20,7 +20,7 @@
 // --source) and `tar` (restore --source). No network, no MCP, no bridge database.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -77,6 +77,18 @@ async function projectState({ cwd, env, packageRoot, standalone }) {
   }
   if (answer.code === "RUNTIME_MISSING") return { pin: "missing-runtime", v1: answer, runtime: null };
   return { pin: "refused", v1: answer, runtime: null };
+}
+
+/** Full instruction-set digest of the proven runtime, confirmed by its installed manifest. */
+function provenSet(env, evidence) {
+  try {
+    const manifest = JSON.parse(readFileSync(join(W.bridgeHome(env), "runtimes", evidence.runtime_id, "runtime-manifest.json"), "utf8"));
+    const set = manifest?.instructions?.set_sha256;
+    if (typeof set !== "string" || !/^[0-9a-f]{64}$/u.test(set)) return null;
+    return !evidence.set_sha256 || set.startsWith(evidence.set_sha256) ? set : null;
+  } catch {
+    return null;
+  }
 }
 
 function installedRuntimes(env) {
@@ -165,7 +177,20 @@ export async function resolveSource({ cwd, env, packageRoot, feature = null, isN
     if (project.pin === "binding-runtime") {
       const evidence = W.legacyEvidence(W.featureRecords(dir), null, installedRuntimes(env));
       const code = { PROVEN: "LEGACY_BIND_REQUIRED", AMBIGUOUS: "LEGACY_AMBIGUOUS", UNPROVEN: "LEGACY_UNPROVEN", SOURCE_MISSING: "LEGACY_SOURCE_MISSING" }[evidence.verdict];
-      return none(code, evidence.next_step ?? "the feature manager runs bind_legacy for the proven old set", { legacy: evidence });
+      const featureDir = rel(worktree, dir);
+      if (evidence.verdict === "PROVEN") {
+        // R19-I04: a proven old set is an actionable route, not a stop. The exact arguments are
+        // derived from the evidence and the installed runtime's own manifest — never guessed.
+        const set = provenSet(env, evidence);
+        if (!set) {
+          return none("LEGACY_SOURCE_MISSING", `the recorded set of runtime ${evidence.runtime_id} cannot be confirmed from its installed manifest; reinstall exactly that runtime`, { legacy: evidence });
+        }
+        const bind = { feature_dir: featureDir, runtime_id: evidence.runtime_id, expected_set_sha256: set };
+        return none(code, `the manager binds this feature to its proven old workflow with bridge_workflow_bind_legacy(${JSON.stringify({ feature_id: "<bridge feature id>", ...bind, idempotency_key: `bind-legacy:${featureDir.split("/").at(-1)}` })}), then runs resolve again; the feature keeps its phase and gates`, { legacy: evidence, bind_legacy: bind });
+      }
+      const choice = evidence.verdict === "SOURCE_MISSING" ? evidence.next_step
+        : `ask the user which recorded/installed runtime this feature followed (${(evidence.candidates ?? []).join(", ") || "no record"}); only then bridge_workflow_bind_legacy with explicit_choice: true`;
+      return none(code, choice, { legacy: evidence });
     }
     if (project.pin === "missing-runtime") return none("RUNTIME_MISSING", project.v1.next_step);
     if (project.pin === "refused") return none(project.v1.code, project.v1.next_step);

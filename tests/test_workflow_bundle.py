@@ -479,7 +479,11 @@ class Helper(Workspace):
         compat = {"state_schema_version": 7 if binding else 6}
         if binding:
             compat["workflow_binding"] = {"contracts": [1], "capabilities": ["feature.lifecycle/v1", "feature.close/v1", "round.recovery/v1", "round.report/v1", "workflow.binding/v1"]}
-        (path / "runtime-manifest.json").write_text(json.dumps({"format": "claude-codex-bridge.runtime/v1", "runtime_id": runtime_id, "package_version": runtime_id.split("-")[0], "compatibility": compat}))
+        # The instruction-set digest of the real 0.7.0 runtime for that id; any other id gets a
+        # synthetic one. The resolver confirms proven ledger evidence against it (R19-I04).
+        set_sha = "8c05792ad75e7550eddc00c4ef26eb1c7096951e2be384508321e39bfb78a4ed" if runtime_id == "0.7.0-6ed9a4537e37" else hashlib.sha256(runtime_id.encode()).hexdigest()
+        (path / "runtime-manifest.json").write_text(json.dumps({"format": "claude-codex-bridge.runtime/v1", "runtime_id": runtime_id, "package_version": runtime_id.split("-")[0],
+                                                                "compatibility": compat, "instructions": {"set_sha256": set_sha, "files": []}}))
         (path / "scripts/bridge-project/locate.mjs").write_text(
             "export function status(cwd, env) { return { home: env.CLAUDE_CODEX_BRIDGE_HOME, state: 'ready', runtime: { commit: '" + "0" * 40 + "' },\n"
             f"  instructions: {{ workflow_skills: {json.dumps(str(path / '.agents/skills'))}, set_sha256: 'synthetic' }}, next_step: null }}; }}\n"

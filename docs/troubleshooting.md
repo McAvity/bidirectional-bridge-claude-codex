@@ -317,3 +317,21 @@ project clients exit. Changing to `ps` does not supply the missing open-file evi
 Use the [explicit read-only process observer](setup.md#linux-protected-processes-opt-in-read-only-observer)
 when permitted by your host's sudo policy. Never sudo the whole installer or ignore
 all permission errors. The optional observer retains active-session refusals.
+
+## Workflow versions (F-W19)
+
+Bridge refusals carry `code: WORKFLOW_REFUSED` and `details.code`; the helper prints the same codes.
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `WORKFLOW_UNBOUND` | The feature has no workflow binding; the round was refused before any worker. | `bridge_workflow_bind` (lock) or `bridge_workflow_bind_legacy` (proven old set) |
+| `WORKFLOW_ACK_REQUIRED`, `WORKFLOW_ACK_MISMATCH` | `workflow_identity` missing or not the bound one. | Run the entry's `resolve`, re-read the entry in the same session, pass `bundle.identity` |
+| `BUNDLE_MISSING`, `BUNDLE_CORRUPT` | The bound release is not intact in `<bridge-home>/workflows/`. | `workflow.mjs restore --identity <id> --from <plugin or bundle of that identity>` |
+| `WORKFLOW_SWITCH_PENDING` | A committed switch awaits its lock projection. | Repeat the same switch call, or `bridge_workflow_project` |
+| `LEGACY_BIND_REQUIRED` | Pre-binding feature with a proven old set. | `bridge_workflow_bind_legacy` with the `bind_legacy` values from `resolve` |
+| `LEGACY_AMBIGUOUS`, `LEGACY_UNPROVEN` | The old set is not proven. | Ask the user which runtime; bind with `explicit_choice: true` |
+| `LEGACY_SOURCE_MISSING` | The proven old runtime is not installed. | Reinstall exactly that runtime by pin |
+| `RUNTIME_WITHOUT_BINDING` | The project pins a runtime without binding. | One-time runtime upgrade (docs/setup.md § 5) |
+| `STALE_PERSONAL_FEATURE_ENTRIES` (doctor) | An old personal `bridge-claude` offers `feature-*` copies without bootstrap. | Update or disable that plugin; doctor changes nothing |
+
+Never start a fresh session or another workflow to get around these refusals.

@@ -77,6 +77,7 @@ export const INSTALLER_FILES = [
   "scripts/setup/processes.mjs",
   "scripts/setup/process-observer.py",
   "scripts/setup/runtime.mjs",
+  "scripts/setup/workflow-status.mjs",
   "scripts/setup/workspace.mjs",
   "scripts/bridge-project/dispatch.mjs",
   "scripts/bridge-project/entry-template.mjs",

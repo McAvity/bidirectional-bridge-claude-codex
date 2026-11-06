@@ -60,6 +60,7 @@ export function distributionMetadata({
   integrationSource = "unknown",
   observed = null,
   userHome = homedir(),
+  workflow = null,
 } = {}) {
   const place = (path) => locationOf(path, { home, worktree, userHome });
   const manifest = runtime?.manifest ?? null;
@@ -97,6 +98,18 @@ export function distributionMetadata({
       observed_package_version: observed?.executorPackageVersion ?? null,
       observed_at: observed?.at ?? null,
     },
+    // F-W19: configured workflow layers only. `observed` stays null: no static read can show that a
+    // model applied an instruction set.
+    workflow: workflow ? {
+      runtime_advertises_binding: Boolean(workflow.runtime?.advertises_binding),
+      entries: [...(workflow.entries?.claude ?? []).map((e) => ({ client: "claude", ...e })), ...(workflow.entries?.codex ?? []).map((e) => ({ client: "codex", ...e }))]
+        .map((e) => ({ client: e.client, plugin: e.plugin, version: e.version, bootstrap: e.bootstrap,
+          bundle_identity: e.bundle_identity ? e.bundle_identity.slice("sha256:".length) : null, stale_feature_copies: Boolean(e.stale_feature_copies) })),
+      features_total: workflow.features?.length ?? 0,
+      features_bound: (workflow.features ?? []).filter((f) => f.binding).length,
+      admitted_attempts: (workflow.admitted ?? []).reduce((total, row) => total + (row.attempts ?? 0), 0),
+      observed: null,
+    } : null,
     pin: {
       declared: declaredPin,
       applied: appliedPin,

@@ -248,6 +248,16 @@ npm test
 Do not rebuild a runtime supervising an active task. Installing a new version beside
 the old one is safe; switching a worktree refuses while its clients are active.
 
+### Updating only the feature workflow
+
+The feature workflow has its own version and release, independent of the bridge. To get a new
+workflow release, update the `feature-workflow` plugin in both clients through their marketplace
+commands; projects, pins and runtimes stay as they are. New features start on the installed
+release, features already started keep their recorded release (also offline and after the plugin
+cache is removed), and changing a running feature's release is an explicit switch. The one-time
+engine upgrade that enables this, legacy features and restore are described in
+[plugin-distribution.md](docs/plugin-distribution.md#independent-workflow-and-bridge-versions).
+
 ### Updating an existing project
 
 Ask the bridge plugin: **“Upgrade the bridge in this project”** (`bridge-upgrade`).

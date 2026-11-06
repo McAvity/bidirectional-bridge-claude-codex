@@ -195,6 +195,41 @@ def archive_read(path):
     return result
 
 
+LOCK_NAME = 'workflow.lock.json'
+
+
+def workflow_provenance(directory):
+    """The feature's selected workflow as recorded in its lock (F-W19): identity, never content.
+
+    Absent lock: the feature predates workflow binding or works without it; recorded as such.
+    """
+    lock_path = directory / LOCK_NAME
+    if not lock_path.exists():
+        return {'lock': None}
+    if lock_path.is_symlink() or not lock_path.is_file():
+        fail('Feature workflow lock is not a regular file')
+    data = lock_path.read_bytes()
+    try:
+        lock = json.loads(data)
+        workflow = lock['workflow']
+        return {'lock': lock_path.name, 'lock_sha256': sha(data), 'identity': workflow['identity'], 'version': workflow['version'],
+                'workflow_id': workflow['workflow_id'], 'kind': workflow.get('kind'), 'generation': lock['generation']}
+    except (ValueError, KeyError, TypeError):
+        fail('Feature workflow lock is not a valid workflow lock')
+
+
+def workflow_check(manifest, entries, root):
+    recorded = manifest.get('workflow')
+    if recorded is None:
+        return {'recorded': None, 'note': 'package from before workflow provenance'}
+    name = manifest['feature'] + '/' + LOCK_NAME
+    local = local_path(root, name)
+    local_bytes = local.read_bytes() if local.is_file() else None
+    return {'recorded': recorded,
+            'lock_in_package_matches_record': (sha(entries[name]) == recorded.get('lock_sha256')) if name in entries else recorded.get('lock') is None,
+            'local_lock_matches_package': None if local_bytes is None else (name in entries and local_bytes == entries[name])}
+
+
 def export(args):
     root = repo_root(args.repo)
     feature = safe_path(args.feature.rstrip('/'))
@@ -288,6 +323,8 @@ def export(args):
         'repository_head': current_head, 'worktree_dirty': bool(status),
         'document_source': 'current worktree bytes; hashes below identify the snapshot',
         'code_range': code_range, 'code_changes': changes,
+        # Provenance of the instruction set the feature follows; the lock itself travels as a file.
+        'workflow': workflow_provenance(directory),
         'limitations': ['Not a full repository. Unselected context is absent.',
                         'Tests and acceptance claims are not verified by this exporter.',
                         'Uncommitted product changes are not in the committed code diff.'],
@@ -390,6 +427,9 @@ def verify(args):
         'code_changes': len(manifest['code_changes']) if code_range else None,
         'documents': {'files': documents, 'changed': changed, 'missing': missing,
                       'supplied_by_installation': supplied},
+        # Selected workflow at export (absent in packages from before F-W19) and whether the local
+        # lock still names it. Reported only; verification never changes the local selection.
+        'workflow': workflow_check(manifest, entries, root),
         'note': 'Integrity and provenance only. Not a review, test run or approval.',
     }, indent=2))
 
@@ -417,6 +457,14 @@ def inspect_return(args):
         allowed = (name.startswith(feature + '/') and Path(name).suffix in ('.md', '.json')) or name in tasks
         if not allowed:
             fail('Changed/new path outside document return scope: ' + name)
+        if PurePosixPath(name).name == LOCK_NAME:
+            # A returned package never changes the local workflow selection (F-W19): switching is an
+            # explicit local operation. Report it; never stage it for application.
+            report.append({'path': name, 'classification': 'selection-change-refused',
+                           'base_sha256': sha(original[name]) if name in original else None,
+                           'incoming_sha256': sha(data),
+                           'next_step': 'a workflow change is made locally with bridge_workflow_switch or workflow.mjs switch'})
+            continue
         p = local_path(root, name)
         if p.exists() and not p.is_file():
             fail('Target is not a regular file: ' + name)
@@ -436,7 +484,8 @@ def inspect_return(args):
                'note': 'No repository files changed. Recheck local hashes before applying. Review semantic authority separately.'}
     (stage / 'return-report.json').write_bytes(encode(summary))
     print(json.dumps({'staging': str(stage), 'changes': len(report),
-                      'conflicts': sum(r['classification'] == 'conflict' for r in report)}, indent=2))
+                      'conflicts': sum(r['classification'] == 'conflict' for r in report),
+                      'selection_changes_refused': sum(r['classification'] == 'selection-change-refused' for r in report)}, indent=2))
 
 
 def main():

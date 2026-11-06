@@ -37,8 +37,10 @@ import {
   EVENT_PAYLOAD_SPEC,
   EVENT_SPEC,
   EVIDENCE_SPEC,
+  ATTEMPT_WORKFLOW_SPEC,
   FEATURE_SPEC,
   GAP_SPEC,
+  WORKFLOW_BINDING_SPEC,
   LOG_DETAIL_SPEC,
   LOG_FILE_SPEC,
   LOG_SPEC,
@@ -102,6 +104,11 @@ class Gaps {
   projected(aliases) {
     return this.entries.map((entry) => projectRecord(entry, GAP_SPEC, aliases, { countDropped: false }));
   }
+}
+
+/** `sha256:<hex>` → `<hex>`: the typed projection accepts bare hex only. */
+function bareIdentity(value) {
+  return typeof value === "string" && value.startsWith("sha256:") ? value.slice("sha256:".length) : value ?? null;
 }
 
 function parseSince(value, now) {
@@ -247,6 +254,7 @@ function collectState(snapshot, request, gaps) {
     feature: null,
     tasks: [],
     attempts: [],
+    attemptWorkflows: [],
     telemetry: [],
     events: [],
     binding: null,
@@ -283,6 +291,18 @@ function collectState(snapshot, request, gaps) {
           [...ids, ...attemptParam],
           gaps,
           "task_attempts",
+        )
+      : [];
+    // F-W19: the workflow the bridge admitted per attempt (schema 7). Older databases have no table;
+    // that is not a gap, it is a database from before workflow binding.
+    const hasAttemptWorkflow = queryAll(db, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'attempt_workflow'", [], gaps, "schema").length > 0;
+    const attemptWorkflows = ids.length > 0 && hasAttemptWorkflow
+      ? queryAll(
+          db,
+          `SELECT * FROM attempt_workflow WHERE ${inScopeTasks}${attemptFilter} ORDER BY task_id, attempt`,
+          [...ids, ...attemptParam],
+          gaps,
+          "attempt_workflow",
         )
       : [];
     const telemetryRows = ids.length > 0
@@ -335,6 +355,7 @@ function collectState(snapshot, request, gaps) {
       feature,
       tasks,
       attempts,
+      attemptWorkflows,
       telemetry,
       events: events.slice(0, MAX_RECORDS),
       binding: queryAll(db, "SELECT * FROM workspace_binding WHERE singleton = 1", [], gaps, "workspace_binding")[0] ?? null,
@@ -955,6 +976,11 @@ export async function runDiagnose(options) {
       ),
     );
     add("records/telemetry.json", json(state.telemetry.map((row) => projectRecord(row, TELEMETRY_SPEC, aliases))));
+    // F-W19: admitted releases per attempt. Admitted is not observed: a model's use is not recorded.
+    add(
+      "records/attempt-workflows.json",
+      json((state.attemptWorkflows ?? []).map((row) => projectRecord({ ...row, identity: bareIdentity(row.identity) }, ATTEMPT_WORKFLOW_SPEC, aliases))),
+    );
     add("records/events.json", json(events));
     add(
       "records/feature.json",
@@ -972,6 +998,23 @@ export async function runDiagnose(options) {
               FEATURE_SPEC,
               aliases,
             )
+          : null,
+      ),
+    );
+    add(
+      "records/feature-workflow.json",
+      json(
+        state.feature?.workflow
+          ? projectRecord({
+              identity: bareIdentity(state.feature.workflow.identity),
+              version: state.feature.workflow.version,
+              workflow_id: state.feature.workflow.workflow_id,
+              kind: state.feature.workflow.kind,
+              generation: state.feature.workflow.generation,
+              history_length: Array.isArray(state.feature.workflow.history) ? state.feature.workflow.history.length : null,
+              pending: state.feature.workflow.pending_projection?.op ?? null,
+              legacy_runtime_id: state.feature.workflow.legacy?.runtime_id ?? null,
+            }, WORKFLOW_BINDING_SPEC, aliases)
           : null,
       ),
     );

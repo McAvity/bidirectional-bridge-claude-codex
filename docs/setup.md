@@ -123,6 +123,14 @@ nothing is killed. It also refuses when the database schema is newer than the ta
 supports; an unverified Codex version produces a warning, not a refusal. The new
 runtime migrates the database on its first authorized call, not during `update`.
 
+### Workflow binding (one-time upgrade)
+
+A runtime with workflow binding (schema 7) refuses a feature round until the feature is bound:
+`bridge_workflow_bind` for a feature with `workflow.lock.json`, `bridge_workflow_bind_legacy` for a
+feature from before binding (its proven old instruction set). See
+[plugin-distribution.md](plugin-distribution.md#independent-workflow-and-bridge-versions). Updating
+only the `feature-workflow` plugin afterwards needs no `update` of the project.
+
 ## 6. Roll back
 
 ```sh
@@ -182,6 +190,13 @@ export CLAUDE_CODEX_BRIDGE_CODEX_PROFILE=work
 ```
 
 ### Doctor codes
+
+The `workflow` check (F-W19) is advice only: `STALE_PERSONAL_FEATURE_ENTRIES`,
+`ENTRY_WITHOUT_BOOTSTRAP`, `FEATURE_UNBOUND`, `LOCK_NOT_IN_SYNC` (warn) and
+`WORKFLOW_BUNDLE_UNAVAILABLE` (error, with the exact `restore` step). It reads the database
+readonly, locks and store through the selected runtime's helper, and the clients' plugin metadata;
+it creates, binds, migrates or selects nothing.
+
 
 | Code | Meaning |
 | --- | --- |

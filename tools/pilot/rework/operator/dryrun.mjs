@@ -12,7 +12,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -25,6 +25,8 @@ const REPO = resolve(RUN, 'repo'), EXCH = resolve(RUN, 'exchange');
 const FID = 'F-001-duration', F = `docs/features/${FID}`;
 const BRIDGE = resolve(ROOT, 'scripts/native-bridge-mcp.mjs');
 const PATH_WITH_FAKE = `${resolve(HERE, 'fakebin')}:${process.env.PATH}`;
+// F-W19: the launcher enforces workflow binding; the dry run uses its own isolated bridge home.
+const BRIDGE_HOME = resolve(OUT, 'bridge-home');
 const ENV = { ...process.env, PATH: PATH_WITH_FAKE, PILOT_CODEX_SESSIONS: SESS, PILOT_CLAUDE_PROJECTS: TRANSCRIPTS };
 const py = (script, ...a) => spawnSync('python3', [resolve(HERE, script), ...a], { encoding: 'utf8', env: ENV });
 const git = (...a) => execFileSync('git', ['-C', REPO, ...a], { encoding: 'utf8' }).trim();
@@ -49,7 +51,7 @@ const client = new Client({ name: 'rework-dryrun', version: '1' });
 await client.connect(new StdioClientTransport({
   command: process.execPath, cwd: REPO, stderr: 'pipe',
   args: [BRIDGE, '--caller', 'codex', '--delegation', 'allow', '--workspace', REPO],
-  env: { ...process.env, PATH: PATH_WITH_FAKE, DRYRUN_TRANSCRIPTS: TRANSCRIPTS,
+  env: { ...process.env, PATH: PATH_WITH_FAKE, DRYRUN_TRANSCRIPTS: TRANSCRIPTS, CLAUDE_CODEX_BRIDGE_HOME: BRIDGE_HOME,
          GIT_AUTHOR_NAME: 'claude-executor', GIT_AUTHOR_EMAIL: 'claude-executor@pilot.invalid',
          GIT_COMMITTER_NAME: 'claude-executor', GIT_COMMITTER_EMAIL: 'claude-executor@pilot.invalid' },
 }));
@@ -62,6 +64,7 @@ const call = async (name, a) => {
   if (r.isError) throw new Error(`${name}: ${r.content?.[0]?.text}`);
   return JSON.parse(r.content[0].text);
 };
+let WORKFLOW = null;
 async function round(n, lines) {
   const base = git('rev-parse', 'HEAD');
   const pkg = resolve(EXCH, `${FID}-r${String(n).padStart(2, '0')}.zip`);
@@ -72,7 +75,7 @@ async function round(n, lines) {
     scope: { paths: ['src/textkit/**', 'tests/**', `${F}/execution/**`] }, dependencies: [],
     expected_deliverable: 'package, ledger, commit', verification_criteria: ['unit tests pass'], max_turns: 10,
   };
-  await call('bridge_feature_run', { feature_id: FID, spec, input_artifacts: [], deadline_ms: 600_000, idempotency_key: `${FID}:round-${n}` });
+  await call('bridge_feature_run', { feature_id: FID, spec, input_artifacts: [], deadline_ms: 600_000, idempotency_key: `${FID}:round-${n}`, workflow_identity: WORKFLOW });
   let f;
   do { await sleep(1500); f = await call('bridge_feature_get', { feature_id: FID }); } while (f.state === 'running');
   log(`round ${n} -> ${f.state} ${f.latest_task_id}`);
@@ -93,6 +96,16 @@ try {
   await call('bridge_claim_task', { task_id: rootId, idempotency_key: `${FID}:root-claim` });
   await call('bridge_set_state', { task_id: rootId, to: 'WORKING', reason: 'dry run' });
   await call('bridge_feature_create', { feature_id: FID, parent_task_id: rootId });
+  // F-W19: store this checkout's workflow release, record the feature's lock and bind it.
+  const lib = await import(pathToFileURL(resolve(ROOT, 'scripts/workflow-source/workflow-lib.mjs')).href);
+  const bundle = resolve(ROOT, 'plugins/feature-workflow-claude/bundle');
+  const manifest = lib.verifyBundle(bundle);
+  lib.storePublish(resolve(BRIDGE_HOME, 'workflows'), bundle);
+  mkdirSync(resolve(REPO, F), { recursive: true });
+  lib.writeLock(resolve(REPO, F), lib.newLock(manifest, { origin: { kind: 'active-plugin', client: 'codex', plugin_version: manifest.version }, at: '2026-01-01T00:00:00Z', featureId: FID }));
+  coord([`${F}/workflow.lock.json`], 'dry run: workflow lock');
+  await call('bridge_workflow_bind', { feature_id: FID, lock_path: `${F}/workflow.lock.json`, expected_identity: manifest.identity, idempotency_key: `${FID}:bind` });
+  WORKFLOW = manifest.identity;
   mkdirSync(resolve(REPO, `${F}/decisions`), { recursive: true });
   writeFileSync(resolve(REPO, `${F}/decisions/01.md`), '# Decyzja 01 (DRY RUN)\n');
   coord([`${F}/decisions/01.md`], 'dry run: authorization placeholder');

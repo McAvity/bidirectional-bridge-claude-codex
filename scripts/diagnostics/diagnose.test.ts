@@ -430,6 +430,16 @@ describe("incident export", () => {
       expect.arrayContaining(["attempt.started", "attempt.ended", "delegation.failed"]),
     );
     expect(pkg.json("records/feature.json")).toMatchObject({ feature_id: fixture.featureId, question_present: true });
+    // F-W19: the bound release and the release admitted per attempt, as identities only; the
+    // package says nothing about what a model applied.
+    const binding = pkg.json("records/feature-workflow.json") as Record<string, unknown>;
+    expect(binding).toMatchObject({ kind: "release", generation: 1, version: expect.stringMatching(/^\d+\.\d+\.\d+/u) });
+    expect(binding["identity"]).toMatch(/^[0-9a-f]{64}$/u);
+    const admitted = pkg.json("records/attempt-workflows.json") as Array<Record<string, unknown>>;
+    expect(admitted).toEqual([expect.objectContaining({ task_id: fixture.roundTaskId, attempt: 0, identity: binding["identity"], generation: 1, kind: "release" })]);
+    const recordsText = JSON.stringify([binding, admitted]);
+    expect(recordsText).not.toContain("workflow.lock.json");
+    expect(recordsText).not.toContain(fixture.root);
 
     const inspected = diagnoseJson(fixture, ["--inspect", path]);
     expect(inspected.json).toMatchObject({ integrity: "ok", format: "claude-codex-bridge.diagnostics/v1" });

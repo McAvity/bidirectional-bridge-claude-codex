@@ -37,6 +37,13 @@ dokładny dawny zestaw (`bridge_workflow_bind_legacy` według rekordów `INSTRUC
 nigdy nie dostaje po cichu najnowszego. Brak lub uszkodzenie kopii zatrzymuje pracę z poleceniem
 odtworzenia dokładnej identity (`workflow.mjs restore`).
 
+Aktualizacja: nowe wydanie workflow instaluje się przez marketplace w obu klientach (bez zmian
+projektu, pina i runtime’u); nowe feature’y wybierają je przy `begin`, rozpoczęte zostają przy swoim.
+Silnik wymaga jednorazowego upgrade do runtime’u z bindingiem (schemat 7). Feature sprzed tej funkcji
+z udowodnionym starym zestawem dostaje od `resolve` gotowe argumenty `bridge_workflow_bind_legacy`;
+niejednoznaczna lub nieudowodniona historia wymaga wyboru użytkownika. Doctor ostrzega o starych
+osobistych `bridge-claude:feature-*` bez bootstrapu; szczegóły w `docs/plugin-distribution.md`.
+
 ## Automatyczne przejście przez cały proces
 
 `feature-flow` prowadzi kolejne fazy bez ręcznego wywoływania następnego skilla.

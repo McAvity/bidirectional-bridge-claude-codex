@@ -19,8 +19,15 @@
 >   follow `<instructions.workflow_skills>/{{SKILL}}/SKILL.md`, `instructions.guide` and
 >   `instructions.exchange_helper` of that runtime, as before. If that runtime lacks this entry,
 >   report that a runtime upgrade is needed.
-> - `source: none` (exit 3) — report `code` and `next_step` and stop. Do not install, set up, move a
->   pin, restore, start a new session or fall back to this copy.
+> - `LEGACY_BIND_REQUIRED` — a feature from before workflow binding whose old set is proven by its
+>   ledgers. With the bridge, the manager calls `bridge_workflow_bind_legacy` with the answer's
+>   `bind_legacy` values (the bridge feature id and a new idempotency key), then runs `resolve`
+>   again and continues the same phase under its gates with that old rule set; nothing else changes.
+>   `LEGACY_AMBIGUOUS` / `LEGACY_UNPROVEN` need the user's explicit choice of one recorded or
+>   installed runtime first (`explicit_choice: true`); `LEGACY_SOURCE_MISSING` needs that exact
+>   runtime reinstalled. Never bind the latest workflow instead.
+> - any other `source: none` (exit 3) — report `code` and `next_step` and stop. Do not install, set
+>   up, move a pin, restore, start a new session or fall back to this copy.
 >
 > Put the answer's `record` line in the ledger of a significant execution or review. Inside a bridge
 > round the round contract and its `Workflow binding` block remain the authority.{{PACKAGE_NOTE}}

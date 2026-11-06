@@ -18,7 +18,7 @@
     "scripts/workflow-source/workflow-lib.mjs",
     "scripts/workflow-source/release.json"
   ],
-  "source_digest": "d452d82f2b66a63eba95978ab995f7c7d18b3c1ef89165959d5aee170212036c",
+  "source_digest": "35ed80cf373d22db063aa6638f5857d3a0571a6f8b50bd0f5db535cd862b9991",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -26,7 +26,7 @@
     },
     {
       "path": "bundle/bundle.json",
-      "sha256": "46bc483e3dd124ac1799c048d855bca659e01b05be982e51954b4cd3f1024081"
+      "sha256": "80db0edbfc7b856a7cee4c76fa74be50163e88a14b7877039206f82b4db13ef6"
     },
     {
       "path": "bundle/claude/.claude-plugin/plugin.json",
@@ -42,11 +42,11 @@
     },
     {
       "path": "bundle/claude/scripts/workflow.mjs",
-      "sha256": "4dfb0467a98cbf716ef8762756964730d47a74f50972581c5bd585d1cd468b7a"
+      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
     },
     {
       "path": "bundle/claude/skills/feature-decide/SKILL.md",
-      "sha256": "5376b4d8610b48e944c3c7d63ce9f6887db9cba06c71915e9755d9fb09435243"
+      "sha256": "6a76f0aee09194e10544946598b71391b6e6672a39053e343f026f37c86b61b1"
     },
     {
       "path": "bundle/claude/skills/feature-decide/agents/openai.yaml",
@@ -54,7 +54,7 @@
     },
     {
       "path": "bundle/claude/skills/feature-design/SKILL.md",
-      "sha256": "5c44e50e66c251ecd80f47a335267e63b6b2b459a4f4e2a5702fade3a324c84d"
+      "sha256": "ea060a56046922060739c9d00ac5fdec5bc45bd1acaee68de8b9c60200a3ae7e"
     },
     {
       "path": "bundle/claude/skills/feature-design/agents/openai.yaml",
@@ -62,7 +62,7 @@
     },
     {
       "path": "bundle/claude/skills/feature-exchange/SKILL.md",
-      "sha256": "6a04ea3a21d634399d49d6fe1ad1f0eff1136966465bc5963abd6b014aca1480"
+      "sha256": "6242e8aa346aada9f4592243ae25b13f13aa118461b92975837581248a777a2a"
     },
     {
       "path": "bundle/claude/skills/feature-exchange/agents/openai.yaml",
@@ -70,11 +70,11 @@
     },
     {
       "path": "bundle/claude/skills/feature-exchange/scripts/feature_exchange.py",
-      "sha256": "3d3dc3bed6e33f959c54d28e606f5c4972185d3679e37178f02b7c3d7e95fbdf"
+      "sha256": "0617049e593399c616b97b1060923fcb365c57b337fb5abf1eb16486481c7dac"
     },
     {
       "path": "bundle/claude/skills/feature-execute/SKILL.md",
-      "sha256": "e25fc52d89dfc5e526099d4eb1f6a242af67e47066aad0ff236d324934ab070f"
+      "sha256": "355fb690562887edda60d7b627c224caf51d99dd7f5a8dc0703fe68d8a77ac04"
     },
     {
       "path": "bundle/claude/skills/feature-execute/agents/openai.yaml",
@@ -98,7 +98,7 @@
     },
     {
       "path": "bundle/claude/skills/feature-flow/SKILL.md",
-      "sha256": "a059be051f3ee2b55e16cde0624b5d9ea2757bf8061f736c4295b5584ad6e818"
+      "sha256": "5c2085fc9812962cc9fc5e58976d1c19839c2be6ae9d9e551983830ad9a21fd8"
     },
     {
       "path": "bundle/claude/skills/feature-flow/agents/openai.yaml",
@@ -106,7 +106,7 @@
     },
     {
       "path": "bundle/claude/skills/feature-plan/SKILL.md",
-      "sha256": "166b9b86bdef33b43e0e377ff3a640e90dfb758548692a6ac3d53f9efc9972cf"
+      "sha256": "693b89763afa7fe034c092701d37a3c186cc27f83e2d44e3a32939f0ff0022ea"
     },
     {
       "path": "bundle/claude/skills/feature-plan/agents/openai.yaml",
@@ -114,7 +114,7 @@
     },
     {
       "path": "bundle/claude/skills/feature-review/SKILL.md",
-      "sha256": "fa1460bb48e9b66d098abc14567a67ddea283579ac58d374fd7955681d83861f"
+      "sha256": "01461896b8f830498f5494d1470e8f5f4e77348aff99a7ff611528142ef29fc9"
     },
     {
       "path": "bundle/claude/skills/feature-review/agents/openai.yaml",
@@ -122,7 +122,7 @@
     },
     {
       "path": "bundle/claude/workflow/README.md",
-      "sha256": "00d826015d0911d6c31f57b486073b418f990f15008c8329a5b41c3b71bac8e1"
+      "sha256": "769d9fc5a326b59001cd86ba23de15a3fca1dca02572a8ab5058be4425678fcd"
     },
     {
       "path": "bundle/codex/.codex-plugin/plugin.json",
@@ -138,11 +138,11 @@
     },
     {
       "path": "bundle/codex/scripts/workflow.mjs",
-      "sha256": "4dfb0467a98cbf716ef8762756964730d47a74f50972581c5bd585d1cd468b7a"
+      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
     },
     {
       "path": "bundle/codex/skills/feature-decide/SKILL.md",
-      "sha256": "f69f60ec6b5822667fefe50dff12dc5d7e68e837fae564a250c0664bca263705"
+      "sha256": "0da73ca056ed6bcd24e4eae8de3bf4489809771a6e55ac675aaf9868ffdecfe2"
     },
     {
       "path": "bundle/codex/skills/feature-decide/agents/openai.yaml",
@@ -150,7 +150,7 @@
     },
     {
       "path": "bundle/codex/skills/feature-design/SKILL.md",
-      "sha256": "acf10173fbbd39d8e7c660b6e7ee9c743498d480855b71c36476a9d11cd41cfb"
+      "sha256": "dd2572368a15bb6bb7ef9b8f8059143e8ac2e91cb952ba165d7818f383391a3c"
     },
     {
       "path": "bundle/codex/skills/feature-design/agents/openai.yaml",
@@ -158,7 +158,7 @@
     },
     {
       "path": "bundle/codex/skills/feature-exchange/SKILL.md",
-      "sha256": "43ef0e7882151f7910e2c1dd099e50be0d67c047105fd5f5ddf31317ba2c423d"
+      "sha256": "566c5f716555c4d760f49335a5c909d99bff7d103cbdb0f6651ea71b2caa1604"
     },
     {
       "path": "bundle/codex/skills/feature-exchange/agents/openai.yaml",
@@ -166,11 +166,11 @@
     },
     {
       "path": "bundle/codex/skills/feature-exchange/scripts/feature_exchange.py",
-      "sha256": "3d3dc3bed6e33f959c54d28e606f5c4972185d3679e37178f02b7c3d7e95fbdf"
+      "sha256": "0617049e593399c616b97b1060923fcb365c57b337fb5abf1eb16486481c7dac"
     },
     {
       "path": "bundle/codex/skills/feature-execute/SKILL.md",
-      "sha256": "29f8c4c549e614dda48ed0e470f5aada381a4e6319684deb1a41caa952057a76"
+      "sha256": "8000835e91ff18c3f4e461a7b467f7f292d7633cc762a7339594694a8450c4f1"
     },
     {
       "path": "bundle/codex/skills/feature-execute/agents/openai.yaml",
@@ -194,7 +194,7 @@
     },
     {
       "path": "bundle/codex/skills/feature-flow/SKILL.md",
-      "sha256": "961d664ffdc82ba98815e9adbff5f0ee90f350398d8998fabe2dcccc758d8108"
+      "sha256": "9c89ad64553e8446e4454d2e14610f405db26889d45d9a7d76d863644dc56a0b"
     },
     {
       "path": "bundle/codex/skills/feature-flow/agents/openai.yaml",
@@ -202,7 +202,7 @@
     },
     {
       "path": "bundle/codex/skills/feature-plan/SKILL.md",
-      "sha256": "92e02a8c4a774b28b499eb7ff918ee6faa0d96c4f4f6f5249f252310eb46285a"
+      "sha256": "777ea3f0996c997f8f3a822bdbac0cd4c02a7a8eb41f071ce5b476fc16ac3fd8"
     },
     {
       "path": "bundle/codex/skills/feature-plan/agents/openai.yaml",
@@ -210,7 +210,7 @@
     },
     {
       "path": "bundle/codex/skills/feature-review/SKILL.md",
-      "sha256": "17d2330b5c76d244d65767849e815fc8d0db93242815034c1bd65276092b395c"
+      "sha256": "b053f31d901ef28f17c16ed8dc3a9fcc168a368a908c668c3c105a099e160c5d"
     },
     {
       "path": "bundle/codex/skills/feature-review/agents/openai.yaml",
@@ -218,7 +218,7 @@
     },
     {
       "path": "bundle/codex/workflow/README.md",
-      "sha256": "abb31b82f59cdc0170a8c812fe200d3b88514e9c0107938a5b25e0c039a94ccd"
+      "sha256": "f198d13f6beb155891c14a734f5be49bc9c420fd389ab89715a72a81fb6e233e"
     },
     {
       "path": "scripts/select-source.mjs",
@@ -230,11 +230,11 @@
     },
     {
       "path": "scripts/workflow.mjs",
-      "sha256": "4dfb0467a98cbf716ef8762756964730d47a74f50972581c5bd585d1cd468b7a"
+      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
     },
     {
       "path": "skills/feature-decide/SKILL.md",
-      "sha256": "5376b4d8610b48e944c3c7d63ce9f6887db9cba06c71915e9755d9fb09435243"
+      "sha256": "6a76f0aee09194e10544946598b71391b6e6672a39053e343f026f37c86b61b1"
     },
     {
       "path": "skills/feature-decide/agents/openai.yaml",
@@ -242,7 +242,7 @@
     },
     {
       "path": "skills/feature-design/SKILL.md",
-      "sha256": "5c44e50e66c251ecd80f47a335267e63b6b2b459a4f4e2a5702fade3a324c84d"
+      "sha256": "ea060a56046922060739c9d00ac5fdec5bc45bd1acaee68de8b9c60200a3ae7e"
     },
     {
       "path": "skills/feature-design/agents/openai.yaml",
@@ -250,7 +250,7 @@
     },
     {
       "path": "skills/feature-exchange/SKILL.md",
-      "sha256": "6a04ea3a21d634399d49d6fe1ad1f0eff1136966465bc5963abd6b014aca1480"
+      "sha256": "6242e8aa346aada9f4592243ae25b13f13aa118461b92975837581248a777a2a"
     },
     {
       "path": "skills/feature-exchange/agents/openai.yaml",
@@ -258,11 +258,11 @@
     },
     {
       "path": "skills/feature-exchange/scripts/feature_exchange.py",
-      "sha256": "3d3dc3bed6e33f959c54d28e606f5c4972185d3679e37178f02b7c3d7e95fbdf"
+      "sha256": "0617049e593399c616b97b1060923fcb365c57b337fb5abf1eb16486481c7dac"
     },
     {
       "path": "skills/feature-execute/SKILL.md",
-      "sha256": "e25fc52d89dfc5e526099d4eb1f6a242af67e47066aad0ff236d324934ab070f"
+      "sha256": "355fb690562887edda60d7b627c224caf51d99dd7f5a8dc0703fe68d8a77ac04"
     },
     {
       "path": "skills/feature-execute/agents/openai.yaml",
@@ -286,7 +286,7 @@
     },
     {
       "path": "skills/feature-flow/SKILL.md",
-      "sha256": "a059be051f3ee2b55e16cde0624b5d9ea2757bf8061f736c4295b5584ad6e818"
+      "sha256": "5c2085fc9812962cc9fc5e58976d1c19839c2be6ae9d9e551983830ad9a21fd8"
     },
     {
       "path": "skills/feature-flow/agents/openai.yaml",
@@ -294,7 +294,7 @@
     },
     {
       "path": "skills/feature-plan/SKILL.md",
-      "sha256": "166b9b86bdef33b43e0e377ff3a640e90dfb758548692a6ac3d53f9efc9972cf"
+      "sha256": "693b89763afa7fe034c092701d37a3c186cc27f83e2d44e3a32939f0ff0022ea"
     },
     {
       "path": "skills/feature-plan/agents/openai.yaml",
@@ -302,7 +302,7 @@
     },
     {
       "path": "skills/feature-review/SKILL.md",
-      "sha256": "fa1460bb48e9b66d098abc14567a67ddea283579ac58d374fd7955681d83861f"
+      "sha256": "01461896b8f830498f5494d1470e8f5f4e77348aff99a7ff611528142ef29fc9"
     },
     {
       "path": "skills/feature-review/agents/openai.yaml",
@@ -310,7 +310,7 @@
     },
     {
       "path": "workflow/README.md",
-      "sha256": "00d826015d0911d6c31f57b486073b418f990f15008c8329a5b41c3b71bac8e1"
+      "sha256": "769d9fc5a326b59001cd86ba23de15a3fca1dca02572a8ab5058be4425678fcd"
     }
   ]
 }
