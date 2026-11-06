@@ -145,3 +145,9 @@ terminal sudo authentication can now be requested at the doctor stage too.
 Final-output follow-up (2026-11-05): added literal 🟢/🟡/🔴 before FINAL, in addition
 to terminal text colors. Exit codes and upgrade behavior unchanged. Checked all three
 rendered outcomes directly; no project update repeated.
+
+Integration checkpoint — 2026-11-06: user requested merge into the main integration
+branch. Fast-forwarded feature-workflow from 5ff7b3c to 55a3036, including 90da88c,
+36ac046 and c42015a; no conflicts or combined code changes. Package equivalence,
+documentation links and diff checks passed. Prior focused test results remain above.
+No push, release, runtime activation or other-project changes.
