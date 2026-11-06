@@ -162,7 +162,7 @@ pilot w zatwierdzonym budżecie03. Bez publikacji i bez podmiany aktywnego runti
 
 Dostawa2298abf, kod501a6b2; W19-01…05 DONE etapowo. W19-06: korekty I05/I06
 niezależnie zweryfikowane, pełne kontrole dokładnego2298abf PASS bez modeli:
-JS 752 PASS/1 skipped/0 fail; Python 242 tests; pilot tooling 131 tests; workflow contract/operator 27 tests; wszystkie zestawy exit0.
+JS 752 PASS/1 skipped/0 fail; Python242 PASS; pilot tooling129 PASS/2skipped (opcjonalne zależności PTY: pexpect/pyte nieobecne); workflow contract/operator27 PASS; wszystkie zestawy exit0.
 Decyzja04 odkłada dodatkowe logowania i zależny pilot; nie ponawiać pytania,
 nie przechodzić do osobistych profili, nie oznaczać AC04 PASS. W19-06 i cały feature
 nie są odebrane. T01/T02 kolektora/procedury odłożone do wznowienia pilota, N01 docs

@@ -159,7 +159,7 @@ nie OK0/0. Whitelist eksportu zachowuje null zamiast udawanych zer.
 
 Pełna niezależna walidacja dokładnego2298abf, świeży klon i kontener jak poprzednio,
 z rzeczywistymi CLI Codex0.166.0/Claude2.1.316 (bez modeli/logowania):
-JS 752 PASS/1 skipped/0 fail; Python 242 tests; pilot tooling 131 tests; workflow contract/operator 27 tests; wszystkie zestawy exit0.
+JS 752 PASS/1 skipped/0 fail; Python242 PASS; pilot tooling129 PASS/2skipped (opcjonalne zależności PTY: pexpect/pyte nieobecne); workflow contract/operator27 PASS; wszystkie zestawy exit0.
 Install/build/packages/docs/process-visibility/diff PASS, drzewo po testach czyste.
 Kontroler i wszystkie logi prywatnie w /tmp/bridge-w19-container-validation/final-2298abf/.
 To uzupełnia pominięte testy CLI w kontenerze wykonawcy. Nie powtarzano modeli ani

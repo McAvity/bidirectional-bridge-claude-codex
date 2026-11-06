@@ -4,7 +4,7 @@
 
 Branch feature/F-W19-workflow-versioning w `.worktrees/F-W19`, dostawa2298abf.
 I05/I06 fixed/verified; pełne kontrole dokładnego2298abf bez modeli PASS:
-JS 752 PASS/1 skipped/0 fail; Python 242 tests; pilot tooling 131 tests; workflow contract/operator 27 tests; wszystkie zestawy exit0.
+JS 752 PASS/1 skipped/0 fail; Python242 PASS; pilot tooling129 PASS/2skipped (opcjonalne zależności PTY: pexpect/pyte nieobecne); workflow contract/operator27 PASS; wszystkie zestawy exit0.
 [Decyzja04](features/F-W19-workflow-versioning/decisions/04.md): użytkownik rezygnuje
 z dodatkowych loginów teraz, pilot odłożony. Nie prosić ponownie ani nie używać
 osobistych profili. AC04 NOT_TESTED, brak odbioru całości. T01/T02 do korekty przed
