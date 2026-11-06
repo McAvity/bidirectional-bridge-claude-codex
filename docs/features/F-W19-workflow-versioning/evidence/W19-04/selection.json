@@ -1,0 +1,112 @@
+{
+  "bundles": {
+    "A": {
+      "identity": "sha256:7f550481b302221991074c65b5de50a697be43dda86e12043e10e288d30cca23",
+      "workflow_id": "1.0.0-7f550481b302"
+    },
+    "B": {
+      "identity": "sha256:5a09bfccb99049ab4f2f3b8feb75388347a21521f9620e38f046a035b86aae61",
+      "workflow_id": "1.0.1-5a09bfccb990"
+    }
+  },
+  "claude": {
+    "cases": [
+      {
+        "bridge_plugin_paths": [
+          "<home>/workspace/bridge/.worktrees/F-W19/plugins/bridge-claude"
+        ],
+        "case": "A-round",
+        "override_line": true,
+        "personal_text_in_request": false,
+        "preamble_in_request": true,
+        "release_b_text_in_request": false,
+        "request_sha256": "c1cbbbfd9c3217df64ced9637d28a948f264056954934f52727ac10c7c848e8d",
+        "session_id": "<id:07162950>",
+        "spent_nothing": true,
+        "store_root_expanded": true,
+        "workflow_plugin_paths": [
+          "<run>/bridge-home/workflows/1.0.0-7f550481b302/claude"
+        ]
+      },
+      {
+        "bridge_plugin_paths": [
+          "<home>/workspace/bridge/.worktrees/F-W19/plugins/bridge-claude"
+        ],
+        "case": "B-resume-same-session",
+        "override_line": true,
+        "personal_text_in_request": false,
+        "preamble_in_request": true,
+        "release_b_text_in_request": true,
+        "request_sha256": "cfe2fbf95344a89692fc8895d70f1887ea8380cb08e4f488c2125ac0e59c5975",
+        "session_id": "<id:07162950>",
+        "spent_nothing": true,
+        "store_root_expanded": false,
+        "workflow_plugin_paths": [
+          "<run>/bridge-home/workflows/1.0.1-5a09bfccb990/claude"
+        ]
+      }
+    ],
+    "findings": {
+      "earlier_release_text_remains_in_history": true,
+      "entry_text_is_the_stored_release_with_store_root": true,
+      "model_free": true,
+      "resume_keeps_session": true,
+      "resume_with_next_admitted_release_shows_it": true,
+      "role_package_is_the_runtime_bridge_claude": true,
+      "store_variant_overrides_personal_older_plugin": true
+    },
+    "personal_install_exit": 0
+  },
+  "codex": {
+    "begin_code": "BEGUN",
+    "findings": {
+      "entry_opens_with_resolve_bootstrap": true,
+      "entry_path_is_the_installed_cache": true,
+      "installed_helper_begins_a_feature": true,
+      "plugin_cache_removed": true,
+      "store_serves_the_feature_after_cache_removal": true,
+      "turn_failed_on_local_stub": true
+    },
+    "installed_path": "<run>/codex-home/plugins/cache/claude-codex-bridge/feature-workflow/1.0.0",
+    "remove_exit": 0,
+    "resolve_after_remove": {
+      "code": "BOUND_BUNDLE",
+      "layout": "store"
+    }
+  },
+  "env": {
+    "block_env_vars": [
+      "CLAUDE_CODEX_BRIDGE_HOME",
+      "XDG_DATA_HOME",
+      "CLAUDE_CONFIG_DIR"
+    ],
+    "findings": {
+      "bridge_home_forwarded": true,
+      "claude_config_dir_forwarded": true,
+      "server_started": true
+    }
+  },
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.316 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.166.0"
+    }
+  },
+  "personal_profiles_unchanged": true,
+  "probe": "w19-04-selection",
+  "provenance": {
+    "head": "3fb7819e8587fd656c82562aa2e1aa5d8321a4c5",
+    "sha256": {
+      "scripts/plugin-probes/probe_lib.py": "231bd637ffca1a03a90f9d660039f8ab02f7da686e4c0085175301a6ac6e86cc",
+      "scripts/plugin-probes/recorder_mcp.mjs": "fcbca53fbd56c465cc56bbe7ecaf6a0eedbe40e6cef71064a5852a1386e0273b",
+      "tools/pilot/workflow-versioning/probe_clients.py": "65629206a70f01210a9e285aeb7afeb223da45abff9d17ce726e3d242a61c67a",
+      "tools/pilot/workflow-versioning/w19lib.py": "b92f84709d9f6ef9f34b5ea23d872471eb1d6023709935322cc39926d28f3ac1"
+    }
+  }
+}
