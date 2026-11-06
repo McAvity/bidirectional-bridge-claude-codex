@@ -1,0 +1,16 @@
+[
+  {
+    "attempt": 1,
+    "outcome": "COMPLETE",
+    "task_id": "t1",
+    "workflow_generation": 1,
+    "workflow_identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19"
+  },
+  {
+    "attempt": 1,
+    "outcome": null,
+    "task_id": "t3",
+    "workflow_generation": 2,
+    "workflow_identity": "sha256:ef5a2846767c3b3a12bf753dbf2e87f0d9b4f93bff9d5e669f381672e97a93f5"
+  }
+]

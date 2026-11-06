@@ -1,0 +1,105 @@
+{
+  "component": "feature-workflow",
+  "files": [
+    {
+      "mode": "644",
+      "path": "claude/.claude-plugin/plugin.json",
+      "sha256": "dd4a8901a97e7b03d58e96b5dc09535dabdd14c47970e0e5a5d351616bd61423"
+    },
+    {
+      "mode": "755",
+      "path": "claude/scripts/select-source.mjs",
+      "sha256": "2b8de8e0a4192b12e63418c921eec08d30c304a1188f315aa19ad43a5c269771"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/SKILL.md",
+      "sha256": "db4bd56c883773f52d645b759d4dbea374b4780a98a52b280e81312ab886d6b8"
+    },
+    {
+      "mode": "755",
+      "path": "claude/skills/feature-execute/scripts/multi_repo.py",
+      "sha256": "b4ec0073e499fdc2b8fe30f7b4ceab0d588e757c5ddf82449be0fcf9049d3b61"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-plan/SKILL.md",
+      "sha256": "b7322e521c0463fd3ed9ab2899f1ca8deb5a9e529b9e4990aa74f76593815e5d"
+    },
+    {
+      "mode": "644",
+      "path": "claude/workflow/README.md",
+      "sha256": "6d1a1c10c091e65474c521a4b1d3c23cc4c876baa1376b56a4acd3d183c54419"
+    },
+    {
+      "mode": "644",
+      "path": "codex/.codex-plugin/plugin.json",
+      "sha256": "dd4a8901a97e7b03d58e96b5dc09535dabdd14c47970e0e5a5d351616bd61423"
+    },
+    {
+      "mode": "755",
+      "path": "codex/scripts/select-source.mjs",
+      "sha256": "2b8de8e0a4192b12e63418c921eec08d30c304a1188f315aa19ad43a5c269771"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/SKILL.md",
+      "sha256": "f39cecf318d3ab15881a36d57cf816cd842d3fb7dd80a5aa30b9fa79d522d0a5"
+    },
+    {
+      "mode": "755",
+      "path": "codex/skills/feature-execute/scripts/multi_repo.py",
+      "sha256": "b4ec0073e499fdc2b8fe30f7b4ceab0d588e757c5ddf82449be0fcf9049d3b61"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-plan/SKILL.md",
+      "sha256": "40beac9a7fd9523ccfd4bd1c9e7d17238f697da2b561ab4eb0c3c963440e4df0"
+    },
+    {
+      "mode": "644",
+      "path": "codex/workflow/README.md",
+      "sha256": "6d1a1c10c091e65474c521a4b1d3c23cc4c876baa1376b56a4acd3d183c54419"
+    }
+  ],
+  "format": "feature-workflow.bundle/v1",
+  "identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19",
+  "kind": "release",
+  "requires": {
+    "bridge": {
+      "binding_contract": 1,
+      "capabilities": [
+        "feature.lifecycle/v1",
+        "feature.close/v1",
+        "round.recovery/v1",
+        "round.report/v1",
+        "workflow.binding/v1"
+      ],
+      "known_incompatible": []
+    },
+    "standalone": {
+      "node": ">=22.13.0",
+      "python": ">=3.11"
+    },
+    "workflow_formats": {
+      "bundle": 1,
+      "lock": 1
+    }
+  },
+  "source": {
+    "commit": "0000000000000000000000000000000000000000",
+    "repository": "https://example.invalid/synthetic.git"
+  },
+  "variants": {
+    "claude": {
+      "plugin_manifest": ".claude-plugin/plugin.json",
+      "root": "claude"
+    },
+    "codex": {
+      "plugin_manifest": ".codex-plugin/plugin.json",
+      "root": "codex"
+    }
+  },
+  "version": "1.0.0",
+  "workflow_id": "1.0.0-5f0a32cc9caa"
+}

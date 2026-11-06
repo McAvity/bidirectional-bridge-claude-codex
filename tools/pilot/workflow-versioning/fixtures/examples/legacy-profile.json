@@ -1,0 +1,28 @@
+{
+  "adapter": {
+    "name": "legacy-adapter/v1",
+    "sha256": "<sha256 of the adapter source that generated the client variants>"
+  },
+  "declared_by": "bridge runtime legacy-profile table (synthetic example)",
+  "format": "feature-workflow.legacy-profile/v1",
+  "instructions_set_sha256": "8c05792ad75e7550eddc00c4ef26eb1c7096951e2be384508321e39bfb78a4ed",
+  "requires": {
+    "bridge": {
+      "binding_contract": 1,
+      "capabilities": [
+        "feature.lifecycle/v1",
+        "feature.close/v1",
+        "round.recovery/v1",
+        "round.report/v1"
+      ],
+      "known_incompatible": []
+    },
+    "workflow_formats": {
+      "bundle": 1,
+      "lock": 1
+    }
+  },
+  "runtime_commit": "6ed9a4537e376165aa72bbd5a52cb0c41988a90a",
+  "runtime_id": "0.7.0-6ed9a4537e37",
+  "workflow_files": "only paths under .agents/skills/feature-* and docs/features/README.md, hashes from the runtime manifest"
+}

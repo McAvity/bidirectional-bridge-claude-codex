@@ -1,0 +1,27 @@
+{
+  "format": "bridge.workflow-binding/v1",
+  "generation": 2,
+  "history": [
+    {
+      "at": "2026-11-06T00:00:00Z",
+      "generation": 1,
+      "idempotency_key": "k-bind",
+      "identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19",
+      "op": "bind"
+    },
+    {
+      "at": "2026-11-06T00:00:00Z",
+      "from_identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19",
+      "generation": 2,
+      "idempotency_key": "k-sw-final",
+      "identity": "sha256:ef5a2846767c3b3a12bf753dbf2e87f0d9b4f93bff9d5e669f381672e97a93f5",
+      "op": "switch"
+    }
+  ],
+  "identity": "sha256:ef5a2846767c3b3a12bf753dbf2e87f0d9b4f93bff9d5e669f381672e97a93f5",
+  "kind": "release",
+  "lock_sha256_at_bind": "c01aec0d1971b49a9178da9f637939cfc9529561fe270580d3f0d416917b1d52",
+  "pending_switch": null,
+  "version": "1.0.1",
+  "workflow_id": "1.0.1-ef5a2846767c"
+}
