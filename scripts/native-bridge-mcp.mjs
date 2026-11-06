@@ -131,7 +131,12 @@ export function readSourceIdentity(root = nativeBridgeRepositoryRoot) {
   };
 }
 
-/** Executor packages a runtime hands a delegated Claude, in `--plugin-dir` order. */
+/**
+ * Executor packages a runtime hands a delegated Claude, in `--plugin-dir` order, for an attempt
+ * *without* an admitted workflow. A bound attempt gets `bridge-claude` (roles) plus the admitted
+ * store variant instead (runner `executorPluginDirs`, F-W19 § 6.4); `feature-workflow-claude` of
+ * the runtime is then never passed.
+ */
 export const EXECUTOR_PACKAGES = ["plugins/bridge-claude", "plugins/feature-workflow-claude"];
 
 /**
@@ -226,8 +231,14 @@ export async function runNativeBridge(args) {
   const { takePendingSelection } = await import(new URL("./bridge-project/pending-selection.mjs", import.meta.url).href);
   const materialiseSelection = takePendingSelection();
 
+  // F-W19 W19-04: workflow binding with this runtime's own helper library. Rounds and recoveries
+  // of a feature are admitted against its bound workflow; the runner passes the admitted bundle.
+  const workflowStore = await controlPlane.loadWorkflowStore(new URL("../", import.meta.url));
+
   const server = new core.BridgeMcpServer({
     workspaceRoot: workspace.root,
+    workflowStore,
+    workflowBinding: { packageVersion: source.packageVersion },
     ...(materialiseSelection ? { beforeFirstMutation: materialiseSelection } : {}),
     workspace,
     databasePath,

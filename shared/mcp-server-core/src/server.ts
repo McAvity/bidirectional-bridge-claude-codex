@@ -17,6 +17,8 @@ import {
   ControlPlane,
   Orchestrator,
   type DiagnosticsLogger,
+  type WorkflowBindingOptions,
+  type WorkflowStorePort,
   type WorkspaceIdentity,
 } from "@bridge/control-plane";
 import type { AgentAdapter, AgentId } from "@bridge/protocol";
@@ -92,6 +94,12 @@ export interface BridgeServerOptions {
    * the committed declaration but no local selection of its own. See `ToolContext`.
    */
   readonly beforeFirstMutation?: () => void;
+  /**
+   * F-W19 workflow binding: the W19-02 helper library loaded by the composition root. When given,
+   * every feature round and feature recovery is admitted against the feature's binding.
+   */
+  readonly workflowStore?: WorkflowStorePort;
+  readonly workflowBinding?: WorkflowBindingOptions;
 }
 
 export class BridgeMcpServer {
@@ -119,6 +127,7 @@ export class BridgeMcpServer {
       options.controlPlane ??
       (options.workspace ? ControlPlane.deferred(planeOptions) : ControlPlane.open(planeOptions));
     this.logger = options.logger;
+    if (options.workflowStore) this.cp.enableWorkflowBinding(options.workflowStore, options.workflowBinding ?? {});
     this.identity = options.workspace
       ? new IdentityRuntime(
           this.cp,

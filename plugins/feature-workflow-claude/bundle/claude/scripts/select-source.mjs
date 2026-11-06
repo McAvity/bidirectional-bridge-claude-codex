@@ -4,6 +4,11 @@
 // docs/features/F-W17-workflow-plugin/contracts/01-distribution.md § 4.
 //
 //   node select-source.mjs [--cwd DIR] [--package-root DIR] [--standalone] [--json]
+//   node select-source.mjs (--feature DIR|ID [--entry SKILL] | --new) ...   F-W19 v2 answer
+//
+// Without a feature argument the answer is the v1 per-worktree answer, unchanged. With
+// `--feature`/`--new` it is the F-W19 `resolve` answer (feature-workflow.instruction-source/v2,
+// contract 01-workflow-binding.md § 4.2) of the workflow helper beside this file.
 //
 // It answers one question: which instruction set must a feature-workflow skill follow in this
 // worktree — this package's own resources, or the runtime the project pins? It never writes,
@@ -234,6 +239,9 @@ function parse(argv, defaultPackageRoot) {
     else if (flag === "--package-root") options.packageRoot = resolve(argv[++index]);
     else if (flag === "--standalone") options.standalone = true;
     else if (flag === "--json") options.json = true;
+    else if (flag === "--feature") options.feature = argv[++index];
+    else if (flag === "--entry") options.entry = argv[++index];
+    else if (flag === "--new") options.isNew = true;
     else throw new Error(`unknown argument ${flag}`);
   }
   if (!statSync(options.cwd).isDirectory()) throw new Error(`not a directory: ${options.cwd}`);
@@ -246,7 +254,14 @@ function parse(argv, defaultPackageRoot) {
  */
 export async function main(argv = process.argv.slice(2), defaultPackageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")) {
   try {
-    const result = await selectSource(parse(argv, defaultPackageRoot));
+    const options = parse(argv, defaultPackageRoot);
+    if (options.feature !== undefined || options.isNew) {
+      // A child process: the helper itself imports this reader, and both use top-level await.
+      const rest = argv.filter((a, i) => !(a === "--package-root" || argv[i - 1] === "--package-root"));
+      const child = spawnSync(process.execPath, [fileURLToPath(new URL("./workflow.mjs", import.meta.url)), "resolve", ...rest, "--package-root", options.packageRoot], { stdio: "inherit" });
+      return child.status ?? 1;
+    }
+    const result = await selectSource(options);
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return result.source === "none" ? 3 : 0;
   } catch (error) {

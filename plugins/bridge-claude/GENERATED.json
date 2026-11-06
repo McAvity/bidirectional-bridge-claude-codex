@@ -7,7 +7,7 @@
     ".claude/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "1afdb5a3144e973a88b54748df6b3969dfcce3cbec5a130c80aa8953ab1d50fc",
+  "source_digest": "ad490480ab4d907cd1a304539953bcc4013155c32cfdca84aa0667424aca5c09",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -99,7 +99,7 @@
     },
     {
       "path": "skills/using-bridge/SKILL.md",
-      "sha256": "7f7e3f0a8e1861fc0714304a23ed216bbc10572f868d3f29cc9254a6bbb37bbd"
+      "sha256": "8edc78666fcbf47ac33155fd15d80c9ff4f013b0a6fa32b444d7b9b6469b1288"
     },
     {
       "path": "skills/using-bridge/agents/openai.yaml",

@@ -58,6 +58,7 @@ import {
   TaskState,
   TelemetryCostSemantics,
   type AttemptTelemetryUpdate,
+  type AttemptWorkflow,
   type ArtifactId,
   type InvocationContext,
   type TaskInvocation,
@@ -380,6 +381,24 @@ export function toTelemetryUpdate(t: ClaudeRunnerTelemetry): AttemptTelemetryUpd
  * receive the same contract the control plane will judge the deliverable against, or the
  * verification gate rejects work the agent thought it had finished.
  */
+/**
+ * F-W19 contract § 6.5: the admitted workflow of this attempt, stated explicitly. A preserved
+ * session still shows earlier instructions in its history (W19-01 probes), so the block names
+ * the root to read from and says that it supersedes them; the skill list is not evidence.
+ */
+export function workflowBlock(workflow: AttemptWorkflow, resuming: boolean): string[] {
+  return [
+    "## Workflow binding (authoritative for this attempt)",
+    `WORKFLOW=${workflow.version} IDENTITY=${workflow.identity} GENERATION=${workflow.generation} ROOT=${workflow.client_root}`,
+    resuming
+      ? "These instructions supersede every earlier workflow instruction visible in this session, including earlier rounds."
+      : "These are the only workflow instructions for this attempt.",
+    "Read the feature-* entry you follow from ROOT/skills/<entry>/SKILL.md and the guide ROOT/workflow/README.md,",
+    "not from the skill list or the conversation history. If ROOT is unreadable, stop and report a blocker.",
+    `Record in your ledger: INSTRUCTIONS=bundle:${workflow.workflow_id} IDENTITY=${workflow.identity} GENERATION=${workflow.generation}`,
+  ];
+}
+
 export function buildPrompt(invocation: TaskInvocation, resuming: boolean): string {
   const { spec } = invocation;
   const lines: string[] = [];
@@ -398,6 +417,8 @@ export function buildPrompt(invocation: TaskInvocation, resuming: boolean): stri
       "",
     );
   }
+
+  if (invocation.workflow) lines.push(...workflowBlock(invocation.workflow, resuming), "");
 
   if (resuming && invocation.manager_message !== undefined) {
     lines.push(
@@ -594,10 +615,22 @@ async function preserveDetailedReport(
   return artifacts;
 }
 
-/** The instruction packages of one round, in order, each once: `pluginDir` then `pluginDirs`. */
-export function executorPluginDirs(o: Pick<ClaudeCodeRunnerOptions, "pluginDir" | "pluginDirs">): string[] {
+/**
+ * The instruction packages of one round, in order, each once.
+ *
+ * Without an admitted workflow (pre-binding or unbound embedders): `pluginDir` then `pluginDirs`,
+ * as before. With one (F-W19 contract § 6.4): the runtime's role package (`pluginDir`,
+ * bridge-claude — current engine roles) and then the admitted bundle's verified Claude variant,
+ * which overrides any personal `feature-workflow` by plugin name. The runtime's own workflow
+ * package (`pluginDirs`) and any latest/personal copy are never passed for a bound attempt.
+ */
+export function executorPluginDirs(
+  o: Pick<ClaudeCodeRunnerOptions, "pluginDir" | "pluginDirs">,
+  workflow?: AttemptWorkflow | null,
+): string[] {
   const dirs: string[] = [];
-  for (const dir of [o.pluginDir, ...(o.pluginDirs ?? [])]) {
+  const sources = workflow ? [o.pluginDir, workflow.client_root] : [o.pluginDir, ...(o.pluginDirs ?? [])];
+  for (const dir of sources) {
     if (typeof dir === "string" && dir.length > 0 && !dirs.includes(dir)) dirs.push(dir);
   }
   return dirs;
@@ -688,7 +721,7 @@ export class ClaudeCodeRunner implements ClaudeRunner {
 
     // The pinned instruction package travels with the runtime, not with the project and not
     // with the operator's profile; see docs/plugin-distribution.md.
-    for (const dir of executorPluginDirs(o)) args.push("--plugin-dir", dir);
+    for (const dir of executorPluginDirs(o, invocation.workflow)) args.push("--plugin-dir", dir);
 
     if (o.allowedTools?.length) args.push("--allowed-tools", ...o.allowedTools);
     if (o.disallowedTools?.length) args.push("--disallowed-tools", ...o.disallowedTools);

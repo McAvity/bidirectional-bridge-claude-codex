@@ -289,6 +289,56 @@ describe("switch", () => {
   });
 });
 
+describe("R19-I02: a pending change resumes only with its exact request", () => {
+  it("refuses a pending switch retried with the same key and other arguments, without mutation; the exact retry completes once", async () => {
+    const f = fixture();
+    const lock_path = bound(f);
+    const lockFile = join(f.ws, lock_path);
+    const crashing = f.open({ binding: false });
+    crashing.cp.enableWorkflowBinding(port, { env: f.env, beforeProjection: () => { throw new Error("crash"); } });
+    await expect(async () => crashing.cp.workflows!.switch({ feature_id: "F-1", manager: "codex", target_identity: f.B.identity, expected_generation: 1, idempotency_key: "k" })).rejects.toThrow("crash");
+    const before = { lock: readFileSync(lockFile, "utf8"), binding: JSON.stringify(f.cp.store.getFeature("F-1")!.workflow) };
+    for (const changed of [{ target_identity: f.A.identity, expected_generation: 1 }, { target_identity: f.B.identity, expected_generation: 2 }, { target_identity: f.C.identity, expected_generation: 1 }]) {
+      const code = await refusal(() => f.cp.workflows!.switch({ feature_id: "F-1", manager: "codex", idempotency_key: "k", ...changed }));
+      expect(code, JSON.stringify(changed)).toBe("IDEMPOTENCY_MISMATCH");
+      expect(readFileSync(lockFile, "utf8")).toBe(before.lock);
+      expect(JSON.stringify(f.cp.store.getFeature("F-1")!.workflow)).toBe(before.binding);
+    }
+    const done = f.cp.workflows!.switch({ feature_id: "F-1", manager: "codex", target_identity: f.B.identity, expected_generation: 1, idempotency_key: "k" });
+    expect(done).toMatchObject({ result: "SWITCHED", generation: 2, identity: f.B.identity });
+    expect(f.cp.store.getFeature("F-1")!.workflow!.history.filter((h) => h.op === "switch")).toHaveLength(1);
+    expect((f.cp.workflows!.switch({ feature_id: "F-1", manager: "codex", target_identity: f.B.identity, expected_generation: 1, idempotency_key: "k" }) as { replayed: boolean }).replayed).toBe(true);
+  });
+
+  it("refuses a pending bind_legacy retried with the same key and another runtime or set, without mutation", async () => {
+    const f = fixture();
+    const dir = join(f.home, "runtimes", OLD_ID);
+    mkdirSync(dir, { recursive: true });
+    const tar = execFileSync("git", ["-C", REPO, "archive", "--format=tar", OLD_COMMIT, ".agents/skills", ".codex/skills/using-bridge", ".claude/skills/using-bridge", "docs/features/README.md"], { maxBuffer: 1 << 28 });
+    execFileSync("tar", ["-x", "-C", dir], { input: tar });
+    const files = execFileSync("git", ["-C", REPO, "ls-tree", "-r", "--name-only", OLD_COMMIT, "--", ".agents/skills", ".codex/skills/using-bridge", ".claude/skills/using-bridge", "docs/features/README.md"], { encoding: "utf8" })
+      .trim().split("\n").sort().map((path) => ({ path, sha256: lib.sha256(readFileSync(join(dir, path))) }));
+    const set = lib.sha256(files.map((x: { path: string; sha256: string }) => `${x.path}\0${x.sha256}\n`).join(""));
+    writeFileSync(join(dir, "runtime-manifest.json"), JSON.stringify({ runtime_id: OLD_ID, package_version: "0.7.0", source: { commit: OLD_COMMIT }, instructions: { set_sha256: set, files } }));
+    f.flow.create("F-L", "codex", f.parent.task_id);
+    mkdirSync(join(f.ws, "docs/features/F-L/execution/W"), { recursive: true });
+    writeFileSync(join(f.ws, "docs/features/F-L/execution/W/01.md"), `\`INSTRUCTIONS=runtime:${OLD_ID} SET=${set}\`\n`);
+    const crashing = f.open({ binding: false });
+    crashing.cp.enableWorkflowBinding(port, { env: f.env, beforeProjection: () => { throw new Error("crash"); } });
+    const args = { feature_id: "F-L", manager: "codex", feature_dir: "docs/features/F-L", runtime_id: OLD_ID, expected_set_sha256: set, idempotency_key: "L" };
+    await expect(crashing.cp.workflows!.bindLegacy(args)).rejects.toThrow("crash");
+    const binding = JSON.stringify(f.cp.store.getFeature("F-L")!.workflow);
+    expect(existsSync(join(f.ws, "docs/features/F-L/workflow.lock.json"))).toBe(false);
+    for (const changed of [{ explicit_choice: true }, { feature_dir: "docs/features/F-other" }, { expected_set_sha256: "1".repeat(64) }]) {
+      expect(await refusal(f.cp.workflows!.bindLegacy({ ...args, ...changed })), JSON.stringify(changed)).toBe("IDEMPOTENCY_MISMATCH");
+      expect(JSON.stringify(f.cp.store.getFeature("F-L")!.workflow)).toBe(binding);
+      expect(existsSync(join(f.ws, "docs/features/F-L/workflow.lock.json"))).toBe(false);
+    }
+    expect(await f.cp.workflows!.bindLegacy(args)).toMatchObject({ result: "BOUND_LEGACY", generation: 1 });
+    expect((await f.cp.workflows!.bindLegacy(args)).replayed).toBe(true);
+  });
+});
+
 describe("recovery acknowledgment (R19-C02)", () => {
   it("requires the task's own workflow for BLOCKED recovery and never adopts a newer selection on replay", async () => {
     const f = fixture();

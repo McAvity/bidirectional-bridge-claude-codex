@@ -9,7 +9,7 @@
     {
       "mode": "755",
       "path": "claude/scripts/select-source.mjs",
-      "sha256": "8fee47e1a3c002a26ae423e5eb0a68cf92abea95f498034c6813beef0f195ad8"
+      "sha256": "d701223bc02895f7b9536e8761314b904b0ebea24e2c5da945ce1ccd6fbdce48"
     },
     {
       "mode": "755",
@@ -24,7 +24,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-decide/SKILL.md",
-      "sha256": "3be87678533248c762dce73c951abc0f027c8207292d1c0de1d12f4ebfad8e4a"
+      "sha256": "5376b4d8610b48e944c3c7d63ce9f6887db9cba06c71915e9755d9fb09435243"
     },
     {
       "mode": "644",
@@ -34,7 +34,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-design/SKILL.md",
-      "sha256": "0d069e8ff7a6a24289a60536c43961451b57c751bfdf05b9a9507d02888772d5"
+      "sha256": "5c44e50e66c251ecd80f47a335267e63b6b2b459a4f4e2a5702fade3a324c84d"
     },
     {
       "mode": "644",
@@ -44,7 +44,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-exchange/SKILL.md",
-      "sha256": "e9f263a13b1eefd14dd63e143e45ee75a610ad785f68407dfeabe695704e90b7"
+      "sha256": "6a04ea3a21d634399d49d6fe1ad1f0eff1136966465bc5963abd6b014aca1480"
     },
     {
       "mode": "644",
@@ -59,7 +59,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-execute/SKILL.md",
-      "sha256": "bdf5389fe304a7aecf4d36a06009fd5ed97582421913afc4c9087dffe05f5dd7"
+      "sha256": "e25fc52d89dfc5e526099d4eb1f6a242af67e47066aad0ff236d324934ab070f"
     },
     {
       "mode": "644",
@@ -69,7 +69,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-execute/references/bridge-loop.md",
-      "sha256": "e64fc8af394a8233408e8c6f571816dbfbbcab86e19b148ae5f466b3eddc4f53"
+      "sha256": "e993668c2a9afe3a26c2aa39d342372410a5aa8e87e72d784dcd8faa919ec549"
     },
     {
       "mode": "644",
@@ -89,7 +89,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-flow/SKILL.md",
-      "sha256": "1283087ad4af34793e4e148052078b7c7937222541ab15cd802d10b98d35db9b"
+      "sha256": "a059be051f3ee2b55e16cde0624b5d9ea2757bf8061f736c4295b5584ad6e818"
     },
     {
       "mode": "644",
@@ -99,7 +99,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-plan/SKILL.md",
-      "sha256": "64c93c1fb5ed9fed24aefb1628d1a7eaa6bf0b94fd84d54530bc296d701f217d"
+      "sha256": "166b9b86bdef33b43e0e377ff3a640e90dfb758548692a6ac3d53f9efc9972cf"
     },
     {
       "mode": "644",
@@ -109,7 +109,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-review/SKILL.md",
-      "sha256": "4c6350d9702c6efffcca52b3b19efab2f504cc916bbfeb1dbe8e08a8d77b4aca"
+      "sha256": "fa1460bb48e9b66d098abc14567a67ddea283579ac58d374fd7955681d83861f"
     },
     {
       "mode": "644",
@@ -119,7 +119,7 @@
     {
       "mode": "644",
       "path": "claude/workflow/README.md",
-      "sha256": "223c9f4ab4fc4204eb5d30de5de1860d27aa5d09fde3c10ef54934dea6164d34"
+      "sha256": "00d826015d0911d6c31f57b486073b418f990f15008c8329a5b41c3b71bac8e1"
     },
     {
       "mode": "644",
@@ -129,7 +129,7 @@
     {
       "mode": "755",
       "path": "codex/scripts/select-source.mjs",
-      "sha256": "8fee47e1a3c002a26ae423e5eb0a68cf92abea95f498034c6813beef0f195ad8"
+      "sha256": "d701223bc02895f7b9536e8761314b904b0ebea24e2c5da945ce1ccd6fbdce48"
     },
     {
       "mode": "755",
@@ -144,7 +144,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-decide/SKILL.md",
-      "sha256": "8b5d036525e085c86252a92b142628b7552d672c6ac8c6c7215d8ee34bd30b65"
+      "sha256": "f69f60ec6b5822667fefe50dff12dc5d7e68e837fae564a250c0664bca263705"
     },
     {
       "mode": "644",
@@ -154,7 +154,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-design/SKILL.md",
-      "sha256": "0ef7f370e61a76cdaad6b0391ee2197f46a4173248a2ac5e422469e36053beca"
+      "sha256": "acf10173fbbd39d8e7c660b6e7ee9c743498d480855b71c36476a9d11cd41cfb"
     },
     {
       "mode": "644",
@@ -164,7 +164,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-exchange/SKILL.md",
-      "sha256": "97410b674fe13b9754cea83f26ae2bddd1a65456cc1c1e6a7d22146e0cccd811"
+      "sha256": "43ef0e7882151f7910e2c1dd099e50be0d67c047105fd5f5ddf31317ba2c423d"
     },
     {
       "mode": "644",
@@ -179,7 +179,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-execute/SKILL.md",
-      "sha256": "ff69a0f5c02df1f4559f25b44163fdd897d46ffadf6bd04825466f43937f79d0"
+      "sha256": "29f8c4c549e614dda48ed0e470f5aada381a4e6319684deb1a41caa952057a76"
     },
     {
       "mode": "644",
@@ -189,7 +189,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-execute/references/bridge-loop.md",
-      "sha256": "6928ecc4ccaa17d1563ca402944866343a99b3a590e3a69740e00cf2570235bb"
+      "sha256": "01089265e2755fb7ba35c3052cc15ee3346886fb43398034e514b45969d90cab"
     },
     {
       "mode": "644",
@@ -209,7 +209,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-flow/SKILL.md",
-      "sha256": "604b6e2c86f3f6ef8df1c601f4e3a8aa7027bac8b2e9782b800b2ca46e921664"
+      "sha256": "961d664ffdc82ba98815e9adbff5f0ee90f350398d8998fabe2dcccc758d8108"
     },
     {
       "mode": "644",
@@ -219,7 +219,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-plan/SKILL.md",
-      "sha256": "b42bf89449e9c9236d34df35b29cc8f4087ed33f1a657a661e16019917b7a247"
+      "sha256": "92e02a8c4a774b28b499eb7ff918ee6faa0d96c4f4f6f5249f252310eb46285a"
     },
     {
       "mode": "644",
@@ -229,7 +229,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-review/SKILL.md",
-      "sha256": "7b03c5456a52ba25ecacdd110c1d46cf343b0a01b5173164cc958894db091ca2"
+      "sha256": "17d2330b5c76d244d65767849e815fc8d0db93242815034c1bd65276092b395c"
     },
     {
       "mode": "644",
@@ -239,11 +239,11 @@
     {
       "mode": "644",
       "path": "codex/workflow/README.md",
-      "sha256": "b9c27e0db9e7894a07c58bcbb7f99fe8d1d2a5f164ecc7b5191001731e55dc23"
+      "sha256": "abb31b82f59cdc0170a8c812fe200d3b88514e9c0107938a5b25e0c039a94ccd"
     }
   ],
   "format": "feature-workflow.bundle/v1",
-  "identity": "sha256:9c99f82bd40a2cabb89635cff7a8a61f01bde96ee92a8549d54a6bb4bfc1b43c",
+  "identity": "sha256:7f550481b302221991074c65b5de50a697be43dda86e12043e10e288d30cca23",
   "kind": "release",
   "requires": {
     "bridge": {
@@ -282,5 +282,5 @@
     }
   },
   "version": "1.0.0",
-  "workflow_id": "1.0.0-9c99f82bd40a"
+  "workflow_id": "1.0.0-7f550481b302"
 }

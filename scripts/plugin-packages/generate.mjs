@@ -283,16 +283,16 @@ function claudePackage(root, version) {
  * points at, and it must not point onward again.
  */
 export function sourcePreamble(client, skill) {
-  const reader = client === "claude"
-    ? 'node "${CLAUDE_PLUGIN_ROOT}/scripts/select-source.mjs"'
-    : 'node "<package>/scripts/select-source.mjs"';
+  const helper = client === "claude"
+    ? 'node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs"'
+    : 'node "<package>/scripts/workflow.mjs"';
   const note = client === "claude"
     ? ""
     : "\n> `<package>` is this plugin's directory, two levels above this SKILL.md; the skills list " +
       "gives its absolute path.";
   return readFileSync(join(REPO_ROOT, SOURCE_PREAMBLE), "utf8")
     .replaceAll("{{ENTRY}}", `${WORKFLOW_PLUGIN}:${skill}`)
-    .replaceAll("{{READER}}", reader)
+    .replaceAll("{{HELPER}}", helper)
     .replaceAll("{{SKILL}}", skill)
     .replaceAll("{{PACKAGE_NOTE}}", note);
 }

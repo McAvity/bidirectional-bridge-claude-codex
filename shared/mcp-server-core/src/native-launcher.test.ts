@@ -14,8 +14,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { afterAll, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "..", "..", "..");
@@ -275,6 +275,43 @@ function nativeMeta(threadId: string, version = "0.154.0"): Record<string, unkno
     },
   };
 }
+
+/**
+ * F-W19 W19-04: the real launcher enforces workflow binding. Publish the committed workflow
+ * bundle into the test's isolated bridge home, write the feature lock and bind it; the returned
+ * identity is the `workflow_identity` of the feature's rounds and recoveries.
+ */
+async function bindFeature(
+  call: (name: string, args: Record<string, unknown>) => Promise<{ isError: boolean; data: any }>,
+  workspace: string,
+  home: string,
+  featureId: string,
+): Promise<string> {
+  const lib = await import(pathToFileURL(join(repoRoot, "scripts/workflow-source/workflow-lib.mjs")).href);
+  const bundle = join(repoRoot, "plugins/feature-workflow-claude/bundle");
+  const manifest = lib.verifyBundle(bundle);
+  lib.storePublish(join(home, "workflows"), bundle);
+  const dir = join(workspace, "docs/features", featureId);
+  mkdirSync(dir, { recursive: true });
+  lib.writeLock(dir, lib.newLock(manifest, { origin: { kind: "active-plugin", client: "codex", plugin_version: manifest.version }, at: "2026-11-06T00:00:00Z", featureId }));
+  const bound = await call("bridge_workflow_bind", { feature_id: featureId, lock_path: `docs/features/${featureId}/workflow.lock.json`, expected_identity: manifest.identity, idempotency_key: `bind-${featureId}` });
+  expect(bound.isError, JSON.stringify(bound.data)).toBe(false);
+  return manifest.identity as string;
+}
+
+/** An isolated bridge home outside the workspace; the read-only store is made writable on cleanup. */
+const workflowHomes: string[] = [];
+function workflowHome(): string {
+  const home = mkdtempSync(join(tmpdir(), "bridge-w19-home-"));
+  workflowHomes.push(home);
+  return home;
+}
+afterAll(() => {
+  for (const home of workflowHomes.splice(0)) {
+    spawnSync("chmod", ["-R", "u+w", home]);
+    rmSync(home, { recursive: true, force: true });
+  }
+});
 
 describe("native project MCP launcher", () => {
   it("strictly parses startup-bound identity and delegation policy", async () => {
@@ -726,6 +763,7 @@ describe("native project MCP launcher", () => {
       PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
       FAKE_CLAUDE_MODE: "hang",
       FAKE_CLAUDE_STDERR: "fake runtime warning: upstream slow\n",
+      CLAUDE_CODEX_BRIDGE_HOME: workflowHome(),
     };
     const harness = new NativeHarness("codex", "allow", workspace, undefined, repoRoot, env);
     const meta = nativeMeta("thread-overlap");
@@ -739,6 +777,7 @@ describe("native project MCP launcher", () => {
         { feature_id: "F-overlap", parent_task_id: root.data.task_id },
         meta,
       );
+      const identity = await bindFeature((name, args) => harness.callTool(name, args, meta), workspace, env["CLAUDE_CODEX_BRIDGE_HOME"]!, "F-overlap");
 
       // Launch a round and keep it in flight; the client stays free to send other calls.
       const round = harness.callTool(
@@ -754,6 +793,7 @@ describe("native project MCP launcher", () => {
           },
           deadline_ms: 3_000,
           idempotency_key: "F-overlap:round-1",
+          workflow_identity: identity,
         },
         meta,
       );
@@ -1069,12 +1109,14 @@ describe("native project MCP launcher", () => {
     const fakeCli = join(repoRoot, "claude", "claude-side", "test", "fixtures", "fake-claude-cli.mjs");
     const argvFile = join(workspace, "claude-argv.json");
     writeFileSync(join(bin, "claude"), `#!/bin/sh\nexec "${process.execPath}" "${fakeCli}" "$@"\n`, { mode: 0o755 });
+    const home = workflowHome();
     const env = (mode: string): NodeJS.ProcessEnv => ({
       ...process.env,
       PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
       FAKE_CLAUDE_MODE: mode,
       FAKE_CLAUDE_ARGV_FILE: argvFile,
       FAKE_CLAUDE_STDERR: "fake runtime warning: upstream slow\n",
+      CLAUDE_CODEX_BRIDGE_HOME: home,
     });
     const db = join(workspace, ".bridge", "bridge.db");
     const first = new NativeHarness("codex", "allow", workspace, db, repoRoot, env("hang"));
@@ -1088,6 +1130,7 @@ describe("native project MCP launcher", () => {
       await call(first, "bridge_claim_task", { task_id: root.data.task_id });
       await call(first, "bridge_set_state", { task_id: root.data.task_id, to: "WORKING" });
       await call(first, "bridge_feature_create", { feature_id: "F-e2e", parent_task_id: root.data.task_id });
+      const identity = await bindFeature((name, args) => call(first, name, args), workspace, home, "F-e2e");
       const round = await call(first, "bridge_feature_run", {
         feature_id: "F-e2e",
         spec: {
@@ -1100,6 +1143,7 @@ describe("native project MCP launcher", () => {
         },
         deadline_ms: 1_000,
         idempotency_key: "F-e2e:round-1",
+        workflow_identity: identity,
       });
       expect(round.isError, JSON.stringify(round.data)).toBe(false);
       expect(round.data.task.state).toBe("FAILED");
@@ -1129,7 +1173,13 @@ describe("native project MCP launcher", () => {
         deadline_ms: 4_500_000,
         max_turns: 120,
         idempotency_key: "F-e2e:timeout-1",
+        workflow_identity: identity,
       };
+      // R19-C02 through the real launcher: terminal TIMEOUT recovery without the ack is refused
+      // before any worker, with the task's own workflow it resumes the same session.
+      const { workflow_identity: _ack, ...unacknowledged } = request;
+      const refused = await call(second, "bridge_resume_delegated_task", { ...unacknowledged, idempotency_key: "F-e2e:timeout-noack" });
+      expect(refused.data.error).toMatchObject({ code: "WORKFLOW_REFUSED", details: { code: "WORKFLOW_ACK_REQUIRED" } });
       const resumed = await call(second, "bridge_resume_delegated_task", request);
       expect(resumed.isError, JSON.stringify(resumed.data)).toBe(false);
       expect(resumed.data).toMatchObject({
@@ -1163,10 +1213,13 @@ describe("native project MCP launcher", () => {
       )!;
       expect(timedOut).toMatchObject({ outcome: "ok", code: "TIMEOUT", task_id: taskId });
       expect(timedOut["details"]).toMatchObject({ deadline_ms: 1_000, state: "FAILED" });
-      const recovered = records.filter(
+      const calls = records.filter(
         (record) => record["tool"] === "bridge_resume_delegated_task" && record["event"] === "call.finished",
       );
-      expect(recovered).toHaveLength(2); // the recovery and its idempotent replay
+      // F-W19: the refused call without workflow_identity, then the recovery and its replay.
+      expect(calls).toHaveLength(3);
+      expect(calls[0]).toMatchObject({ outcome: "error", code: "WORKFLOW_REFUSED" });
+      const recovered = calls.slice(1);
       expect(recovered[0]).toMatchObject({ task_id: taskId, attempt: 1 });
       expect(recovered[0]!["details"]).toMatchObject({
         deadline_ms: 4_500_000,
@@ -1194,7 +1247,7 @@ for (const oldRuntime of [undefined, ...(process.env["W18_OLD_RUNTIME"] ? [proce
     const bin = join(workspace,"bin"); mkdirSync(bin);
     const fakeCli = join(repoRoot,"claude","claude-side","test","fixtures","fake-claude-cli.mjs");
     writeFileSync(join(bin,"claude"),`#!/bin/sh\nexec "${process.execPath}" "${fakeCli}" "$@"\n`,{mode:0o755});
-    const env = {...process.env, PATH:`${bin}${delimiter}${process.env["PATH"] ?? ""}`,FAKE_CLAUDE_MODE:"ok"};
+    const env = {...process.env, PATH:`${bin}${delimiter}${process.env["PATH"] ?? ""}`,FAKE_CLAUDE_MODE:"ok",CLAUDE_CODEX_BRIDGE_HOME:workflowHome()};
     const db = join(workspace,".bridge","bridge.db");
     const oldLauncher = oldRuntime ? join(oldRuntime,"scripts","native-bridge-mcp.mjs") : launcher;
     const first = new NativeHarness("codex","allow",workspace,db,repoRoot,env,oldLauncher);
@@ -1216,7 +1269,8 @@ for (const oldRuntime of [undefined, ...(process.env["W18_OLD_RUNTIME"] ? [proce
       const next = (await call(current,"bridge_create_task",{spec:taskSpec()})).data.task_id;
       await call(current,"bridge_claim_task",{task_id:next});
       await call(current,"bridge_feature_create",{feature_id:"F-B",parent_task_id:next});
-      const run = await call(current,"bridge_feature_run",{feature_id:"F-B",spec:taskSpec(),deadline_ms:5000,idempotency_key:"B1"});
+      const identityB = await bindFeature((name,a)=>call(current!,name,a),workspace,env.CLAUDE_CODEX_BRIDGE_HOME,"F-B");
+      const run = await call(current,"bridge_feature_run",{feature_id:"F-B",spec:taskSpec(),deadline_ms:5000,idempotency_key:"B1",workflow_identity:identityB});
       expect(run.isError,JSON.stringify(run.data)).toBe(false); expect(run.data.task.state).toBe("DONE");
       expect((await call(current,"bridge_feature_close",args)).data.replayed).toBe(true);
       const status=(await call(current,"bridge_manager_status")).data;

@@ -164,6 +164,16 @@ rounds makes them bounded exchanges, not the continuous conversation excluded ab
   or the next task is a new round with a new idempotency key; it is not a sibling replacement.
 - Recover a `BLOCKED` round with `bridge_resume_delegated_task` and `message`; never start a
   round around it. The bridge runs one round at a time.
+- Workflow binding (runtime that lists `bridge_workflow_*`): a feature runs on one recorded
+  workflow release. Bind it once (`bridge_workflow_bind` with its `workflow.lock.json`, or
+  `bridge_workflow_bind_legacy` for a feature from before binding), then pass the identity the
+  workflow entry's `resolve` printed as `workflow_identity` on every `bridge_feature_run` and
+  `bridge_resume_task`/`bridge_resume_delegated_task` call. A `WORKFLOW_REFUSED` error names
+  `details.code` and a next step: re-run `resolve` and re-read the entry in this same session
+  after `WORKFLOW_ACK_MISMATCH` or a switch; restore the exact bundle, finish
+  `bridge_workflow_project`, or ask the user — never open a fresh session or use another
+  workflow. `bridge_workflow_status` is a pure read. Switching (`bridge_workflow_switch`) is the
+  user's explicit decision between rounds.
 - Questions for the user go through `bridge_feature_wait_user` and
   `bridge_feature_answer_user`. Claude receives only what you write into a round contract or a
   recovery message.

@@ -22,6 +22,21 @@ aby wyeksportować wynik do ZIP-a.
 
 Instrukcje można też wskazać przez ścieżkę `${CLAUDE_PLUGIN_ROOT}/skills/feature-plan/SKILL.md`, jeśli bieżąca sesja nie wykryła jeszcze nowych skilli. Istniejący `F-001-replayability` może być dalej prowadzony tym samym procesem; jego pliki i historia nie są częścią aktualizacji workflow.
 
+## Wersja workflow featura
+
+Każdy feature pracuje na jednym, zapamiętanym wydaniu workflow. Przed briefem wejście pluginu
+(`workflow.mjs begin`) zachowuje zweryfikowaną kopię swojego wydania w lokalnym magazynie
+`<bridge-home>/workflows/` i tworzy `docs/features/.draft-<token>/workflow.lock.json`; po nadaniu ID
+`finalize` przenosi katalog do `docs/features/<id>/`. Kolejne fazy, rundy, review i wznowienia
+czytają instrukcje z tej kopii (`resolve`), nie z aktualnie zainstalowanego pluginu, więc
+aktualizacja lub usunięcie cache’u pluginu nie zmienia rozpoczętego featura, także offline.
+Z bridge’em lock jest wiązany z featurem (`bridge_workflow_bind`), a rundy potwierdzają jego
+identity (`workflow_identity`). Zmiana wydania istniejącego featura jest jawna, między rundami
+(`bridge_workflow_switch`, a bez bridge’a `workflow.mjs switch`). Feature sprzed tej funkcji zachowuje
+dokładny dawny zestaw (`bridge_workflow_bind_legacy` według rekordów `INSTRUCTIONS=` z ledgerów);
+nigdy nie dostaje po cichu najnowszego. Brak lub uszkodzenie kopii zatrzymuje pracę z poleceniem
+odtworzenia dokładnej identity (`workflow.mjs restore`).
+
 ## Automatyczne przejście przez cały proces
 
 `feature-flow` prowadzi kolejne fazy bez ręcznego wywoływania następnego skilla.
@@ -93,6 +108,7 @@ Wszystkie ścieżki poza taskami są względne do `docs/features/F-NNN-nazwa/`.
 | `brief.md` | Cel, wymagane zachowanie, zakres, ograniczenia i kryteria odbioru |
 | `design.md` | Wspólne decyzje techniczne, uzasadnienia, niepewności, kontrakty, kolejność integracji i własność wspólnych plików |
 | `feature.json` | Mały indeks dla agentów i eksportera: ID, etap, ścieżki tasków, ostatnie review/decyzja, następny krok |
+| `workflow.lock.json` | Wybrane wydanie workflow (identity, generacja, historia wyborów); zapisuje go helper/bridge, nie ręcznie |
 | Taski w istniejącym Yumi | Jednostki pracy, ich statusy, zależności, rezultat i sposób weryfikacji |
 | `contracts/` — gdy potrzebne | Opis wspólnych kontraktów i przykłady; odnośniki do kanonicznych schematów w kodzie zamiast kopii |
 | `execution/<TASK-ID>/01.md` | Ledger jednej próby wykonania; kolejne próby mają kolejne numery |

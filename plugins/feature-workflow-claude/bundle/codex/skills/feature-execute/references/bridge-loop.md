@@ -29,6 +29,19 @@ explicit call from you.
    registered task files) → `bridge_claim_task` → `bridge_set_state` `WORKING` →
    `bridge_feature_create({feature_id: <feature-id>, parent_task_id})`. Record
    `"bridge": {"feature_id": "...", "parent_task_id": "..."}` in `feature.json`.
+4a. Workflow binding (runtime with `bridge_workflow_*`): `bridge_workflow_status({feature_id})`. A
+   feature with `docs/features/<id>/workflow.lock.json` is bound with
+   `bridge_workflow_bind({feature_id, lock_path, expected_identity: <lock workflow.identity>,
+   idempotency_key})`. A feature from before binding (no lock) is bound only to the exact old set
+   its ledgers record: `bridge_workflow_bind_legacy({feature_id, feature_dir, runtime_id,
+   expected_set_sha256, idempotency_key})`; an ambiguous or unproven history needs the user's
+   explicit choice (`explicit_choice: true`), never the latest workflow. Then run the entry's
+   `resolve` and keep its `bundle.identity`: it is the `workflow_identity` of every
+   `bridge_feature_run` and `bridge_resume_*` call (stranded, message, `recover_timeout`,
+   `recover_invalid_delivery`). A `WORKFLOW_REFUSED` answer names `details.code` and
+   `next_step`; act on it (re-run `resolve` after `WORKFLOW_ACK_MISMATCH`, restore an exact
+   bundle after `BUNDLE_MISSING`/`BUNDLE_CORRUPT`, finish `bridge_workflow_project` after
+   `WORKFLOW_SWITCH_PENDING`), never start a fresh session or another workflow instead.
 5. Write your files only while no round is `running`, and commit them only when no round task
    is open (`running` or `blocked`), so a round's commit range holds only the executor's
    commits. Wrap each batch of writes in `bridge_acquire_lease` on your write scope and
@@ -93,6 +106,13 @@ gates and remaining authorized work. Status replies and compaction are not stop 
 | `waiting_user` | Show the pending question; wait for the user's real answer. | Run, recover, or treat silence as consent. |
 | `accepted` | Finish the root task. | Start more rounds. |
 | `rejected` / `cancelled` | Report the recorded closure; preserve delivered work and history. | New rounds/recovery, changing the decision, or fabricating acceptance. |
+
+An explicit workflow change happens only between rounds, on the user's instruction:
+`bridge_workflow_switch({feature_id, target_identity, expected_generation, idempotency_key})`
+after the latest round is `DONE` and no question is pending. It commits, then writes the lock;
+after an interruption repeat the same call (same key and arguments) or call
+`bridge_workflow_project`. Then re-run `resolve`, re-read the entry from the new bundle in this
+same session and pass the new identity; the executor's next round states the new `ROOT` itself.
 
 A `FAILED` round whose last attempt ended `TIMEOUT` (the bridge stopped it at `deadline_ms`)
 keeps its session and can be reopened once, explicitly, when the extra runtime is authorized:

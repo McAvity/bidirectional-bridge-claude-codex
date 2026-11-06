@@ -10,6 +10,7 @@ Not product code and not loaded by the bridge runtime.
 | `contract_fixtures.py` | Generates `fixtures/` from synthetic inputs; `--check` regenerates and compares byte-for-byte | Python 3.11+ |
 | `fixtures/cases.json` | Every scenario with its AC and verdict; `fixtures/examples/` one example per format | — |
 | `test_contract.py` | Host-free tests: reproduction, expected verdicts, AC coverage, no machine paths | Python 3.11+ |
+| `probe_selection.py`, `pilot_env.py` | W19-04 model-free probes: runner-equivalent Claude args load the store variant over an older personal plugin and resume the same session with the next release; the Codex entry opens with the resolve bootstrap and the store serves a feature after the plugin cache is removed; the pilot's isolated MCP block forwards `CLAUDE_CONFIG_DIR` (PILOT-ENV-01) | `claude`, `codex`, `node`, `git` |
 | `probe_clients.py`, `w19lib.py` | Model-free probes of the installed Claude Code and Codex CLIs (isolation, effective paths, auth status, active entry, same-session resume, MCP env forwarding) | `claude`, `codex`, `node`, `git` |
 
 ```sh

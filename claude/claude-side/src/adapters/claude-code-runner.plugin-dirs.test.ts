@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { TaskInvocation } from "@bridge/protocol";
-import { ClaudeCodeRunner, executorPluginDirs } from "./claude-code-runner.js";
+import { ClaudeCodeRunner, buildPrompt, executorPluginDirs, workflowBlock } from "./claude-code-runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fakeCli = join(here, "..", "..", "test", "fixtures", "fake-claude-cli.mjs");
@@ -111,5 +111,23 @@ describe("executor plugin directories", () => {
       "/runtime/plugins/bridge-claude",
       "/runtime/plugins/feature-workflow-claude",
     ]);
+  });
+
+  it("F-W19: a bound attempt gets the role package and the admitted store variant, never the runtime workflow", () => {
+    const workflow = { identity: `sha256:${"a".repeat(64)}`, workflow_id: "1.0.0-aaaaaaaaaaaa", version: "1.0.0", generation: 3, kind: "release",
+      client_root: "/home/u/.local/share/claude-codex-bridge/workflows/1.0.0-aaaaaaaaaaaa/claude" };
+    const runner = new ClaudeCodeRunner({ pluginDir: "/runtime/plugins/bridge-claude", pluginDirs: ["/runtime/plugins/feature-workflow-claude"] });
+    const args = runner.buildArgs({ ...invocation(), workflow } as TaskInvocation, "p");
+    expect(pluginDirArgs(args)).toEqual(["/runtime/plugins/bridge-claude", workflow.client_root]);
+    expect(args).not.toContain("/runtime/plugins/feature-workflow-claude");
+    expect(executorPluginDirs({ pluginDirs: ["/runtime/plugins/feature-workflow-claude"] }, workflow)).toEqual([workflow.client_root]);
+    const fresh = buildPrompt({ ...invocation(), workflow } as TaskInvocation, false);
+    expect(fresh).toContain(`WORKFLOW=1.0.0 IDENTITY=${workflow.identity} GENERATION=3 ROOT=${workflow.client_root}`);
+    expect(fresh).toContain("INSTRUCTIONS=bundle:1.0.0-aaaaaaaaaaaa");
+    const resumed = buildPrompt({ ...invocation(), workflow, continuation_of_task_id: "task_prev" } as TaskInvocation, true);
+    expect(resumed.indexOf("## Workflow binding")).toBeGreaterThan(resumed.indexOf("same feature session"));
+    expect(resumed).toContain("supersede every earlier workflow instruction visible in this session");
+    expect(workflowBlock(workflow, false).join("\n")).not.toContain("supersede");
+    expect(buildPrompt(invocation(), false)).not.toContain("## Workflow binding");
   });
 });

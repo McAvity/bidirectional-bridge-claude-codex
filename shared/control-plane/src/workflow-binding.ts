@@ -187,6 +187,19 @@ export class WorkflowBindings {
     if (f.state === "waiting_user") this.refuse("WORKFLOW_SWITCH_WAITING_USER", `${operation}: the feature waits for the user`, { feature_id: f.feature_id });
   }
 
+  /**
+   * R19-I02: a pending change is resumed only by the request that committed it. The hash is
+   * persisted with the intent, so a retry after a crash with the same key and other arguments is
+   * refused before anything is read from or written to the lock. A pending entry written without
+   * a hash (none exist outside tests of this build) is refused as unverifiable.
+   */
+  private assertSameRequest(pending: NonNullable<WorkflowBindingRecord["pending_projection"]>, hash: string, operation: string): void {
+    if (pending.request_hash !== hash) {
+      throw new BridgeError(ErrorCode.IDEMPOTENCY_MISMATCH, `${operation} key reused with different arguments while its change is pending`, {
+        reason: "workflow_pending_request_mismatch", pending_op: pending.op, generation: pending.generation });
+    }
+  }
+
   private replay(key: string, requestHash: string, operation: string): unknown | null {
     const saved = this.cp.store.getIdempotency(key);
     if (!saved) return null;
@@ -327,7 +340,10 @@ export class WorkflowBindings {
       const replayed = this.replay(key, hash, "workflow.bind_legacy");
       if (replayed) return { replayed };
       const f = this.owned(input.feature_id, input.manager);
-      if (f.workflow?.pending_projection?.idempotency_key === input.idempotency_key) return { resume: true };
+      if (f.workflow?.pending_projection?.idempotency_key === input.idempotency_key) {
+        this.assertSameRequest(f.workflow.pending_projection, hash, "bind_legacy");
+        return { resume: true };
+      }
       if (f.workflow) this.refuse("WORKFLOW_ALREADY_BOUND", "the feature is already bound", { bound: f.workflow.identity });
       this.assertIdle(f, "bind_legacy", { requireSettled: false });
       return { resume: false };
@@ -387,7 +403,7 @@ export class WorkflowBindings {
         identity: built.manifest.identity, version: built.manifest.version, workflow_id: built.manifest.workflow_id, kind: "legacy",
         generation: 1, lock_path: lockPath, lock_sha256_at_bind: null,
         history: [{ generation: 1, op: "bind_legacy", identity: built.manifest.identity, at: this.cp.clock.now(), idempotency_key: input.idempotency_key }],
-        pending_projection: { generation: 1, op: "bind_legacy", idempotency_key: input.idempotency_key },
+        pending_projection: { generation: 1, op: "bind_legacy", idempotency_key: input.idempotency_key, request_hash: hash },
         legacy: { runtime_id: input.runtime_id, instructions_set_sha256: input.expected_set_sha256, basis },
       };
       this.save(f, "bind_legacy");
@@ -419,6 +435,7 @@ export class WorkflowBindings {
         if (binding.pending_projection.idempotency_key !== input.idempotency_key) {
           this.refuse("WORKFLOW_SWITCH_PENDING", "another change awaits its lock projection; retry it with its key or bridge_workflow_project", { pending: binding.pending_projection });
         }
+        this.assertSameRequest(binding.pending_projection, hash, "switch");
         return { resume: true };
       }
       if (binding.generation !== input.expected_generation) {
@@ -435,7 +452,7 @@ export class WorkflowBindings {
         identity: manifest["identity"], version: manifest["version"], workflow_id: manifest["workflow_id"], kind: manifest["kind"],
         generation,
         history: [...binding.history, { generation, op: "switch", identity: manifest["identity"], from_identity: from, at: this.cp.clock.now(), idempotency_key: input.idempotency_key }],
-        pending_projection: { generation, op: "switch", idempotency_key: input.idempotency_key },
+        pending_projection: { generation, op: "switch", idempotency_key: input.idempotency_key, request_hash: hash },
       };
       this.save(f, "switch");
       return { resume: false, from, to: { identity: manifest["identity"], version: manifest["version"] } };

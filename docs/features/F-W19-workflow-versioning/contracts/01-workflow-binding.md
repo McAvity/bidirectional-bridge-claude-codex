@@ -243,7 +243,13 @@ Odmowa nie zmienia niczego w projekcie, magazynie ani w miejscu docelowym dowią
 nie wyścigu z równoczesnym procesem tego samego użytkownika.
 
 `select-source.mjs` zostaje jako zgodny alias: bez argumentu featura zwraca format v1 jak dziś;
-z `--feature`/`--new` deleguje do `resolve` (v2). Status/doctor nie wywołują operacji zapisujących.
+z `--feature`/`--new` deleguje do `resolve` (v2, osobny proces helpera). Status/doctor nie wywołują
+operacji zapisujących. Od W19-04 preambuła każdego z siedmiu wejść obu pakietów (szablon
+`scripts/plugin-packages/templates/workflow-source-preamble.md`) uruchamia `workflow.mjs resolve`
+(`--new` przed pierwszym katalogiem featura), a odpowiedzi `BOUND_BUNDLE`, `SELECTION_REQUIRED`,
+`LEGACY_PINNED_RUNTIME` i odmowy mają w niej jawne kroki (begin/finalize/bind, adopt/bind_legacy,
+stary runtime, stop). Wejście z magazynu (`${CLAUDE_PLUGIN_ROOT}` = wariant w magazynie) rozpoznaje
+własny bundle w układzie `store` i odpowiada tym samym wyborem.
 
 ### 4.2 Wynik `resolve` i tabela decyzji
 
@@ -403,9 +409,18 @@ aby zatwierdzenie i projekcja pliku były osobnymi krokami. Bind nie tworzy feat
 Opcja `workflow` w `bridge_feature_create` nie została dodana (bind jest osobną, jawną operacją).
 
 **Tryb nieskonfigurowany.** Binding działa, gdy kompozycja serwera wywoła
-`cp.enableWorkflowBinding(await loadWorkflowStore(), {packageVersion})` (W19-04). Bez tego serwer
-zachowuje zachowanie sprzed bindingu, status zwraca `binding: "not-configured"`, operacje
-workflow i każde `workflow_identity` → `UNIMPLEMENTED`; nic nie jest przypisywane po cichu.
+`cp.enableWorkflowBinding(await loadWorkflowStore(), {packageVersion})`. Od W19-04 robi to
+`scripts/native-bridge-mcp.mjs` (opcja `workflowStore` `BridgeMcpServer`), więc rzeczywisty serwer
+projektu zawsze egzekwuje binding: runda featura bez bindingu → `WORKFLOW_UNBOUND`, zanim powstanie
+task lub worker (RUN-01). Embedderzy i testy bez tej opcji zachowują zachowanie sprzed bindingu;
+status zwraca wtedy `binding: "not-configured"`, operacje workflow i każde `workflow_identity` →
+`UNIMPLEMENTED`; nic nie jest przypisywane po cichu.
+
+**R19-I02 (W19-04).** `pending_projection` zapisuje `request_hash` żądania, które zatwierdziło
+zmianę, w tej samej transakcji co intencję. Wznowienie tym samym kluczem z innymi argumentami
+(cel, generacja; dla `bind_legacy` katalog, runtime, digest, `explicit_choice`) →
+`IDEMPOTENCY_MISMATCH` (`details.reason: workflow_pending_request_mismatch`) przed odczytem lub
+zapisem locka i bez zmiany bazy; dokładne ponowienie kończy zmianę dokładnie raz.
 
 ### 6.4 Rezerwacja i paczki rundy
 
@@ -441,6 +456,13 @@ Te instrukcje zastępują każde wcześniejsze workflow widoczne w tej sesji. Pr
 wskazane wejście z ROOT, nie z listy skilli ani historii rozmowy.
 ```
 
+Zrealizowane w W19-04 (`workflowBlock` w `claude-code-runner.ts`): blok stoi na początku promptu
+każdej próby z admitowanym workflow, przy wznowieniu z dopiskiem, że zastępuje wcześniejsze
+instrukcje widoczne w sesji. Runner przekazuje wtedy `--plugin-dir <runtime>/plugins/bridge-claude`
+i `--plugin-dir <client_root>` (bez `plugins/feature-workflow-claude` runtime’u), także przy
+`--resume` tej samej sesji. Sekcja „Bridge round executor” `feature-execute` nakazuje czytać wejścia
+z `ROOT`, a role `using-bridge` i `bridge-loop.md` — przekazywać `workflow_identity` z `resolve` w
+każdej rundzie i odtworzeniu oraz ponownie uruchomić `resolve` w tej samej sesji po zmianie.
 Wykonawca zapisuje w ledgerze `INSTRUCTIONS=bundle:<workflow_id> IDENTITY=<identity> GENERATION=<n>`
 (wynik `resolve` w swoim worktree). Linia `DELIVERY=local-v1` i kolejność linii `PACKAGE`/`REPO_MAP`
 (W16/W20) się nie zmieniają. Potwierdzenie jest deklaracją agenta, nie dowodem załadowania (AC-09);
@@ -672,9 +694,10 @@ Przykłady są syntetyczne i dowodzą semantyki kontraktu, nie realizacji AC w p
   § 10 (`scripts/workflow-source/legacy-adapter.mjs`, tabela `LEGACY_PROFILES`), ogłoszenie
   `compatibility.workflow_binding` w manifeście runtime’u, doctor wymaga narzędzi workflow tylko od
   runtime’u, który je ogłasza; downgrade § 5.4.
-- **W19-04**: w `scripts/native-bridge-mcp.mjs` włączyć binding (`loadWorkflowStore`,
-  `enableWorkflowBinding`), runner z paczkami z `TaskInvocation.workflow`, blok § 6.5, preambuła →
-  `resolve`, `select-source` v1/v2.
+- **W19-04** (zrealizowane, [ledger](../execution/W19-04/01.md)): binding włączony w launcherze,
+  runner z paczkami z `TaskInvocation.workflow`, blok § 6.5, preambuła → `resolve`, `select-source`
+  v1/v2, instrukcje ról i pętli koordynatora, R19-I02, PILOT-ENV-01 (`tools/pilot/workflow-versioning/
+  pilot_env.py`: izolowany blok MCP z `env_vars` zawierającym `CLAUDE_CONFIG_DIR`).
 - **W19-05**: § 8 i dokumentacja upgrade/switch/restore/legacy.
 - **W19-06 (pilot)** — warunki wstępne, które W19-01 nazywa, a nie spełnia:
   - PILOT-AUTH-01: zalogować izolowany profil Claude’a wspieraną drogą subskrypcji

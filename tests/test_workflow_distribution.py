@@ -108,15 +108,17 @@ class GeneratedWorkflowPackages(unittest.TestCase):
                     self.assertEqual(sha(package / entry["path"]), entry["sha256"], entry["path"])
 
     def test_seven_entries_each_open_with_the_source_preamble(self):
+        # F-W19 W19-04: every entry bootstraps through the workflow helper's `resolve`.
         for client, package in PACKAGES.items():
-            reader = '${CLAUDE_PLUGIN_ROOT}/scripts/select-source.mjs' if client == "claude" else "<package>/scripts/select-source.mjs"
+            reader = '${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs' if client == "claude" else "<package>/scripts/workflow.mjs"
             self.assertEqual(sorted(p.name for p in (package / "skills").iterdir()), ENTRIES)
             for skill in ENTRIES:
                 with self.subTest(client=client, skill=skill):
                     text = (package / "skills" / skill / "SKILL.md").read_text()
                     front, body = text.split("\n---\n", 1)
                     self.assertIn(f"name: {skill}", front)
-                    self.assertTrue(body.lstrip().startswith("> **Instruction source — check first.**"))
+                    self.assertTrue(body.lstrip().startswith("> **Workflow selection — check first.**"))
+                    self.assertIn(f"resolve --feature <feature id or docs/features/<dir>> --entry {skill} --json", body)
                     self.assertIn(f"`feature-workflow:{skill}`", body)
                     self.assertIn(reader, body)
                     self.assertIn(f"<instructions.workflow_skills>/{skill}/SKILL.md", body)

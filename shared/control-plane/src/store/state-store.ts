@@ -137,7 +137,13 @@ export interface WorkflowBindingRecord {
     idempotency_key: string;
   }>;
   /** Committed change whose lock projection has not been written yet (crash-safe switch). */
-  pending_projection: { generation: number; op: "bind_legacy" | "switch"; idempotency_key: string } | null;
+  pending_projection: {
+    generation: number;
+    op: "bind_legacy" | "switch";
+    idempotency_key: string;
+    /** Hash of the request that committed this change (R19-I02): a resume must match it exactly. */
+    request_hash?: string;
+  } | null;
   legacy?: { runtime_id: string; instructions_set_sha256: string; basis: string } | null;
 }
 
