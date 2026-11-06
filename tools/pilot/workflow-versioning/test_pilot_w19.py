@@ -129,6 +129,14 @@ class Preflight(Run):
         self.assertNotIn(str(self.rd), text)
         self.assertNotIn(str(Path.home()), text)
 
+    def test_client_checks_report_a_missing_bridge_definition_instead_of_crashing(self):
+        fake = {"returncode": 1, "stdout": "{}", "stderr": ""}
+        with mock.patch.object(P.subprocess, "run", return_value=subprocess.CompletedProcess([], **fake)), \
+             mock.patch.object(P, "node_json", return_value={"claude": [], "codex": []}), \
+             mock.patch.object(P.L, "claude_bin", return_value="claude"), mock.patch.object(P.L, "codex_bin", return_value="codex"):
+            status = {c["id"]: c["status"] for c in P.client_checks(self.rd)}
+        self.assertEqual((status["PILOT-AUTH-01"], status["PILOT-AUTH-02"], status["P-MCP-p1"], status["P-MCP-p2"]), ("PENDING", "PENDING", "FAIL", "FAIL"))
+
     def test_an_env_pointing_at_a_personal_profile_fails_isolation(self):
         env_file = self.rd / "env.sh"
         saved = env_file.read_text()
@@ -138,6 +146,14 @@ class Preflight(Run):
             self.assertEqual(status["P-ISO-01"], "FAIL")
         finally:
             env_file.write_text(saved)
+
+    def test_personal_plugin_state_change_fails_but_own_session_state_is_reported_only(self):
+        before = json.loads((self.rd / "operator/personal-fingerprint-before.json").read_text())
+        for changed, expected in (("<home>/.claude.json", "PASS"), ("<home>/.claude/plugins/installed_plugins.json", "FAIL")):
+            now = {**before, changed: {"size": 1, "mtime_ns": 1}}
+            with self.subTest(changed=changed), mock.patch.object(P.W, "personal_profile_fingerprint", return_value=now):
+                check = next(c for c in P.preflight(self.rd, clients=False)["checks"] if c["id"] == "P-ISO-02")
+                self.assertEqual(check["status"], expected, check)
 
     def test_a_release_token_inside_a_project_is_contamination(self):
         leak = self.rd / "projects/p2/NOTES.md"

@@ -352,7 +352,11 @@ def client_checks(run: Path) -> list[dict]:
                      "isolated Codex profile logged in" if codex.returncode == 0 else "log in the isolated Codex profile (OPERATOR.md § 1)", {"exit": codex.returncode}))
     for project in PROJECTS:
         directory = paths(run)["projects"] / project
-        overrides = [x for arg in launch_with_forward(directory) for x in ("-c", arg)]
+        try:
+            overrides = [x for arg in launch_with_forward(directory) for x in ("-c", arg)]
+        except (OSError, KeyError, ValueError) as error:
+            out.append(check(f"P-MCP-{project}", "FAIL", "the project has no bridge definition (setup without runtime?)", {"error": type(error).__name__}))
+            continue
         proc = subprocess.run([L.codex_bin(), *overrides, "mcp", "get", "bridge", "--json"], cwd=directory, env=env, capture_output=True, text=True, timeout=60)
         got = load_json_text(proc.stdout)
         forwarded = set(((got.get("transport") or got).get("env_vars")) or [])
@@ -408,9 +412,15 @@ def preflight(run: Path, *, clients: bool) -> dict:
         personal = True
     checks.append(check("P-ISO-01", "PASS" if all(isolated) and not personal and REPO not in run.parents else "FAIL",
                         "env.sh points every client profile and the bridge home inside the run directory"))
-    before = load_json(p["operator"] / "personal-fingerprint-before.json")
-    checks.append(check("P-ISO-02", "PASS" if before == W.personal_profile_fingerprint() else "FAIL",
-                        "personal Claude/Codex profile metadata unchanged since setup (size/mtime only; content never read)"))
+    before = load_json(p["operator"] / "personal-fingerprint-before.json") or {}
+    now = W.personal_profile_fingerprint()
+    changed = sorted(k for k in now if now[k] != before.get(k))
+    # A mis-isolated plugin install or marketplace change would show in the personal plugin state;
+    # session state and token refreshes of the user's own running clients change other files.
+    plugin_state = [k for k in changed if "/plugins" in k]
+    checks.append(check("P-ISO-02", "FAIL" if plugin_state or not before else "PASS",
+                        "personal Claude/Codex plugin state unchanged since setup (size/mtime only; content never read)",
+                        {"plugin_state_changed": plugin_state, "other_personal_files_changed_by_own_use": [k for k in changed if k not in plugin_state]}))
     forwarded = env.get("PILOT_MCP_FORWARD", "").split()
     runtimes = {}
     for project in PROJECTS:
