@@ -132,3 +132,11 @@ OPEN, nie naprawiamy hosta kosztem głównego ciągu. Następne W19-03, potem04/
 Składniki workflow mają lokalną kandydacką wersję1.0.0; silnik/piny bez zmian.
 Pilot jeszcze nieuruchomiony; izolowane auth potrzebne dopiero przed jego startem.
 Rejestr wszystkich findingów w reviews/02-execution.md. Runtime0.6.2 nietknięty.
+
+
+W19-03 ukończony df937ca, task_bsyah2z3pw DONE, ta sama sesja. Schemat7,
+workflow binding/legacy/switch/per-attempt identity i ack w run/recovery;
+niezależny receipt i19 testów PASS. W19-04 rozpoczyna kompozycję launchera/runnera
+oraz skille; R19-I02 (pending replay bez request hash) poprawić w tej partii.
+W19-06 ma działające izolowane środowisko testowe: na bazie91JS+2CodexHost PASS;
+full candidate checks i modelowy pilot jeszcze nieuruchomione. Auth nadal niepotwierdzone.

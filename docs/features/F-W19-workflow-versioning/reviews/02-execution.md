@@ -60,3 +60,25 @@ w historii, bez usuwania dowodów. C04: exact-identity restore przez kwarantann�
 nie nadpisanie immutable entry. C02 nadal wymagany w W19-03/04.
 PILOT-AUTH: przygotowane izolowane profile i skrypt logowania poza Git; użytkownik
 pyta o cel izolacji, wyjaśniono. Brak potwierdzonego logowania, pilot nieuruchomiony.
+
+
+## 2026-11-06 — W19-03: odbiór etapu i przejście do W19-04
+
+Task task_bsyah2z3pw DONE, baza917cd3e, implementacja d1f07ea, ledger df937ca.
+Receipt per-commit scope/clean tree/new ledger PASS. Odczyt binding/admission,
+switch/projection/recovery i zmian kontraktu; niezależnie19 nowych testów SQLite,
+MCP i schematu PASS. Raport wykonawcy577 focused PASS. To dowód etapu, nie odbiór
+produktu: launcher/runner dopiero W19-04, diagnostyka05, całość/pilot06.
+R19-C02 zaimplementowane dla run i wszystkich ścieżek recovery;19 testów obejmuje
+BLOCKED/TIMEOUT ack oraz replay. Dalsza ocena rzeczywistych klientów w W19-06.
+
+| ID | Priorytet / skutek i dowód | Status / rozliczenie |
+| --- | --- | --- |
+| R19-I02 | P2: po crash przed projekcją switch rozpoznaje wznowienie tylko po kluczu, hash żądania utrwalany dopiero po projekcji; ten sam klucz z innym target/generation może dokończyć dawną operację bez zgłoszenia konfliktu argumentów. Ścieżka workflow-binding.ts switch/pending_projection; analogiczny bindLegacy do sprawdzenia. | OPEN: do jednej partii integracyjnej W19-04. Najpierw test crash+changed args, utrwalić hash razem z intencją, odmowa bez skutków. Nie blokuje podłączenia runnera; nie jest dowodem przejścia testu. |
+
+R19-E01: izolowany kontener Node24.15 jako UID1000, cap-drop ALL/no-new-privileges,
+bez profili użytkownika, na bazie8540de7 daje91/91 JS w obu dotkniętych plikach oraz
+2/2 CodexHost (prawdziwe CLI0.166.0/Claude2.1.316, bez modeli). Pełna widoczność procesów,
+zero unreadable. Prywatne logi i recipe w /tmp/bridge-w19-container-validation/.
+To wyjaśnia bazowe failures bez ich kasowania; dokładny finalny commit musi jeszcze
+przejść pełną walidację W19-06 w tym środowisku. Nie osłabiono guardów instalatora.
