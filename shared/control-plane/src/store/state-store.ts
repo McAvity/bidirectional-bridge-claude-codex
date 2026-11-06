@@ -101,6 +101,44 @@ export interface FeatureRecord {
     epoch: number;
     launched_at: number;
   }>;
+  /** Workflow binding (F-W19). Absent: a pre-binding/legacy feature; never assigned by a read. */
+  workflow?: WorkflowBindingRecord;
+}
+
+/** Workflow identity an attempt was admitted with (contract F-W19 § 6.4). */
+export interface AttemptWorkflowRecord {
+  readonly task_id: TaskId;
+  readonly attempt: number;
+  readonly feature_id: string;
+  readonly identity: string;
+  readonly workflow_id: string;
+  readonly generation: number;
+  readonly kind: string;
+  readonly admitted_at: number;
+}
+
+/** `FeatureRecord.workflow` (contract F-W19 § 6.1, format bridge.workflow-binding/v1). */
+export interface WorkflowBindingRecord {
+  format: "bridge.workflow-binding/v1";
+  identity: string;
+  version: string;
+  workflow_id: string;
+  kind: string;
+  generation: number;
+  /** Repo-relative `docs/features/<name>/workflow.lock.json` this binding projects to. */
+  lock_path: string;
+  lock_sha256_at_bind: string | null;
+  history: Array<{
+    generation: number;
+    op: "bind" | "bind_legacy" | "switch";
+    identity: string;
+    from_identity?: string;
+    at: number;
+    idempotency_key: string;
+  }>;
+  /** Committed change whose lock projection has not been written yet (crash-safe switch). */
+  pending_projection: { generation: number; op: "bind_legacy" | "switch"; idempotency_key: string } | null;
+  legacy?: { runtime_id: string; instructions_set_sha256: string; basis: string } | null;
 }
 
 /** Record A/B/C identity of the worktree that owns this database (contract §4.1). */
@@ -189,6 +227,11 @@ export interface StateStore {
   addDependency(task_id: TaskId, depends_on: TaskId): void;
   getDependencies(task_id: TaskId): TaskId[];
   getDependents(task_id: TaskId): TaskId[];
+
+  // ---- workflow identity per admitted attempt (F-W19 W19-03, schema 7) ----
+  putAttemptWorkflow(record: AttemptWorkflowRecord): void;
+  getAttemptWorkflow(task_id: TaskId, attempt: number): AttemptWorkflowRecord | undefined;
+  listAttemptWorkflows(task_id: TaskId): AttemptWorkflowRecord[];
 
   // ---- attempts (resumable execution handles) ----
   upsertAttempt(attempt: TaskAttempt): void;

@@ -36,6 +36,7 @@ import {
   type VerificationResult,
 } from "@bridge/protocol";
 import type {
+  AttemptWorkflowRecord,
   ManagerBindingRecord,
   ManagerEpochRecord,
   ManagerInstanceRecord,
@@ -85,7 +86,10 @@ export interface SqliteStoreOptions {
   readonly mode?: StoreOpenMode;
 }
 
-const SCHEMA_VERSION = 6;
+// 7 (F-W19 W19-03): workflow binding. `FeatureRecord.workflow` lives in the features JSON and
+// `attempt_workflow` records the workflow identity every admitted attempt runs with. A runtime
+// built for 6 refuses this database (schema_unsupported), so it can never ignore a binding.
+const SCHEMA_VERSION = 7;
 /** Bound concurrent native-server startup without failing immediately on schema/WAL locks. */
 const SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
@@ -140,6 +144,20 @@ CREATE TABLE IF NOT EXISTS task_attempts (
   PRIMARY KEY (task_id, attempt)
 );
 CREATE INDEX IF NOT EXISTS idx_attempts_task ON task_attempts(task_id, attempt);
+
+-- F-W19: workflow identity admitted for one attempt, written in the reservation transaction
+-- before the attempt row exists. Rows are never rewritten; pre-binding attempts have none.
+CREATE TABLE IF NOT EXISTS attempt_workflow (
+  task_id      TEXT NOT NULL,
+  attempt      INTEGER NOT NULL,
+  feature_id   TEXT NOT NULL,
+  identity     TEXT NOT NULL,
+  workflow_id  TEXT NOT NULL,
+  generation   INTEGER NOT NULL,
+  kind         TEXT NOT NULL,
+  admitted_at  INTEGER NOT NULL,
+  PRIMARY KEY (task_id, attempt)
+);
 
 -- Exactly one normalized final record per attempt. Runtime-specific frames are reduced
 -- before this boundary; raw prompts, execution handles, and authentication data have no
@@ -591,6 +609,29 @@ export class SqliteStateStore implements StateStore {
   }
 
   /* ---------------- attempts ---------------- */
+
+  putAttemptWorkflow(record: AttemptWorkflowRecord): void {
+    const existing = this.getAttemptWorkflow(record.task_id, record.attempt);
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(record)) {
+        throw new BridgeError(ErrorCode.ILLEGAL_TRANSITION, "attempt workflow identity is immutable", { task_id: record.task_id, attempt: record.attempt });
+      }
+      return;
+    }
+    this.db
+      .prepare(`INSERT INTO attempt_workflow(task_id, attempt, feature_id, identity, workflow_id, generation, kind, admitted_at)
+                VALUES(?,?,?,?,?,?,?,?)`)
+      .run(record.task_id, record.attempt, record.feature_id, record.identity, record.workflow_id, record.generation, record.kind, record.admitted_at);
+  }
+
+  getAttemptWorkflow(task_id: TaskId, attempt: number): AttemptWorkflowRecord | undefined {
+    const row = this.db.prepare("SELECT * FROM attempt_workflow WHERE task_id = ? AND attempt = ?").get(task_id, attempt) as Row | undefined;
+    return row ? rowToAttemptWorkflow(row) : undefined;
+  }
+
+  listAttemptWorkflows(task_id: TaskId): AttemptWorkflowRecord[] {
+    return (this.db.prepare("SELECT * FROM attempt_workflow WHERE task_id = ? ORDER BY attempt").all(task_id) as Row[]).map(rowToAttemptWorkflow);
+  }
 
   upsertAttempt(a: TaskAttempt): void {
     this.db
@@ -1210,5 +1251,18 @@ function rowToArtifact(r: Row): Artifact {
     ...(r["metadata_json"] != null
       ? { metadata: JSON.parse(r["metadata_json"] as string) as Record<string, unknown> }
       : {}),
+  };
+}
+
+function rowToAttemptWorkflow(row: Row): AttemptWorkflowRecord {
+  return {
+    task_id: row["task_id"] as TaskId,
+    attempt: Number(row["attempt"]),
+    feature_id: row["feature_id"] as string,
+    identity: row["identity"] as string,
+    workflow_id: row["workflow_id"] as string,
+    generation: Number(row["generation"]),
+    kind: row["kind"] as string,
+    admitted_at: Number(row["admitted_at"]),
   };
 }

@@ -359,49 +359,77 @@ runtime sam odmawia bazy 7 (`schema_unsupported`), więc nie zignoruje zapisaneg
 
 ```json
 {"format": "bridge.workflow-binding/v1", "identity": "sha256:…", "version": "1.0.1",
- "workflow_id": "1.0.1-…", "kind": "release", "generation": 2, "lock_sha256_at_bind": "…",
- "history": [{"generation": 1, "op": "bind", "identity": "…", "at": "…", "idempotency_key": "k-bind"},
-             {"generation": 2, "op": "switch", "identity": "…", "from_identity": "…", "at": "…", "idempotency_key": "k-sw"}],
- "pending_switch": null}
+ "workflow_id": "1.0.1-…", "kind": "release", "generation": 2,
+ "lock_path": "docs/features/F-1/workflow.lock.json", "lock_sha256_at_bind": "…",
+ "history": [{"generation": 1, "op": "bind", "identity": "…", "at": 1762387200000, "idempotency_key": "k-bind"},
+             {"generation": 2, "op": "switch", "identity": "…", "from_identity": "…", "at": 1762387260000, "idempotency_key": "k-sw"}],
+ "pending_projection": null,
+ "legacy": null}
 ```
 
-([examples/binding-after-switch.json](../../../../tools/pilot/workflow-versioning/fixtures/examples/binding-after-switch.json)).
-Pole opcjonalne: jego brak = feature legacy/niepowiązany; odczyt go nie tworzy.
+Pole opcjonalne: jego brak = feature legacy/niepowiązany; odczyt ani migracja go nie tworzą.
+`op` ∈ `bind`, `bind_legacy`, `switch`; `legacy` = `{runtime_id, instructions_set_sha256, basis}` dla
+`kind: "legacy"`. Implementacja (W19-03): `shared/control-plane/src/workflow-binding.ts`,
+typy w `store/state-store.ts` (`WorkflowBindingRecord`).
 
 ### 6.2 Schemat 7
 
-Migracja 6 → 7 (W19-03): `task_attempts` + `workflow_identity TEXT NULL`,
-`workflow_generation INTEGER NULL`; tabela `workflow_switches(feature_id, idempotency_key, step,
-payload_json, created_at, PRIMARY KEY(feature_id, idempotency_key))` jako trwały dziennik intencji
-(lub równoważny zapis w `FeatureRecord.workflow.pending_switch` w tej samej transakcji). Stare wiersze
-nie są przepisywane (NULL = próba sprzed binding). Dokładny numer potwierdza W19-03 na bazie wejścia.
+Zrealizowane w W19-03: `SCHEMA_VERSION = 7`, nowa tabela
+`attempt_workflow(task_id, attempt, feature_id, identity, workflow_id, generation, kind, admitted_at,
+PRIMARY KEY(task_id, attempt))` zamiast kolumn w `task_attempts`: zapis następuje w transakcji
+rezerwacji, zanim istnieje wiersz próby, i jest niezmienny (inny zapis tej samej pary →
+`ILLEGAL_TRANSITION`). Dziennik zmiany to `FeatureRecord.workflow.pending_projection` zapisywany w tej
+samej transakcji co binding (§ 7.2), bez osobnej tabeli. Migracja 6 → 7 tylko tworzy tabelę; stare
+wiersze i featury nie są przepisywane (brak wiersza = próba sprzed bindingu, brak pola = feature
+legacy). Otwarcie `readonly`/`attach` nie migruje. Runtime schematu 6 odmawia bazy 7
+(`schema_unsupported`), a setup odmawia wyboru takiego runtime’u (`STATE_SCHEMA_NEWER`, § 5.4).
 
 ### 6.3 Operacje MCP (manager featura, istniejące ownership/lease/epoch)
 
 | Narzędzie | Parametry | Zachowanie |
 | --- | --- | --- |
-| `bridge_workflow_status` | `feature_id?` | odczyt: runtime (`workflow_binding`), binding, stan locka (§ 8), pending switch; nic nie zapisuje |
-| `bridge_workflow_bind` | `feature_id, lock_path, expected_identity, idempotency_key` | weryfikuje lock, bundle i zgodność; zapisuje binding gen = lock.generation; ten sam → idempotentnie, inny → `WORKFLOW_ALREADY_BOUND` (BIND-02/03) |
-| `bridge_workflow_bind_legacy` | `feature_id, runtime_id, expected_set_sha256, idempotency_key` | § 10; tworzy legacy bundle, binding i lock `origin: legacy-bind` |
+| `bridge_workflow_status` (read) | `feature_id?` | runtime (`binding: configured|not-configured`, ogłoszenie, schemat), binding, `lock_state` (§ 8), `bundle` (`verified`/`missing:…`/`corrupt:…`), tożsamości prób ostatniego taska; nic nie zapisuje |
+| `bridge_workflow_bind` | `feature_id, lock_path, expected_identity, idempotency_key` | lock `docs/features/<nazwa>/workflow.lock.json` (strażniki ścieżek W19-02), bundle i zgodność; binding gen = lock.generation; ten sam → `ALREADY_BOUND`, inny → `WORKFLOW_ALREADY_BOUND`; feature bez aktywnej próby |
+| `bridge_workflow_bind_legacy` | `feature_id, feature_dir, runtime_id, expected_set_sha256, explicit_choice?, idempotency_key` | § 10; publikuje legacy bundle, binding z `pending_projection`, potem lock `origin: legacy-bind` |
 | `bridge_workflow_switch` | `feature_id, target_identity, expected_generation, idempotency_key` | § 7 |
-| `bridge_workflow_project` | `feature_id` | jawna naprawa projekcji locka z DB (po `projection-behind`/`lock-missing`) |
-| `bridge_feature_run` (+) | dodatkowe `workflow_identity` | wymagane dla powiązanego featura: identity, którą manager właśnie przeczytał |
+| `bridge_workflow_project` | `feature_id` | jawne dokończenie zatwierdzonej projekcji; rozbieżny lock → `LOCK_DIVERGED`, bez nadpisania |
+| `bridge_feature_run` (+) | `workflow_identity` | identity, którą manager właśnie przeczytał (`resolve`) |
+| `bridge_resume_task`, `bridge_resume_delegated_task` (+) | `workflow_identity` | to samo dla **każdej** drogi odtworzenia: stranded, BLOCKED z wiadomością, `recover_timeout`, `recover_invalid_delivery` (R19-C02) |
 
-Bind nie tworzy featura ani roota, nie przejmuje managera i nie omija `waiting_user`.
-`bridge_feature_create` może przyjąć opcjonalne `workflow: {lock_path, expected_identity}` i wtedy
-wykonuje bind w tej samej transakcji.
+Wszystkie operacje: właściciel featura (`feature belongs to another manager`), zamknięty feature →
+`FEATURE_CLOSED`, slot featura jak przy innych mutacjach, klucz idempotencji z hashem żądania.
+`bind_legacy`, `switch`, `project` są asynchronicznymi mutacjami z guardem w **każdej** transakcji,
+aby zatwierdzenie i projekcja pliku były osobnymi krokami. Bind nie tworzy featura ani roota.
+Opcja `workflow` w `bridge_feature_create` nie została dodana (bind jest osobną, jawną operacją).
+
+**Tryb nieskonfigurowany.** Binding działa, gdy kompozycja serwera wywoła
+`cp.enableWorkflowBinding(await loadWorkflowStore(), {packageVersion})` (W19-04). Bez tego serwer
+zachowuje zachowanie sprzed bindingu, status zwraca `binding: "not-configured"`, operacje
+workflow i każde `workflow_identity` → `UNIMPLEMENTED`; nic nie jest przypisywane po cichu.
 
 ### 6.4 Rezerwacja i paczki rundy
 
-W transakcji rezerwacji próby (run, resume, recovery): binding istnieje (`WORKFLOW_UNBOUND`), brak
-`pending_switch` (`WORKFLOW_SWITCH_PENDING`), `workflow_identity` z wywołania = binding
-(`WORKFLOW_ACK_MISMATCH`), wykonawca to Claude (`WORKFLOW_EXECUTOR_UNSUPPORTED`), pełna weryfikacja
-bundle’a; zapis `workflow_identity/generation` w wierszu próby (RUN-01…04). Identyczne ponowienie
-(ten sam klucz) zwraca tę samą próbę i identity. Resume tego samego taska zawsze ma tę samą
-generację, bo switch wymaga rozliczonych prób. Runner dostaje paczki z rekordu próby:
-`--plugin-dir <runtime>/plugins/bridge-claude` (role) i `--plugin-dir <store>/<workflow_id>/claude`
-(plugin `feature-workflow`), nigdy z globalnej konfiguracji ani pluginu managera. Brak bundle’a →
-blokada z dowodem przed startem procesu, bez zastępczej próby.
+W transakcji rezerwacji (po guardzie autoryzacji, przed jakimkolwiek wierszem taska/próby/leasu):
+binding istnieje (`WORKFLOW_UNBOUND`), brak `pending_projection` (`WORKFLOW_SWITCH_PENDING`),
+`workflow_identity` podane (`WORKFLOW_ACK_REQUIRED`) i równe bindingowi (`WORKFLOW_ACK_MISMATCH`),
+pełna weryfikacja bundle’a (`BUNDLE_MISSING`/`BUNDLE_CORRUPT`) i zgodność (`WORKFLOW_INCOMPATIBLE`);
+zapis `attempt_workflow` (runda: próba 0). Odmowa wycofuje całą rezerwację: brak taska i workera.
+Identyczne ponowienie (ten sam klucz) zwraca zapisaną rezerwację i nic nie admituje ponownie.
+
+Odtworzenie (R19-C02): ack wymagany dla każdej drogi; odtwarzana próba dostaje identity próby,
+którą wznawia, i musi ona nadal być bieżącym bindingiem (`WORKFLOW_ATTEMPT_IDENTITY_MISMATCH`); task
+sprzed bindingu wolno odtworzyć tylko pod bindingiem `legacy` generacji 1 (jego udowodnionym starym
+zestawem), inaczej `WORKFLOW_ATTEMPT_UNBOUND`. Replay z kluczem zwraca zapisaną rezerwację
+(`workflow_identity` w niej), nigdy nowszy wybór. Switch wymaga rozliczonej ostatniej rundy (§ 7.1),
+więc task BLOCKED/FAILED zawsze wraca pod swoim workflow.
+
+Tuż przed `adapter.invoke` (runda i odtworzenie) bundle jest weryfikowany ponownie; brak →
+`WORKFLOW_REFUSED` w próbie, bez startu procesu. `TaskInvocation.workflow =
+{identity, workflow_id, version, generation, kind, client_root}` (`client_root` =
+`<store>/<workflow_id>/claude`) jest wejściem dla runnera W19-04: `--plugin-dir
+<runtime>/plugins/bridge-claude` (role) i `--plugin-dir <client_root>`, nigdy z globalnej
+konfiguracji ani pluginu managera. Kody: `WORKFLOW_REFUSED` z `details.reason` (małe litery) i
+`details.code` (np. `WORKFLOW_ACK_MISMATCH`).
 
 ### 6.5 Potwierdzenie tożsamości w rundzie
 
@@ -420,35 +448,41 @@ dowód AC-04 daje dopiero W19-06.
 
 ### 6.6 Kierunek delegacji
 
-Gwarancja dotyczy Codex-manager → Claude-worker. Wykonawca Codex pod bindingiem → odmowa
-`WORKFLOW_EXECUTOR_UNSUPPORTED` (RUN-03); bez bindingu obecny kontrakt bez zmian.
+Gwarancja dotyczy Codex-manager → Claude-worker. `bridge_feature_run` zawsze deleguje do Claude’a
+(manager Codex), więc kierunek odwrotny nie istnieje pod bindingiem featura; kod
+`WORKFLOW_EXECUTOR_UNSUPPORTED` z modelu pozostaje dla przyszłych dróg (RUN-03). Bezpośrednie
+`bridge_delegate` poza featurem nie podlega bindingowi.
 
 ## 7. Jawna zmiana workflow (switch)
 
 ### 7.1 Warunki
 
 Feature powiązany; `expected_generation` = bieżąca (`WORKFLOW_GENERATION_CONFLICT`); brak aktywnej
-i nierozliczonej próby (`WORKFLOW_SWITCH_ACTIVE_ATTEMPT`, bez żadnego skutku — SWITCH-01); stan
-różny od `waiting_user` (`WORKFLOW_SWITCH_WAITING_USER`); docelowy bundle zweryfikowany i zgodny.
-Odpowiedź przed zmianą pokazuje wersję/identity obecną i docelową.
+rundy, otwartej próby i leasu oraz ostatnia runda `DONE` (`WORKFLOW_SWITCH_ACTIVE_ATTEMPT`, bez
+żadnego skutku — SWITCH-01; BLOCKED/FAILED najpierw rozliczyć pod jego workflow); stan różny od
+`waiting_user` (`WORKFLOW_SWITCH_WAITING_USER`); docelowy bundle zweryfikowany i zgodny; inny niż
+obecny (`WORKFLOW_ALREADY_SELECTED`). Odpowiedź zawiera `from_identity` i `to`.
 
 ### 7.2 Protokół
 
-1. **intent** — trwały wpis `pending_switch` {klucz, from, target, step=intent};
-2. **commit** — w jednej transakcji: binding = target, generation+1, wpis historii `switch`,
-   step=commit;
-3. **project** — lock w katalogu featura nadpisany atomowo (generation, workflow, `origin: switch`,
-   dopisana historia), następnie `pending_switch = null`.
+1. **intent + commit** — jedna transakcja SQLite (z guardem): binding = target, generation+1, wpis
+   historii `switch`, `pending_projection = {generation, op: "switch", idempotency_key}`. Model
+   referencyjny rozdziela intent i commit; w SQLite są atomowe, więc między nimi nie ma punktu
+   przerwania;
+2. **project** — lock nadpisany atomowo (generation, workflow, `origin: switch`, dopisana historia);
+   lock już równy celowi (przerwanie po zapisie pliku) jest akceptowany bez ponownego zapisu;
+3. **clear** — druga transakcja (z guardem) zeruje `pending_projection`.
 
-Od kroku 1 do końca rundy są blokowane (`WORKFLOW_SWITCH_PENDING`). Feature, taski, decyzje,
+Od kroku 1 do kroku 3 rundy i odtworzenia są blokowane (`WORKFLOW_SWITCH_PENDING`). Feature, taski, decyzje,
 uprawnienia, natywne sesje i wcześniejsze zdarzenia/próby pozostają (SWITCH-04: próba t1 nadal ma A).
 
 ### 7.3 Przerwanie i ponowienie
 
-Ponowienie z tym samym kluczem kończy od zapisanego kroku dokładnie raz; powtórka po zakończeniu →
-`ALREADY_APPLIED`; inny klucz przy pending → `WORKFLOW_SWITCH_PENDING` (fixtures
-`SWITCH-crash-{intent,commit,project}`, SWITCH-05). Status po przerwaniu opisuje
-`switch-pending:<step>`, nie naprawia go.
+Ponowienie z tym samym kluczem kończy od zapisanego kroku dokładnie raz (jeden wpis `switch` w
+historii); powtórka po zakończeniu zwraca zapisany wynik (`replayed: true`); inny klucz przy pending →
+`WORKFLOW_SWITCH_PENDING`; `bridge_workflow_project` kończy projekcję jawnie. Status po przerwaniu
+opisuje `switch-pending:switch` (lub `switch-pending:bind_legacy`), nie naprawia go; stan przetrwa
+restart procesu (test `workflow-binding.test.ts`).
 
 ### 7.4 Standalone
 
@@ -554,9 +588,19 @@ jednorazowego upgrade; plugin go nie wykonuje, a `--standalone` nie uchyla dzia�
 Legacy bez manifestu zgodności dostaje profil `feature-workflow.legacy-profile/v1`
 ([examples/legacy-profile.json](../../../../tools/pilot/workflow-versioning/fixtures/examples/legacy-profile.json)):
 `runtime_id`, `runtime_commit`, `instructions_set_sha256`, adapter, `requires` i `declared_by`.
-Tabela profili jest częścią nowego runtime’u (to on wie, które capabilities zapewnia starym
-regułom) i obejmuje wyłącznie zestawy, które W19-03 sprawdzi testem (np. 0.6.2, 0.7.0). Zestaw
+Tabela profili jest częścią nowego runtime’u (`LEGACY_PROFILES` w control-plane, klucz =
+pełny `instructions.set_sha256`): 0.6.2-771e797a73d3 (`5961e680…`) i 0.7.0-6ed9a4537e37
+(`8c05792a…`); oba używają `bridge_feature_*` łącznie z close, odtworzenia i dostawy local-v1, więc
+wymagają `feature.lifecycle/v1`, `feature.close/v1`, `round.recovery/v1`, `round.report/v1`. Test
+odtwarza zestaw 0.7.0 z commita `6ed9a45` w Git i sprawdza, że jego digest jest kluczem tabeli. Zestaw
 bez profilu → `LEGACY_UNPROVEN`; profil podlega § 5.3 jak każde wydanie.
+
+`bind_legacy` (W19-03): dowód z ledgerów featura (`featureRecords` + `legacyEvidence`); `PROVEN` musi
+wskazywać ten runtime i ten digest (`LEGACY_EVIDENCE_MISMATCH`); `AMBIGUOUS`/`UNPROVEN` tylko z
+`explicit_choice: true` (jawna decyzja użytkownika, `basis` zapisuje to wprost) i dla AMBIGUOUS tylko
+spośród kandydatów; runtime musi być zainstalowany (`LEGACY_SOURCE_MISSING`), każdy plik zestawu
+zgodny z manifestem (`LEGACY_SOURCE_CORRUPT`, `LEGACY_SET_MISMATCH`). Wersja legacy bundle’a:
+`legacy-<runtime_id>`; `legacy.workflow_files` i hash adaptera wchodzą w identity, `basis` nie.
 
 ### 10.6 Przerwany upgrade
 
@@ -623,9 +667,14 @@ Przykłady są syntetyczne i dowodzą semantyki kontraktu, nie realizacji AC w p
   modelem referencyjnym sprawdzana testem (`ReferenceModelAgreement`). Dla W19-03/04 biblioteka
   eksportuje `verifyBundle`, `storeEntry`, `storePublish`, `storeRestore`, `checkCompatibility`,
   `runtimeAdvertisement`, `readLock`/`writeLock`, `legacyEvidence`/`featureRecords`.
-- **W19-03**: schemat 7, `FeatureRecord.workflow`, operacje § 6.3, rezerwacja § 6.4, switch § 7,
-  legacy § 10, downgrade § 5.4.
-- **W19-04**: preambuła → `resolve`, blok § 6.5, runner z paczkami z próby, `select-source` v1/v2.
+- **W19-03** (zrealizowane, [ledger](../execution/W19-03/01.md)): schemat 7, `FeatureRecord.workflow`,
+  operacje § 6.3, rezerwacja § 6.4 z ack na każdej drodze odtworzenia (R19-C02), switch § 7, legacy
+  § 10 (`scripts/workflow-source/legacy-adapter.mjs`, tabela `LEGACY_PROFILES`), ogłoszenie
+  `compatibility.workflow_binding` w manifeście runtime’u, doctor wymaga narzędzi workflow tylko od
+  runtime’u, który je ogłasza; downgrade § 5.4.
+- **W19-04**: w `scripts/native-bridge-mcp.mjs` włączyć binding (`loadWorkflowStore`,
+  `enableWorkflowBinding`), runner z paczkami z `TaskInvocation.workflow`, blok § 6.5, preambuła →
+  `resolve`, `select-source` v1/v2.
 - **W19-05**: § 8 i dokumentacja upgrade/switch/restore/legacy.
 - **W19-06 (pilot)** — warunki wstępne, które W19-01 nazywa, a nie spełnia:
   - PILOT-AUTH-01: zalogować izolowany profil Claude’a wspieraną drogą subskrypcji

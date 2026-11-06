@@ -47,6 +47,11 @@ export const ErrorCode = {
   FEATURE_CLOSED: "FEATURE_CLOSED",
   FEATURE_BUSY: "FEATURE_BUSY",
   FEATURE_UNSETTLED: "FEATURE_UNSETTLED",
+  /**
+   * F-W19 workflow binding refused the operation before any worker started; `details.reason`
+   * names the contract code (e.g. `workflow_ack_mismatch`, `workflow_bundle_missing`).
+   */
+  WORKFLOW_REFUSED: "WORKFLOW_REFUSED",
   /** The worktree critical section is held elsewhere. */
   STATE_LOCKED: "STATE_LOCKED",
   /** Unclassified internal fault. */

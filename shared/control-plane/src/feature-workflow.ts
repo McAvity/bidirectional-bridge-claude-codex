@@ -23,6 +23,11 @@ interface RoundRequest {
   /** Called after the reservation commits, before the worker runs. */
   onReserved?: () => void;
   idempotency_key: string;
+  /**
+   * Workflow identity the manager just read with resolve (F-W19 § 6.4–6.5). Required for a bound
+   * feature when workflow binding is enabled; compared inside the reservation transaction.
+   */
+  workflow_identity?: string | null;
   spec: TaskSpec;
   input_artifacts: readonly string[];
   deadline_ms: number;
@@ -197,6 +202,12 @@ export class FeatureWorkflow {
           if (this.cp.leases.findConflicts(task.spec.scope, "claude").length)
             throw new BridgeError(ErrorCode.SCOPE_CONFLICT, "round scope conflicts with a live lease");
           this.cp.artifacts.resolveMany(request.input_artifacts);
+          // Workflow admission (F-W19 § 6.4): the exact bundle verifies and is compatible, the
+          // ack matches the binding and no switch is pending — or nothing is reserved at all.
+          if (this.cp.workflows) this.cp.workflows.admitRound(current, task.task_id, request.workflow_identity ?? null);
+          else if (request.workflow_identity) {
+            throw new BridgeError(ErrorCode.UNIMPLEMENTED, "workflow binding is not enabled in this server; workflow_identity cannot be checked");
+          }
           current.latest_task_id = task.task_id;
           current.active_task_id = task.task_id;
           current.task_ids.push(task.task_id);

@@ -63,6 +63,22 @@ export interface TaskInvocation {
   readonly continuation_of_task_id?: string;
   /** Durable manager clarification for this specific recovery attempt. */
   readonly manager_message?: string;
+  /**
+   * Workflow release this attempt was admitted with (F-W19 contract § 6.4). Present only for a
+   * bound feature; the runner selects its instruction packages from this record, never from a
+   * global or personal configuration. `client_root` is the verified store variant for Claude.
+   */
+  readonly workflow?: AttemptWorkflow;
+}
+
+/** The admitted workflow of one attempt. */
+export interface AttemptWorkflow {
+  readonly identity: string;
+  readonly workflow_id: string;
+  readonly version: string;
+  readonly generation: number;
+  readonly kind: string;
+  readonly client_root: string;
 }
 
 /** Callbacks the control plane injects so an adapter can report without owning state. */

@@ -6,6 +6,8 @@
  */
 
 export { ControlPlane } from "./control-plane.js";
+export { LEGACY_PROFILES, WORKFLOW_BINDING_ADVERTISEMENT, WorkflowBindings, loadWorkflowStore } from "./workflow-binding.js";
+export type { LegacyProfile, WorkflowBindingOptions, WorkflowStorePort } from "./workflow-binding.js";
 export type { ControlPlaneOptions, ControlPlaneSnapshot, RecoveryReport } from "./control-plane.js";
 
 export { SimpleAdapterRegistry } from "./adapter-registry.js";
@@ -121,4 +123,4 @@ export type {
 
 export { featureTerminal, assertFeatureOpen, assertTaskFeatureOpen } from "./feature-closure.js";
 export { FeatureWorkflow } from "./feature-workflow.js";
-export type { FeatureRecord } from "./store/state-store.js";
+export type { AttemptWorkflowRecord, FeatureRecord, WorkflowBindingRecord } from "./store/state-store.js";

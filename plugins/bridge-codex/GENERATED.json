@@ -7,7 +7,7 @@
     ".codex/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "1593472d002a50d2b78b4d3eec8afb95245663a3294fe3e58a0c8777ec86153c",
+  "source_digest": "1afdb5a3144e973a88b54748df6b3969dfcce3cbec5a130c80aa8953ab1d50fc",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -75,7 +75,7 @@
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "93a85d73aa22d5efe91e59eb7cd7c8f309d7f9a08394af27ca44339d747d8704"
+      "sha256": "c91d4d101bd8d2c4d5754452b8f4727c87f128a6263090d8301d9dd025b0505a"
     },
     {
       "path": "scripts/setup/process-observer.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "scripts/setup/runtime.mjs",
-      "sha256": "1f40d79a1792e30960b0cef152cd30a84f5c8b3c608f6176e2c95e6785e6ebbf"
+      "sha256": "4f6b67bd3fa3c6142d4a1117303d483bb5e03abfb9f7b290bf3c2ef8c3c5f450"
     },
     {
       "path": "scripts/setup/workspace.mjs",

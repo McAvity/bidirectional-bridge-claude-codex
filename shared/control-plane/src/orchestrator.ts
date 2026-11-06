@@ -93,6 +93,7 @@ interface RecoveryRequest {
   readonly recover_invalid_delivery?: boolean;
   readonly deadline_ms?: number;
   readonly max_turns?: number;
+  readonly workflow_identity?: string;
 }
 
 interface RecoveryAuthorization {
@@ -118,6 +119,8 @@ interface RecoveryReservation {
   readonly mode?: RecoveryMode;
   readonly previous_state?: TaskState;
   readonly max_turns?: number;
+  /** F-W19: identity admitted for the recovered attempt; a replay never re-admits. */
+  readonly workflow_identity?: string;
 }
 
 interface ActiveRecovery {
@@ -377,8 +380,10 @@ export class Orchestrator {
         controller.abort(DEADLINE_ABORT_REASON);
       }, request.deadline_ms);
 
+      // F-W19: the admitted bundle is verified again immediately before the worker starts.
+      const workflow = this.cp.workflows?.launchWorkflow(task.task_id, attempt) ?? null;
       observedRuntimeStartedAt = this.cp.clock.now();
-      const deliverable = await adapter.invoke(invocation, ctx);
+      const deliverable = await adapter.invoke(workflow ? { ...invocation, workflow } : invocation, ctx);
       if (options.resumeFromTaskId && !confirmedHandle) {
         throw new BridgeError(ErrorCode.ADAPTER_FAILURE, "feature resume did not confirm its session");
       }
@@ -741,6 +746,14 @@ export class Orchestrator {
       const inputArtifactIds = this.recoveryInputArtifactIds(task.task_id);
       // Fail before reserving any state if the original durable inputs cannot be resolved.
       this.cp.artifacts.resolveMany(inputArtifactIds);
+      // F-W19 § 6.4 / R19-C02: every recovery path of a bound feature task acknowledges the
+      // workflow; the recovered attempt keeps the identity the task ran with.
+      let admittedWorkflow: string | undefined;
+      if (this.cp.workflows) {
+        admittedWorkflow = this.cp.workflows.admitRecovery(task.task_id, task.attempt, recoveredAttempt, request.workflow_identity ?? null)?.identity;
+      } else if (request.workflow_identity !== undefined) {
+        throw new BridgeError(ErrorCode.UNIMPLEMENTED, "workflow binding is not enabled in this server; workflow_identity cannot be checked");
+      }
       // Timeout recovery always carries an explicit deadline (validated before this point);
       // the deadline that just proved too short is never reused implicitly.
       const deadlineMs = request.deadline_ms ?? this.recoveryDeadline(task);
@@ -831,6 +844,7 @@ export class Orchestrator {
         mode,
         previous_state: task.state,
         ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
+        ...(admittedWorkflow !== undefined ? { workflow_identity: admittedWorkflow } : {}),
       };
       if (request.idempotency_key) {
         this.cp.store.putIdempotency({
@@ -926,8 +940,9 @@ export class Orchestrator {
         timedOut = true;
         controller.abort(DEADLINE_ABORT_REASON);
       }, reservation.deadline_ms);
+      const workflow = this.cp.workflows?.launchWorkflow(task.task_id, reservation.recovered_attempt) ?? null;
       runtimeStartedAt = this.cp.clock.now();
-      const returned = await adapter.invoke(invocation, context);
+      const returned = await adapter.invoke(workflow ? { ...invocation, workflow } : invocation, context);
       runtimeEndedAt = this.cp.clock.now();
       terminationKind = AttemptTerminationKind.COMPLETED;
       if (timedOut) {
@@ -1293,6 +1308,7 @@ export class Orchestrator {
       ...(request.recover_invalid_delivery === true ? { recover_invalid_delivery: true } : {}),
       ...(request.deadline_ms !== undefined ? { deadline_ms: request.deadline_ms } : {}),
       ...(request.max_turns !== undefined ? { max_turns: request.max_turns } : {}),
+      ...(request.workflow_identity !== undefined ? { workflow_identity: request.workflow_identity } : {}),
     };
     return kind === "owner"
       ? hashRequest({ task_id: request.task_id, requested_by: request.requested_by, ...budget })

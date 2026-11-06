@@ -31,6 +31,7 @@ import {
 
 export const DOCTOR_FORMAT = "claude-codex-bridge.doctor/v1";
 const DEFAULT_NODE_MINIMUM = "22.13.0";
+const WORKFLOW_TOOLS = ["bridge_workflow_status", "bridge_workflow_bind", "bridge_workflow_bind_legacy", "bridge_workflow_switch", "bridge_workflow_project"];
 const BASE_FEATURE_TOOLS = [
   "bridge_feature_create", "bridge_feature_get", "bridge_feature_run",
   "bridge_feature_wait_user", "bridge_feature_answer_user", "bridge_feature_accept",
@@ -40,6 +41,8 @@ const BASE_FEATURE_TOOLS = [
 export function missingRequiredFeatureTools(tools, manifest) {
   const required = [...BASE_FEATURE_TOOLS];
   if (manifest?.compatibility?.state_schema_version >= 6) required.push("bridge_feature_close");
+  // F-W19: a runtime that advertises workflow binding must serve its tools (not keyed by schema).
+  if (manifest?.compatibility?.workflow_binding) required.push(...WORKFLOW_TOOLS);
   const available = new Set(Array.isArray(tools) ? tools : []);
   return required.filter((name) => !available.has(name));
 }

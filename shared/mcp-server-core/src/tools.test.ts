@@ -370,7 +370,7 @@ describe("MCP tool surface", () => {
     cp.tasks.block(child.task_id, "codex", "stranded");
 
     const tool = TOOLS.find((candidate) => candidate.name === "bridge_resume_task")!;
-    expect(Object.keys(tool.inputShape).sort()).toEqual(["deadline_ms", "idempotency_key", "max_turns", "task_id"]);
+    expect(Object.keys(tool.inputShape).sort()).toEqual(["deadline_ms", "idempotency_key", "max_turns", "task_id", "workflow_identity"]);
     const denied = await call(
       "bridge_resume_task",
       { task_id: child.task_id },
@@ -456,7 +456,7 @@ describe("MCP tool surface", () => {
       (candidate) => candidate.name === "bridge_resume_delegated_task",
     )!;
     expect(Object.keys(tool.inputShape).sort()).toEqual([
-      "deadline_ms", "idempotency_key", "max_turns", "message", "recover_invalid_delivery", "recover_timeout", "task_id",
+      "deadline_ms", "idempotency_key", "max_turns", "message", "recover_invalid_delivery", "recover_timeout", "task_id", "workflow_identity",
     ]);
     const resumed = await call(
       "bridge_resume_delegated_task",
@@ -542,7 +542,7 @@ describe("MCP tool surface", () => {
     );
     expect(noDeadline.data.error.code).toBe(ErrorCode.INVALID_ARGUMENT);
     const owner = TOOLS.find((candidate) => candidate.name === "bridge_resume_task")!;
-    expect(Object.keys(owner.inputShape).sort()).toEqual(["deadline_ms", "idempotency_key", "max_turns", "task_id"]);
+    expect(Object.keys(owner.inputShape).sort()).toEqual(["deadline_ms", "idempotency_key", "max_turns", "task_id", "workflow_identity"]);
     expect(invoked).toHaveLength(0);
 
     const resumed = await call(

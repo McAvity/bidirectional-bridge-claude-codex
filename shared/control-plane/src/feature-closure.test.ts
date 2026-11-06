@@ -175,7 +175,7 @@ describe("schema6 forward guard", () => {
   it.each(["initialize", "attach", "readonly"] as const)("%s refuses future schema before mutation", mode => {
     const f = fixture();
     const db = new DatabaseSync(join(f.dir, "bridge.db"));
-    db.exec("UPDATE schema_meta SET value='7' WHERE key='schema_version'");
+    db.exec(`UPDATE schema_meta SET value='${SqliteStateStore.schemaVersionSupported + 1}' WHERE key='schema_version'`);
     const before = db.prepare("SELECT * FROM schema_meta").all();
     expect(() => new SqliteStateStore({path:join(f.dir,"bridge.db"),mode})).toThrowError(expect.objectContaining({code:"WORKSPACE_MISMATCH"}));
     expect(db.prepare("SELECT * FROM schema_meta").all()).toEqual(before);
