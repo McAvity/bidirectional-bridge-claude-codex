@@ -20,6 +20,8 @@ description: "Export a small feature handoff ZIP with provenance or reconcile re
 >   --feature-id <id>` and, with the bridge, `bridge_workflow_bind` after `bridge_feature_create`.
 >   An existing feature without a lock needs the user's explicit choice: `adopt --explicit`
 >   standalone, `bridge_workflow_bind_legacy` with the bridge. Never take the latest silently.
+>   `begin --feature-id` answering `FEATURE_EXISTS` means exactly that case: run
+>   `node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs" resolve --feature <id>` and follow its answer.
 > - `source: runtime` (`LEGACY_PINNED_RUNTIME`) — the project pins a runtime without workflow binding:
 >   follow `<instructions.workflow_skills>/feature-exchange/SKILL.md`, `instructions.guide` and
 >   `instructions.exchange_helper` of that runtime, as before. If that runtime lacks this entry,
