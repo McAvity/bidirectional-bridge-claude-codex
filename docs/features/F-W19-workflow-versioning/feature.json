@@ -26,7 +26,7 @@
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
-  "next_action": "W19-01…03 ukończone etapowo; W19-04 runner/skille i R19-I02 w jednej partii, potem05/06. Końcowy review/pilot i Gate2 nadal przed nami.",
+  "next_action": "W19-01…04 dostarczone etapowo; W19-05 diagnostics/docs i integracyjne I03/I04 w jednej partii, następnie W19-06 full tests/review/pilot.16 testów integracji nadal fail do I03. Bez Gate2/PASS produktu.",
   "bridge": {
     "feature_id": "F-W19-workflow-versioning",
     "parent_task_id": "task_vf2ajb3t4d"

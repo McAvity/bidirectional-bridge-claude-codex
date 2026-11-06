@@ -2,11 +2,11 @@
 
 ## F-W19 implementation active — 2026-11-06
 
-Isolated feature/F-W19-workflow-versioning, .worktrees/F-W19. W19-01/02 complete;
-latest worker aec3865, next W19-03…06 under decision03. See
+Isolated feature/F-W19-workflow-versioning, .worktrees/F-W19. W19-01…04 delivered in bounded stages;
+latest worker3488c7b, next W19-05/06 under decision03. See
 [progress](features/F-W19-workflow-versioning/PROGRESS.md) and the single
 [review register](features/F-W19-workflow-versioning/reviews/02-execution.md).
-Root task_vf2ajb3t4d, prior child task_pqfare78qr DONE, same Claude session.
+Root task_vf2ajb3t4d, prior child task_10731g2yrb DONE, same Claude session.
 Known baseline host-test failures remain open; model pilot/auth not completed.
 No release/merge/push/project upgrade; supervising0.6.2 runtime unchanged.
 

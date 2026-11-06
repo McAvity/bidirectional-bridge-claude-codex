@@ -140,3 +140,10 @@ niezależny receipt i19 testów PASS. W19-04 rozpoczyna kompozycję launchera/ru
 oraz skille; R19-I02 (pending replay bez request hash) poprawić w tej partii.
 W19-06 ma działające izolowane środowisko testowe: na bazie91JS+2CodexHost PASS;
 full candidate checks i modelowy pilot jeszcze nieuruchomione. Auth nadal niepotwierdzone.
+
+
+W19-04 dostarczony3488c7b (kod3fb7819), task_10731g2yrb DONE, ta sama sesja.
+Niezależnie23 testy PASS, I02 fixed/verified;16 failed integration fixtures czeka
+na gotową łatkę W19-05 (I03). I04 bootstrap legacy również w tej partii. Status
+etapu nie oznacza pełnego PASS. W19-05 startuje bez nowej zgody; następnie06.
+Nie uruchomiono modeli pilota; auth izolowanych klientów nadal niepotwierdzone.

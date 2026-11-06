@@ -82,3 +82,25 @@ bez profili użytkownika, na bazie8540de7 daje91/91 JS w obu dotkniętych plikac
 zero unreadable. Prywatne logi i recipe w /tmp/bridge-w19-container-validation/.
 To wyjaśnia bazowe failures bez ich kasowania; dokładny finalny commit musi jeszcze
 przejść pełną walidację W19-06 w tym środowisku. Nie osłabiono guardów instalatora.
+
+
+## 2026-11-06 — W19-04: kod dostarczony, integracja fixture’ów w W19-05
+
+Task task_10731g2yrb, baza74a6878, kod3fb7819, dostawa3488c7b. Receipt per-commit
+scope/clean/ledger PASS. Niezależnie23 testy workflow-binding/real-launcher/fake-worker/
+runner-plugin-dirs PASS; przegląd bloku ROOT, selector/bootstrap i poprawki I02.
+R19-I02 FIXED/VERIFIED: hash utrwalany przy pending, dwa testy zmienionego requestu
+po crash i dokładnego replay. PILOT-ENV-01 sprawdzony bez modeli przez wykonawcę;
+jeszcze do potwierdzenia w rzeczywistym pilocie. Samo przekazanie instrukcji nie
+jest dowodem zastosowania ich przez model.
+
+| ID | Priorytet / skutek i dowód | Status / rozliczenie |
+| --- | --- | --- |
+| R19-I03 | P2 integracji:16 z27 testów w scripts/diagnostics/diagnose.test.ts oraz scripts/native-bridge-mcp.plugin-dirs.test.ts używa teraz nielegalnych niepowiązanych rund. To rzeczywista regresja fixture’ów po egzekwowaniu bindingu. | OPEN: gotowa łatka wykonawcy w evidence/W19-04/out-of-scope-tests.patch.json, przejrzana przez koordynatora; włączyć i sprawdzić w W19-05. Nie osłabiać WORKFLOW_UNBOUND. W19-04 DONE dotyczy jego kodu, nie PASS całej integracji. |
+| R19-I04 | P2 spójności instrukcji: resolver istniejącego legacy na nowym runtime zwraca LEGACY_BIND_REQUIRED, a preambuła wpada do ogólnego source:none/stop przed opisanym bind_legacy. Udowodnione źródło nie powinno wymagać zgadywania polecenia ani wpadać w pętlę stop po continue. Dowód: workflow-source-preamble.md versus workflow.mjs resolver. | OPEN: rozliczyć ścieżkę udowodnionego legacy w W19-05 wraz z instrukcją upgrade; UNPROVEN/AMBIGUOUS nadal wymagają realnego wyboru. Nie deklarować testu zachowania modelu przed pilotem. |
+
+Rozwiązanie scope: dwa pliki testów poza poprzednim kontraktem przeniesione jawnie
+do następnej partii W19-05, w ramach zgody03. Nie rozszerzano po fakcie scope taska,
+nie edytowano DB ani nie kasowano failed verifications. Wznowienie tej samej sesji
+zamknęło ograniczony etap z jawnymi16 failure w risks/ledger02. Kolejny kontrakt
+obejmuje zależne fixture’y, aby nie mnożyć takich blokad administracyjnych.
