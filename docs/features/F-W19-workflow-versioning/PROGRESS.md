@@ -156,3 +156,19 @@ findingi I05/I06 do jednej partii; szczegóły i reprodukcje reviews/02-executio
 Auth pilota nadal niepotwierdzone; użytkownikowi wyjaśniono cel izolacji. Następny
 kontrakt obejmuje korekty i preflight/procedurę pilota bez modeli, potem rzeczywisty
 pilot w zatwierdzonym budżecie03. Bez publikacji i bez podmiany aktywnego runtime0.6.2.
+
+
+## Końcowy checkpoint tego przebiegu — pilot odłożony przez użytkownika
+
+Dostawa2298abf, kod501a6b2; W19-01…05 DONE etapowo. W19-06: korekty I05/I06
+niezależnie zweryfikowane, pełne kontrole dokładnego2298abf PASS bez modeli:
+JS 752 PASS/1 skipped/0 fail; Python 242 tests; pilot tooling 131 tests; workflow contract/operator 27 tests; wszystkie zestawy exit0.
+Decyzja04 odkłada dodatkowe logowania i zależny pilot; nie ponawiać pytania,
+nie przechodzić do osobistych profili, nie oznaczać AC04 PASS. W19-06 i cały feature
+nie są odebrane. T01/T02 kolektora/procedury odłożone do wznowienia pilota, N01 docs
+nieblokujące do partii przed publikacją; lista w reviews/02-execution.md.
+Bridge: brak aktywnego workera; ostatni task task_spdas51dar DONE. Root koordynatora
+task_vf2ajb3t4d zostaje BLOCKED z powodu odłożonego zakresu; przy nowym zleceniu
+wznowić ten sam root/sesję, nie tworzyć zastępczego featura. Zanim zacznie się pilot,
+korekta T01/T02 i jego preflight, potem dostęp według przyszłej dyspozycji użytkownika.
+Bez dalszej pracy zależnej od loginu w tym przebiegu. Bez push/merge/release/upgrade.

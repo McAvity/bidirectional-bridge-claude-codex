@@ -1,5 +1,21 @@
 # Current handoff
 
+## F-W19 — kod lokalnie zweryfikowany, pilot odłożony, 2026-11-06
+
+Branch feature/F-W19-workflow-versioning w `.worktrees/F-W19`, dostawa2298abf.
+I05/I06 fixed/verified; pełne kontrole dokładnego2298abf bez modeli PASS:
+JS 752 PASS/1 skipped/0 fail; Python 242 tests; pilot tooling 131 tests; workflow contract/operator 27 tests; wszystkie zestawy exit0.
+[Decyzja04](features/F-W19-workflow-versioning/decisions/04.md): użytkownik rezygnuje
+z dodatkowych loginów teraz, pilot odłożony. Nie prosić ponownie ani nie używać
+osobistych profili. AC04 NOT_TESTED, brak odbioru całości. T01/T02 do korekty przed
+późniejszym pilotem; N01 docs do najbliższej partii przed publikacją.
+[Progress](features/F-W19-workflow-versioning/PROGRESS.md),
+[review](features/F-W19-workflow-versioning/reviews/02-execution.md),
+[integracja](features/F-W19-workflow-versioning/execution/integration/01.md).
+Brak aktywnej rundy; ten sam root koordynatora zachowany jako BLOCKED dla odłożonego
+zakresu. Nie zaczynać feature’a od nowa. Bez merge/push/release/zmiany runtime0.6.2.
+
+
 ## F-W19 W19-06 — zbiorcza walidacja i pilot, 2026-11-06
 
 Worktree `.worktrees/F-W19`, branch `feature/F-W19-workflow-versioning`.

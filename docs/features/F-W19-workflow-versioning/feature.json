@@ -25,8 +25,8 @@
     "claude/claude-side/src/adapters/claude-code-runner.ts"
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/02-execution.md",
-  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
-  "next_action": "W19-01…05 dostarczone; W19-06 zbiorcze korekty R19-I05/I06, przygotowanie i rzeczywisty pilot izolowanych klientów. Pełne kontrole14e0501 PASS; brak modelowego AC04. Gate2 dopiero po dowodach.",
+  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/04.md",
+  "next_action": "Implementacja i korekty bez modeli zweryfikowane2298abf. Pilot odłożony decyzją04; AC04 NOT_TESTED, W19-06 częściowe, brak Gate2. Przy przyszłym wznowieniu poprawić T01/T02 i uzgodnić dostęp; nie ponawiać teraz loginów. Rejestr review02, ledger integration01.",
   "bridge": {
     "feature_id": "F-W19-workflow-versioning",
     "parent_task_id": "task_vf2ajb3t4d"

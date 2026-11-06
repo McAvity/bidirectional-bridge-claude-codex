@@ -142,3 +142,45 @@ podstaw do zmiany briefu ani ponownego Gate1. Cel produktu nadal niepotwierdzony
 AC04 wymaga rzeczywistych modeli; wszystkie przypadki pilota są NOT_TESTED.
 PILOT-AUTH nadal wymaga logowania izolowanych profili. Wyjaśniono użytkownikowi,
 że ich cache/pluginy będą zmieniane/usuwane w pilocie; osobiste konfiguracje pozostają.
+
+
+## 2026-11-06 — W19-06 korekty i końcowa walidacja bez modeli
+
+Task task_spdas51dar DONE, baza50a50b4, kod501a6b2, dostawa
+2298abf5b551af2317ff3d47ce6c482b0450d2c6. Receipt PASS:90 ścieżek per-commit,
+nowy ledger, zakres zgodny, worktree czysty, pliki koordynatora nietknięte.
+Reviewer Codex pozostaje niezależny od wykonawcy Claude, nie od koordynacji.
+
+R19-I05 FIXED/VERIFIED: niezależnie powtórzone istniejące brief/no lock daje
+FEATURE_EXISTS, bez utworzenia lock/store. Nowy/pusty feature, draft/finalize i
+jawne adopt zachowane w testach. R19-I06 FIXED/VERIFIED: ta sama niepoprawna baza
+daje state=unreadable, SQLITE_NOTADB i WORKFLOW_DATABASE_UNREADABLE/unknown;
+nie OK0/0. Whitelist eksportu zachowuje null zamiast udawanych zer.
+
+Pełna niezależna walidacja dokładnego2298abf, świeży klon i kontener jak poprzednio,
+z rzeczywistymi CLI Codex0.166.0/Claude2.1.316 (bez modeli/logowania):
+JS 752 PASS/1 skipped/0 fail; Python 242 tests; pilot tooling 131 tests; workflow contract/operator 27 tests; wszystkie zestawy exit0.
+Install/build/packages/docs/process-visibility/diff PASS, drzewo po testach czyste.
+Kontroler i wszystkie logi prywatnie w /tmp/bridge-w19-container-validation/final-2298abf/.
+To uzupełnia pominięte testy CLI w kontenerze wykonawcy. Nie powtarzano modeli ani
+znanych ograniczeń hosta przez osłabienie guardów. R19-E01 zamknięty dla tej walidacji.
+
+### Pozostała jedna lista: odłożony pilot i uwaga dokumentacyjna
+
+| ID | Priorytet, skutek i dowód | Status / dalszy zakres |
+| --- | --- | --- |
+| R19-T01 | P2 narzędzia pilota: OPERATOR §6 tworzy F-002 w p1, gdy F-001 wciąż jest otwarty i potrzebny do późniejszego switch. manager-registry.ts claimFeature odrzuci drugi feature (FEATURE_CONFLICT); szablon startowy nie autoryzuje zamknięcia pierwszego. | OPEN, odłożone wraz z pilotem. Przed pilotem zmienić kolejność: kontynuacja A, switch zachowanego F-001, jawnie uzgodnione syntetyczne zamknięcie, dopiero nowy B w p1; p2 niezależnie. Zachować budżet i dowód tej samej sesji. Nie obchodzić slotu. |
+| R19-T02 | P2 narzędzia pilota: pilot_w19.py budget_usage porównuje telemetry.turn_count do max_turns. Runner zapisuje tam surowe frame.num_turns (linia1248); wave10-report wyjaśnia i testuje odmienną semantykę licznika niż limit pętli wykonawcy. Może spowodować fałszywy stop pilota. | OPEN, odłożone wraz z pilotem. Przed modelem oprzeć limit na rzeczywistym spec/max_turns i wyniku limitu wykonawcy; zachować raw telemetry i regresję success z num_turns większym od max_turns. |
+| R19-N01 | P3 dokumentacji: plugin-distribution.md w starszych sekcjach nadal mówi only in runtime, six entries i stary select-source, a nowa sekcjaF-W19 opisuje store/seven/resolve. interface.longDescription w generatorze też zachowuje stary opis. | Nieblokujące uporządkowanie w najbliższej partii docs przed publikacją: oznaczyć legacy i wskazać bieżącą ścieżkę. Nie otwieramy osobnej pętli wykonawczej ani nie zmieniamy produktu z tego powodu. |
+
+Wynik korekt produktu: PASS w zakresie kontroli bez modeli. Wynik pełnego F-W19:
+BLOCKED względem dowodu całego celu, bo AC-04/modelowa część02/03/06/08 pozostaje
+NOT_TESTED; użytkownik odłożył zależny pilot w decyzji04. Nie jest to awaria kodu ani
+prośba o kolejne logowanie. Narzędzia pilota mają znane T01/T02, więc nie deklarujemy
+ich gotowości do uruchomienia bez korekt. Nie przeprowadzano pełnego dodatkowego
+review odłożonego kolektora. Brak podstaw do fake PASS, accepted lub domyślnej publikacji.
+
+Pozostałe wcześniejsze ustalenia: C01/C03/C04 i I01…04 rozwiązane wskazanymi wyżej
+dowodami. C02 i PILOT-ENV mają dowody bez modeli; warstwa modelowa odłożona.
+PILOT-AUTH nie jest już oczekującą prośbą do użytkownika, tylko częścią odłożonego
+pilota. O01 pozostaje rozliczoną uwagą procesu, bez zmiany polityki runtime.
