@@ -105,7 +105,7 @@ REVIEWER_PROMPT_PREFIXES = ('The following is the Codex agent history',)
 
 def codex_sessions(repo, root=None):
     # PILOT_CODEX_SESSIONS: only for dry runs with synthetic rollouts (never set in a real run).
-    root = Path(root or os.environ.get('PILOT_CODEX_SESSIONS') or os.path.expanduser('~/.codex/sessions'))
+    root = Path(root or os.environ.get('PILOT_CODEX_SESSIONS') or Path(os.environ.get('CODEX_HOME') or os.path.expanduser('~/.codex')) / 'sessions')
     out = []
     for path in sorted(glob.glob(str(root / '*/*/*/rollout-*.jsonl'))):
         try:

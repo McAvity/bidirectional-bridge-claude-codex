@@ -11,6 +11,7 @@ Not product code and not loaded by the bridge runtime.
 | `fixtures/cases.json` | Every scenario with its AC and verdict; `fixtures/examples/` one example per format | — |
 | `test_contract.py` | Host-free tests: reproduction, expected verdicts, AC coverage, no machine paths | Python 3.11+ |
 | `probe_selection.py`, `pilot_env.py` | W19-04 model-free probes: runner-equivalent Claude args load the store variant over an older personal plugin and resume the same session with the next release; the Codex entry opens with the resolve bootstrap and the store serves a feature after the plugin cache is removed; the pilot's isolated MCP block forwards `CLAUDE_CONFIG_DIR` (PILOT-ENV-01) | `claude`, `codex`, `node`, `git` |
+| `pilot_w19.py`, `OPERATOR.md`, `agent/` | W19-06 real-model pilot: `setup` (releases A/B/C from the product generator, local marketplace, two projects pinned to the same candidate runtime, isolated `env.sh`), `preflight` (isolation, env forwarding, pin, releases, contamination, budget, `--clients` logins), `snapshot`, `checks` (incompatible release, exact offline restore, standalone), `collect` (configured/admitted/followed per case, native session continuity, budget; `--public` summary). Starts no model | `node`, `git`; `--clients`: `claude`, `codex` |
 | `probe_clients.py`, `w19lib.py` | Model-free probes of the installed Claude Code and Codex CLIs (isolation, effective paths, auth status, active entry, same-session resume, MCP env forwarding) | `claude`, `codex`, `node`, `git` |
 
 ```sh
@@ -41,3 +42,11 @@ python3 tools/pilot/workflow-versioning/probe_clients.py --rescrub <file>.json  
 
 The probes show what a client *presents* to a model after install, update and resume. Whether a
 model follows the new instructions is not observable here; that is W19-06 pilot evidence.
+
+## W19-06 pilot
+
+`OPERATOR.md` is the procedure; only `START-ASTRA-*.md` from a run reach the agents. Run directories
+stay outside Git. Tests: `python3 -m unittest tools/pilot/workflow-versioning/test_pilot_w19.py`
+(synthetic run, fabricated records; no client, login, runtime install or model). The overall pilot
+result is `NOT_TESTED` until a real run produces every layer, including the release token an agent
+writes itself.
