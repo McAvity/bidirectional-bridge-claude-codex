@@ -27,7 +27,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { fsyncSync as require_fsyncSync, writeSync as require_writeSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { readZip } from "./zip.mjs";
@@ -59,6 +59,8 @@ afterEach(() => {
     } catch {
       /* already writable or gone */
     }
+    // F-W19: the workflow store is read-only by design.
+    spawnSync("chmod", ["-R", "u+w", path]);
     rmSync(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });
@@ -157,6 +159,23 @@ class Client {
 }
 
 /**
+ * F-W19 W19-04: the launcher enforces workflow binding. Publish the committed workflow bundle into
+ * the fixture's isolated bridge home, write the feature lock and bind it; rounds pass the identity.
+ */
+async function bindWorkflow(client: Client, root: string, workflowHome: string, featureId: string, thread: string): Promise<string> {
+  const lib = await import(pathToFileURL(join(repoRoot, "scripts/workflow-source/workflow-lib.mjs")).href);
+  const bundle = join(repoRoot, "plugins/feature-workflow-claude/bundle");
+  const manifest = lib.verifyBundle(bundle);
+  lib.storePublish(join(workflowHome, "workflows"), bundle);
+  const dir = join(root, "docs/features", featureId);
+  mkdirSync(dir, { recursive: true });
+  lib.writeLock(dir, lib.newLock(manifest, { origin: { kind: "active-plugin", client: "codex", plugin_version: manifest.version }, at: "2026-11-06T00:00:00Z", featureId }));
+  const bound = await client.tool("bridge_workflow_bind", { feature_id: featureId, lock_path: `docs/features/${featureId}/workflow.lock.json`, expected_identity: manifest.identity, idempotency_key: `bind-${featureId}` }, thread);
+  if (bound?.result !== "BOUND") throw new Error(`workflow bind failed: ${JSON.stringify(bound)}`);
+  return manifest.identity as string;
+}
+
+/**
  * Drive the launcher into one finished incident: a feature, a round that ends the way `mode`
  * dictates, and a pending user question. Returns the identifiers the export selects by.
  */
@@ -178,6 +197,7 @@ async function incident(
 ): Promise<Fixture> {
   const root = temporary(`bridge-diag-${label}-`);
   const home = temporary(`bridge-diag-home-${label}-`);
+  const workflowHome = temporary(`bridge-diag-workflows-${label}-`);
   const bin = join(root, "bin");
   mkdirSync(bin);
   writeFileSync(join(bin, "claude"), `#!/bin/sh\nexec "${process.execPath}" "${fakeClaude}" "$@"\n`, { mode: 0o755 });
@@ -187,6 +207,7 @@ async function incident(
     PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
     FAKE_CLAUDE_MODE: mode,
     FAKE_CLAUDE_STDERR: `fake runtime warning: ${SECRETS.apiKey} leaked into stderr\n`,
+    CLAUDE_CODEX_BRIDGE_HOME: workflowHome,
     ...extraEnv,
   };
   const client = new Client(root, env);
@@ -202,6 +223,7 @@ async function incident(
   await client.tool("bridge_claim_task", { task_id: root_task.task_id }, thread);
   await client.tool("bridge_set_state", { task_id: root_task.task_id, to: "WORKING" }, thread);
   await client.tool("bridge_feature_create", { feature_id: featureId, parent_task_id: root_task.task_id }, thread);
+  const workflowIdentity = await bindWorkflow(client, root, workflowHome, featureId, thread);
   const round = await client.tool(
     "bridge_feature_run",
     {
@@ -209,6 +231,7 @@ async function incident(
       spec: { ...spec, objective: SECRETS.roundObjective },
       deadline_ms: deadline,
       idempotency_key: `${featureId}:round-1`,
+      workflow_identity: workflowIdentity,
     },
     thread,
   );
@@ -565,6 +588,7 @@ describe("incident export", () => {
   it("exports a live round without stopping it, and shows the attempt still open", async () => {
     const root = temporary("bridge-diag-live-");
     const home = temporary("bridge-diag-live-home-");
+    const workflowHome = temporary("bridge-diag-live-workflows-");
     const bin = join(root, "bin");
     mkdirSync(bin);
     writeFileSync(join(bin, "claude"), `#!/bin/sh\nexec "${process.execPath}" "${fakeClaude}" "$@"\n`, { mode: 0o755 });
@@ -573,6 +597,7 @@ describe("incident export", () => {
       HOME: home,
       PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
       FAKE_CLAUDE_MODE: "hang",
+      CLAUDE_CODEX_BRIDGE_HOME: workflowHome,
     });
     try {
       await client.start();
@@ -587,6 +612,7 @@ describe("incident export", () => {
       await client.tool("bridge_claim_task", { task_id: root_task.task_id });
       await client.tool("bridge_set_state", { task_id: root_task.task_id, to: "WORKING" });
       await client.tool("bridge_feature_create", { feature_id: "F-live", parent_task_id: root_task.task_id });
+      const workflowIdentity = await bindWorkflow(client, root, workflowHome, "F-live", "thread-diagnose");
       // The client stops waiting for this call: its own timeout is a different budget from the
       // executor deadline, and the worker keeps running either way.
       const abandoned = client.tool("bridge_feature_run", {
@@ -594,6 +620,7 @@ describe("incident export", () => {
         spec,
         deadline_ms: 20_000,
         idempotency_key: "F-live:round-1",
+        workflow_identity: workflowIdentity,
       });
       const started = await waitFor(() =>
         readLog(root).find((record) => record["op"] === "attempt" && record["event"] === "started"),
