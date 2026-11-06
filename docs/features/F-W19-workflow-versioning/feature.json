@@ -26,7 +26,7 @@
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/03.md",
-  "next_action": "W19-01…04 dostarczone etapowo; W19-05 diagnostics/docs i integracyjne I03/I04 w jednej partii, następnie W19-06 full tests/review/pilot.16 testów integracji nadal fail do I03. Bez Gate2/PASS produktu.",
+  "next_action": "W19-01…05 dostarczone; W19-06 zbiorcze korekty R19-I05/I06, przygotowanie i rzeczywisty pilot izolowanych klientów. Pełne kontrole14e0501 PASS; brak modelowego AC04. Gate2 dopiero po dowodach.",
   "bridge": {
     "feature_id": "F-W19-workflow-versioning",
     "parent_task_id": "task_vf2ajb3t4d"

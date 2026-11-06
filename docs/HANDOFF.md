@@ -1,5 +1,19 @@
 # Current handoff
 
+## F-W19 W19-06 — zbiorcza walidacja i pilot, 2026-11-06
+
+Worktree `.worktrees/F-W19`, branch `feature/F-W19-workflow-versioning`.
+Etapy01…05 dostarczone, final7100fbe; niezależne full checks14e0501 PASS w izolacji
+(751JS/1skip,241Python,140pilot,12contract). Zbiorcze review REWORK: I05 begin
+istniejącego featura bez locka omija explicit choice; I06 doctor workflow gubi błąd
+odczytu bazy. Jedna partia korekt06 i przygotowanie pilota, potem modelowy AC04.
+Auth izolowanych klientów niepotwierdzone; nie kopiować sekretów/osobistego cache.
+[Progress](features/F-W19-workflow-versioning/PROGRESS.md) i jeden
+[rejestr](features/F-W19-workflow-versioning/reviews/02-execution.md).
+Zgoda03 ważna, bez nowego Gate1; Gate2 user acceptance jeszcze nieosiągnięta.
+Aktywny runtime0.6.2 nietknięty; bez merge/push/release/real-project upgrade.
+
+
 ## F-W19 implementation active — 2026-11-06
 
 Isolated feature/F-W19-workflow-versioning, .worktrees/F-W19. W19-01…04 delivered in bounded stages;

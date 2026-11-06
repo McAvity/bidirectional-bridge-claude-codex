@@ -104,3 +104,41 @@ do następnej partii W19-05, w ramach zgody03. Nie rozszerzano po fakcie scope t
 nie edytowano DB ani nie kasowano failed verifications. Wznowienie tej samej sesji
 zamknęło ograniczony etap z jawnymi16 failure w risks/ledger02. Kolejny kontrakt
 obejmuje zależne fixture’y, aby nie mnożyć takich blokad administracyjnych.
+
+
+## 2026-11-06 — W19-05 receipt i zbiorcze review W19-01…05: REWORK
+
+Task task_59asvjd7j5 DONE w tej samej sesji; baza4c2c8da, kod4335cbe,
+ledger14e0501, raport-only7100fbe. Receipt per-commit scope, ancestry, nowy ledger,
+clean PASS. Pierwszy raport miał stringi zamiast obiektów verification_results;
+bridge zachował raport i BLOCKED. Ta sama próba zadania została wznowiona wyłącznie
+w celu poprawienia struktury raportu; ledger02 jest jedyną zmianą po14e0501.
+Nie zmieniono wyników historycznych ani kodu przy odzyskiwaniu raportu.
+
+Niezależna pełna walidacja dokładnego14e05018d468f80128f482005814c768f40f795f
+w świeżym klonie, odizolowanym kontenerze Node24.15/Python3.11, UID1000:
+install/build/packages/docs/diff PASS; JS751 PASS/1skip/0fail, Python241 PASS,
+pilot tooling140 PASS, workflow contract12 PASS. Git status czysty. R19-E01
+rozliczony: wcześniejsze awarie związane z ograniczoną widocznością procesów hosta
+nie występują przy pełnej widoczności /proc; bez zmiany produkcyjnych guardów.
+Recipe, wersje, dokładne logi i wynik JSON zachowane prywatnie w
+/tmp/bridge-w19-container-validation/. Brak logowań/modeli w kontenerze.
+
+Review objął generator i niezależność paczek, helper/bundle/store/restore,
+binding/switch/admission/recovery/schema7, przekazanie ROOT i instrukcje,
+diagnostykę/projekcje prywatności oraz exchange. R19-I03 FIXED/VERIFIED pełną
+walidacją; R19-I04 FIXED/VERIFIED testami wszystkich wejść i przeglądem preambuły
+oraz resolvera proven legacy. To nie jest jeszcze dowód zastosowania instrukcji
+przez model. C02/ENV wymagają dodatkowo pilota, choć ścieżki bez modeli przechodzą.
+
+| ID | Priorytet / skutek i dowód | Status / rozliczenie |
+| --- | --- | --- |
+| R19-I05 | P2, wymagane AC03/07: begin --feature-id F-existing przy istniejącym brief.md bez locka zwraca BEGUN i przypisuje aktywny plugin. resolve tego samego katalogu wcześniej poprawnie wymaga adopt --explicit. Odtworzone na14e0501 w jednorazowym repo, review-begin-existing.json. Błąd pozwala pomylić rozpoczęcie nowego featura z migracją starego i ominąć jawny wybór. | OPEN: begin musi odmówić przy istniejącym feature bez wyboru, przed publikacją/zapisem. Zachować zwykły nowy/draft/finalize i explicit adopt; test istniejącego brief/index z niezmienionym drzewem/store. |
+| R19-I06 | P2, wymagane AC09: workflowStatus gubi readBindings.error. Dla pliku niebędącego SQLite otrzymujemy database.available=false, warnings=[], a workflowCheck zwraca OK i0/0 features. To błędny wynik warstwy workflow; nie dowód, że cały doctor zignoruje własny osobny check state. Repro review-db-unreadable.json na14e0501. | OPEN: odróżnić brak bazy od nieudanego odczytu; zachować bezpieczny kod i unknown bez danych parsera. Analogicznie brak helpera reklamowanego runtime’u nie może udawać weryfikacji. Test bez zapisów. |
+
+Główny ciąg01…05 ukończony; dwa ustalenia korygowane jedną partią W19-06 wraz
+z przygotowaniem pilota. Nie tworzymy oddzielnych pętli review. Review nie znalazło
+podstaw do zmiany briefu ani ponownego Gate1. Cel produktu nadal niepotwierdzony:
+AC04 wymaga rzeczywistych modeli; wszystkie przypadki pilota są NOT_TESTED.
+PILOT-AUTH nadal wymaga logowania izolowanych profili. Wyjaśniono użytkownikowi,
+że ich cache/pluginy będą zmieniane/usuwane w pilocie; osobiste konfiguracje pozostają.

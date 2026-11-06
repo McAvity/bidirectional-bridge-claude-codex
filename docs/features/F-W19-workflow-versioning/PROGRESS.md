@@ -147,3 +147,12 @@ Niezależnie23 testy PASS, I02 fixed/verified;16 failed integration fixtures cze
 na gotową łatkę W19-05 (I03). I04 bootstrap legacy również w tej partii. Status
 etapu nie oznacza pełnego PASS. W19-05 startuje bez nowej zgody; następnie06.
 Nie uruchomiono modeli pilota; auth izolowanych klientów nadal niepotwierdzone.
+
+
+W19-05 DONE7100fbe (kod4335cbe, testowany14e0501); raport odzyskany w tej samej
+sesji bez zmian produktu. W19-06 in_progress: pełne niezależne kontrole na świeżym
+klonie w kontenerze PASS (751JS/1skip,241Python,140pilot,12contract), dwa konkretne
+findingi I05/I06 do jednej partii; szczegóły i reprodukcje reviews/02-execution.md.
+Auth pilota nadal niepotwierdzone; użytkownikowi wyjaśniono cel izolacji. Następny
+kontrakt obejmuje korekty i preflight/procedurę pilota bez modeli, potem rzeczywisty
+pilot w zatwierdzonym budżecie03. Bez publikacji i bez podmiany aktywnego runtime0.6.2.
