@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-review"
+  short_description: "Review plans, contracts and delivered behavior"
+  default_prompt: "Use $feature-review for the selected feature and follow ${CLAUDE_PLUGIN_ROOT}/workflow/README.md."

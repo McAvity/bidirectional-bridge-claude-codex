@@ -147,13 +147,14 @@ class GeneratedPackages(unittest.TestCase):
         self.assertRegex(release["pinned"]["commit"], r"^[0-9a-f]{40}$")
 
     def test_the_claude_package_carries_the_whole_role_authority(self):
+        # F-W19 (W19-02): bridge-claude is the role package only; the workflow (with its exchange
+        # helper) is the independently versioned feature-workflow-claude package.
         skills = sorted(p.name for p in (CLAUDE_PACKAGE / "skills").iterdir())
-        self.assertIn("using-bridge", skills)
-        for workflow in ("feature-plan", "feature-execute", "feature-review", "feature-exchange"):
-            self.assertIn(workflow, skills)
+        self.assertEqual(skills, ["bridge-upgrade", "using-bridge"])
+        workflow = REPO_ROOT / "plugins" / "feature-workflow-claude"
         self.assertIn(
             "${CLAUDE_PLUGIN_ROOT}/skills/feature-exchange/scripts/feature_exchange.py",
-            (CLAUDE_PACKAGE / "skills" / "feature-execute" / "SKILL.md").read_text(),
+            (workflow / "skills" / "feature-execute" / "SKILL.md").read_text(),
         )
 
     def test_upgrade_packages_run_outside_the_checkout_without_writing_state(self):
@@ -255,7 +256,7 @@ class InstalledExporter(unittest.TestCase):
         self.assertIn("docs/features/F-X/execution/01.md", json.loads(out.stdout)["documents"]["missing"])
 
     def test_the_generated_claude_package_helper_does_the_same(self):
-        helper = _RUNTIME["path"] / "plugins/bridge-claude/skills/feature-exchange/scripts/feature_exchange.py"
+        helper = _RUNTIME["path"] / "plugins/feature-workflow-claude/skills/feature-exchange/scripts/feature_exchange.py"
         report = self._export_with(helper)
         self.assertEqual(report["integrity"], "ok")
         self.assertIn("docs/features/README.md", report["documents"]["files"])
@@ -412,7 +413,8 @@ class ClaudeHost(unittest.TestCase):
         self.assertEqual(L.run_claude_plugin(["marketplace", "add", str(REPO_ROOT)], env=env)["exit_code"], 0)
         installed = L.run_claude_plugin(["install", "bridge-claude@claude-codex-bridge", "--json", "-y"], env=env)
         self.assertEqual(installed["exit_code"], 0, installed)
-        self.assertTrue(list((config / "plugins" / "cache").rglob("skills/feature-execute/SKILL.md")))
+        self.assertTrue(list((config / "plugins" / "cache").rglob("skills/using-bridge/SKILL.md")))
+        self.assertFalse(list((config / "plugins" / "cache").rglob("skills/feature-execute/SKILL.md")))  # role-only since F-W19
 
     def test_a_delegated_executor_loads_the_package_with_no_install(self):
         """AC-04: the instruction set comes from the runtime, not from the operator's profile."""
@@ -425,15 +427,20 @@ class ClaudeHost(unittest.TestCase):
             proc = L.run_claude_headless(
                 "w14 check: no model call is expected to succeed",
                 cwd=project, config_dir=config, stub=stub,
-                extra_args=["--plugin-dir", str(CLAUDE_PACKAGE)], debug_file=debug,
+                # The launcher's EXECUTOR_PACKAGES order: role package, then the workflow package.
+                extra_args=["--plugin-dir", str(CLAUDE_PACKAGE), "--plugin-dir", str(REPO_ROOT / "plugins" / "feature-workflow-claude")],
+                debug_file=debug,
             )
         result = L.claude_result(proc)
         self.assertTrue(L.claude_spent_nothing(result), result)
         text = debug.read_text(errors="replace")
         self.assertIn("Loaded inline plugin from path: bridge-claude", text)
-        match = re.search(r"Loaded (\d+) skills from plugin bridge-claude", text)
-        self.assertIsNotNone(match, "the plugin's skills were not loaded")
-        self.assertGreaterEqual(int(match.group(1)), 6, "the executor must get the whole workflow")
+        roles = re.search(r"Loaded (\d+) skills from plugin bridge-claude", text)
+        workflow = re.search(r"Loaded (\d+) skills from plugin feature-workflow", text)
+        self.assertIsNotNone(roles, "the role package's skills were not loaded")
+        self.assertEqual(int(roles.group(1)), 2, "bridge-claude carries the roles only")
+        self.assertIsNotNone(workflow, "the workflow package's skills were not loaded")
+        self.assertEqual(int(workflow.group(1)), 7, "the executor must get the whole workflow, once (not its bundle/ copy)")
         self.assertFalse((config / "plugins" / "cache").exists())
         self.assertFalse((project / ".claude" / "skills").exists())
         self.assertFalse((project / ".agents").exists())
@@ -536,9 +543,8 @@ class InstalledRuntimeWorkflow(unittest.TestCase):
         self.assertEqual([s for s in entries if ":" not in s], [])
         expected_skills = ("feature-design", "feature-plan", "feature-execute",
                            "feature-review", "feature-decide", "feature-exchange", "feature-flow")
-        self.assertEqual(entries, sorted(f"{plugin}:{skill}"
-                                        for plugin in ("bridge-claude", "feature-workflow")
-                                        for skill in expected_skills))
+        # F-W19: only the workflow package carries feature-*; bridge-claude is role-only.
+        self.assertEqual(entries, sorted(f"feature-workflow:{skill}" for skill in expected_skills))
 
 
 if __name__ == "__main__":

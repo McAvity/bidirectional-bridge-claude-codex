@@ -16,6 +16,7 @@ Not product code and not loaded by the bridge runtime.
 python3 tools/pilot/workflow-versioning/contract_fixtures.py --check
 python3 -m unittest discover -s tools/pilot/workflow-versioning -v
 python3 tools/pilot/workflow-versioning/probe_clients.py --out <file>.json
+python3 tools/pilot/workflow-versioning/probe_clients.py --rescrub <file>.json   # re-apply redaction
 ```
 
 ## Guarantees of the client probe
@@ -31,7 +32,9 @@ python3 tools/pilot/workflow-versioning/probe_clients.py --out <file>.json
 - **No credentials.** Login is never attempted and nothing is copied; only `auth status` /
   `login status` and help texts are read. A logged-out isolated profile is reported as a named
   pilot prerequisite, not worked around.
-- **Evidence.** Output is redacted (`<home>`, `<run>`, native ids replaced by short digests).
+- **Evidence.** Output is redacted (`<home>`, `<run>`, native ids replaced by short digests;
+  session UUIDs and the encoded project folder inside paths become `<uuid>` /
+  `<encoded-project-path>`, R19-C03).
   Raw request captures and debug logs stay in the run root, outside Git. A `false` finding is a
   recorded client limitation; exit 2 means a model-free guarantee failed.
 

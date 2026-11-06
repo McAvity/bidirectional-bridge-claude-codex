@@ -585,7 +585,7 @@ def resolve(inp: ResolveInput) -> dict:
             return {"source": "none", "code": "BUNDLE_MISSING", "next_step": "restore exactly the locked identity (workflow restore)"}
         if inp.lock_bundle == "corrupt":
             return {"source": "none", "code": "BUNDLE_CORRUPT", "next_step": "restore exactly the locked identity (workflow restore)"}
-        if inp.pin == "old-runtime" and not inp.standalone:
+        if inp.pin == "old-runtime":  # a serving pin is never waived by --standalone (W17 rule)
             return {"source": "none", "code": "RUNTIME_WITHOUT_BINDING", "next_step": "one-time runtime upgrade; nothing is changed automatically"}
         if not inp.compatible and inp.pin == "binding-runtime" and not inp.standalone:
             return {"source": "none", "code": "WORKFLOW_INCOMPATIBLE"}
@@ -604,8 +604,8 @@ def resolve(inp: ResolveInput) -> dict:
     # new feature
     if inp.plugin_bundle == "absent":
         return {"source": "none", "code": "ENTRY_WITHOUT_BUNDLE", "next_step": "update the feature-workflow plugin"}
-    if inp.pin == "old-runtime" and not inp.standalone:
-        return {"source": "none", "code": "RUNTIME_WITHOUT_BINDING", "next_step": "one-time runtime upgrade, or explicit standalone work"}
+    if inp.pin == "old-runtime":  # W19-02 clarification: --standalone does not waive a serving pin
+        return {"source": "none", "code": "RUNTIME_WITHOUT_BINDING", "next_step": "one-time runtime upgrade; nothing is changed automatically"}
     if inp.pin == "missing-runtime" and not inp.standalone:
         return {"source": "none", "code": "RUNTIME_MISSING"}
     if not inp.compatible and inp.pin == "binding-runtime" and not inp.standalone:

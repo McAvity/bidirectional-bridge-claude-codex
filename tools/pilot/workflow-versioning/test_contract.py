@@ -111,5 +111,33 @@ class Model(unittest.TestCase):
         self.assertTrue(M.safe_relpath("claude/skills/x/SKILL.md"))
 
 
+class EvidenceRedaction(unittest.TestCase):
+    """R19-C03: identifiers inside paths are removed; the path structure the findings use stays."""
+
+    def test_synthetic_paths_lose_uuids_and_the_encoded_home(self):
+        import probe_clients as P
+
+        home = "/srv/synthetic-user"
+        raw = {
+            "transcripts": ["<run>/claude-config/projects/-srv-synthetic-user-tmp-probe-run-7-claude-project/0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b.jsonl"],
+            "session_files": ["<run>/codex-home/sessions/2026/11/06/rollout-2026-11-06T06-28-08-01A1AF54-20F4-7300-BC09-8C95E6352273.jsonl"],
+            "cases": [{"session_id": "4d1ddcc0-d8e5-49ca-90d4-a5fcaca5825c"}, {"session_id": "<id:984430a7>"}],
+            "untouched": "<run>/claude-market/plugins/w19wf",
+        }
+        out = P.scrub_paths(P.pseudonymize(raw), home)
+        self.assertEqual(out["transcripts"], ["<run>/claude-config/projects/<encoded-project-path>/<uuid>.jsonl"])
+        self.assertEqual(out["session_files"], ["<run>/codex-home/sessions/2026/11/06/rollout-2026-11-06T06-28-08-<uuid>.jsonl"])
+        self.assertRegex(out["cases"][0]["session_id"], r"^<id:[0-9a-f]{8}>$")
+        self.assertEqual(out["cases"][1]["session_id"], "<id:984430a7>")  # already pseudonymized: stable
+        self.assertEqual(out["untouched"], raw["untouched"])
+        self.assertTrue(out["transcripts"][0].startswith("<run>/claude-config/projects/"))  # finding still holds
+
+    def test_committed_evidence_carries_no_path_identifiers(self):
+        text = (HERE.parents[2] / "docs/features/F-W19-workflow-versioning/evidence/W19-01/clients.json").read_text()
+        self.assertNotRegex(text, r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+        self.assertNotIn(str(Path.home()).replace("/", "-"), text)
+        self.assertNotIn(str(Path.home()), text)
+
+
 if __name__ == "__main__":
     unittest.main()

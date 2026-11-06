@@ -717,7 +717,7 @@
         "AC-07"
       ],
       "detail": {
-        "next_step": "one-time runtime upgrade, or explicit standalone work",
+        "next_step": "one-time runtime upgrade; nothing is changed automatically",
         "source": "none"
       },
       "id": "RESOLVE-03",

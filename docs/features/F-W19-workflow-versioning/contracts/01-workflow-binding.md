@@ -1,10 +1,12 @@
 # Kontrakt W19-01 — wydanie, wybór, powiązanie i zmiana workflow
 
-Status: proponowany kontrakt W19-01 do lokalnego niezależnego review, 2026-11-06.
+Status: kontrakt W19-01 (review02 PASS), doprecyzowany w W19-02 2026-11-06 (R19-C01, R19-C04,
+§ 2.3, § 3.2–3.5, § 4.1, § 10.4; wykaz zmian w [ledgerze W19-02](../execution/W19-02/01.md)).
 Authority: [decyzja03](../decisions/03.md) (zakres i budżet [decyzji02](../decisions/02.md)).
 Wejście: [brief](../brief.md) SHA-256 `3856ac25d1c0f754846fefb6a88cc61e67e0ac3fe8b34a01d8a15ae898d6ee31`,
 [design](../design.md), [review01](../reviews/01-plan.md). Baza kodu `914c018` (feature-workflow,
-po wydaniu 0.7.0 z F-W20). Nic z tego kontraktu nie jest jeszcze zaimplementowane w produkcie.
+po wydaniu 0.7.0 z F-W20). W19-02 implementuje § 2–§ 4 i § 7.4 (`scripts/workflow-source/`,
+generator komponentowy); binding w bridge’u (§ 6–§ 7.3, § 10 bind) pozostaje dla W19-03/04.
 
 Wykonywalna semantyka: [contract_model.py](../../../../tools/pilot/workflow-versioning/contract_model.py),
 przykłady: [fixtures/](../../../../tools/pilot/workflow-versioning/fixtures/), próby klientów:
@@ -80,13 +82,21 @@ zmiana deklaracji zgodności jest zmianą wydania.
 - Tagi przyszłych wydań: `bridge-v<version>`, `workflow-v<version>`; istniejące `v*` zostają.
   Publikacja tagów nie należy do F-W19.
 - Źródło wydania: `scripts/workflow-source/release.json`, format `feature-workflow.release/v1`
-  (`component`, `version`, `tag`, `requires`, `notes`; przykład
+  (`component`, `version`, `tag`, `state`, `repository`, `requires`, `notes`; przykład
   [examples/release.json](../../../../tools/pilot/workflow-versioning/fixtures/examples/release.json)).
+  `state: "candidate"` oznacza lokalnego kandydata: bez tagu, publikacji i wpisu w rejestrze.
+  Pierwszy kandydat W19-02: `1.0.0`; wersja silnika (`package.json` 0.7.0) i pin bez zmian.
 - Rejestr: `scripts/workflow-source/releases.json`, format `feature-workflow.releases/v1`, lista
-  tylko dopisywana `{version, identity, commit}`. Generator/`--check` odrzuca wersję już
-  zarejestrowaną z inną identity (`VERSION_REUSED`) oraz wbudowywanie bieżącego HEAD lub wspólnego
+  tylko dopisywana `{version, identity, commit}`; wpis powstaje przy publikacji, po istnieniu
+  commita (poza F-W19). Generator/`--check` odrzuca wersję już zarejestrowaną z inną identity
+  (`VERSION_REUSED`, zanim cokolwiek zapisze) oraz wbudowywanie bieżącego HEAD lub wspólnego
   digestu w niezmieniony komponent. Analogiczna reguła dla silnika: `package_version` +
   zawartość paczek bridge’a.
+- **Bez samoodniesienia (R19-C01).** Ani `release.json`, ani `releases.json` nie są plikami
+  bundle’a ani paczek. Do `bundle.json` trafiają tylko wartości `version` i `requires` (w identity)
+  oraz proweniencja `source = {repository, release_source, commit: null}` (poza identity): commit,
+  który zawiera źródła, nie może nazwać sam siebie, więc zapisuje go dopiero rejestr. Dopisanie
+  przyszłego wydania do rejestru nie zmienia bajtów żadnego wydanego bundle’a.
 
 ## 3. Pakowanie: niezależne i nierekurencyjne
 
@@ -116,7 +126,10 @@ manifestu: [examples/bundle-A.json](../../../../tools/pilot/workflow-versioning/
 | --- | --- | --- |
 | `.agents/skills/feature-*/**` (w tym `references/{bridge-loop,local-delivery,multi-repo}.md`, `scripts/{feature_exchange,multi_repo}.py`, `agents/openai.yaml`) | workflow | bundle, oba warianty |
 | `docs/features/README.md` | workflow | bundle `*/workflow/README.md` |
-| `scripts/workflow-source/{select-source,workflow}.mjs`, `templates/workflow-source-preamble.md`, `release.json`, `releases.json` | workflow | bundle `*/scripts/` (kod kopiowany bajtowo) |
+| `scripts/workflow-source/{select-source,workflow,workflow-lib}.mjs` | workflow | bundle `*/scripts/` (kod kopiowany bajtowo) |
+| `scripts/plugin-packages/templates/workflow-source-preamble.md` | workflow | wstawiona w każdy `SKILL.md`; sam szablon nie jest plikiem bundle’a |
+| `scripts/workflow-source/release.json` | workflow | czytany przez generator (`version`, `requires` → `bundle.json`); plik poza bundle’em |
+| `scripts/workflow-source/releases.json` | workflow (wydania) | nigdy w bundle’u ani paczce (R19-C01) |
 | `.codex/skills/using-bridge`, `.claude/skills/using-bridge`, `scripts/plugin-packages/skills/bridge-upgrade`, instalator | silnik | `bridge-codex`, `bridge-claude` |
 | MCP, store, runner, setup | silnik | runtime |
 
@@ -131,20 +144,36 @@ w trybie `full`): poprawny `bundle.json` i format; identity przeliczona z manife
 wyprowadzone z `version`+identity; każda ścieżka bezpieczna (względna, bez `..`, `\`, absolutnej,
 pod `claude/` lub `codex/`); brak dowiązań symbolicznych w całym drzewie (także katalogów);
 zbiór plików na dysku = `files` (brak → `BUNDLE_INCOMPLETE`, nadmiar → `BUNDLE_EXTRA_FILES`);
-SHA-256 każdego pliku. Kody i przykłady: § 9, fixtures `BUNDLE-*`.
+SHA-256 każdego pliku; `mode: "755"` wymaga bitu wykonania właściciela (brak → `BUNDLE_CORRUPT`),
+inne bity uprawnień nie są porównywane, bo magazyn odbiera prawo zapisu. `mode` wynika z pliku
+wariantu (generator nadaje 755 tylko skryptom `scripts/*.mjs`), nie z rozszerzenia. Kody i
+przykłady: § 9, fixtures `BUNDLE-*`, testy `tests/test_workflow_bundle.py`.
 
 ### 3.4 Magazyn
 
 - Publikacja: kopia do `<store>/.staging-<workflow_id>-<pid>`, pełna weryfikacja kopii,
   `rename` do `<store>/<workflow_id>`, odebranie prawa zapisu plikom. Przerwanie zostawia tylko
   `.staging-*`, którego nikt nie czyta jako bundle’a; ponowienie publikuje (`STORE-03`).
-- Istniejący katalog: weryfikacja; ta sama identity → no-op (`STORE-01`), inna →
-  `STORE_ID_COLLISION`, bez nadpisania (`STORE-02`); uszkodzony → kod weryfikacji, bez naprawy
-  w miejscu.
-- Odtworzenie (`workflow.mjs restore --identity <id> [--from <plugin-root>|--source <repo> --commit <sha>]`):
-  tylko ze źródła dającego **dokładnie** tę identity — paczki pluginu z `bundle/` o tej identity
-  albo regeneracji ze wskazanego commita i porównania identity. Żadnego „najnowszego”, żadnej sieci
-  bez jawnego `--source`. Po publikacji cache marketplace można usunąć (`STORE-04`, AC-03/08).
+- Istniejący katalog: weryfikacja; ta sama identity → `ALREADY_PRESENT` (`STORE-01`), inny
+  poprawny bundle → `STORE_ID_COLLISION`, bez nadpisania (`STORE-02`); uszkodzony →
+  `STORE_ENTRY_CORRUPT` z kodem weryfikacji, publikacja niczego nie naprawia.
+- Odtworzenie (R19-C04): `workflow.mjs restore --identity <id> (--from <plugin-root|bundle> |
+  --source <lokalne repo> --commit <40 hex>)`.
+  1. Źródło jest w pełni weryfikowane i musi mieć **dokładnie** tę identity (inaczej
+     `BUNDLE_IDENTITY_MISMATCH`/kod weryfikacji, nic się nie przesuwa). `--source` przyjmuje tylko
+     lokalną ścieżkę (URL → `RESTORE_SOURCE_UNSUPPORTED`), rozpakowuje `git archive` commita do
+     katalogu tymczasowego i uruchamia jego generator `--component workflow`.
+  2. Wpis zweryfikowany → `ALREADY_PRESENT`. Poprawny bundle innej identity pod tą nazwą →
+     `STORE_ID_COLLISION`, bez zmian.
+  3. Wpis uszkodzony nie jest naprawiany w miejscu: zostaje przemianowany (ten sam katalog
+     nadrzędny, bajty i uprawnienia nietknięte) na `.quarantine-<workflow_id>-<UTC>-<rand>`, a obok
+     powstaje `<quarantine>.json` (`feature-workflow.quarantine/v1`: identity, kod przyczyny,
+     SHA-256 uszkodzonego `bundle.json`, czas). Dopiero potem następuje zwykła publikacja.
+  4. Wynik `RESTORED` z nazwą kwarantanny; nowy wpis jest ponownie weryfikowany. Kwarantanny nikt
+     nie czyta jako bundle’a i nic jej automatycznie nie usuwa.
+  Żadnego „najnowszego”, żadnej sieci. Po publikacji cache marketplace można usunąć (`STORE-04`,
+  AC-03/08).
+- `workflow.mjs sweep-staging` usuwa tylko przerwane `.staging-*`, nigdy wpisów ani kwarantann.
 - Standalone używa tylko `<bridge-home>/workflows/`; bez runtime’u, bazy i setupu projektu.
 
 ### 3.5 Paczki pluginów i marketplace
@@ -159,8 +188,14 @@ SHA-256 każdego pliku. Kody i przykłady: § 9, fixtures `BUNDLE-*`.
   wyłącznie wejść silnika.
 - Generator: `--component bridge|workflow|all` dla zapisu i `--check`. Workflow-only zmienia tylko
   dwa drzewa `plugins/feature-workflow-*` i wpisy `feature-workflow` obu marketplace; bridge-only
-  zostawia te drzewa i wpisy bajtowo identyczne. Test AC-01 porównuje pełne inwentaryzacje drzew
-  drugiego komponentu oraz kanoniczny JSON jego wpisu, nie cały wspólny plik marketplace (`REL-03`).
+  zostawia te drzewa i wpisy bajtowo identyczne. Zapis jednego komponentu przepisuje wpisy drugiego
+  w plikach marketplace dosłownie z istniejących plików (nie regeneruje ich); `--check --component`
+  porównuje drzewa i wpisy tylko wybranego komponentu, `--check` całość. Test AC-01 porównuje pełne
+  inwentaryzacje drzew drugiego komponentu oraz kanoniczny JSON jego wpisu, nie cały wspólny plik
+  marketplace (`REL-03`, `tests/test_workflow_bundle.py::IndependentGeneration`).
+- Digest paczek bridge’a (`GENERATED.json.source_digest`) obejmuje tylko role, skill upgrade,
+  pliki instalatora i szablon wejścia Codex; digest workflow — skille, guide, reader, helper,
+  bibliotekę, szablon preambuły i `release.json`, bez rejestru.
 - Nowe `bridge-claude` nie zawiera `feature-*` ani `workflow/README.md`; zawiera `using-bridge`,
   `bridge-upgrade` i instalator. Historyczne runtime’y i ich paczki pozostają nietknięte.
 
@@ -174,12 +209,17 @@ odmowa z kodem, 1 błąd helpera):
 
 | Operacja | Skutek |
 | --- | --- |
-| `resolve --feature <dir|id> | --new [--standalone]` | czysty odczyt (§ 4.2); następca `select-source` |
-| `begin --slug <slug> [--feature-id <id>]` | weryfikuje bundle **własnego** pluginu, publikuje do magazynu, tworzy katalog draft (lub wskazany katalog featura bez locka) i lock gen 1 |
+| `resolve --feature <dir|id> | --new [--entry <skill>] [--standalone]` | czysty odczyt (§ 4.2); następca `select-source` |
+| `begin [--feature-id <id>] [--standalone]` | weryfikuje bundle **własnego** wejścia (układ pluginu `<root>/bundle/` albo magazynu `<store>/<id>/<client>/`), sprawdza zgodność, publikuje do magazynu, tworzy `.draft-<token>` (lub katalog featura bez locka; istniejący lock → `LOCK_EXISTS`) i lock gen 1 |
 | `finalize --draft <token> --feature-id <id>` | draft → finalny katalog (§ 4.4) |
-| `adopt --feature <dir> --identity <id> --reason <text>` | jawny wybór dla istniejącego featura bez locka w standalone (decyzja użytkownika) |
-| `switch --feature <dir> --to <identity> --expected-generation <n>` | tylko standalone (§ 7.4); z bridge’em odmowa `SWITCH_REQUIRES_BRIDGE` |
-| `verify --identity <id>`, `verify-plugin [--root]`, `restore …` | § 3.3–3.5 |
+| `adopt --feature <dir|id> --explicit` | jawny wybór bieżącego wejścia dla istniejącego featura bez locka, tylko poza projektem z pinem; bez `--explicit` → `EXPLICIT_CHOICE_REQUIRED`; lock bez treści uzasadnienia (dane użytkownika zostają w decyzji/ledgerze) |
+| `switch --feature <dir|id> --to <identity> --expected-generation <n> [--from <plugin|bundle>]` | tylko standalone (§ 7.4); projekt z pinem → `SWITCH_REQUIRES_BRIDGE` |
+| `verify --identity <id> | --bundle <dir>`, `verify-plugin [--root]`, `restore …`, `sweep-staging` | § 3.3–3.5 |
+
+Wynik: jeden obiekt `feature-workflow.helper/v1` (`operation`, `ok`, `code`, dane); exit 0 wynik,
+3 odmowa, 1 błąd helpera. Kod: `scripts/workflow-source/workflow.mjs` + `workflow-lib.mjs`
+(biblioteka bez procesów potomnych; helper uruchamia tylko `git` i `tar`). `FEATURE_MISSING`:
+wskazany feature nie istnieje (dla nowego `begin`/`resolve --new`).
 
 `select-source.mjs` zostaje jako zgodny alias: bez argumentu featura zwraca format v1 jak dziś;
 z `--feature`/`--new` deleguje do `resolve` (v2). Status/doctor nie wywołują operacji zapisujących.
@@ -195,7 +235,7 @@ Linia do ledgera: `INSTRUCTIONS=bundle:<workflow_id> IDENTITY=<identity> GENERAT
 | Feature | Projekt | Wynik (`code`) | Fixture |
 | --- | --- | --- | --- |
 | nowy | runtime z binding / bez bridge’a | `SELECTION_REQUIRED` → `begin` z bieżącego wejścia | RESOLVE-01/02 |
-| nowy | pin runtime’u bez binding (≤0.7.0) | `RUNTIME_WITHOUT_BINDING`: jednorazowy upgrade albo jawne standalone; nic nie jest zmieniane | RESOLVE-03 |
+| nowy | pin runtime’u bez binding (≤0.7.0) | `RUNTIME_WITHOUT_BINDING`: jednorazowy upgrade; nic nie jest zmieniane; `--standalone` nie uchyla działającego pina (reguła W17, doprecyzowanie W19-02) | RESOLVE-03 |
 | nowy | wejście bez `bundle/` (stary plugin) | `ENTRY_WITHOUT_BUNDLE` | RESOLVE-12 |
 | nowy/zablokowany | niezgodny workflow | `WORKFLOW_INCOMPATIBLE` z listą braków | RESOLVE-11 |
 | z lockiem | bundle w magazynie zweryfikowany | `BOUND_BUNDLE`: instrukcje z `<store>/<workflow_id>/<client>/` | RESOLVE-07/10 |
@@ -433,11 +473,14 @@ bez zmian; import nie zmienia lokalnego wyboru.
 | --- | --- | --- |
 | `FORMAT_INVALID`, `FORMAT_UNSUPPORTED`, `LOCK_FORMAT_UNSUPPORTED` | nieznany/niepoprawny format | aktualizacja helpera/runtime’u |
 | `BUNDLE_MISSING`, `BUNDLE_CORRUPT`, `BUNDLE_INCOMPLETE`, `BUNDLE_EXTRA_FILES`, `BUNDLE_SYMLINK`, `BUNDLE_PATH_UNSAFE`, `BUNDLE_RECURSIVE`, `BUNDLE_RUNTIME_OWNED`, `BUNDLE_IDENTITY_MISMATCH` | § 3.3 | `restore` dokładnej identity |
-| `STORE_ID_COLLISION` | inny bundle pod tą nazwą | diagnoza ręczna; bez nadpisania |
+| `STORE_ID_COLLISION` | inny poprawny bundle pod tą nazwą | diagnoza ręczna; bez nadpisania ani kwarantanny |
+| `STORE_ENTRY_CORRUPT`, `STORE_ENTRY_MISPLACED` | wpis magazynu nie weryfikuje się / leży pod inną nazwą | `restore` (kwarantanna, § 3.4) |
+| `RESTORE_SOURCE_UNSUPPORTED`, `BUNDLE_TARGET_EXISTS` | źródło odtworzenia nie jest lokalnym commitem z generatorem workflow / zapis bundle’a do istniejącego katalogu | wskazać plugin/bundle tej identity |
 | `VERSION_REUSED` | numer wydania z innymi bajtami | nowy numer |
 | `LOCK_INVALID` | § 4.3 | przywrócić z historii Git / `bridge_workflow_project` |
 | `DRAFT_MISSING`, `DRAFT_ALREADY_ASSIGNED`, `FEATURE_DIR_COLLISION`, `ID_CHANGE_AFTER_BIND` | § 4.4 | decyzja użytkownika o katalogach |
 | `SELECTION_REQUIRED`, `ENTRY_WITHOUT_BUNDLE`, `ENTRY_NOT_IN_BUNDLE`, `ENTRY_BUNDLE_CORRUPT` | § 4.2 | `begin`/`adopt`, aktualizacja pluginu |
+| `FEATURE_MISSING`, `LOCK_EXISTS`, `EXPLICIT_CHOICE_REQUIRED` | § 4.1 | wskazać istniejący feature / nie zastępować locka / jawna decyzja |
 | `RUNTIME_WITHOUT_BINDING`, `RUNTIME_MISSING`, `BINDING_CONTRACT_UNSUPPORTED`, `CAPABILITY_MISSING`, `RUNTIME_KNOWN_INCOMPATIBLE`, `WORKFLOW_INCOMPATIBLE`, `DOWNGRADE_WOULD_ORPHAN_BINDING` | § 5 | wskazany upgrade; nic automatycznie |
 | `WORKFLOW_UNBOUND`, `WORKFLOW_ALREADY_BOUND`, `WORKFLOW_ACK_MISMATCH`, `WORKFLOW_EXECUTOR_UNSUPPORTED` | § 6 | bind / ponowny `resolve` |
 | `WORKFLOW_SWITCH_ACTIVE_ATTEMPT`, `WORKFLOW_SWITCH_WAITING_USER`, `WORKFLOW_GENERATION_CONFLICT`, `WORKFLOW_SWITCH_PENDING`, `SWITCH_REQUIRES_BRIDGE` | § 7 | rozliczyć próbę / dokończyć tym samym kluczem |
@@ -480,7 +523,8 @@ różne → `LEGACY_AMBIGUOUS` z kandydatami i jawnym wyborem użytkownika (LEGA
 
 Istniejący feature: `LEGACY_PINNED_RUNTIME`, ścieżka v1, bez locka i udawanego bindingu
 (RESOLVE-04). Nowy feature: `RUNTIME_WITHOUT_BINDING` z diagnozą brakującego kontraktu i wskazaniem
-jednorazowego upgrade; plugin go nie wykonuje (RESOLVE-03). Feature z lockiem po cofnięciu pina:
+jednorazowego upgrade; plugin go nie wykonuje, a `--standalone` nie uchyla działającego pina
+(RESOLVE-03). Feature z lockiem po cofnięciu pina:
 `RUNTIME_WITHOUT_BINDING` (RESOLVE-13).
 
 ### 10.5 Profil zgodności legacy
@@ -551,9 +595,12 @@ Przykłady są syntetyczne i dowodzą semantyki kontraktu, nie realizacji AC w p
 
 ## 13. Przekazanie, ograniczenia i warunki pilota
 
-- **W19-02**: `release.json`/`releases.json`, `bundle.json`, identity (§ 2), generator
-  komponentowy, `bundle/` w paczkach, `workflow.mjs` begin/finalize/verify/restore/resolve/switch
-  standalone, magazyn. Zgodność z fixtures przez porównanie identity dla tych samych plików.
+- **W19-02** (zrealizowane, [ledger](../execution/W19-02/01.md)): `release.json`/`releases.json`,
+  `bundle.json`, identity (§ 2), generator komponentowy, `bundle/` w paczkach, `workflow.mjs`
+  begin/finalize/adopt/verify/restore/resolve/switch standalone, magazyn z kwarantanną. Zgodność z
+  modelem referencyjnym sprawdzana testem (`ReferenceModelAgreement`). Dla W19-03/04 biblioteka
+  eksportuje `verifyBundle`, `storeEntry`, `storePublish`, `storeRestore`, `checkCompatibility`,
+  `runtimeAdvertisement`, `readLock`/`writeLock`, `legacyEvidence`/`featureRecords`.
 - **W19-03**: schemat 7, `FeatureRecord.workflow`, operacje § 6.3, rezerwacja § 6.4, switch § 7,
   legacy § 10, downgrade § 5.4.
 - **W19-04**: preambuła → `resolve`, blok § 6.5, runner z paczkami z próby, `select-source` v1/v2.

@@ -222,7 +222,7 @@
       }
     ],
     "transcripts": [
-      "<run>/claude-config/projects/-home-marcin-tmp-w19-01-probes-clients-20261106-062804-3866823-claude-project/f9ac289a-e005-4065-b80a-ea40fc7665d1.jsonl"
+      "<run>/claude-config/projects/<encoded-project-path>/<uuid>.jsonl"
     ]
   },
   "codex": {
@@ -320,7 +320,7 @@
     "installed_path_B": "<run>/codex-home/plugins/cache/w19m/w19wf/2.0.0",
     "old_cache_version_exists_after_update": false,
     "session_files": [
-      "<run>/codex-home/sessions/2026/11/06/rollout-2026-11-06T06-28-08-01a1af54-20f4-7300-bc09-8c95e6352273.jsonl"
+      "<run>/codex-home/sessions/2026/11/06/rollout-2026-11-06T06-28-08-<uuid>.jsonl"
     ],
     "steps": [
       {

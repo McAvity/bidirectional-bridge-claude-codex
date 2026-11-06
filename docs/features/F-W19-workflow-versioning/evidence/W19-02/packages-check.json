@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "component": "all",
+  "problems": [],
+  "forbidden_references": [],
+  "source_digest": "1593472d002a50d2b78b4d3eec8afb95245663a3294fe3e58a0c8777ec86153c",
+  "bridge_version": "0.7.0",
+  "workflow_version": "1.0.0",
+  "workflow_identity": "sha256:eee1c9c7381d82d99d1c28b6abab5487135ab9c048d60be1aaaed95a2b973d73",
+  "workflow_id": "1.0.0-eee1c9c7381d"
+}

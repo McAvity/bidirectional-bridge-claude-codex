@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-review"
+  short_description: "Review plans, contracts and delivered behavior"
+  default_prompt: "Use $feature-workflow:feature-review for the selected feature and follow <package>/workflow/README.md."

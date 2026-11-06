@@ -128,15 +128,17 @@ class GeneratedWorkflowPackages(unittest.TestCase):
         for package in BRIDGE_PACKAGES:
             self.assertTrue((package / "scripts" / "bridge.mjs").is_file())
             self.assertTrue((package / "scripts" / "plugin-packages" / "bridge-plugin.mjs").is_file())
-        # The executor package keeps the canonical skills: the runtime must never point onward.
-        for skill in ENTRIES:
-            self.assertNotIn("Instruction source — check first", (claude / "skills" / skill / "SKILL.md").read_text())
+        # F-W19 (W19-02): the executor role package is role-only. The workflow is its own component,
+        # so no feature-* copy can shadow the selected workflow by plugin name.
+        self.assertEqual(sorted(p.name for p in (claude / "skills").iterdir()), ["bridge-upgrade", "using-bridge"])
+        self.assertFalse((claude / "workflow").exists())
 
     def test_workflow_packages_carry_no_installer_upgrade_role_or_receipt_helper(self):
         for client, package in PACKAGES.items():
             with self.subTest(client=client):
                 files = sorted(str(p.relative_to(package)) for p in package.rglob("*") if p.is_file())
-                self.assertEqual([f for f in files if f.startswith("scripts/")], ["scripts/select-source.mjs"])
+                # F-W19: the reader plus the standalone workflow helper and its library.
+                self.assertEqual([f for f in files if f.startswith("scripts/")], ["scripts/select-source.mjs", "scripts/workflow-lib.mjs", "scripts/workflow.mjs"])
                 for forbidden in ("bridge-upgrade", "using-bridge", "bridge.mjs", "package.json", "node_modules"):
                     self.assertFalse(any(forbidden in f for f in files), forbidden)
                 for path in package.rglob("*.py"):
@@ -185,7 +187,6 @@ class GeneratedWorkflowPackages(unittest.TestCase):
         procedure itself; the coordinator part, bridge-loop and local-delivery link it too."""
         roots = {"canonical": REPO_ROOT / ".agents" / "skills"}
         roots.update({client: package / "skills" for client, package in PACKAGES.items()})
-        roots["bridge-claude"] = BRIDGE_PACKAGES[1] / "skills"
         for name, skills in roots.items():
             with self.subTest(source=name):
                 text = (skills / "feature-execute" / "SKILL.md").read_text()
@@ -212,7 +213,7 @@ class GeneratedWorkflowPackages(unittest.TestCase):
 
     def test_packaged_multi_repo_helper_is_the_canonical_file(self):
         source = REPO_ROOT / ".agents" / "skills" / "feature-execute" / "scripts" / "multi_repo.py"
-        for package in [*PACKAGES.values(), BRIDGE_PACKAGES[1]]:
+        for package in PACKAGES.values():
             with self.subTest(package=package.name):
                 self.assertEqual(sha(package / "skills" / "feature-execute" / "scripts" / "multi_repo.py"), sha(source))
 

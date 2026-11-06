@@ -194,7 +194,7 @@ def generate(out: Path) -> None:
         rec.case("LOCK-01", ["AC-08"], "lock before brief/index validates", lambda: (M.validate_lock(lock_begin), {"code": "VALID"})[1])
         for cid, mutate, scenario in (
             ("LOCK-02", lambda l: l["origin"].__setitem__("session_id", "x"), "lock with a native session id"),
-            ("LOCK-03", lambda l: l["origin"].__setitem__("plugin_root", "/home/u/.codex/plugins/cache"), "lock with an absolute personal path"),
+            ("LOCK-03", lambda l: l["origin"].__setitem__("plugin_root", "/srv/u/.codex/plugins/cache"), "lock with an absolute personal path"),
             ("LOCK-04", lambda l: l.__setitem__("status", "running"), "lock with a lifecycle status"),
             ("LOCK-05", lambda l: l.__setitem__("generation", 2), "generation without matching history"),
         ):

@@ -1,7 +1,7 @@
 {
   "name": "bridge-claude",
   "version": "0.7.0",
-  "description": "Feature workflow and bridge role instructions for Claude Code.",
+  "description": "Bridge role, setup and upgrade instructions for Claude Code; the runtime's executor role package.",
   "author": {
     "name": "claude-codex-bridge"
   },

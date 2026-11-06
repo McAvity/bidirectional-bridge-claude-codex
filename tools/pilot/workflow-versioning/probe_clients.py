@@ -397,10 +397,32 @@ def pseudonymize(value):
     """Native session/thread ids of the disposable profiles are replaced by a short digest: the
     findings need equality only, and committed evidence carries no native identifiers."""
     if isinstance(value, dict):
-        return {k: (f"<id:{hashlib.sha256(v.encode()).hexdigest()[:8]}>" if k in {"session_id", "thread_id"} and isinstance(v, str) else pseudonymize(v))
+        return {k: (f"<id:{hashlib.sha256(v.encode()).hexdigest()[:8]}>" if k in {"session_id", "thread_id"} and isinstance(v, str) and not v.startswith("<id:") else pseudonymize(v))
                 for k, v in value.items()}
     if isinstance(value, list):
         return [pseudonymize(v) for v in value]
+    return value
+
+
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
+
+
+def scrub_paths(value, home: str | None = None):
+    """Remove identifiers that live inside *paths* (R19-C03): native session UUIDs in transcript and
+    rollout file names, and the encoded home/run directory Claude uses as a project folder name
+    (`/srv/u/x` → `-srv-u-x`). Structure (`<run>/claude-config/projects/<project>/<uuid>.jsonl`)
+    is what the findings rely on, so it is kept."""
+    home = home if home is not None else str(Path.home())
+    encoded = home.replace("/", "-")
+    if isinstance(value, dict):
+        return {k: scrub_paths(v, home) for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrub_paths(v, home) for v in value]
+    if isinstance(value, str):
+        text = UUID.sub("<uuid>", value)
+        if encoded and encoded != "-":
+            text = re.sub(re.escape(encoded) + r"[^/\"]*", "<encoded-project-path>", text)
+        return text
     return value
 
 
@@ -414,7 +436,12 @@ def provenance() -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--rescrub", type=Path, help="apply the current redaction to an existing result file in place")
     args = parser.parse_args()
+    if args.rescrub:
+        data = json.loads(args.rescrub.read_text())
+        args.rescrub.write_text(json.dumps(scrub_paths(pseudonymize(data)), indent=2, sort_keys=True) + "\n")
+        return 0
     root = W.run_root("clients")
     before = W.personal_profile_fingerprint()
     result: dict = {"probe": "w19-01-clients", "run_root": rel(root, root), "provenance": provenance(), "hosts": L.host_versions()}
@@ -428,7 +455,7 @@ def main() -> int:
     if before != after:
         result["personal_profile_changes"] = sorted(k for k in before if before[k] != after.get(k))
     result["raw_captures_outside_git"] = rel(root, Path("/nonexistent"))
-    text = json.dumps(L.redact(pseudonymize(result)), indent=2, sort_keys=True)
+    text = json.dumps(scrub_paths(L.redact(pseudonymize(result))), indent=2, sort_keys=True)
     print(text)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
