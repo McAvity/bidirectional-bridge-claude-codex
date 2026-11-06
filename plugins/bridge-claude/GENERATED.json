@@ -7,7 +7,7 @@
     ".claude/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "4068d0cf125668e8ad70cf3878fd5a15be69870a24d558d8b8c941b452193da6",
+  "source_digest": "28d9e4b0690efadc60b2d7ce1bfd02dd8bdfadf05a6e2455e19f3eec3d2811e4",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -39,7 +39,7 @@
     },
     {
       "path": "scripts/diagnostics/project.mjs",
-      "sha256": "e022dab576ee7246637d07a87ecd59b86c302b1445b710f31842354bbd8f482b"
+      "sha256": "75241e60ee5072da369e2795c38da667710ca2bb51e3ab040a8e91f025ee1dba"
     },
     {
       "path": "scripts/diagnostics/safe-read.mjs",
@@ -71,11 +71,11 @@
     },
     {
       "path": "scripts/setup/distribution.mjs",
-      "sha256": "0559e4f2bad88f11d18d0cd19a988323d222942db2d08b0383bb455f32c4de65"
+      "sha256": "2161e0f6121652fcfd17143622daf4980a5325f7555643ff119ee98b52b28a73"
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "a692fdd29c41950108e0639afbb751ecd0b44b3d30de6ab624cdb24a460b592d"
+      "sha256": "5ee7cf70840a73499db062bc9639c9cf7457d4a85f1796e5b6faa3ad7258163b"
     },
     {
       "path": "scripts/setup/process-observer.py",
@@ -91,7 +91,7 @@
     },
     {
       "path": "scripts/setup/workflow-status.mjs",
-      "sha256": "59bed372364a126e5be57c2948c18b486d700ff16f2020313039a53c7f1d6866"
+      "sha256": "a086c47ae25a0a007479929c733fe45f17d8822e58df871a61196213527db310"
     },
     {
       "path": "scripts/setup/workspace.mjs",

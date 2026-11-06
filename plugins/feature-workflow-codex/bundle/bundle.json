@@ -19,7 +19,7 @@
     {
       "mode": "755",
       "path": "claude/scripts/workflow.mjs",
-      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
     },
     {
       "mode": "644",
@@ -139,7 +139,7 @@
     {
       "mode": "755",
       "path": "codex/scripts/workflow.mjs",
-      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
     },
     {
       "mode": "644",
@@ -243,7 +243,7 @@
     }
   ],
   "format": "feature-workflow.bundle/v1",
-  "identity": "sha256:f8c335947c26628af7aeb6480963c5f8d02fbe035760fcf4bb538aca324f4a6c",
+  "identity": "sha256:2cd9fe48f204c340a0290be24dc0abe1ef8a4836782bc746eca66dcef57ff238",
   "kind": "release",
   "requires": {
     "bridge": {
@@ -282,5 +282,5 @@
     }
   },
   "version": "1.0.0",
-  "workflow_id": "1.0.0-f8c335947c26"
+  "workflow_id": "1.0.0-2cd9fe48f204"
 }

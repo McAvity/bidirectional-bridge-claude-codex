@@ -130,6 +130,42 @@ describe("workflow status layers", () => {
     expect(status.features.find((x: any) => x.feature_id === "F-1")).toMatchObject({ bundle: null, lock: null });
   });
 
+  it("R19-I06: an unreadable database or a missing advertised helper is unknown, never 0/0 OK, and nothing is written", async () => {
+    const f = await fixture();
+    const notSqlite = join(f.root, "not-a-db.db");
+    writeFileSync(notSqlite, "PRIVATE parser input that must never be echoed\n".repeat(200));
+    const before = tree(f.root);
+    const status = await workflowStatus({ runtime: f.runtime, worktree: f.ws, databasePath: notSqlite, env: f.env });
+    expect(tree(f.root)).toEqual(before);
+    expect(status.database).toMatchObject({ state: "unreadable", available: false });
+    expect(status.database.error_code).toMatch(/^[A-Z0-9_]{1,40}$/u);
+    expect(JSON.stringify(status)).not.toContain("PRIVATE parser input");
+    expect(status.warnings.map((w: any) => w.code)).toContain("DATABASE_UNREADABLE");
+    const checks: any[] = [];
+    workflowCheck((id: string, s: string, code: string, summary: string, extra: any) => checks.push({ id, s, code, summary, ...extra }), status);
+    expect(checks[0]).toMatchObject({ id: "workflow", s: "unknown", code: "WORKFLOW_DATABASE_UNREADABLE" });
+    expect(checks[0].summary).not.toContain("0/0");
+    const meta = distributionMetadata({ home: join(f.root, "home"), worktree: f.ws, workflow: status });
+    expect(meta.workflow).toMatchObject({ database: "unreadable", features_total: null, features_bound: null });
+    expect(projectDistribution(meta, createAliases()).workflow).toMatchObject({ database: "unreadable", features_total: null, features_bound: null });
+
+    // A missing database file is not a failure: no feature exists yet.
+    const absent = await workflowStatus({ runtime: f.runtime, worktree: f.ws, databasePath: join(f.root, "missing.db"), env: f.env });
+    expect(absent.database).toMatchObject({ state: "absent" });
+    expect(absent.warnings.map((w: any) => w.code)).not.toContain("DATABASE_UNREADABLE");
+
+    // A runtime that advertises binding but whose helper cannot be loaded verifies nothing.
+    const broken = mkdtempSync(join(tmpdir(), "w19-06-nohelper-"));
+    cleanup.push(broken);
+    const helperless = await workflowStatus({ runtime: { path: broken, manifest: f.runtime.manifest }, worktree: f.ws, databasePath: f.db, env: f.env });
+    expect(helperless.runtime).toMatchObject({ advertises_binding: true, helper_available: false });
+    expect(helperless.features.find((x: any) => x.feature_id === "F-1")).toMatchObject({ bundle: "unverified", lock: { state: "unverified" } });
+    expect(helperless.warnings.map((w: any) => w.code)).toContain("HELPER_UNAVAILABLE");
+    const more: any[] = [];
+    workflowCheck((id: string, s: string, code: string, summary: string, extra: any) => more.push({ id, s, code, ...extra }), helperless);
+    expect(more[0]).toMatchObject({ s: "unknown", code: "WORKFLOW_HELPER_UNAVAILABLE" });
+  });
+
   it("projects the distribution summary through the export allowlist with observation null", async () => {
     const f = await fixture();
     const status = await workflowStatus({ runtime: f.runtime, worktree: f.ws, databasePath: f.db, env: f.env });

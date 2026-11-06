@@ -101,15 +101,31 @@ export function detectEntries({ env = process.env, userHome = homedir() } = {}) 
   return out;
 }
 
-/** Feature bindings and admitted attempts, from a readonly database handle. */
+/**
+ * A safe machine code for a failed read: SQLite's own result-code name or an errno, never the
+ * message (it may quote parser input). R19-I06.
+ */
+const SQLITE_CODES = { 1: "SQLITE_ERROR", 5: "SQLITE_BUSY", 6: "SQLITE_LOCKED", 10: "SQLITE_IOERR", 11: "SQLITE_CORRUPT", 14: "SQLITE_CANTOPEN", 23: "SQLITE_AUTH", 26: "SQLITE_NOTADB" };
+function safeCode(error, fallback) {
+  const primary = typeof error?.errcode === "number" ? SQLITE_CODES[error.errcode & 0xff] : null;
+  if (primary) return primary;
+  return typeof error?.code === "string" && /^[A-Z0-9_]{1,40}$/u.test(error.code) ? error.code : fallback;
+}
+
+/**
+ * Feature bindings and admitted attempts, from a readonly database handle. `state` keeps three
+ * cases apart (R19-I06): `not-located` (no path), `absent` (no database yet: no feature exists) and
+ * `unreadable` (a read failed: the bindings are unknown, never "zero").
+ */
 export function readBindings(databasePath) {
-  if (!databasePath || !existsSync(databasePath)) return { available: false, features: [], admitted: [] };
+  if (!databasePath) return { state: "not-located", available: false, features: [], admitted: [] };
+  if (!existsSync(databasePath)) return { state: "absent", available: false, features: [], admitted: [] };
   let db;
   try {
     const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
     db = new DatabaseSync(databasePath, { readOnly: true });
   } catch (error) {
-    return { available: false, error: error?.code ?? "SQLITE_CANTOPEN", features: [], admitted: [] };
+    return { state: "unreadable", available: false, error_code: safeCode(error, "SQLITE_CANTOPEN"), features: [], admitted: [] };
   }
   try {
     const features = [];
@@ -137,9 +153,9 @@ export function readBindings(databasePath) {
       ? db.prepare("SELECT feature_id, identity, generation, kind, COUNT(*) AS attempts FROM attempt_workflow GROUP BY feature_id, identity, generation, kind ORDER BY feature_id, generation").all()
         .map((r) => ({ feature_id: r.feature_id, identity: r.identity, generation: Number(r.generation), kind: r.kind, attempts: Number(r.attempts) }))
       : [];
-    return { available: true, attempt_table: Boolean(hasAttempts), features, admitted };
+    return { state: "read", available: true, attempt_table: Boolean(hasAttempts), features, admitted };
   } catch (error) {
-    return { available: false, error: error?.code ?? "SQLITE_ERROR", features: [], admitted: [] };
+    return { state: "unreadable", available: false, error_code: safeCode(error, "SQLITE_ERROR"), features: [], admitted: [] };
   } finally {
     db.close();
   }
@@ -181,7 +197,16 @@ export async function workflowStatus({ runtime = null, worktree = null, database
   const db = readBindings(databasePath);
   const features = [];
   for (const feature of db.features) {
+    if (feature.unparsable) {
+      features.push({ feature_id: feature.feature_id, state: null, binding: null, lock: null, bundle: null, unreadable: true });
+      continue;
+    }
     const out = { feature_id: feature.feature_id, state: feature.state ?? null, binding: feature.binding, lock: null, bundle: null };
+    // An advertised helper that cannot be loaded verifies nothing; say so instead of a blank.
+    if (feature.binding && advert && !lib) {
+      out.lock = { state: "unverified" };
+      out.bundle = "unverified";
+    }
     if (feature.binding && lib && worktree) {
       out.lock = lockState(lib, worktree, feature.binding);
       try {
@@ -194,6 +219,9 @@ export async function workflowStatus({ runtime = null, worktree = null, database
     features.push(out);
   }
   const warnings = [];
+  if (db.state === "unreadable") warnings.push({ code: "DATABASE_UNREADABLE", error_code: db.error_code });
+  if (db.state === "not-located" && advert) warnings.push({ code: "DATABASE_NOT_LOCATED" });
+  if (advert && !lib) warnings.push({ code: "HELPER_UNAVAILABLE" });
   for (const entry of [...entries.claude, ...entries.codex]) {
     if (entry.stale_feature_copies) warnings.push({ code: "STALE_PERSONAL_FEATURE_ENTRIES", plugin: entry.plugin, marketplace: entry.marketplace, version: entry.version });
     if (entry.plugin === "feature-workflow" && (entry.bootstrap !== "resolve" || !entry.bundle_identity)) {
@@ -201,15 +229,19 @@ export async function workflowStatus({ runtime = null, worktree = null, database
     }
   }
   for (const feature of features) {
+    if (feature.unreadable) {
+      warnings.push({ code: "FEATURE_RECORD_UNREADABLE", feature_id: feature.feature_id });
+      continue;
+    }
     if (!feature.binding && advert && !["accepted", "rejected", "cancelled"].includes(feature.state)) warnings.push({ code: "FEATURE_UNBOUND", feature_id: feature.feature_id });
-    if (feature.bundle && feature.bundle !== "verified") warnings.push({ code: "BUNDLE_UNAVAILABLE", feature_id: feature.feature_id, bundle: feature.bundle });
-    if (feature.lock && feature.lock.state !== "in-sync") warnings.push({ code: "LOCK_NOT_IN_SYNC", feature_id: feature.feature_id, lock: feature.lock.state });
+    if (feature.bundle && feature.bundle !== "verified" && feature.bundle !== "unverified") warnings.push({ code: "BUNDLE_UNAVAILABLE", feature_id: feature.feature_id, bundle: feature.bundle });
+    if (feature.lock && !["in-sync", "unverified"].includes(feature.lock.state)) warnings.push({ code: "LOCK_NOT_IN_SYNC", feature_id: feature.feature_id, lock: feature.lock.state });
   }
   return {
     format: WORKFLOW_STATUS_FORMAT,
     runtime: { advertises_binding: Boolean(advert), contracts: advert?.contracts ?? null, capabilities: advert?.capabilities ?? null, helper_available: Boolean(lib) },
     entries,
-    database: { available: db.available, attempt_table: db.attempt_table ?? false },
+    database: { state: db.state, available: db.available, attempt_table: db.attempt_table ?? false, error_code: db.error_code ?? null },
     features,
     admitted: db.admitted,
     observed: null,

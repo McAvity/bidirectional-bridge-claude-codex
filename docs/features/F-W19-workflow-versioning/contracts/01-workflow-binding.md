@@ -210,7 +210,7 @@ odmowa z kodem, 1 błąd helpera):
 | Operacja | Skutek |
 | --- | --- |
 | `resolve --feature <dir|id> | --new [--entry <skill>] [--standalone]` | czysty odczyt (§ 4.2); następca `select-source` |
-| `begin [--feature-id <id>] [--standalone]` | weryfikuje bundle **własnego** wejścia (układ pluginu `<root>/bundle/` albo magazynu `<store>/<id>/<client>/`), sprawdza zgodność, publikuje do magazynu, tworzy `.draft-<token>` (lub katalog featura bez locka; istniejący lock → `LOCK_EXISTS`) i lock gen 1 |
+| `begin [--feature-id <id>] [--standalone]` | weryfikuje bundle **własnego** wejścia (układ pluginu `<root>/bundle/` albo magazynu `<store>/<id>/<client>/`), sprawdza zgodność, publikuje do magazynu, tworzy `.draft-<token>` (lub pusty/nowy katalog featura; istniejący lock → `LOCK_EXISTS`; katalog z dokumentami bez locka → `FEATURE_EXISTS`, R19-I05) i lock gen 1 |
 | `finalize --draft <token> --feature-id <id>` | draft → finalny katalog (§ 4.4) |
 | `adopt --feature <dir|id> --explicit` | jawny wybór bieżącego wejścia dla istniejącego featura bez locka, tylko poza projektem z pinem; bez `--explicit` → `EXPLICIT_CHOICE_REQUIRED`; lock bez treści uzasadnienia (dane użytkownika zostają w decyzji/ledgerze) |
 | `switch --feature <dir|id> --to <identity> --expected-generation <n> [--from <plugin|bundle>]` | tylko standalone (§ 7.4); projekt z pinem → `SWITCH_REQUIRES_BRIDGE` |
@@ -554,6 +554,14 @@ pakietem, `inspect-return` odrzuca zmianę `workflow.lock.json` (`selection-chan
 stagingu). Baza otwierana readonly; SQLite może utworzyć pliki `-shm`/`-wal` przy odczycie bazy WAL
 (jak dotychczasowa sonda stanu doctora), sam plik bazy pozostaje bez zmian.
 
+R19-I06 (W19-06): stan bazy ma trzy rozróżnione przypadki — `absent` (brak pliku: jeszcze żaden
+feature), `unreadable` (nieudany odczyt: tylko bezpieczny kod SQLite/errno, bez komunikatu parsera)
+i `not-located` (brak ścieżki przy runtime’ie z bindingiem). Nieudany odczyt, nieczytelny rekord
+featura (`FEATURE_RECORD_UNREADABLE`) albo reklamowany, lecz niedostępny helper runtime’u
+(`HELPER_UNAVAILABLE`; lock i kopia `unverified`) dają check `workflow` = `unknown`
+(`WORKFLOW_DATABASE_UNREADABLE` / `WORKFLOW_DATABASE_NOT_LOCATED` / `WORKFLOW_HELPER_UNAVAILABLE`),
+nigdy `OK 0/0`; `distribution.workflow.database` niesie ten stan, a liczniki są wtedy `null`.
+
 ## 9. Kody
 
 | Kod | Kiedy | Następny krok |
@@ -568,6 +576,7 @@ stagingu). Baza otwierana readonly; SQLite może utworzyć pliki `-shm`/`-wal` p
 | `DRAFT_MISSING`, `DRAFT_ALREADY_ASSIGNED`, `FEATURE_DIR_COLLISION`, `ID_CHANGE_AFTER_BIND` | § 4.4 | decyzja użytkownika o katalogach |
 | `SELECTION_REQUIRED`, `ENTRY_WITHOUT_BUNDLE`, `ENTRY_NOT_IN_BUNDLE`, `ENTRY_BUNDLE_CORRUPT` | § 4.2 | `begin`/`adopt`, aktualizacja pluginu |
 | `FEATURE_MISSING`, `LOCK_EXISTS`, `EXPLICIT_CHOICE_REQUIRED` | § 4.1 | wskazać istniejący feature / nie zastępować locka / jawna decyzja |
+| `FEATURE_EXISTS` | § 4.1, `begin --feature-id` dla katalogu z dokumentami bez locka (R19-I05) | `resolve --feature <id>` i jego jawna ścieżka (`adopt --explicit` / `bridge_workflow_bind_legacy`); `begin` nic nie zapisał |
 | `FEATURE_ID_INVALID`, `FEATURE_PATH_OUTSIDE`, `PATH_REDIRECTED`, `PATH_NOT_DIRECTORY`, `PATH_UNSAFE` | § 4.1 zarządzane ścieżki | poprawić ID/usunąć dowiązanie; nic nie zostało zapisane |
 | `RUNTIME_WITHOUT_BINDING`, `RUNTIME_MISSING`, `BINDING_CONTRACT_UNSUPPORTED`, `CAPABILITY_MISSING`, `RUNTIME_KNOWN_INCOMPATIBLE`, `WORKFLOW_INCOMPATIBLE`, `DOWNGRADE_WOULD_ORPHAN_BINDING` | § 5 | wskazany upgrade; nic automatycznie |
 | `WORKFLOW_UNBOUND`, `WORKFLOW_ALREADY_BOUND`, `WORKFLOW_ACK_MISMATCH`, `WORKFLOW_EXECUTOR_UNSUPPORTED` | § 6 | bind / ponowny `resolve` |

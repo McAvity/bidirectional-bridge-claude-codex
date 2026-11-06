@@ -18,7 +18,7 @@
     "scripts/workflow-source/workflow-lib.mjs",
     "scripts/workflow-source/release.json"
   ],
-  "source_digest": "35ed80cf373d22db063aa6638f5857d3a0571a6f8b50bd0f5db535cd862b9991",
+  "source_digest": "c05d31cb511be6d621c2f2ae2aa5eba527ddfc3f0d3ac804c9110cb60fc2a48b",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -26,7 +26,7 @@
     },
     {
       "path": "bundle/bundle.json",
-      "sha256": "80db0edbfc7b856a7cee4c76fa74be50163e88a14b7877039206f82b4db13ef6"
+      "sha256": "42e2568bd0fd49bce1a6725d003f854f8ded6331f025b6fcbaf20fb9987cd7a4"
     },
     {
       "path": "bundle/claude/.claude-plugin/plugin.json",
@@ -42,7 +42,7 @@
     },
     {
       "path": "bundle/claude/scripts/workflow.mjs",
-      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
     },
     {
       "path": "bundle/claude/skills/feature-decide/SKILL.md",
@@ -138,7 +138,7 @@
     },
     {
       "path": "bundle/codex/scripts/workflow.mjs",
-      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
     },
     {
       "path": "bundle/codex/skills/feature-decide/SKILL.md",
@@ -230,7 +230,7 @@
     },
     {
       "path": "scripts/workflow.mjs",
-      "sha256": "90077c8ec0bf13f02b11f677d42f7a327b7d5b126353e62d6fe28d2f33c5b076"
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
     },
     {
       "path": "skills/feature-decide/SKILL.md",

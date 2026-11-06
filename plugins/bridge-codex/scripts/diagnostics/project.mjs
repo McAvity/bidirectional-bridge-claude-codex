@@ -535,6 +535,7 @@ export function projectDistribution(value, aliases) {
     pin: pick(value.pin, { declared: "version", applied: "version", diverged: "flag" }),
     workflow: value.workflow ? {
       ...pick(value.workflow, { runtime_advertises_binding: "flag", features_total: "count", features_bound: "count", admitted_attempts: "count" }),
+      database: ["read", "absent", "unreadable", "not-located"].includes(value.workflow.database) ? value.workflow.database : value.workflow.database == null ? null : INVALID,
       entries: Array.isArray(value.workflow.entries) ? value.workflow.entries.slice(0, 50).map((e) => ({
         client: ["claude", "codex"].includes(e?.client) ? e.client : INVALID,
         plugin: ["feature-workflow", "bridge-claude", "bridge-codex"].includes(e?.plugin) ? e.plugin : INVALID,

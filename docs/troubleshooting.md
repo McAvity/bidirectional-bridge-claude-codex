@@ -332,6 +332,8 @@ Bridge refusals carry `code: WORKFLOW_REFUSED` and `details.code`; the helper pr
 | `LEGACY_AMBIGUOUS`, `LEGACY_UNPROVEN` | The old set is not proven. | Ask the user which runtime; bind with `explicit_choice: true` |
 | `LEGACY_SOURCE_MISSING` | The proven old runtime is not installed. | Reinstall exactly that runtime by pin |
 | `RUNTIME_WITHOUT_BINDING` | The project pins a runtime without binding. | One-time runtime upgrade (docs/setup.md § 5) |
+| `FEATURE_EXISTS` (`begin --feature-id`) | The directory already holds a feature (brief, index, ledgers) without a lock; nothing was written. | Run `resolve --feature <id>` and follow its explicit route (`adopt --explicit`, or `bridge_workflow_bind_legacy`) |
+| `WORKFLOW_DATABASE_UNREADABLE`, `WORKFLOW_HELPER_UNAVAILABLE` (doctor, unknown) | The workflow layer could not be read; bindings are unknown, not zero. | Check the `state` check / repair the selected runtime; doctor changes nothing |
 | `STALE_PERSONAL_FEATURE_ENTRIES` (doctor) | An old personal `bridge-claude` offers `feature-*` copies without bootstrap. | Update or disable that plugin; doctor changes nothing |
 
 Never start a fresh session or another workflow to get around these refusals.

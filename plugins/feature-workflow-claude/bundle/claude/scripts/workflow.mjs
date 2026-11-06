@@ -222,6 +222,14 @@ async function begin({ cwd, env, packageRoot, featureId = null, standalone = fal
   const token = featureId !== null ? null : W.newDraftToken();
   const dir = featureId !== null ? W.featurePath(answer.worktree, featureId, { allowDraft: false }) : W.featurePath(answer.worktree, `${W.DRAFT_PREFIX}${token}`);
   if (featureId && existsSync(dir) && W.readLock(dir)) throw new W.WorkflowError("LOCK_EXISTS", featureId, { next_step: "resolve the existing lock; begin never replaces it" });
+  // R19-I05: a directory that already holds documents (brief, machine index, ledgers) is an
+  // existing feature, not a new one. Its workflow is chosen explicitly through resolve's route
+  // (adopt --explicit, or the bridge's legacy bind), never by begin. Refused before any write.
+  if (featureId && existsSync(dir) && readdirSync(dir).length > 0) {
+    throw new W.WorkflowError("FEATURE_EXISTS", featureId, {
+      next_step: `run \`resolve --feature ${featureId}\` and follow its explicit route for this existing feature; begin never selects a workflow for it`,
+    });
+  }
   const published = W.storePublish(store, own.bundleDir);
   mkdirSync(features, { recursive: true });
   W.featuresRoot(answer.worktree); // re-check after creation: still not redirected

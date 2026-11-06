@@ -898,12 +898,27 @@ export async function runDoctor({
 export function workflowCheck(add, status) {
   const codes = new Set(status.warnings.map((w) => w.code));
   const bound = status.features.filter((f) => f.binding).length;
+  // R19-I06: a failed or impossible read leaves the bindings unknown; never report it as 0/0.
+  const dbState = status.database?.state ?? (status.database?.available ? "read" : "absent");
+  const bindings = dbState === "unreadable" ? "feature bindings unknown (database unreadable)"
+    : dbState === "not-located" && status.runtime.advertises_binding ? "feature bindings unknown (database not located)"
+      : `${bound}/${status.features.length} feature(s) bound`;
   const summary = `runtime ${status.runtime.advertises_binding ? "advertises" : "does not advertise"} workflow binding; ` +
-    `${bound}/${status.features.length} feature(s) bound; ${status.entries.claude.length + status.entries.codex.length} workflow entry plugin(s) installed (configured, not proof of loading)`;
+    `${bindings}; ${status.entries.claude.length + status.entries.codex.length} workflow entry plugin(s) installed (configured, not proof of loading)`;
   if (codes.has("BUNDLE_UNAVAILABLE")) {
     add("workflow", "error", "WORKFLOW_BUNDLE_UNAVAILABLE", `${summary}; a bound feature's workflow is missing or damaged in the store`, {
       details: { warnings: status.warnings },
       nextStep: "restore exactly that identity: node <feature-workflow plugin>/scripts/workflow.mjs restore --identity <identity> --from <plugin or bundle of that identity>",
+    });
+  } else if (codes.has("DATABASE_UNREADABLE") || codes.has("DATABASE_NOT_LOCATED") || codes.has("FEATURE_RECORD_UNREADABLE")) {
+    add("workflow", "unknown", codes.has("DATABASE_NOT_LOCATED") ? "WORKFLOW_DATABASE_NOT_LOCATED" : "WORKFLOW_DATABASE_UNREADABLE", `${summary}; the workflow layer could not be read`, {
+      details: { warnings: status.warnings },
+      nextStep: "see the state check for this worktree's database; doctor reads it readonly and changes nothing",
+    });
+  } else if (codes.has("HELPER_UNAVAILABLE")) {
+    add("workflow", "unknown", "WORKFLOW_HELPER_UNAVAILABLE", `${summary}; the selected runtime advertises binding but its workflow helper cannot be loaded, so no lock or store copy was verified`, {
+      details: { warnings: status.warnings },
+      nextStep: "reinstall or repair the selected runtime (bridge-upgrade); doctor changes nothing",
     });
   } else if (codes.has("STALE_PERSONAL_FEATURE_ENTRIES")) {
     add("workflow", "warn", "STALE_PERSONAL_FEATURE_ENTRIES", `${summary}; an old bridge plugin still offers its own feature-* copies without the workflow bootstrap`, {

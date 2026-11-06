@@ -193,7 +193,10 @@ export CLAUDE_CODEX_BRIDGE_CODEX_PROFILE=work
 
 The `workflow` check (F-W19) is advice only: `STALE_PERSONAL_FEATURE_ENTRIES`,
 `ENTRY_WITHOUT_BOOTSTRAP`, `FEATURE_UNBOUND`, `LOCK_NOT_IN_SYNC` (warn) and
-`WORKFLOW_BUNDLE_UNAVAILABLE` (error, with the exact `restore` step). It reads the database
+`WORKFLOW_BUNDLE_UNAVAILABLE` (error, with the exact `restore` step). A database that cannot be
+read, a feature record that does not parse, or a runtime that advertises binding but whose workflow
+helper cannot be loaded is `unknown` (`WORKFLOW_DATABASE_UNREADABLE`, `WORKFLOW_DATABASE_NOT_LOCATED`,
+`WORKFLOW_HELPER_UNAVAILABLE`), never "0/0 bound"; a missing database is simply no features yet. It reads the database
 readonly, locks and store through the selected runtime's helper, and the clients' plugin metadata;
 it creates, binds, migrates or selects nothing.
 

@@ -649,6 +649,35 @@ class Helper(Workspace):
         self.assertEqual(answer["resolve"]["problems"][0], {"code": "CAPABILITY_MISSING", "missing": ["feature.close/v1"]})
         self.assertFalse(self.store.exists())
 
+    def test_begin_never_selects_for_an_existing_feature(self):
+        """R19-I05: `begin --feature-id` on an existing lock-less feature is refused before any write;
+        only an explicit choice (adopt / the bridge's legacy bind) selects its workflow."""
+        self.fake_runtime("0.8.0-aaaaaaaaaaaa", binding=True)
+        standalone = self.project("standalone")
+        pinned = self.project("pinned")
+        self.pin(pinned, "0.8.0-aaaaaaaaaaaa")
+        script = self.plugin_copy("codex") / "scripts/workflow.mjs"
+        for project, name, document in ((standalone, "F-brief", "brief.md"), (standalone, "F-index", "feature.json"), (pinned, "F-old", "brief.md")):
+            with self.subTest(project=project.name, feature=name):
+                (project / "docs/features" / name).mkdir(parents=True)
+                (project / "docs/features" / name / document).write_text("existing feature\n")
+                before = self.files(project, self.home)
+                code, answer = self.helper(script, "resolve", "--feature", name, cwd=project)
+                self.assertEqual(code, 3)
+                code, answer = self.helper(script, "begin", "--feature-id", name, cwd=project)
+                self.assertEqual((code, answer["code"]), (3, "FEATURE_EXISTS"), answer)
+                self.assertIn("resolve --feature", answer["next_step"])
+                self.assertEqual(self.files(project, self.home), before)  # no lock, no store entry
+                self.assertFalse((project / "docs/features" / name / "workflow.lock.json").exists())
+        # The explicit route still works outside a pinned project, and a new id still begins.
+        code, answer = self.helper(script, "adopt", "--feature", "F-brief", "--explicit", cwd=standalone)
+        self.assertEqual((code, answer["code"]), (0, "ADOPTED"), answer)
+        (standalone / "docs/features/F-empty").mkdir()
+        code, answer = self.helper(script, "begin", "--feature-id", "F-empty", cwd=standalone)  # an empty directory holds no feature
+        self.assertEqual((code, answer["code"]), (0, "BEGUN"), answer)
+        code, answer = self.helper(script, "begin", "--feature-id", "F-new", cwd=pinned)
+        self.assertEqual((code, answer["code"]), (0, "BEGUN"), answer)
+
 
 class ManagedPaths(Workspace):
     """R19-I01: bounded feature ids and no redirected managed write path, refused before any side effect."""
