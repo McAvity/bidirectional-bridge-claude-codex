@@ -123,3 +123,12 @@ W19-02 rozpoczęty, dalsza zgoda03 ważna. Baza8540de7: build PASS; JS642pass/76
 (2 znane pliki instalatora/process visibility), Python196/2 znane failures klienta,
 pilot tooling140/140 PASS. Pełne logi bazowe poza Git; nowe regresje oceniać względem
 tego punktu, nie kasować ani nie maskować starych failures.
+
+
+W19-02 ukończony aec3865, task_pqfare78qr DONE po trzech próbach tej samej sesji.
+Helper/generator, immutable bundle/store, korekta zapisu poza zakresemR19-I01;
+niezależny receipt/repro i35 testów PASS. Historyczne76JS/2Python failures nadal
+OPEN, nie naprawiamy hosta kosztem głównego ciągu. Następne W19-03, potem04/05/06.
+Składniki workflow mają lokalną kandydacką wersję1.0.0; silnik/piny bez zmian.
+Pilot jeszcze nieuruchomiony; izolowane auth potrzebne dopiero przed jego startem.
+Rejestr wszystkich findingów w reviews/02-execution.md. Runtime0.6.2 nietknięty.

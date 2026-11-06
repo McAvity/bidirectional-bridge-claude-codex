@@ -1,5 +1,15 @@
 # Current handoff
 
+## F-W19 implementation active — 2026-11-06
+
+Isolated feature/F-W19-workflow-versioning, .worktrees/F-W19. W19-01/02 complete;
+latest worker aec3865, next W19-03…06 under decision03. See
+[progress](features/F-W19-workflow-versioning/PROGRESS.md) and the single
+[review register](features/F-W19-workflow-versioning/reviews/02-execution.md).
+Root task_vf2ajb3t4d, prior child task_pqfare78qr DONE, same Claude session.
+Known baseline host-test failures remain open; model pilot/auth not completed.
+No release/merge/push/project upgrade; supervising0.6.2 runtime unchanged.
+
 ## 0.7.0 published — F-W20 accepted,2026-11-05
 
 [Release checkpoint](tasks/w20-release.md): F-W20 accepted by user, integrated with

@@ -36,3 +36,27 @@ decyzją koordynatora w ramach03; konsumenci implementują kontrakt, nie nowe AC
 Te punkty pozostają widoczne aż do sprawdzenia implementacji; PASS kontraktu nie
 zamienia ich w verified. Brak wykazanego konfliktu AC lub potrzeby nowej sesji.
 Następne: W19-02, następnie W19-03…06 w istniejącej zgodzie.
+
+
+## 2026-11-06 — W19-02: ukończony zakres, przejście do W19-03
+
+Task task_pqfare78qr, baza90aa6ac, finalna dostawa aec3865; trzy próby w tej
+samej sesji. Receipt: wszystkie ścieżki każdego commitu w zakresie, brak cudzych
+zmian i zmian koordynatora, nowy ledger03; worktree czysty. Nie jest to końcowy
+PASS produktu. R19-C01,C03,C04 rozliczone kodem/helperem i testami tej partii.
+Niezależnie powtórzono35 testów test_workflow_bundle (PASS), odczytano mechanizmy
+write/store/restore/lock/generatora, ledgery i zmianę kontraktu. Pełne review
+integracji pozostaje W19-06; nie uruchamiamy ponownego review całego planu.
+
+| ID | Priorytet / skutek i dowód | Status / rozliczenie |
+| --- | --- | --- |
+| R19-I01 | P1: helper begin zapisywał lock poza projektem przez docs/features symlink oraz feature-id ../../../outside. Dwa niezależne odtworzenia na38bcec8 potwierdziły rzeczywisty zapis. | FIXED3d74ba9, VERIFIED: te same scenariusze dają PATH_REDIRECTED/FEATURE_ID_INVALID bez zmiany zewnętrznego drzewa ani store;35 testów PASS, w tym6 nowych real-fs. Naprawione od razu ze względu na zapis poza zakresem. |
+| R19-E01 | P2 środowiska:76 JS/2 Python testy instalatora/klienta nie przechodzą również na bazie hosta. Pełne logi bazowe i ledger01/02. | OPEN do zbiorczej walidacji W19-06. Nie oznaczono PASS ani pominięcia wymagań produktu. Bounded W19-02 wymaga focused/build/packages/docs; te kontrole przeszły. |
+| R19-O01 | P3 procesu: adapter oznacza PARTIAL przy dowolnym failed verification, w tym znanym wyniku bazowym spoza kontraktu rundy; ponowne dołączenie wyniku spowodowało drugie BLOCKED mimo naprawy. | Rozliczono bez zmiany runtime/DB: próba2 wykonała wyłącznie uzgodnione bieżące kontrole, zachowując historyczne failures w ledgerach i risks. Następne rundy mają jawny zakres testów; pełna walidacja dopiero W19-06. Nie rozszerzać F-W19 o zmianę polityki deliverables. |
+
+C01: registry/source metadata poza payloadem, test pełnych drzew drugiego komponentu.
+C03: scrub również nazw sesji/zakodowanych ścieżek; dawna syntetyczna wersja zachowana
+w historii, bez usuwania dowodów. C04: exact-identity restore przez kwarantannę,
+nie nadpisanie immutable entry. C02 nadal wymagany w W19-03/04.
+PILOT-AUTH: przygotowane izolowane profile i skrypt logowania poza Git; użytkownik
+pyta o cel izolacji, wyjaśniono. Brak potwierdzonego logowania, pilot nieuruchomiony.
