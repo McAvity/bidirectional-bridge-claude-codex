@@ -1,19 +1,22 @@
 # Current handoff
 
-## Codex daemon startup fixes — 2026-11-09
+## Codex daemon startup fixes delivered — 2026-11-09
 
-[Incident, implementation and evidence](tasks/codex-daemon-startup.md), branch
-`docs/codex-daemon-startup`: user-authorized fixes now omit the managed Codex `cwd`
-and migrate exact historical blocks. Doctor distinguishes standalone checks from
-live MCP and rejects a wrong reported workspace. Upgrade instructions address
-native writer ownership; process inspection distinguishes ambiguous shared-daemon
-writers from permission failures. Missing unchanged historical pins have a specific
-refusal. Generated bridge packages updated; final validation/review in progress.
-A real model-free Codex0.167.0 test passed with server cwd B and generated project A /
-inherited C configurations (all paths with spaces). This is startup/MCP evidence,
-not a model pilot or automated resume test. Running runtime0.8.0 remains untouched;
-the main checkout's pre-existing pin edit stays separate. Next: deliver/integrate
-this patch, then publish/install a new immutable runtime through normal upgrade.
+[Incident, implementation and complete validation record](tasks/codex-daemon-startup.md),
+branch `docs/codex-daemon-startup`, code `5190766` / `5a78f4a` / `0577400`.
+Managed Codex cwd is omitted for corrected runtimes; exact historical blocks migrate,
+while old target runtimes keep a format they can materialize. Doctor separates
+standalone/live checks and checks the workspace. Upgrade instructions address native
+writers; active-use ambiguity and missing historical pins have specific diagnostics.
+Independent review's medium finding was corrected. Build/packages PASS; final affected
+setup/rollback/inheritance cases 37 PASS; native/process/upgrade cases 47 PASS/1 Linux
+skip; Python243 PASS. Full JS found 9 corrected failures plus 2 macOS baseline failures;
+pilot tooling128 PASS/1 baseline failure/2 PTY skips. All three baseline failures were
+reproduced on pre-change source; see the linked record, not an all-green suite claim.
+Native Codex0.167 probe passed for server cwd B and project A / inherited C (space paths),
+with no model turn; persisted resume is not covered by that probe. Active runtime0.8.0
+and the main checkout's separate pin edit remain unchanged. Next: integrate and release
+a new immutable runtime, then activate via checked upgrade and verify live MCP again.
 
 ## Bridge0.8.0 / workflow1.0.0 published — 2026-11-09
 

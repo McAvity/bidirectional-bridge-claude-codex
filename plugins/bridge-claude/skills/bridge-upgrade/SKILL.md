@@ -116,7 +116,7 @@ the old runtime or authorize editing the pin. An ordinary `PROJECT_FILE_MODIFIED
 still needs diagnosis; never treat an arbitrary declaration as an inherited pin.
 
 If this client or another process uses the target worktree, finish preparation but
-leave its pin and files unchanged. Do not bypass ACTIVE_SESSION/ACTIVE_USE_UNKNOWN,
+leave its pin and files unchanged. Do not bypass ACTIVE_SESSION, ACTIVE_USE_UNKNOWN or CLIENT_WORKSPACE_UNKNOWN,
 kill clients, or stop an active worker to make the update pass. Give one copyable
 shell command/script using the stable installer, exact workspace/home/target and
 normal refusal checks, to run after the affected Codex/Claude clients exit normally.

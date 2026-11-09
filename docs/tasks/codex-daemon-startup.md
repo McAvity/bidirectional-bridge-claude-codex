@@ -121,21 +121,62 @@ resume evidence. Actual exact-conversation recovery was observed separately in t
 original incident (above). Other Codex versions and platforms remain unverified
 by this native probe. Unit process snapshots cover Linux/macOS policy only.
 
-## Progress and next step
+## Delivery, verification and remaining issues
 
-Implementation and generated packages are complete. Independent read-only review
-passed its syntax/parity checks and identified one medium overbroad-refusal case;
-that case was narrowed with initial/selected-worktree and observer regression tests.
-Also separated manager-status errors from wrong-workspace reports. The review's
-version-specific detection and native-resume coverage limits remain explicit.
-Final suite results are being recorded before delivery. Validation uses Node 24.14.0 and Python 3.12;
-Python 3.11 is not installed on this host. The initial host-default Python 3.15
-run hit a SQLite backup compatibility failure; validation uses the available
-stable interpreter rather than weakening the backup check.
+Code commits: `5190766` (startup/diagnostics), `5a78f4a` (old-target capability),
+`0577400` (consistent historical-template validation and regression fixture).
+All work is on `docs/codex-daemon-startup`, based on `109dc07`.
 
-Next: integrate the reviewed patch and publish/install a separately pinned runtime
-through the normal release and upgrade flow. The running 0.8.0 runtime was not
-rebuilt, and the main checkout's pre-existing pin edit remains separate.
+Independent read-only review passed syntax and generated-copy parity checks and
+identified one medium overbroad-refusal case. The manager narrowed that case and
+added initial/selected-worktree plus observer tests. Manager-status errors now have
+`HANDSHAKE_STATUS_FAILED`, distinct from a wrong reported workspace. Final inspection
+also added the explicit old-runtime capability and fixed the corresponding strict
+TOML comparison; active-use and rollback refusals remain enforced.
+
+Validation on macOS, Node 24.14.0 and Python 3.12 (3.11 is unavailable here):
+
+| Check | Actual result |
+| --- | --- |
+| `npm ci --ignore-scripts`, `npm run build` | PASS |
+| `npm run packages:check`, changed-script syntax, Git whitespace checks | PASS |
+| Native Codex 0.167 startup, process inspection and upgrade tests | 47 PASS, 1 optional Linux privileged-observer check skipped; native test enabled |
+| Final setup/doctor suite plus all affected historical-runtime, active-use, inherited setup and rollback integration cases | 37 PASS; 59 unrelated cases excluded by the targeted filter |
+| `python3 -m unittest discover -s tests -v` | 243 PASS |
+| Full `npm test` before the last correction | 751 PASS, 11 FAIL, 2 skipped; the 9 change-related failures were corrected and passed in the 37-case rerun above; the other 2 reproduce on the baseline |
+| `python3 -m unittest discover -s tools/pilot/tests -v` | 128 PASS, 1 baseline failure, 2 optional PTY checks skipped |
+| Live MCP in the existing native conversation | correct caller/delegation and intended canonical root; installed runtime unchanged |
+
+The full suites are **not reported as all-green**. Three failures were independently
+reproduced from the pre-change `109dc07` source on this host:
+
+1. `scripts/diagnostics/diagnose.test.ts`, **R2-06: a write that cannot complete**:
+   the file-size-limit fixture produces a backup gap and a smaller package rather
+   than the expected output-write refusal on this macOS/Node combination.
+2. `claude/claude-side/src/adapters/claude-code-runner.evidence.test.ts`,
+   **bounds the in-memory stderr tail**: the synthetic process yields 65,536 bytes
+   instead of the expected 100,001 before exit.
+3. `tools/pilot/tests/test_portable.py`, **test_tooling_dry_run_scores_every_criterion**:
+   the operator deliberately refuses when `/proc` is absent and target-file ownership
+   is unknown. The baseline dry run reaches the same refusal on macOS.
+
+No unrelated exporter, adapter or operator safety rule was weakened to hide these
+failures. Follow-up: validate those host-dependent tests on Linux and address their
+macOS fixtures separately. Native startup coverage still excludes persisted resume,
+subdirectory conversation roots and other client versions; no model pilot is claimed.
+
+Tests requiring process inspection, loopback fixtures or temporary Git metadata ran
+outside the restricting sandbox. `TMPDIR=/private/tmp` avoided macOS path aliases in
+older fixtures. The setup/procfs fixtures now canonicalize their synthetic roots.
+The initial host-default Python 3.15 run hit a SQLite backup compatibility failure;
+subsequent validation used the available stable interpreter. A failed early mixed-
+revision test left its synthetic MCP process in a removed temporary directory; only
+that positively identified test process was closed, never a user client.
+
+Next: integrate the reviewed patch, then publish/install a separately pinned runtime
+through the normal release and upgrade flow. The running 0.8.0 runtime was not rebuilt.
+The main checkout retains only its pre-existing uncommitted runtime-pin change.
+After activation, verify live MCP again in the exact resumed conversation.
 
 Official CLI reference for `--no-daemon`:
 [Developer commands](https://learn.chatgpt.com/docs/developer-commands?surface=cli).
