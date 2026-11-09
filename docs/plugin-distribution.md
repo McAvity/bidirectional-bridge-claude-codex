@@ -13,8 +13,8 @@ separate marketplace repository.
 | Path | Contents |
 | --- | --- |
 | `plugins/bridge-codex/` | Codex package: thin entry and bridge-upgrade skills, installer and pinned release descriptor |
-| `plugins/bridge-claude/` | Claude Code package: feature workflow, bridge role and bridge-upgrade skills, same installer; also the runtime's executor package |
-| `plugins/feature-workflow-codex/` | Codex `feature-workflow` plugin: the six `feature-*` skills, their references, the exchange helper, the workflow guide and the instruction-source reader |
+| `plugins/bridge-claude/` | Claude Code package: bridge role and bridge-upgrade skills, same installer; also the runtime's executor role package |
+| `plugins/feature-workflow-codex/` | Codex `feature-workflow` plugin: the seven `feature-*` skills, their references, the exchange helper, the workflow guide and the instruction-source reader |
 | `plugins/feature-workflow-claude/` | the same `feature-workflow` plugin for Claude Code |
 | `.agents/plugins/marketplace.json` | Codex marketplace; the repository root is the marketplace root |
 | `.claude-plugin/marketplace.json` | Claude Code marketplace, same root |
@@ -54,17 +54,13 @@ unchanged for anyone who prefers it.
 
 ## Where the instructions live
 
-For bridge work, only in the installed runtime, `<home>/runtimes/<id>/`. The Codex package ships a
-thin `bridge` entry skill whose whole job is to report where that is and tell the manager to read
-it. Nothing generic is ever written into a target repository, so a manager cannot end up reading a
-newer workflow than the runtime it is driving, and the delegated executor is given
-`--plugin-dir <runtime>/plugins/bridge-claude` (and the runtime's own
-`plugins/feature-workflow-claude` when it ships one) by the runtime itself. The `feature-workflow`
-plugin carries a standalone copy for projects without the bridge and defers to the pinned runtime
-everywhere else ([below](#the-feature-workflow-plugin)).
-
-A plugin cache refresh cannot disturb any of this. Codex deletes the previous version's cache
-directory on update; the pinned runtime is not in a cache.
+Bridge roles and technical rules live in the immutable installed runtime,
+`<home>/runtimes/<id>/`. Since bridge 0.8.0 / feature-workflow 1.0.0, feature instructions
+live separately in the verified workflow store, `<home>/workflows/<version>-<id>/`.
+A feature lock selects its release; updating a plugin cache does not replace that lock.
+The delegated executor receives the runtime's role package and the admitted workflow's
+Claude variant. See [independent versions](#independent-workflow-and-bridge-versions).
+Older projects keep their proven legacy instructions until explicitly migrated.
 
 A project that already carries the committed entry point can report the same paths without the
 plugin:
@@ -87,17 +83,21 @@ server; use the plugin's `status` there.
 ## The feature-workflow plugin
 
 `feature-workflow` (plugin name in both clients; packages `plugins/feature-workflow-codex/` and
-`plugins/feature-workflow-claude/`) offers six entries. Both clients list plugin skills only by
+`plugins/feature-workflow-claude/`) offers seven entries. Both clients list plugin skills only by
 their qualified name; neither lists a bare `feature-*` from a plugin.
 
 | Entry | Claude Code | Codex |
 | --- | --- | --- |
-| design, plan, execute, review, decide, exchange | `/feature-workflow:feature-design` … `/feature-workflow:feature-exchange` | listed as `feature-workflow:feature-design` … |
+| flow, design, plan, execute, review, decide, exchange | `/feature-workflow:feature-design` … `/feature-workflow:feature-exchange` | listed as `feature-workflow:feature-design` … |
 
 A natural request works as well. Which entry a model picks from a natural request is not something
 a host test can show; the qualified name is the unambiguous form.
 
-### Which instructions an entry follows
+### Legacy instruction selection (before workflow binding)
+
+The following reader and table describe the legacy path only. Current entries use
+`workflow.mjs resolve` (or `begin` for a new feature); the pinned engine and the selected
+workflow are separate. See [independent versions](#independent-workflow-and-bridge-versions).
 
 Every entry opens with a generated preamble: before any phase work it runs the packaged reader from
 the target worktree and follows its answer.
@@ -125,7 +125,7 @@ claims no manager, never runs `.bridge-project/entry.mjs` and never starts an MC
 `record` line (`INSTRUCTIONS=runtime:<id> SET=<digest>` or `INSTRUCTIONS=plugin:feature-workflow@<v>
 DIGEST=<digest>`) goes into the ledger of a significant execution or review.
 
-### Old pins keep their rules
+### Legacy pins keep their rules
 
 | Project | Instructions | Round handoff |
 | --- | --- | --- |
@@ -139,6 +139,9 @@ receipt parser.
 
 ### The delegated executor
 
+The following describes legacy runtimes. With workflow binding, the engine passes its
+role package plus the workflow release recorded for the attempt from the workflow store.
+
 The runtime passes a delegated Claude `--plugin-dir <runtime>/plugins/bridge-claude` and, when the
 runtime ships it, `--plugin-dir <runtime>/plugins/feature-workflow-claude`. Claude Code matches a
 `--plugin-dir` plugin to an installed one by plugin name, so these pinned copies take precedence over
@@ -151,9 +154,9 @@ authority. No personal installation is needed for delegation.
 
 | Installed | Codex lists | Claude Code lists |
 | --- | --- | --- |
-| `feature-workflow` only | six `feature-workflow:*` | six `feature-workflow:*` |
+| `feature-workflow` only | seven `feature-workflow:*` | seven `feature-workflow:*` |
 | with `bridge-codex` | plus `bridge-codex:bridge`, `bridge-codex:bridge-upgrade` | — |
-| with legacy `bridge-claude` | — | six `feature-workflow:*` **and** six `bridge-claude:*` |
+| with legacy `bridge-claude` | — | seven `feature-workflow:*` **and** six `bridge-claude:*` |
 
 Repository-local `.agents/skills/feature-*` (a wave12 worktree, or this repository's own sources)
 are listed bare next to the plugin's entries in Codex. The supported Claude Code profile has

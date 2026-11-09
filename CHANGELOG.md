@@ -11,6 +11,34 @@ explicitly.
 
 ## Unreleased
 
+## Bridge 0.8.0 / feature-workflow 1.0.0 — 2026-11-09 (experimental)
+
+### Added
+
+- Independently versioned engine and workflow packages in the same marketplace.
+- Verified immutable workflow bundles, per-feature locks, exact restoration and explicit
+  between-round switching; delegated Claude receives the feature's admitted release.
+- Workflow status and diagnostics distinguish configured, verified and admitted versions.
+
+### Changed
+
+- **Breaking:** workflow binding introduces database schema 7 and round identity checks.
+  Upgrade the project's engine once before using the new workflow plugin for new features.
+  After a database migrates, schema-6 runtimes cannot reopen it; no automatic downgrade.
+- Bridge role packages no longer duplicate feature skills. Install/update `feature-workflow`
+  separately; compatible future workflow updates do not require changing project runtime pins.
+- Existing features keep their release or require explicit legacy adoption; no silent latest.
+
+### Fixed
+
+- Portable upgrade reports final OK/WARN/ERROR with visible status circles, distinguishes
+  applied changes from failed verification, and can authenticate the Linux read-only observer.
+
+Validation: implementation has model-free independent evidence; release integration and CI
+are tracked in [release progress](docs/tasks/w19-release.md). The real-agent update/cache/switch
+pilot is **NOT_TESTED**, not PASS. Its deferred operator issues remain R19-T01/T02.
+
+
 ## 0.7.0 — 2026-11-05 (experimental)
 
 ### Added

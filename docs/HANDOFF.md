@@ -1,5 +1,12 @@
 # Current handoff
 
+## Bridge 0.8.0 / workflow 1.0.0 publication authorized — 2026-11-09
+
+[Release progress](tasks/w19-release.md) is the current checkpoint. F-W19 implementation
+is merged in a release worktree; user approved publication without the deferred model pilot.
+Keep AC-04 NOT_TESTED and W19-06 partial. No active runtime activation or model calls.
+
+
 ## F-W19 — kod lokalnie zweryfikowany, pilot odłożony, 2026-11-06
 
 Branch feature/F-W19-workflow-versioning w `.worktrees/F-W19`, dostawa2298abf.

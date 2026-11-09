@@ -31,12 +31,17 @@ project does not promise that a database created by one revision will be readabl
 
 ## Versioning
 
-- The package/checkpoint version is `0.7.0` and the workspace root is marked `private`; nothing here is
+- The package/checkpoint version is `0.8.0` and the workspace root is marked `private`; nothing here is
   published to a package registry.
 - While the major version is `0`, a minor bump may carry breaking changes. Treat every version
   change as potentially breaking and read the changelog.
 - Stable public checkpoints use annotated Semantic Versioning tags and matching GitHub
   Releases. Published release tags are never moved or recreated.
+
+Workflow instructions have their own version (initially `1.0.0`) and
+`workflow-v<version>` tags. Engine releases use `bridge-v<version>`; historical `v*`
+tags remain unchanged. Workflow 1.0.0 does not certify the bridge or prove model behavior.
+Both components remain experimental; model validation is reported separately.
 
 ## Changelog
 

@@ -50,6 +50,20 @@ final acceptance. Existing approvals are reused; real blockers still require inp
 See the [workflow guide](docs/feature-workflow-guide.md). A project pinned to an older
 runtime needs an upgrade before the new flow is available there.
 
+## Updating bridge and feature skills
+
+Bridge **0.8.0** and **feature-workflow 1.0.0** are independent packages in the same
+marketplace. Refresh the marketplace and update the workflow plugin in each client you use.
+Ask `Use bridge-upgrade to upgrade this worktree to bridge 0.8.0, and update the
+feature-workflow plugin to 1.0.0`. Close/restart clients when the updater requests it,
+then check status and doctor. An installed plugin alone does not move a project's runtime pin.
+
+This is a one-time engine upgrade for workflow binding. Later compatible skill releases need
+only a workflow plugin update and client restart. New features use that release; existing
+features keep their recorded instructions unless explicitly switched between rounds.
+[Commands and migration details](docs/plugin-distribution.md#independent-workflow-and-bridge-versions).
+The model-based update/cache-deletion/switch pilot remains untested in this experimental release.
+
 ## Table of contents
 
 - [What problem it solves](#what-problem-it-solves)

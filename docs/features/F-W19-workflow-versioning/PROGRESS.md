@@ -172,3 +172,9 @@ task_vf2ajb3t4d zostaje BLOCKED z powodu odłożonego zakresu; przy nowym zlecen
 wznowić ten sam root/sesję, nie tworzyć zastępczego featura. Zanim zacznie się pilot,
 korekta T01/T02 i jego preflight, potem dostęp według przyszłej dyspozycji użytkownika.
 Bez dalszej pracy zależnej od loginu w tym przebiegu. Bez push/merge/release/upgrade.
+
+## Publication authorized — 2026-11-09
+
+Decision05 approves integration and experimental bridge0.8.0/workflow1.0.0 publication.
+Current checkpoint: [release progress](../../tasks/w19-release.md). Pilot remains deferred;
+no full feature_accept. R19-N01 corrected in the publication documentation batch.

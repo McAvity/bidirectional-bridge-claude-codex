@@ -124,7 +124,7 @@
     {
       "mode": "644",
       "path": "codex/.codex-plugin/plugin.json",
-      "sha256": "4887a23327858a056dff8cbbc8f7edead022f6c6cf6fb9f8339f9f9faab86380"
+      "sha256": "858b7a14638e0b760640b2e2a3634b78bef0ad6e0a38d887bbdaa78d49b73d99"
     },
     {
       "mode": "755",
@@ -243,7 +243,7 @@
     }
   ],
   "format": "feature-workflow.bundle/v1",
-  "identity": "sha256:8db292ac9a2aee5dc93d83c88bfe8ecc0347c514a60c356930e9d58704c690e8",
+  "identity": "sha256:34ff737662b404b6409be2596a190318b27d2cbfa390351e2c7c22ea75c63396",
   "kind": "release",
   "requires": {
     "bridge": {
@@ -282,5 +282,5 @@
     }
   },
   "version": "1.0.0",
-  "workflow_id": "1.0.0-8db292ac9a2a"
+  "workflow_id": "1.0.0-34ff737662b4"
 }

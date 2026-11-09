@@ -26,7 +26,7 @@
     },
     {
       "path": "bundle/bundle.json",
-      "sha256": "6ebde45102a82e21e165672f37b612010e35338430d49c5f0ee245c2b93a8557"
+      "sha256": "b0fc0b5cf37aa2f421fe5071675f3de89d4241f23be58ffe1faf611a11db69ad"
     },
     {
       "path": "bundle/claude/.claude-plugin/plugin.json",
@@ -126,7 +126,7 @@
     },
     {
       "path": "bundle/codex/.codex-plugin/plugin.json",
-      "sha256": "4887a23327858a056dff8cbbc8f7edead022f6c6cf6fb9f8339f9f9faab86380"
+      "sha256": "858b7a14638e0b760640b2e2a3634b78bef0ad6e0a38d887bbdaa78d49b73d99"
     },
     {
       "path": "bundle/codex/scripts/select-source.mjs",

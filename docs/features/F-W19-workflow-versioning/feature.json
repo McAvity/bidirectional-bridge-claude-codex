@@ -25,8 +25,8 @@
     "claude/claude-side/src/adapters/claude-code-runner.ts"
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/02-execution.md",
-  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/04.md",
-  "next_action": "Implementacja i korekty bez modeli zweryfikowane2298abf. Pilot odłożony decyzją04; AC04 NOT_TESTED, W19-06 częściowe, brak Gate2. Przy przyszłym wznowieniu poprawić T01/T02 i uzgodnić dostęp; nie ponawiać teraz loginów. Rejestr review02, ledger integration01.",
+  "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/05.md",
+  "next_action": "Decision05 authorizes experimental publication of bridge0.8.0/workflow1.0.0; see docs/tasks/w19-release.md. Model pilot remains deferred/NOT_TESTED, W19-06 partial; no full feature_accept.",
   "bridge": {
     "feature_id": "F-W19-workflow-versioning",
     "parent_task_id": "task_vf2ajb3t4d"

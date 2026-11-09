@@ -328,7 +328,7 @@ function workflowVariant(root, client, version) {
             shortDescription: "Plan, execute, review and decide feature work.",
             longDescription:
               "The seven feature-* skills with their references and exchange helper. Works on its own; in a " +
-              "project that pins a bridge runtime each entry follows that runtime's instructions.",
+              "project with workflow binding each feature keeps its verified workflow release independently of the runtime.",
             developerName: AUTHOR,
             category: "Productivity",
           },
