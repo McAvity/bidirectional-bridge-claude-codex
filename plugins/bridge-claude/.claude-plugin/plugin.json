@@ -1,6 +1,6 @@
 {
   "name": "bridge-claude",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Bridge role, setup and upgrade instructions for Claude Code; the runtime's executor role package.",
   "author": {
     "name": "claude-codex-bridge"

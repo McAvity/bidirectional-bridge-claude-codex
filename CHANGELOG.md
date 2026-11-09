@@ -11,6 +11,33 @@ explicitly.
 
 ## Unreleased
 
+## Bridge 0.8.1 — 2026-11-09 (experimental)
+
+### Fixed
+
+- Codex MCP startup uses the conversation workspace instead of an explicit relative
+  cwd that a shared app-server could resolve from another project. Portable paths
+  remain portable; checked upgrades migrate exact historical blocks.
+- Older target runtimes retain the configuration format they can materialize in
+  inherited worktrees. A runtime capability keeps setup and rollback consistent.
+- Diagnose unchanged pins whose historical runtime is missing, and shared Codex
+  writers whose process cwd cannot establish which worktrees they own. Existing
+  ownership, active-use and configuration-edit refusals remain enforced.
+- Doctor rejects a responding MCP server with the wrong workspace and distinguishes
+  a manager-status error from a workspace mismatch.
+
+### Documentation
+
+- Upgrade output separates standalone checks from live client verification.
+  Recovery guidance covers retained native writer locks, exact-session resume and
+  the observed failure of a temporary cwd override.
+
+No database schema, MCP protocol or workflow release change. Feature-workflow remains
+1.0.0. Native startup regression passed with Codex 0.167.0 on macOS; persisted resume,
+other host versions and full model behavior are not certified. Validation and known
+macOS test limitations: [release checkpoint](docs/tasks/bridge-0.8.1-release.md) and
+[startup incident](docs/tasks/codex-daemon-startup.md).
+
 ## Bridge 0.8.0 / feature-workflow 1.0.0 — 2026-11-09 (experimental)
 
 ### Added
