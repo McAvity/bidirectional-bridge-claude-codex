@@ -48,7 +48,7 @@ REPO = W.REPO
 FORMAT = "claude-codex-bridge.w19-pilot/v1"
 MARKER = "W19-PILOT-WORKFLOW:"
 PROJECTS = ("p1", "p2")
-RELEASES = {"A": "1.0.0", "B": "1.0.1", "C": "1.0.2"}
+RELEASES = {"A": "0.0.0-pilot.a", "B": "0.0.0-pilot.b", "C": "0.0.0-pilot.c"}
 # decision02 / work-items/W19-06: the approved model budget. One Claude round is the reserve.
 BUDGET = {"claude_rounds": 6, "reserve_rounds": 1, "max_turns_per_round": 64, "round_deadline_min": 75,
           "mcp_timeout_min": 90, "model_minutes_total": 180, "astra_turns": 24}
@@ -162,7 +162,9 @@ def build_releases(run: Path, candidate: str) -> dict:
         for skill, text in skills.items():
             (tree / ".agents/skills" / skill / "SKILL.md").write_text(text + MARKER_TEXT.format(release=name, marker=MARKER, token=token))
         release = json.loads(json.dumps(pristine))
+        # Private synthetic versions cannot collide with the public release registry.
         release["version"], release["tag"] = version, f"workflow-v{version}"
+        release["state"] = "candidate"
         if name == "C":  # needs a capability no runtime offers: must be refused before any work
             release["requires"]["bridge"]["capabilities"] = [*release["requires"]["bridge"]["capabilities"], "workflow.pilot-incompatible/v1"]
         release_file.write_text(json.dumps(release, indent=2) + "\n")

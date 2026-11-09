@@ -108,6 +108,13 @@ class GeneratedPackages(unittest.TestCase):
             try:
                 before = subprocess.run(["node", str(clone / "scripts/plugin-packages/generate.mjs"), "--check"], capture_output=True, cwd=clone)
                 self.assertEqual(before.returncode, 0, before.stderr)
+                # Test unregenerated candidate drift, not mutation of a published version.
+                release_path = clone / "scripts/workflow-source/release.json"
+                release = json.loads(release_path.read_text())
+                release.update(version="0.0.0-test.drift", state="candidate", tag="workflow-test-drift")
+                release_path.write_text(json.dumps(release, indent=2) + "\n")
+                generated = subprocess.run(["node", str(clone / "scripts/plugin-packages/generate.mjs")], capture_output=True, cwd=clone)
+                self.assertEqual(generated.returncode, 0, generated.stderr)
                 skill = clone / ".agents" / "skills" / "feature-plan" / "SKILL.md"
                 skill.write_text(skill.read_text() + "\nAn edit that was never regenerated.\n")
                 after = subprocess.run(

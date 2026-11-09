@@ -184,3 +184,12 @@ Pozostałe wcześniejsze ustalenia: C01/C03/C04 i I01…04 rozwiązane wskazanym
 dowodami. C02 i PILOT-ENV mają dowody bez modeli; warstwa modelowa odłożona.
 PILOT-AUTH nie jest już oczekującą prośbą do użytkownika, tylko częścią odłożonego
 pilota. O01 pozostaje rozliczoną uwagą procesu, bez zmiany polityki runtime.
+
+## Release integration finding R19-P01 — 2026-11-09
+
+P2, blocks release validation: after registering workflow1.0.0, source-mutating tests
+and the private pilot release generator attempted to reuse that version and correctly
+hit VERSION_REUSED. Reproduced on33e455a (3 Python failures/errors and operator setup).
+Correction: candidate-only fixture versions and private 0.0.0-pilot.a/b/c releases;
+the production registry and its refusal test stay intact. R19-T01/T02 remain deferred.
+Status: fixed, revalidation pending in docs/tasks/w19-release.md.

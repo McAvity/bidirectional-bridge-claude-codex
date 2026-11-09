@@ -121,6 +121,13 @@ class Workspace(unittest.TestCase):
         git(path, "init", "-q", "-b", "main")
         return path
 
+    def candidate_version(self, src: Path):
+        """Fixture edits must not reuse a registered public release."""
+        path = src / "scripts/workflow-source/release.json"
+        release = json.loads(path.read_text())
+        release.update(version="0.0.0-test.fixture", state="candidate", tag="workflow-test-fixture")
+        path.write_text(json.dumps(release, indent=2) + "\n")
+
     def plugin_copy(self, client: str = "codex", name: str = "cache") -> Path:
         target = self.root / name / client / "feature-workflow"
         shutil.copytree(PLUGINS[client], target)
@@ -255,6 +262,7 @@ class IndependentGeneration(Workspace):
     def test_workflow_only_change_leaves_every_bridge_byte_unchanged(self):
         src = self.source_copy()
         before = self.regenerate(src)
+        self.candidate_version(src)
         with (src / ".agents/skills/feature-plan/SKILL.md").open("a") as handle:
             handle.write("\nSynthetic workflow-only change.\n")
         after = self.regenerate(src)
@@ -408,6 +416,7 @@ catch (e) { process.stdout.write(JSON.stringify({result: e.code, detail: e.detai
     def test_another_valid_bundle_under_the_same_name_is_never_overwritten(self):
         other = self.root / "other-bundle"
         src = self.source_copy()
+        self.candidate_version(src)
         with (src / ".agents/skills/feature-plan/SKILL.md").open("a") as handle:
             handle.write("\nother content\n")
         self.assertEqual(self.generate(src, "--component", "workflow").returncode, 0)

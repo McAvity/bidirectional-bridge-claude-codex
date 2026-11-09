@@ -35,7 +35,7 @@ source $RUN/env.sh
 python3 $WV/pilot_w19.py preflight --run $RUN          # oczekiwane: wszystko PASS poza PILOT-AUTH PENDING
 ```
 
-`setup` tworzy: wydania workflow A (1.0.0), B (1.0.1) i niekompatybilne C (1.0.2) z generatora
+`setup` tworzy: wydania workflow A (0.0.0-pilot.a), B (0.0.0-pilot.b) i niekompatybilne C (0.0.0-pilot.c) z generatora
 produktu, lokalny marketplace (`main` = A, gałąź `release-b` = B; paczki bridge’a identyczne),
 starszą osobistą kopię wykonawcy (`personal-market`, 0.9.0), dwa syntetyczne projekty z tym samym
 przypiętym kandydatem silnika (`bridge-plugin.mjs setup`, jednorazowa instalacja w izolowanym
@@ -81,7 +81,7 @@ W TUI: `/mcp` (serwer `bridge`), potem cała treść `$RUN/START-ASTRA-p1.md`. P
 
 ```bash
 git -C $RUN/market checkout -q release-b
-codex plugin add feature-workflow@claude-codex-bridge          # aktualizacja wejścia managera do 1.0.1
+codex plugin add feature-workflow@claude-codex-bridge          # aktualizacja wejścia managera do 0.0.0-pilot.b
 python3 $WV/pilot_w19.py snapshot updated-b --run $RUN
 ```
 
@@ -90,7 +90,7 @@ python3 $WV/pilot_w19.py snapshot updated-b --run $RUN
 Zakończ TUI p1 po normalnym końcu tury (`/exit`), potem:
 
 ```bash
-rm -rf "$CODEX_HOME/plugins/cache/claude-codex-bridge/feature-workflow/1.0.0"   # jeśli jeszcze istnieje
+rm -rf "$CODEX_HOME/plugins/cache/claude-codex-bridge/feature-workflow/0.0.0-pilot.a"   # jeśli jeszcze istnieje
 claude plugin uninstall feature-workflow@personal                               # stan: osobistego pluginu brak
 python3 $WV/pilot_w19.py snapshot cache-removed --run $RUN
 PILOT_REPO=$RUN/projects/p1 $BRIDGE/tools/pilot/common/astra.sh resume           # ta sama sesja
@@ -117,7 +117,7 @@ W TUI: `/mcp`, treść `$RUN/START-ASTRA-p2.md`. Po turze `snapshot p2-done`.
 
 W TUI p1:
 
-`Switch F-001-reset explicitly to the installed workflow release 1.0.1 through the bridge, as the workflow describes; then run exactly one more Claude round of F-001-reset in the same feature session: document reset() in the README. Stop after the round and report the workflow version, identity and generation.`
+`Switch F-001-reset explicitly to the installed workflow release 0.0.0-pilot.b through the bridge, as the workflow describes; then run exactly one more Claude round of F-001-reset in the same feature session: document reset() in the README. Stop after the round and report the workflow version, identity and generation.`
 
 Po turze `snapshot switched`. Runda 6 to wyłącznie rezerwa na zwykłą poprawkę narzędzia/testu.
 
@@ -127,10 +127,10 @@ Po turze `snapshot switched`. Runda 6 to wyłącznie rezerwa na zwykłą poprawk
 python3 $WV/pilot_w19.py checks --run $RUN --feature-project p1 --feature F-001-reset
 git -C $RUN/market checkout -q main
 claude plugin marketplace add $RUN/market
-claude plugin install feature-workflow@claude-codex-bridge     # 1.0.0
+claude plugin install feature-workflow@claude-codex-bridge     # 0.0.0-pilot.a
 git -C $RUN/market checkout -q release-b
 claude plugin marketplace update claude-codex-bridge
-claude plugin update feature-workflow@claude-codex-bridge      # 1.0.1
+claude plugin update feature-workflow@claude-codex-bridge      # 0.0.0-pilot.b
 python3 $WV/pilot_w19.py snapshot claude-updated --run $RUN
 python3 $WV/pilot_w19.py collect --run $RUN --public $RUN/operator-results/public-result.json
 ```

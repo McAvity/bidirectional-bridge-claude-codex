@@ -63,7 +63,7 @@ class Setup(Run):
     def test_releases_are_distinct_and_only_carry_their_own_token(self):
         identities = {v["identity"] for v in self.setup["releases"].values()}
         self.assertEqual(len(identities), 3)
-        self.assertEqual([self.setup["releases"][k]["version"] for k in "ABC"], ["1.0.0", "1.0.1", "1.0.2"])
+        self.assertEqual([self.setup["releases"][k]["version"] for k in "ABC"], ["0.0.0-pilot.a", "0.0.0-pilot.b", "0.0.0-pilot.c"])
         for name, token in self.tokens.items():
             for other in "ABC":
                 text = (self.rd / f"releases/{other}/feature-workflow-claude/bundle/claude/skills/feature-execute/SKILL.md").read_text()
@@ -83,7 +83,7 @@ class Setup(Run):
         changed = subprocess.run(["git", "-C", market, "diff", "--name-only", a, b], capture_output=True, text=True).stdout.split()
         self.assertTrue(changed and all(p.startswith(("plugins/feature-workflow-", ".agents/plugins/", ".claude-plugin/")) for p in changed), changed)
         claude_market = json.loads(subprocess.run(["git", "-C", market, "show", f"{b}:.claude-plugin/marketplace.json"], capture_output=True, text=True).stdout)
-        self.assertEqual({p["name"]: p["version"] for p in claude_market["plugins"]}["feature-workflow"], "1.0.1")
+        self.assertEqual({p["name"]: p["version"] for p in claude_market["plugins"]}["feature-workflow"], "0.0.0-pilot.b")
 
     def test_agent_inputs_hold_no_operator_material(self):
         for project in P.PROJECTS:
@@ -251,10 +251,10 @@ class Collector(unittest.TestCase):
         a_lock = [{"feature_id": "F-001-reset", "identity": self.ident["A"], "generation": 1}]
         empty = {"runtime": {"runtime_id": None}, "locks": []}
         plans = [
-            ("started", 0, {"claude": [{"plugin": "feature-workflow", "marketplace": "personal", "version": "0.9.0"}], "codex": [{"plugin": "feature-workflow", "version": "1.0.0"}]}, {"p1": a_lock, "p2": []}, None),
-            ("updated-b", 50, {"claude": [{"plugin": "feature-workflow", "marketplace": "personal", "version": "0.9.0"}], "codex": [{"plugin": "feature-workflow", "version": "1.0.1"}]}, {"p1": a_lock, "p2": []}, b_head),
-            ("cache-removed", 55, {"claude": [], "codex": [{"plugin": "feature-workflow", "version": "1.0.1"}]}, {"p1": a_lock, "p2": []}, b_head),
-            ("claude-updated", 200, {"claude": [{"plugin": "feature-workflow", "marketplace": "claude-codex-bridge", "version": "1.0.1"}], "codex": [{"plugin": "feature-workflow", "version": "1.0.1"}]}, None, b_head),
+            ("started", 0, {"claude": [{"plugin": "feature-workflow", "marketplace": "personal", "version": "0.9.0"}], "codex": [{"plugin": "feature-workflow", "version": "0.0.0-pilot.a"}]}, {"p1": a_lock, "p2": []}, None),
+            ("updated-b", 50, {"claude": [{"plugin": "feature-workflow", "marketplace": "personal", "version": "0.9.0"}], "codex": [{"plugin": "feature-workflow", "version": "0.0.0-pilot.b"}]}, {"p1": a_lock, "p2": []}, b_head),
+            ("cache-removed", 55, {"claude": [], "codex": [{"plugin": "feature-workflow", "version": "0.0.0-pilot.b"}]}, {"p1": a_lock, "p2": []}, b_head),
+            ("claude-updated", 200, {"claude": [{"plugin": "feature-workflow", "marketplace": "claude-codex-bridge", "version": "0.0.0-pilot.b"}], "codex": [{"plugin": "feature-workflow", "version": "0.0.0-pilot.b"}]}, None, b_head),
         ]
         for index, (label, minute, entries, lock_map, head) in enumerate(plans):
             projects = {n: {**empty, "locks": (lock_map or {}).get(n, [])} for n in P.PROJECTS}
