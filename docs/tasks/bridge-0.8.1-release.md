@@ -23,3 +23,11 @@ not a persisted-resume or model pilot.
 
 Source SHA, distribution SHA, runtime smoke, review and CI results will be recorded
 below as each completes. The main checkout's local runtime-pin edit stays separate.
+
+## Versioned source
+
+Source: `fd473c5643e32f827806d2e6d619ad58f4b505aa` (0.8.1).
+Local `npm ci --ignore-scripts`, build, packages equivalence and 277-file documentation
+check PASS. Workflow packages/registry have no diff from the prior release.
+The distribution pin now selects this source; independent review, runtime smoke
+and exact-distribution CI follow before publication.
