@@ -442,7 +442,7 @@ for await (const line of createInterface({input: process.stdin})) {
     const fresh = makeProject("initial shared client"), selected = makeProject("selected shared client");
     init(selected);
     const spy = vi.spyOn(processes, "findActiveUse");
-    const inspect = (root: string) => planChange({action:"init",identity:resolveWorkspaceIdentity(root),target:loadRuntime(home,runtimeB.id),home,env});
+    const inspect = (root: string) => planChange({action:root === selected ? "update" : "init",identity:resolveWorkspaceIdentity(root),target:loadRuntime(home,runtimeB.id),home,env});
     try {
       spy.mockImplementation((_root: string, options: any) => options.inspectClientWriters
         ? {supported:false,code:"CLIENT_WORKSPACE_UNKNOWN",reason:"synthetic shared writer",entries:[]}

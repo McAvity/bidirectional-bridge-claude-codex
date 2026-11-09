@@ -1365,7 +1365,7 @@ describe("rollback returns to the previous runtime (W14-R2-09)", () => {
 
     const older = installRuntime({ source: REPO, ref: git(REPO, "rev-parse", `${runtimeCommit}~1`), home: sharedHome, env: childEnv({}) }).runtime;
     const explicit = plugin(project, ["rollback", "--to", older.id, "--yes", "--json"], env);
-    expect(explicit.code, explicit.stderr).toBe(0);
+    expect(explicit.code, explicit.stdout + explicit.stderr).toBe(0);
     expect((explicit.json as any).runtime.id).toBe(older.id);
   }, 600_000);
 

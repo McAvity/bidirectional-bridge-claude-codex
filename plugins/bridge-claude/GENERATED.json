@@ -7,7 +7,7 @@
     ".claude/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "fdb12af9844e44915129f787d0a6a7ee9af9c553ec545fb3abbcf0a78d5c82bb",
+  "source_digest": "dd334b1f4bfba5905420f90ae2f45335a2b1f142b47fcbecc738f9d92fabef17",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -95,7 +95,7 @@
     },
     {
       "path": "scripts/setup/workspace.mjs",
-      "sha256": "8290204f1005480f8d1c97bb76cf9f0464294dd8cf4b02df90b4ee1f951c244d"
+      "sha256": "6ebd9d646e7b230eb379d18211e18424436dd9298c7efeabc591fcda50f2cd09"
     },
     {
       "path": "skills/bridge-upgrade/SKILL.md",

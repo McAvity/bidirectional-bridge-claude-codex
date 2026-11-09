@@ -245,8 +245,8 @@ export function inspectCodexToml(text, env = process.env, execute = run) {
   return { status: "unverified", detail };
 }
 
-export function bridgeTableMatches(bridge, manifest, profile = "legacy") {
-  const expected = mcpDefinition(manifest, profile);
+export function bridgeTableMatches(bridge, manifest, profile = "legacy", { historicalCwd = false } = {}) {
+  const expected = { ...mcpDefinition(manifest, profile), ...(historicalCwd ? { cwd: "." } : {}) };
   return (
     bridge !== null &&
     typeof bridge === "object" &&
@@ -722,7 +722,7 @@ function planCodexConfig(plan, home, target, env, profile = "legacy") {
     conflict("CODEX_CONFIG_INVALID", `resulting TOML does not parse: ${inspected.detail}`);
     return null;
   }
-  if (inspected.status === "parsed" && !bridgeTableMatches(inspected.bridge, target.manifest, profile)) {
+  if (inspected.status === "parsed" && !bridgeTableMatches(inspected.bridge, target.manifest, profile, { historicalCwd })) {
     conflict("CODEX_CONFIG_CONFLICT", "keys outside the managed block change the effective mcp_servers.bridge table");
     return null;
   }
