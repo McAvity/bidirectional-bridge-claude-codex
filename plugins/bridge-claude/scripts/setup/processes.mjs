@@ -26,6 +26,9 @@ function isClient(base, argv) {
 }
 
 /** A short, content-free description: prompts in a worker's argv must never be printed. */
+const sharedCodex = (argv) => argv.includes("app-server") && !argv.includes("--no-daemon");
+const nativeWriter = (path) => /[\/]thread-writer-locks[\/][0-9a-f-]+\.lock$/u.test(path);
+
 function describe(argv) {
   return basename(argv[0]);
 }
@@ -36,9 +39,11 @@ function describe(argv) {
  *  - `client`: a Codex or Claude process whose working directory is the root;
  *  - `state-open`: any process holding a file below `<root>/.bridge/` open.
  *
+ * `inspectClientWriters: false` is for plans that intentionally do not block on clients.
+ * State holders, bridge processes and unreadable observations are still checked.
  * `supported: false` means observation is unsupported, restricted or incomplete.
  */
-export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid = process.pid, platform = process.platform, execute = run } = {}) {
+export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid = process.pid, platform = process.platform, execute = run, inspectClientWriters = true } = {}) {
   if (env.CODEX_SANDBOX) {
     return { supported: false, reason: "running inside a Codex sandbox, which hides other processes", nextStep: "run the command outside the restricting sandbox on this host", entries: [] };
   }
@@ -46,14 +51,14 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
   if (!["native", "sudo"].includes(inspection)) return unknown("invalid CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION", "use native (default) or sudo (Linux read-only observer)");
   if (inspection === "sudo") {
     if (platform !== "linux" || proc !== "/proc" || process.getuid() === 0) return unknown("sudo observation requires a non-root Linux installer using the host procfs");
-    return privilegedLinuxObservation(root, { env, selfPid, execute });
+    return privilegedLinuxObservation(root, { env, selfPid, execute, inspectClientWriters });
   }
   if (platform === "darwin") {
     // Background processes can start/exit between ps and lsof. Retry the entire
     // observation, never turn a partial snapshot into evidence of an idle workspace.
     let result;
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      result = findMacActiveUse(root, { env, selfPid, execute });
+      result = findMacActiveUse(root, { env, selfPid, execute, inspectClientWriters });
       if (!result.transient) break;
     }
     const { transient, ...report } = result;
@@ -71,6 +76,7 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
   const uid = typeof process.getuid === "function" ? process.getuid() : undefined;
   const entries = [];
   let unreadable = 0;
+  let unknownClientWorkspace = false;
   for (const name of names) {
     const pid = Number(name);
     if (pid === selfPid) continue;
@@ -102,7 +108,8 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
       const workspace = flag > 0 && argv[flag + 1] !== undefined ? resolve(cwd, argv[flag + 1]) : cwd;
       if ((realOrNull(workspace) ?? workspace) === canonicalRoot) kinds.push("bridge-mcp");
     }
-    if (cwd === canonicalRoot && isClient(base, argv)) kinds.push("client");
+    const client = isClient(base, argv);
+    if (cwd === canonicalRoot && client) kinds.push("client");
     try {
       for (const fd of readdirSync(`${base}/fd`)) {
         let target;
@@ -112,6 +119,7 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
           if (error.code !== "ENOENT" && error.code !== "ESRCH") unreadable += 1;
           continue;
         }
+        if (inspectClientWriters && client && sharedCodex(argv) && cwd !== canonicalRoot && nativeWriter(target)) unknownClientWorkspace = true;
         if (target.startsWith(stateDirectory)) {
           kinds.push("state-open");
           break;
@@ -122,18 +130,23 @@ export function findActiveUse(root, { env = process.env, proc = "/proc", selfPid
     }
     if (kinds.length > 0) entries.push({ pid, kinds, command: describe(argv) });
   }
+  if (unknownClientWorkspace) return { ...unknownWriter(), entries, unreadable };
   return unreadable > 0
     ? { ...unknown("some same-user process information could not be read", "close project clients; if host procfs remains restricted, authorize sudo -v in your terminal, then rerun with CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo (read-only observer; never sudo the installer)"), entries, unreadable }
     : { supported: true, entries, unreadable };
 }
 
 
+function unknownWriter() {
+  return { ...unknown("a shared Codex server outside this worktree has open native conversation writers; its cwd does not establish which worktrees it owns", "finish affected client work and release its conversations normally, then retry; do not delete writer locks or automatically stop a shared daemon"), code: "CLIENT_WORKSPACE_UNKNOWN" };
+}
+
 function unknown(reason, nextStep = "run outside the restricting sandbox; ensure process inspection is permitted, then retry") {
   return { supported: false, reason, nextStep, entries: [] };
 }
 
 /** ps supplies the completeness baseline; lsof uses NUL fields so spaces are data. */
-function findMacActiveUse(root, { env, selfPid, execute }) {
+function findMacActiveUse(root, { env, selfPid, execute, inspectClientWriters }) {
   const uid = process.getuid();
   const probe = (command, args) => execute(command, args, { env, timeoutMs: 15_000 });
   const snapshot = () => {
@@ -188,6 +201,11 @@ function findMacActiveUse(root, { env, selfPid, execute }) {
     if (!cwd) return unknown("macOS reported a working directory that cannot be resolved");
     const kinds = [];
     const program = basename(command);
+    if (inspectClientWriters && /^codex(?:$|-)/u.test(program) && cwd !== canonicalRoot && info.paths.some(nativeWriter)) {
+      const args = probe("/bin/ps", ["-ww", "-p", String(pid), "-o", "args="]);
+      if (args.error || args.status !== 0 || args.stderr.trim() || !args.stdout.trim()) return { ...unknown("macOS could not identify a native conversation writer; retry the command"), transient: true };
+      if (/(?:^|\s)app-server(?:\s|$)/u.test(args.stdout) && !/(?:^|\s)--no-daemon(?:\s|$)/u.test(args.stdout)) return { ...unknownWriter(), entries };
+    }
     if (cwd === canonicalRoot && /^(codex|claude)(?:$|-)/u.test(program)) kinds.push("client");
     if (info.paths.some((path) => path.startsWith(stateDirectory))) kinds.push("state-open");
     if (/^node(?:$|-)/u.test(program)) {
@@ -257,7 +275,7 @@ function parseMacFiles(output) {
 /** Opt-in only. The privileged interpreter executes a fixed, self-contained reader;
  * npm/git/build/project writes remain in this unprivileged parent. No saved report accepted.
  */
-function privilegedLinuxObservation(root, { env, selfPid, execute }) {
+function privilegedLinuxObservation(root, { env, selfPid, execute, inspectClientWriters }) {
   const canonicalRoot = realOrNull(root);
   const uid = process.getuid();
   const nextStep = "close project clients; run sudo -v in your terminal and retry with CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION=sudo; if inspection is still incomplete, keep the refusal and diagnose host permissions";
@@ -281,7 +299,8 @@ function privilegedLinuxObservation(root, { env, selfPid, execute }) {
   const kinds = new Set(["bridge-mcp", "client", "state-open"]);
   if (!report || report.format !== "bridge-process-observation/v1" || report.observer_euid !== 0 ||
       report.uid !== uid || report.installer_pid !== selfPid || report.root !== canonicalRoot || report.nonce !== nonce ||
-      typeof report.supported !== "boolean" || !Number.isSafeInteger(report.unreadable) || report.unreadable < 0 ||
+      typeof report.supported !== "boolean" ||
+      (report.client_workspace_unknown !== undefined && typeof report.client_workspace_unknown !== "boolean") || !Number.isSafeInteger(report.unreadable) || report.unreadable < 0 ||
       !Array.isArray(report.entries) || report.entries.length > 10000 ||
       report.entries.some(entry => !entry || !Number.isSafeInteger(entry.pid) || entry.pid <= 0 || entry.pid === selfPid ||
         entry.command !== "process" || !Array.isArray(entry.kinds) || entry.kinds.length < 1 || entry.kinds.length > 3 ||
@@ -289,6 +308,7 @@ function privilegedLinuxObservation(root, { env, selfPid, execute }) {
     return unknown("invalid or mismatched process observation", nextStep);
   }
   const entries = report.entries.map(({ pid, kinds, command }) => ({ pid, kinds, command }));
+  if (inspectClientWriters && report.client_workspace_unknown && report.supported && report.unreadable === 0) return { ...unknownWriter(), entries, unreadable: report.unreadable };
   if (!report.supported || report.unreadable !== 0) return { ...unknown("privileged process observation is incomplete", nextStep), entries, unreadable: report.unreadable };
   return { supported: true, entries, unreadable: 0, observer: "sudo-read-only" };
 }

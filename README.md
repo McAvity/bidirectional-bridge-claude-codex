@@ -393,7 +393,6 @@ never runs the build that the same worktree is changing.
 [mcp_servers.bridge]
 command = "node"
 args = [".bridge-runtime/current/scripts/native-bridge-mcp.mjs", "--caller", "codex", "--delegation", "allow", "--workspace", "."]
-cwd = "."
 required = true
 startup_timeout_sec = 30
 tool_timeout_sec = 5400

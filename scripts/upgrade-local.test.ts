@@ -60,6 +60,14 @@ describe("portable upgrade orchestration", () => {
     expect(f.calls[0].opts.cwd).toBe(f.workspace);
     expect(f.calls[0].opts.env.CLAUDE_CODEX_BRIDGE_HOME).toBe(f.home);
   });
+  it("never equates a successful standalone upgrade with a verified live client", async () => {
+    const f=fixture(), logs:string[]=[]; f.deps.log=(line:string)=>logs.push(line);
+    await upgrade(f.options,f.deps);
+    expect(logs.at(-1)).toContain("Live client verification remains pending");
+    expect(logs.join("\n")).toContain("bridge_manager_status");
+    expect(logs.join("\n")).toContain("exact workspace root");
+    expect(f.calls.some(c=>c.program==="codex")).toBe(false);
+  });
   it("a failed receipt stops before doctor", async () => {
     const f=fixture(),inspect=f.deps.status;
     f.deps.status=()=>({...inspect(),selection:{kind:"valid",runtime_id:"wrong"}});
@@ -159,6 +167,7 @@ describe("portable upgrade orchestration", () => {
     for(const [report,exit,expected] of [
       [{applied:false,refusals:[{code:"ACTIVE_USE_UNKNOWN"}]},1,true],
       [{applied:false,refusals:[{code:"ACTIVE_SESSION"}]},1,false],
+      [{applied:false,refusals:[{code:"CLIENT_WORKSPACE_UNKNOWN"}]},1,false],
       [{applied:false,refusals:[{code:"ACTIVE_USE_UNKNOWN"},{code:"CONFIG_CONFLICT"}]},1,false],
       [{applied:true,refusals:[{code:"ACTIVE_USE_UNKNOWN"}]},1,false],
       [{applied:false,refusals:[{code:"ACTIVE_USE_UNKNOWN"}]},0,false],
@@ -264,6 +273,7 @@ describe("portable upgrade orchestration", () => {
       [{...base,checks:[unknown,{status:"warn",code:"CODEX_VERSION_UNVERIFIED"}]},1,true],
       [{...base,checks:[unknown,{status:"error",code:"CODEX_PROJECT_UNTRUSTED"}]},1,false],
       [{...base,checks:[{...unknown,code:"ACTIVE_SESSION"}]},1,false],
+      [{...base,checks:[{...unknown,code:"CLIENT_WORKSPACE_UNKNOWN"}]},1,false],
       [{...base,checks:[]},1,false],
       [{...base,checks:[null]},1,false],
       [{...base,status:"problems"},1,false],

@@ -6,6 +6,7 @@ No argv, cwd targets or fd targets are returned. No files or processes are modif
 import errno
 import json
 import os
+import re
 import sys
 
 GONE = (errno.ENOENT, errno.ESRCH)
@@ -23,6 +24,7 @@ def observe(root, uid, installer_pid, proc='/proc'):
     entries = []
     issues = []
     seen = {}
+    client_workspace_unknown = False
     own_pid = os.getpid()
     root = os.path.realpath(root)
     state = root + '/.bridge/'
@@ -84,6 +86,8 @@ def observe(root, uid, installer_pid, proc='/proc'):
                         if error.errno in GONE:
                             continue
                         raise
+                    if client and 'app-server' in argv and '--no-daemon' not in argv and cwd != root and re.search(r'/thread-writer-locks/[0-9a-f-]+\.lock$', target):
+                        client_workspace_unknown = True
                     if target.startswith(state):
                         kinds.append('state-open')
                         break
@@ -106,7 +110,10 @@ def observe(root, uid, installer_pid, proc='/proc'):
         entries = [entry for entry in entries if after.get(entry['pid']) == before.get(entry['pid'])]
     except (OSError, ValueError, IndexError):
         issues.append({'code': 'SNAPSHOT_FAILED'})
-    return {'supported': not issues, 'entries': sorted(entries, key=lambda entry: entry['pid']), 'unreadable': len(issues)}
+    result = {'supported': not issues, 'entries': sorted(entries, key=lambda entry: entry['pid']), 'unreadable': len(issues)}
+    if client_workspace_unknown:
+        result['client_workspace_unknown'] = True
+    return result
 
 
 def main():

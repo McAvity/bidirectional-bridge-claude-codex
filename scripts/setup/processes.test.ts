@@ -14,11 +14,11 @@ const temp = () => { const p = realpathSync(mkdtempSync(join(tmpdir(), "bridge-p
 afterEach(() => { for (const p of dirs.splice(0)) rmSync(p, { recursive: true, force: true }); });
 const uid = process.getuid!();
 const ok = (stdout: string) => ({ status: 0, stdout, stderr: "" });
-function mac(root: string, options: { comm?: string; cwd?: string; paths?: string[]; args?: string; fail?: string; missing?: boolean; after?: string; stderr?: string; targetFiles?: string; targetIdentity?: string; targetExited?: boolean } = {}) {
+function mac(root: string, options: { comm?: string; cwd?: string; paths?: string[]; args?: string; fail?: string; missing?: boolean; after?: string; stderr?: string; targetFiles?: string; targetIdentity?: string; targetExited?: boolean; inspectClientWriters?: boolean } = {}) {
   let snapshots = 0;
   const rows = `${uid} 100 /node\n${uid} 200 ${options.comm ?? "/bin/sleep"}\n`;
   const fields = `p100\0cnode\0\nfcwd\0n${root}\0\np200\0csleep\0\n` + (options.missing ? "" : `fcwd\0n${options.cwd ?? root}\0\n`) + (options.paths ?? []).map(p => `f3\0n${p}\0\n`).join("");
-  return findActiveUse(root, { platform: "darwin", env: {}, selfPid: 100, execute: (command: string, args: string[]) => {
+  return findActiveUse(root, { platform: "darwin", env: {}, selfPid: 100, inspectClientWriters: options.inspectClientWriters, execute: (command: string, args: string[]) => {
     if (command === options.fail) return { status: 1, stdout: "", stderr: "Operation not permitted" };
     if (command.endsWith("lsof")) return { ...ok(args.includes("-p") ? options.targetFiles ?? fields : fields), stderr: options.stderr ?? "" };
     if (args.includes("args=")) return ok(options.args ?? "node other.js");
@@ -41,6 +41,35 @@ describe("portable active-use inspection", () => {
     const result = mac(root, { comm: "/node", cwd: tmpdir(), args: `node /runtime/native-bridge-mcp.mjs --secret PRIVATE --workspace ${root}` });
     expect(result).toMatchObject({ supported: true, entries: [{ kinds: ["bridge-mcp"], command: "node" }] });
     expect(JSON.stringify(result)).not.toContain("PRIVATE");
+  });
+  it("does not infer an idle worktree from a foreign-cwd Codex conversation writer", () => {
+    const root = temp(), elsewhere = temp();
+    const path = `${elsewhere}/thread-writer-locks/11111111-2222-3333-4444-555555555555.lock`;
+    const report = mac(root, { comm: "/runtime/codex", cwd: elsewhere, paths: [path], args: "codex app-server --listen unix://" });
+    expect(report.supported).toBe(false);
+    expect(mac(root, { comm: "/runtime/codex", cwd: elsewhere, paths: [path, `${root}/.bridge/db`],
+      args: "codex app-server", inspectClientWriters: false })).toMatchObject({ supported: true, entries: [{ kinds: ["state-open"] }] });
+    expect(report.code).toBe("CLIENT_WORKSPACE_UNKNOWN");
+    expect(report.reason).toContain("native conversation writers");
+    expect(JSON.stringify(report)).not.toContain("11111111");
+    expect(mac(root, { comm: "/runtime/codex", cwd: elsewhere, paths: [path], args: "codex resume --no-daemon" }).supported).toBe(true);
+    // Mere files on disk and unrelated open files are not a writer observation.
+    expect(mac(root, { comm: "/runtime/codex", cwd: elsewhere, paths: [`${elsewhere}/ordinary.lock`] }).supported).toBe(true);
+    expect(mac(root, { comm: "/runtime/codex", paths: [path] }).entries[0].kinds).toContain("client");
+  });
+  it("fails closed for a foreign-cwd native Linux writer without disclosing session ids", () => {
+    const root = temp(), elsewhere = temp(), proc = temp(), base = join(proc, "200");
+    mkdirSync(join(base, "fd"), { recursive: true });
+    writeFileSync(join(base, "comm"), "codex");
+    writeFileSync(join(base, "cmdline"), "codex\0app-server\0");
+    symlinkSync(elsewhere, join(base, "cwd"));
+    symlinkSync(`${elsewhere}/thread-writer-locks/11111111-2222-3333-4444-555555555555.lock`, join(base, "fd/3"));
+    const report = findActiveUse(root, { platform: "linux", proc, env: {}, selfPid: 100 });
+    expect(report.supported).toBe(false);
+    expect(report.code).toBe("CLIENT_WORKSPACE_UNKNOWN");
+    expect(report.reason).toContain("native conversation writers");
+    expect(findActiveUse(root, { platform: "linux", proc, env: {}, selfPid: 100, inspectClientWriters: false })).toMatchObject({supported: true, entries: []});
+    expect(JSON.stringify(report)).not.toContain("11111111");
   });
   it("detects dispatcher and bare launcher arguments", () => {
     const root = temp();
@@ -117,10 +146,10 @@ describe("macOS mount inspection", () => {
 });
 
 describe("explicit read-only Linux privileged observation", () => {
-  function probe(change: (report: any) => any = r => r, resultChange: (result: any) => any = r => r) {
+  function probe(change: (report: any) => any = r => r, resultChange: (result: any) => any = r => r, inspectClientWriters = true) {
     const root = temp();
     const calls: any[] = [];
-    const result = findActiveUse(root, { platform: "linux", env: { CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "sudo" }, selfPid: 100,
+    const result = findActiveUse(root, { platform: "linux", env: { CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION: "sudo" }, selfPid: 100, inspectClientWriters,
       execute: (command: string, args: string[], options: any) => {
         calls.push({ command, args, options });
         const [user, installer, workspace, nonce] = args.slice(-4);
@@ -144,6 +173,14 @@ describe("explicit read-only Linux privileged observation", () => {
     const entries = [{ pid: 200, command: "process", kinds: ["client", "bridge-mcp", "state-open"] }];
     expect(probe(r => ({ ...r, entries })).result).toMatchObject({ supported: true, entries });
     expect(probe(r => ({ ...r, entries, supported: false, unreadable: 2 })).result).toMatchObject({ supported: false, entries, unreadable: 2 });
+  });
+  it("separates shared-client uncertainty from observation failures and state holders", () => {
+    if (uid === 0) return;
+    const writer = (r: any) => ({...r, client_workspace_unknown: true});
+    expect(probe(writer).result).toMatchObject({supported:false, code:"CLIENT_WORKSPACE_UNKNOWN"});
+    expect(probe(writer, r => r, false).result).toMatchObject({supported:true});
+    expect(probe(r => ({...writer(r), supported:false, unreadable:1}), r => r, false).result.supported).toBe(false);
+    expect(probe(r => ({...writer(r), entries:[{pid:200,command:"process",kinds:["state-open"]}]}), r => r, false).result.entries).toHaveLength(1);
   });
   it("fails closed on unavailable privilege, partial output, warnings and mismatched replies", () => {
     if (uid === 0) return;

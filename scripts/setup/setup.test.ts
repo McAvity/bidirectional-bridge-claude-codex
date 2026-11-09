@@ -1,3 +1,4 @@
+import { resolveWorkspaceIdentity } from "@bridge/control-plane";
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -22,7 +23,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 // Process inspection uses synchronous OS tools; let Vitest flush IPC between cases.
 afterEach(() => new Promise<void>((done) => setTimeout(done, 25)));
@@ -292,7 +293,7 @@ async function createBoundState(worktree: string, thread: string): Promise<void>
 
 describe("bridge setup CLI", () => {
   beforeAll(() => {
-    tmp = mkdtempSync(join(tmpdir(), "bridge setup "));
+    tmp = realpathSync(mkdtempSync(join(tmpdir(), "bridge setup ")));
     home = join(tmp, "bridge home");
     const fakeBin = join(tmp, "fake bin");
     mkdirSync(fakeBin);
@@ -363,11 +364,101 @@ describe("bridge setup CLI", () => {
       expect(check(result.json, key).status, JSON.stringify(result.json)).toBe("ok");
     }
     expect(result.json.distribution.integration_source).toBe("project-dispatcher");
+    expect(result.json.verification).toMatchObject({ configuration: "cli-inspection", handshake: "standalone-process", live_client: "not-checked" });
+    expect(check(result.json, "handshake").summary).toContain("live client not inspected");
     expect(snapshot(project)).toEqual(before);
+    // Even a responsive MCP server must fail when it reports another workspace.
+    writeFileSync(join(project, ".bridge-project/entry.mjs"), `
+import { createInterface } from 'node:readline';
+for await (const line of createInterface({input: process.stdin})) {
+  const m = JSON.parse(line); if (m.id === undefined) continue;
+  let result = {};
+  if (m.method === 'initialize') result = {protocolVersion: m.params.protocolVersion, capabilities: {}, serverInfo: {name:'synthetic',version:'1'}};
+  if (m.method === 'tools/list') result = {tools: []};
+  if (m.method === 'tools/call') result = {content:[{type:'text',text:JSON.stringify(m.params.name === 'bridge_server_info'
+    ? {caller:'codex',delegation:'allow'} : {workspace:{root:'/synthetic/other-project'}})}]};
+  if (m.params?.name === 'bridge_manager_status' && process.env.SYNTHETIC_MANAGER_ERROR) result.isError = true;
+  console.log(JSON.stringify({jsonrpc:'2.0',id:m.id,result}));
+}`);
+    expect(check(bridgeJson(["doctor", "--workspace", project], extra).json, "handshake").code).toBe("HANDSHAKE_WORKSPACE_MISMATCH");
+    expect(check(bridgeJson(["doctor", "--workspace", project], {...extra, SYNTHETIC_MANAGER_ERROR:"1"}).json, "handshake").code).toBe("HANDSHAKE_STATUS_FAILED");
     // A broken dispatcher must fail the actual handshake, not pass via the legacy launcher.
     writeFileSync(join(project, ".bridge-project/entry.mjs"), 'throw new Error("DISPATCHER_SENTINEL");\n');
     const broken = bridgeJson(["doctor", "--workspace", project], extra);
     expect(check(broken.json, "handshake").code).toBe("HANDSHAKE_FAILED");
+  });
+
+  it.each(["legacy", "dispatcher"])("migrates only exact historical cwd blocks in inherited %s worktrees", async (profile) => {
+    const { renderCodexBlock } = await import("./workspace.mjs");
+    const manifest = JSON.parse(readFileSync(join(runtimeA.path, "runtime-manifest.json"), "utf8"));
+    const project = makeProject(`historical cwd ${profile}`);
+    if (profile === "dispatcher") {
+      mkdirSync(join(project, ".bridge-project"));
+      copyFileSync(join(runtimeA.path, "scripts/bridge-project/entry-template.mjs"), join(project, ".bridge-project/entry.mjs"));
+      writeFileSync(join(project, ".bridge-project/bridge.json"), JSON.stringify({format:"claude-codex-bridge.project/v1",enabled:true,pinned:{runtime_id:runtimeA.id,commit:runtimeA.commit}},null,2)+"\n");
+    }
+    const config = join(project, ".codex/config.toml");
+    writeFileSync(config, 'model_reasoning_effort = "high"\n' + renderCodexBlock(manifest, profile, { historicalCwd: true }));
+    git(project, "add", "-A"); git(project, "commit", "-qm", "inherited historical configuration");
+    // planChange exposes the profile for the portable installer; use its normal plan path directly.
+    const { planChange } = await import("./workspace.mjs");
+    const { loadRuntime } = await import("./runtime.mjs");
+    const identity = resolveWorkspaceIdentity(project);
+    const inspect = () => planChange({ action:"init", identity, target:loadRuntime(home,runtimeA.id), home, env, profile });
+    const plan = await inspect();
+    expect(plan.conflicts).toEqual([]);
+    const change = plan.ops.find((op:any)=>op.path===".codex/config.toml");
+    expect(change?.content.toString()).not.toMatch(/^cwd\s*=/m);
+    expect(change?.content.toString()).toContain('model_reasoning_effort = "high"');
+    // Initialize local selection so doctor can compare the historical block with this runtime.
+    init(project);
+    writeFileSync(config, renderCodexBlock(manifest, profile, { historicalCwd: true }));
+    const historical = bridgeJson(["doctor", "--workspace", project, "--no-handshake"]).json;
+    expect(check(historical, "codex_config").code).toBe("CODEX_RELATIVE_CWD");
+    expect(check(historical, "codex_project").code).toBe("CODEX_RELATIVE_CWD");
+    writeFileSync(config, readFileSync(config,"utf8").replace('cwd = "."','cwd = ".."'));
+    expect((await inspect()).conflicts.map((c:any)=>c.code)).toContain("CODEX_CONFIG_MODIFIED");
+  });
+
+  it("only blocks shared native writers when client use matters, preserving state and unreadable refusals", async () => {
+    const { planChange } = await import("./workspace.mjs");
+    const { loadRuntime } = await import("./runtime.mjs");
+    const processes = await import("./processes.mjs");
+    const fresh = makeProject("initial shared client"), selected = makeProject("selected shared client");
+    init(selected);
+    const spy = vi.spyOn(processes, "findActiveUse");
+    const inspect = (root: string) => planChange({action:"init",identity:resolveWorkspaceIdentity(root),target:loadRuntime(home,runtimeB.id),home,env});
+    try {
+      spy.mockImplementation((_root: string, options: any) => options.inspectClientWriters
+        ? {supported:false,code:"CLIENT_WORKSPACE_UNKNOWN",reason:"synthetic shared writer",entries:[]}
+        : {supported:true,entries:[]});
+      expect(inspect(fresh).ok).toBe(true);
+      expect(inspect(selected).refusals.map((r:any)=>r.code)).toContain("CLIENT_WORKSPACE_UNKNOWN");
+      spy.mockReturnValue({supported:true,entries:[{pid:200,command:"process",kinds:["state-open"]}]});
+      expect(inspect(fresh).refusals.map((r:any)=>r.code)).toContain("ACTIVE_SESSION");
+      spy.mockReturnValue({supported:false,reason:"synthetic permission denial",entries:[]});
+      expect(inspect(fresh).refusals.map((r:any)=>r.code)).toContain("ACTIVE_USE_UNKNOWN");
+    } finally { spy.mockRestore(); }
+  });
+
+  it("diagnoses an unchanged committed missing prior pin without adopting it or accepting edits", async () => {
+    const { planChange, declarationContent } = await import("./workspace.mjs");
+    const { loadRuntime } = await import("./runtime.mjs");
+    const project = makeProject("missing prior runtime");
+    mkdirSync(join(project, ".bridge-project"));
+    copyFileSync(join(runtimeA.path, "scripts/bridge-project/entry-template.mjs"), join(project, ".bridge-project/entry.mjs"));
+    const declaration = join(project, ".bridge-project/bridge.json");
+    const prior = {id:"0.0.1-aaaaaaaaaaaa",manifest:{source:{commit:"a".repeat(40)}}};
+    writeFileSync(declaration, declarationContent(prior));
+    git(project,"add","-A"); git(project,"commit","-qm","inherited prior pin");
+    const identity=resolveWorkspaceIdentity(project);
+    const inspect=()=>planChange({action:"init",identity,target:loadRuntime(home,runtimeA.id),home,env,profile:"dispatcher"});
+    const before=snapshot(project), plan=inspect();
+    expect(plan.ok).toBe(false);
+    expect(plan.conflicts).toContainEqual(expect.objectContaining({code:"PROJECT_PIN_RUNTIME_MISSING",nextStep:expect.stringContaining("a".repeat(40))}));
+    expect(snapshot(project)).toEqual(before);
+    writeFileSync(declaration,declarationContent({...prior,id:"0.0.2-bbbbbbbbbbbb"}));
+    expect(inspect().conflicts.map((c:any)=>c.code)).toContain("PROJECT_FILE_MODIFIED");
   });
 
   it("installs immutable pinned runtimes beside each other from a fresh clone", () => {

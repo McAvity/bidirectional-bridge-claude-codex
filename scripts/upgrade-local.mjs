@@ -99,7 +99,7 @@ export function finalOutcome(code, { apply = true, stream = process.stdout, env 
   const severity = code === 0 ? "ok" : code === 2 ? "warn" : "error";
   const label = code === 0 ? "OK" : code === 2 ? "WARN" : "ERROR";
   const text = code === 0
-    ? apply ? "SUCCESS: target runtime selected and doctor passed for all requested worktrees."
+    ? apply ? "SUCCESS: target runtime selected and standalone doctor passed for all requested worktrees. Live client verification remains pending."
       : "PLAN COMPLETE: no project upgrade applied."
     : code === 2 ? "Runtime selection OK; verification INCOMPLETE. Upgrade is NOT fully verified."
       : "FAILED: upgrade did not complete. See the failed stage above.";
@@ -230,7 +230,7 @@ export async function upgrade(options, dependencies = {}) {
         env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION = "sudo";
         run(process.execPath, doctor, { cwd: workspace, env });
       }
-      out(`RESULT: ${statusLabel("OK", "ok")} [SUCCESS] | ${workspace} | ${runtime.id} selected; doctor passed`);
+      out(`RESULT: ${statusLabel("OK", "ok")} [SUCCESS] | ${workspace} | ${runtime.id} selected; standalone doctor passed; live client verification pending`);
     } catch (error) {
       const selected = stage === "doctor";
       const outcome = selected ? "APPLIED_VERIFICATION_FAILED" : "FAILED";
@@ -243,7 +243,7 @@ export async function upgrade(options, dependencies = {}) {
         { upgradeExitCode: selected ? 2 : 1 });
     }
   }
-  if (options.apply) out("Restart affected clients to load the new runtime and skills. Review project pin changes before committing.");
+  if (options.apply) out("Restart affected clients to load the new runtime and skills. In the resumed conversation verify bridge_server_info and bridge_manager_status, including the exact workspace root. Review project pin changes before committing.");
   out(finalOutcome(0, { apply: options.apply }));
 }
 

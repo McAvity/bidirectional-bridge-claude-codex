@@ -374,7 +374,10 @@ describe("native project MCP launcher", () => {
     const codexText = readFileSync(join(repoRoot, ".codex", "config.toml"), "utf8");
     // This repository now uses the inherited dispatcher profile, not legacy init.
     // Both profiles must keep the selected runtime separate from the edited build.
-    expect(codexText).toBe(setup.renderCodexBlock(null, "dispatcher"));
+    // A source edit must not hand-rewrite the supervising runtime's managed config.
+    // Accept only the current template or its exact historical form until checked upgrade.
+    expect([setup.renderCodexBlock(null, "dispatcher"),
+      setup.renderCodexBlock(null, "dispatcher", { historicalCwd: true })]).toContain(codexText);
     const claudePath = join(repoRoot, ".mcp.json");
     expect(existsSync(claudePath), ".mcp.json must be produced by the delegated Claude task").toBe(true);
     const claudeText = readFileSync(claudePath, "utf8");
@@ -423,7 +426,7 @@ describe("native project MCP launcher", () => {
     };
     expect(externalCodex).toContain('[mcp_servers.bridge]');
     expect(externalCodex).toMatch(/command\s*=\s*"claude-codex-bridge"/u);
-    expect(externalCodex).toContain('cwd = "."');
+    expect(externalCodex).not.toMatch(/^cwd\s*=/m);
     expect(externalCodex).toContain('tool_timeout_sec = 5400');
     expect(externalCodex).toContain('"--workspace", "."');
     expect(externalClaudeConfig.mcpServers?.["bridge"]?.command).toBe("claude-codex-bridge");

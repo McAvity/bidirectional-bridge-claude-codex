@@ -88,6 +88,65 @@ wait for the task deadline or fabricate zero-token telemetry.
 
 On Windows without a global Codex on `PATH`, use `.\node_modules\.bin\codex.cmd mcp list`.
 
+### Doctor passes, but Codex cannot find `.bridge-project/entry.mjs`
+
+Check the path in the client's Node `MODULE_NOT_FOUND` error. On macOS with Codex
+0.167.0, a shared daemon started in another checkout resolved the managed relative
+launcher against its own cwd, despite the resumed conversation targeting the right
+worktree. The bridge never started. A standalone doctor can still pass because it
+explicitly supplies the correct cwd; `codex mcp list` reports configuration, not
+proof of a live connection. See the [incident, fix and validation limits](tasks/codex-daemon-startup.md).
+
+The corrected installer omits `cwd` from the managed Codex block, letting the
+client use the conversation workspace while preserving portable relative paths.
+`CODEX_RELATIVE_CWD` means the old block is still effective: use the corrected
+bridge package's normal checked upgrade to migrate it, then restart. Do not assume
+that a package already installed on another machine contains this fix.
+
+Compare the intended worktree with the daemon/MCP process cwd using read-only
+process inspection. Do not reinstall the runtime solely for this symptom or add
+machine-specific paths to committed configuration. A temporary
+`-c mcp_servers.bridge.cwd=...` override also failed during `account/read` in the
+observed client, so it is not a verified workaround for this case.
+
+Once the existing native conversation is no longer owned by another client,
+resume that exact conversation from the intended worktree without the shared
+daemon (check the installed CLI's `resume --help` for support):
+
+```sh
+cd "/absolute/path/to/worktree"
+codex resume --no-daemon -C "/absolute/path/to/worktree" "EXACT_EXISTING_SESSION_ID"
+```
+
+If the client says **This conversation is open in another app**, close it there
+normally and retry. A shared daemon can retain the writer after `/quit`. Identify
+the holder of the exact native session's writer lock; on macOS, read-only `lsof`
+can inspect its file under the effective Codex home's `thread-writer-locks/`.
+The lock file's existence alone does not prove that a process holds it. Do not
+delete the lock, copy state or create a replacement conversation.
+
+When the holder is the shared daemon, the user may stop it normally with
+`codex app-server daemon stop` **after finishing other work using that daemon**,
+then run the resume command above. This affects other connected clients; it is not
+an automatic installer step. A native writer lock is separate from a bridge
+manager lease and is not repaired by manager takeover or recovery tools.
+
+`CLIENT_WORKSPACE_UNKNOWN` means process inspection saw an open native conversation
+writer in a shared server whose cwd is elsewhere. It does not establish which
+project owns the conversation; it may conservatively block an unrelated project's
+upgrade too. Release the relevant client work normally before retrying. Elevated
+process-read permissions do not resolve that ambiguity.
+
+If upgrade reports `PROJECT_PIN_RUNTIME_MISSING`, the committed declaration is
+unchanged but its historical runtime is absent locally. Verify/install the exact
+historical commit using the normal runtime installer and repeat the plan. Do not
+edit the pin or use `--keep-local` to conceal the missing provenance.
+
+After resume, call `bridge_server_info` and `bridge_manager_status` in the actual
+conversation. Verify caller/policy and the exact workspace root. If no bridge state
+exists, an unbound manager is normal; do not create tasks merely to make a status
+check pass. Only report live integration as verified after these calls succeed.
+
 ### `bridge_server_info` returns the wrong caller
 
 Stop. Caller identity is bound when the server process starts, from the `--caller` argument in

@@ -19,7 +19,7 @@ class ProcessObserverTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.proc = Path(self.tmp.name) / 'proc'
-        self.root = Path(self.tmp.name) / 'workspace with spaces'
+        self.root = Path(self.tmp.name).resolve() / 'workspace with spaces'
         self.proc.mkdir()
         self.root.mkdir()
         self.uid = os.getuid()
@@ -53,6 +53,15 @@ class ProcessObserverTests(unittest.TestCase):
         self.assertEqual(r['entries'][1]['kinds'], ['client'])
         self.assertNotIn('PRIVATE', str(r))
         self.assertNotIn(str(self.root), str(r))
+
+    def test_foreign_cwd_codex_writer_is_not_evidence_of_an_idle_target(self):
+        lock = str(Path(self.tmp.name) / 'thread-writer-locks/11111111-2222-3333-4444-555555555555.lock')
+        self.process(argv=('codex', 'app-server'), comm='codex', cwd=Path(self.tmp.name), files=(lock,))
+        result = self.run_scan()
+        self.assertTrue(result['supported'])
+        self.assertTrue(result['client_workspace_unknown'])
+        self.assertNotIn('11111111', str(result))
+        self.assertEqual(result['entries'], [])
 
     def test_dispatcher_and_empty_argv_holder(self):
         self.process(argv=('node', '.bridge-project/entry.mjs'))

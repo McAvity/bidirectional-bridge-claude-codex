@@ -8,7 +8,7 @@ args = [
   "--delegation", "allow",
   "--workspace", "."
 ]
-cwd = "."
+# Leave cwd unset so a shared Codex server uses the conversation workspace.
 required = true
 startup_timeout_sec = 30
 # How long this client waits for one MCP call. It does not bound the worker; keep it above

@@ -109,6 +109,12 @@ is idle, apply the same command with `--yes`. The requested upgrade covers this;
 ask only about a genuine choice outside scope, such as discarding local edits.
 Do not use --keep-local to hide a pin/config conflict or change project preferences.
 
+`PROJECT_PIN_RUNTIME_MISSING` means the unchanged committed prior pin names a
+runtime absent on this host. Verify its full commit and install that historical
+runtime with the existing installer, then repeat the plan. This does not select
+the old runtime or authorize editing the pin. An ordinary `PROJECT_FILE_MODIFIED`
+still needs diagnosis; never treat an arbitrary declaration as an inherited pin.
+
 If this client or another process uses the target worktree, finish preparation but
 leave its pin and files unchanged. Do not bypass ACTIVE_SESSION/ACTIVE_USE_UNKNOWN,
 kill clients, or stop an active worker to make the update pass. Give one copyable
@@ -119,6 +125,23 @@ not start the next one. Record the original native session id when available fro
 trusted session metadata; never guess a session or pick the newest auto-review thread.
 Tell the user which client(s) to close and that the command goes in their shell after
 `/quit` or the client's normal exit. This skill cannot keep running after its host exits.
+
+Native Codex conversations may remain owned by a shared app-server daemon after
+the TUI exits. A daemon's cwd is not an inventory of its conversations. If a resume
+reports "This conversation is open in another app", identify the writer of the
+exact known native session using read-only process inspection. Do not delete lock
+files, copy session state, take over a bridge manager, or create a new conversation.
+Close the owning client normally. If the shared daemon retains the session, tell
+the user it may be stopped normally only after other work using it has finished;
+stopping it affects other clients and is never an automatic upgrade action.
+
+For a verified wrong-cwd startup on an older installed template (`cwd = "."`),
+check installed `codex resume --help` and offer same-session `--no-daemon` from the
+exact workspace only after writer ownership is released. Do not blindly add a
+`-c mcp_servers.bridge.cwd=...` override: Codex 0.167.0 was observed failing
+`account/read` with that override. Current templates omit cwd so Codex selects the
+conversation workspace; keep committed configuration portable and never hand-edit
+an active installation to apply this source change.
 
 ## 4. Verify and resume
 
@@ -147,6 +170,15 @@ status before continuing work. Do not start a replacement session to resolve fen
 or claim a round ran from a doctor handshake. If refreshed skills are not discovered
 on resume, report that separately; a new manager thread is not an automatic workaround.
 
+Doctor inspects CLI configuration and launches a separate MCP probe with the intended
+cwd. Its success is not proof that the resumed conversation has a working connection.
+After restart, require live `bridge_server_info` and `bridge_manager_status` calls
+from that conversation. Verify caller=codex, delegation=allow, and the exact canonical
+workspace root. A missing connection, wrong root or wrong identity leaves live
+verification incomplete; do not create/claim tasks to test it. An unbound manager
+with no state is normal. If Node reports MODULE_NOT_FOUND, compare the attempted
+entry path with the intended project and the daemon cwd before reinstalling anything.
+
 Summarize separately: plugin refresh, runtime installed, project pin applied or pending,
-verification, and the exact exit/apply/resume action still needed. A prepared update
+standalone doctor result, live client result, and the exact exit/apply/resume action still needed. A prepared update
 is not a completed upgrade. No model smoke, push or release is implied by this skill.

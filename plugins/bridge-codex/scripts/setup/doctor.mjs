@@ -139,11 +139,11 @@ function lockProbe(directory, env) {
   }
 }
 
-/** Minimal MCP stdio client: start the server exactly as Codex would and read without claiming. */
+/** Standalone MCP probe with the intended workspace; not the native client's live connection. */
 function handshake(root, definition, env, timeoutMs = 25_000) {
   return new Promise((resolveHandshake) => {
     const child = spawn(definition.command, definition.args, {
-      cwd: resolve(root, definition.cwd),
+      cwd: resolve(root, definition.cwd ?? "."),
       env,
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -285,6 +285,8 @@ export function describeCodexContext({ profile, source }) {
   return `profile ${JSON.stringify(profile)} from ${source === "flag" ? "--codex-profile" : `$${CODEX_PROFILE_ENV}`}`;
 }
 
+const CWD_REMEDY = "upgrade with the corrected bridge package to migrate the managed block without cwd; an explicit relative cwd can resolve against a shared Codex server in another worktree; do not add an absolute -c override";
+
 const CONTEXT_REMEDY = `if your interactive \`codex\` adds --profile (for example through a shell function), rerun doctor with --codex-profile <name> or ${CODEX_PROFILE_ENV}=<name>`;
 
 /**
@@ -372,8 +374,13 @@ function codexProjectCheck(add, root, identity, manifest, env, context, setupPro
     const same =
       transport.command === expected.command &&
       JSON.stringify(transport.args) === JSON.stringify(expected.args) &&
-      transport.cwd === expected.cwd;
-    if (!same) {
+      (transport.cwd ?? null) === (expected.cwd ?? null);
+    if (!same && transport.cwd === "." && transport.command === expected.command &&
+        JSON.stringify(transport.args) === JSON.stringify(expected.args)) {
+      add("codex_project", "error", "CODEX_RELATIVE_CWD", `Codex (${where}) reports the historical relative bridge cwd`, {
+        details: contextDetails, nextStep: CWD_REMEDY,
+      });
+    } else if (!same) {
       add("codex_project", "error", "CODEX_CONFIG_MISMATCH", `Codex (${where}) resolves a different bridge server than the managed block defines`, {
         details: { ...contextDetails, command: transport.command, args: transport.args, cwd: transport.cwd },
         nextStep: "remove the other mcp_servers.bridge definition (global config, profile or -c override)",
@@ -383,7 +390,7 @@ function codexProjectCheck(add, root, identity, manifest, env, context, setupPro
     } else if (Number(server.tool_timeout_sec) < TOOL_TIMEOUT_SEC) {
       add("codex_project", "warn", "CODEX_TIMEOUT_TOO_LOW", `tool_timeout_sec is ${server.tool_timeout_sec} in Codex (${where}); long rounds need ${TOOL_TIMEOUT_SEC}`, { details: contextDetails });
     } else {
-      add("codex_project", "ok", "OK", `Codex (${where}) loads the managed bridge server from this worktree`, { details: contextDetails });
+      add("codex_project", "ok", "OK", `Codex (${where}) reports the expected bridge configuration; live connection not inspected`, { details: contextDetails });
     }
     return;
   }
@@ -729,6 +736,9 @@ export async function runDoctor({
     if (definesBridge(found.before + found.after)) return add("codex_config", "error", "CODEX_CONFIG_CONFLICT", "mcp_servers.bridge is also defined outside the managed block");
     const parsed = inspectCodexToml(configText, env);
     if (parsed.status === "invalid") return add("codex_config", "error", "CODEX_CONFIG_INVALID", `TOML does not parse: ${parsed.detail}`, { nextStep: `fix ${CODEX_CONFIG}` });
+    if (manifest && found.block === renderCodexBlock(manifest, setupProfile, { historicalCwd: true })) {
+      return add("codex_config", "error", "CODEX_RELATIVE_CWD", "the managed block uses the historical relative cwd", { nextStep: CWD_REMEDY });
+    }
     if (manifest && found.block !== renderCodexBlock(manifest, setupProfile)) {
       return add("codex_config", "warn", "CODEX_CONFIG_MODIFIED", "the managed block differs from the selected runtime's block", { nextStep: "run init --yes to restore it, or keep the local change deliberately" });
     }
@@ -808,7 +818,7 @@ export async function runDoctor({
   }
 
   const use = findActiveUse(root, { env });
-  if (!use.supported) add("active_use", "unknown", "ACTIVE_USE_UNKNOWN", `cannot tell whether the worktree is in use: ${use.reason}`, { nextStep: use.nextStep });
+  if (!use.supported) add("active_use", "unknown", use.code ?? "ACTIVE_USE_UNKNOWN", `cannot tell whether the worktree is in use: ${use.reason}`, { nextStep: use.nextStep });
   else if (use.entries.length > 0) {
     add("active_use", "warn", "ACTIVE_SESSION", `in use by ${use.entries.map((entry) => `pid ${entry.pid} (${entry.kinds.join("+")}: ${entry.command})`).join("; ")}`, {
       details: { entries: use.entries },
@@ -835,12 +845,20 @@ export async function runDoctor({
       });
     } else if (result.serverInfo.data?.caller !== "codex" || result.serverInfo.data?.delegation !== "allow") {
       add("handshake", "error", "HANDSHAKE_IDENTITY_MISMATCH", "server did not bind caller=codex delegation=allow", { details: { server_info: result.serverInfo.data } });
+    } else if (result.managerStatus.isError) {
+      add("handshake", "error", "HANDSHAKE_STATUS_FAILED", "standalone MCP probe could not read manager status", {
+        nextStep: "inspect the runtime error before checking the workspace; do not claim or take over a manager to test readiness",
+      });
+    } else if (result.managerStatus.data?.workspace?.root !== root) {
+      add("handshake", "error", "HANDSHAKE_WORKSPACE_MISMATCH", "standalone MCP probe did not confirm the intended workspace", {
+        nextStep: "inspect the launcher and workspace configuration; do not claim a manager or continue in a different worktree",
+      });
     } else if (missingFeatureTools.length > 0) {
       add("handshake", "error", "HANDSHAKE_TOOLS_MISSING", `server is missing required feature tools: ${missingFeatureTools.join(", ")}`, { details: { tools: result.tools, missing_tools: missingFeatureTools } });
     } else {
       // Session identifiers stay out of the report; only the shape of the binding is shown.
       const status = result.managerStatus.data ?? {};
-      add("handshake", "ok", "OK", `MCP server started, ${result.tools.length} tools, caller=codex delegation=allow; no manager claimed`, {
+      add("handshake", "ok", "OK", `Standalone MCP probe passed, ${result.tools.length} tools, caller=codex delegation=allow; live client not inspected; no manager claimed`, {
         details: {
           manager_status: result.managerStatus.isError
             ? { error: status.code ?? status.error ?? "unreadable" }
@@ -880,6 +898,12 @@ export async function runDoctor({
     // The Codex CLI context the codex_project check queried; not necessarily a running session's.
     codex_context: { profile: codexContext.profile, source: codexContext.source, ...(codexContext.invalid ? { invalid: true } : {}) },
     next_step: first ? first.next_step ?? `resolve ${first.code}` : null,
+    verification: {
+      configuration: "cli-inspection",
+      handshake: "standalone-process",
+      live_client: "not-checked",
+      next_step: "In the resumed native conversation call bridge_server_info and bridge_manager_status; verify caller, delegation policy and the exact intended workspace root before continuing.",
+    },
     checks,
     workflow,
     distribution: distributionMetadata({
@@ -966,6 +990,7 @@ export function formatDoctor(report, colorOptions) {
   const severity = value => value === "ok" ? "ok" : ["error", "problems"].includes(value) ? "error" : "warn";
   const label = value => statusLabel(value, severity(value), colorOptions);
   const lines = [`bridge doctor: ${report.workspace}`, `status: ${label(report.status)}`];
+  if (report.verification) lines.push("verification: standalone checks only; live client not checked", `  next: ${report.verification.next_step}`);
   if (report.codex_context) lines.push(`codex context: ${describeCodexContext(report.codex_context)}${report.codex_context.invalid ? " (invalid)" : ""}`);
   for (const check of report.checks) {
     lines.push(`  ${statusLabel(check.status.padEnd(7), severity(check.status), colorOptions)} ${check.id.padEnd(14)} ${check.code === "OK" ? "" : `${check.code}  `}${check.summary}`);

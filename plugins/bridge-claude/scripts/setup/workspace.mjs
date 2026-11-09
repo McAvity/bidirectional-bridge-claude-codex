@@ -113,7 +113,8 @@ export function localPaths(root) {
 export function mcpDefinition(manifest, profile = "legacy") {
   const base = {
     command: "node",
-    cwd: ".",
+    // Omit cwd: Codex defaults it to the conversation workspace. An explicit relative
+    // dot is resolved against a shared app-server process, which may serve another project.
     startup_timeout_sec: manifest?.mcp?.startup_timeout_sec ?? STARTUP_TIMEOUT_SEC,
     tool_timeout_sec: manifest?.mcp?.tool_timeout_sec ?? TOOL_TIMEOUT_SEC,
   };
@@ -142,7 +143,7 @@ export function mcpDefinition(manifest, profile = "legacy") {
   };
 }
 
-export function renderCodexBlock(manifest, profile = "legacy") {
+export function renderCodexBlock(manifest, profile = "legacy", { historicalCwd = false } = {}) {
   const definition = mcpDefinition(manifest, profile);
   const toml = (value) => JSON.stringify(value);
   const header =
@@ -165,7 +166,8 @@ export function renderCodexBlock(manifest, profile = "legacy") {
     "[mcp_servers.bridge]",
     `command = ${toml(definition.command)}`,
     `args = [${definition.args.map(toml).join(", ")}]`,
-    `cwd = ${toml(definition.cwd)}`,
+    // Only used to recognize exact pre-fix managed blocks; new output leaves cwd unset.
+    ...(historicalCwd ? ['cwd = "."'] : []),
     ...(definition.env_vars ? [`env_vars = [${definition.env_vars.map(toml).join(", ")}]`] : []),
     `required = ${definition.required}`,
     `startup_timeout_sec = ${definition.startup_timeout_sec}`,
@@ -457,7 +459,9 @@ export function codexCompatibilityWarning(target, env = process.env) {
 }
 
 function knownCodexBlocks(home) {
-  return new Set(listRuntimes(home).filter((runtime) => runtime.manifest).map((runtime) => sha256(renderCodexBlock(runtime.manifest))));
+  return new Set(listRuntimes(home).filter((runtime) => runtime.manifest).flatMap((runtime) =>
+    ["legacy", "dispatcher"].flatMap((profile) => [false, true].map((historicalCwd) =>
+      sha256(renderCodexBlock(runtime.manifest, profile, { historicalCwd }))))));
 }
 
 function fileMode(path, fallback) {
@@ -555,6 +559,29 @@ function planProjectFiles(plan, home, target, keepLocal) {
     } else if (keepLocal) {
       plan.kept.push({ path: rel, sha256: currentSha });
     } else {
+      // A clean inherited pin may name a release not installed on this machine. Keep
+      // refusing the change, but distinguish it from a hand edit; Git bytes are evidence,
+      // never authorization to adopt an arbitrary declaration or bypass runtime checks.
+      let missingPin = null;
+      if (rel === PROJECT_DECLARATION) {
+        try {
+          const declared = JSON.parse(current.toString("utf8"));
+          const id = declared?.pinned?.runtime_id;
+          const commit = declared?.pinned?.commit;
+          if (/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/u.test(id ?? "") && /^[a-f0-9]{40}$/u.test(commit ?? "") &&
+              current.toString("utf8") === declarationContent({ id, manifest: { source: { commit } } }) &&
+              !existsSync(join(home, "runtimes", id))) {
+            const tracked = run("git", ["show", `HEAD:${rel}`], { cwd: plan.root });
+            if (tracked.status === 0 && tracked.stdout === current.toString("utf8")) missingPin = { id, commit };
+          }
+        } catch { /* retain ordinary conflict for unrecognized data */ }
+      }
+      if (missingPin) {
+        plan.conflicts.push({ code: "PROJECT_PIN_RUNTIME_MISSING", path: rel,
+          message: `the unchanged committed pin names an uninstalled prior runtime ${missingPin.id}`,
+          nextStep: `verify and install prior commit ${missingPin.commit} with the normal runtime installer, then repeat the plan; do not edit the pin or use --keep-local` });
+        continue;
+      }
       plan.conflicts.push({
         code: "PROJECT_FILE_MODIFIED",
         path: rel,
@@ -1054,11 +1081,11 @@ export function planChange({
       : currentId === null
         ? ["bridge-mcp", "state-open"]
         : ["bridge-mcp", "state-open", "client"];
-    const use = blocking.length === 0 ? null : findActiveUse(root, { env });
+    const use = blocking.length === 0 ? null : findActiveUse(root, { env, inspectClientWriters: blocking.includes("client") });
     if (blocking.length === 0) {
       // The guard already serialised this call; there is nothing for the scan to decide.
     } else if (!use.supported) {
-      refuse("ACTIVE_USE_UNKNOWN", `cannot tell whether this worktree is in use: ${use.reason}`, use.nextStep);
+      refuse(use.code ?? "ACTIVE_USE_UNKNOWN", `cannot tell whether this worktree is in use: ${use.reason}`, use.nextStep);
     } else {
       const active = use.entries.filter((entry) => entry.kinds.some((kind) => blocking.includes(kind)));
       if (active.length > 0) {

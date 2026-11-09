@@ -1,5 +1,20 @@
 # Current handoff
 
+## Codex daemon startup fixes — 2026-11-09
+
+[Incident, implementation and evidence](tasks/codex-daemon-startup.md), branch
+`docs/codex-daemon-startup`: user-authorized fixes now omit the managed Codex `cwd`
+and migrate exact historical blocks. Doctor distinguishes standalone checks from
+live MCP and rejects a wrong reported workspace. Upgrade instructions address
+native writer ownership; process inspection distinguishes ambiguous shared-daemon
+writers from permission failures. Missing unchanged historical pins have a specific
+refusal. Generated bridge packages updated; final validation/review in progress.
+A real model-free Codex0.167.0 test passed with server cwd B and generated project A /
+inherited C configurations (all paths with spaces). This is startup/MCP evidence,
+not a model pilot or automated resume test. Running runtime0.8.0 remains untouched;
+the main checkout's pre-existing pin edit stays separate. Next: deliver/integrate
+this patch, then publish/install a new immutable runtime through normal upgrade.
+
 ## Bridge0.8.0 / workflow1.0.0 published — 2026-11-09
 
 [Release checkpoint](tasks/w19-release.md): F-W19 integrated into feature-workflow,
