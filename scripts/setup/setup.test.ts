@@ -420,6 +420,21 @@ for await (const line of createInterface({input: process.stdin})) {
     expect((await inspect()).conflicts.map((c:any)=>c.code)).toContain("CODEX_CONFIG_MODIFIED");
   });
 
+  it("keeps historical target runtimes compatible with inherited worktrees", async () => {
+    const { planChange, renderCodexBlock } = await import("./workspace.mjs");
+    const { loadRuntime } = await import("./runtime.mjs");
+    const project = makeProject("historical target template");
+    const target = loadRuntime(home,runtimeA.id);
+    expect(target.manifest.compatibility.codex_conversation_cwd).toBe(true);
+    const historical = {...target,manifest:{...target.manifest,compatibility:{...target.manifest.compatibility}}};
+    delete historical.manifest.compatibility.codex_conversation_cwd;
+    const plan = planChange({action:"init",identity:resolveWorkspaceIdentity(project),target:historical,home,env,profile:"dispatcher"});
+    expect(plan.ok).toBe(true);
+    const config = plan.ops.find((op:any)=>op.path===".codex/config.toml").content.toString();
+    expect(config).toContain(renderCodexBlock(historical.manifest,"dispatcher",{historicalCwd:true}));
+    expect(plan.notes.join("\n")).toContain("select a corrected runtime");
+  });
+
   it("only blocks shared native writers when client use matters, preserving state and unreadable refusals", async () => {
     const { planChange } = await import("./workspace.mjs");
     const { loadRuntime } = await import("./runtime.mjs");

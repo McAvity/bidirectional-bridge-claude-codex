@@ -68,7 +68,11 @@ not evidence that bridge discovery succeeded. The final live checks are necessar
   `"."` selected the server process workspace. Arguments stay relative, without
   machine paths in Git. The normal upgrade migrates exact historical blocks for
   installed runtimes, including inherited dispatcher blocks without local records.
-  Arbitrary block changes still conflict.
+  Arbitrary block changes still conflict. The runtime advertises
+  `codex_conversation_cwd` from its own shipped setup code. Explicitly targeting
+  an older runtime retains its historical block and reports that the startup fix
+  requires a corrected runtime; otherwise its first inherited-worktree mutation
+  would reject the new block as a local edit. This also preserves old-target rollback.
 - **Doctor:** names historical configuration as `CODEX_RELATIVE_CWD` and directs
   users to a checked upgrade. Reports CLI inspection, standalone handshake and
   `live_client: not-checked` separately. A responding server that reports another

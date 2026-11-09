@@ -218,6 +218,7 @@ function npmCommand() {
 
 function readCompatibility(root) {
   const controlPlane = pathToFileURL(join(root, "shared/control-plane/dist/index.js")).href;
+  const setup = pathToFileURL(join(root, "scripts/setup/workspace.mjs")).href;
   const runtimeVersion = pathToFileURL(join(root, "shared/control-plane/dist/runtime-version.js")).href;
   // Older commits may lack an export: record null ("unknown"), never a guess.
   const script = `
@@ -236,6 +237,10 @@ function readCompatibility(root) {
     try {
       const rv = await import(${JSON.stringify(runtimeVersion)});
       if (typeof rv.MINIMUM_NODE_VERSION === "string") out.node_minimum = rv.MINIMUM_NODE_VERSION;
+    } catch {}
+    try {
+      const setup = await import(${JSON.stringify(setup)});
+      if (setup.CODEX_CONVERSATION_CWD === true) out.codex_conversation_cwd = true;
     } catch {}
     process.stdout.write(JSON.stringify(out));`;
   const result = run(process.execPath, ["--no-warnings", "--input-type=module", "-e", script], { cwd: root });

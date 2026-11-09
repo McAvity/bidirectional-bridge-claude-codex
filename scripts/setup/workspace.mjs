@@ -110,6 +110,10 @@ export function localPaths(root) {
  *    pin and loads the launcher of the pinned installed runtime in its own process. It is
  *    inherited through Git, so a worktree created from an enabled project needs no `init`.
  */
+// Advertised by the runtime itself: older runtimes cannot materialize an inherited
+// worktree whose managed block omits cwd. Do not generate a newer block for an old pin.
+export const CODEX_CONVERSATION_CWD = true;
+
 export function mcpDefinition(manifest, profile = "legacy") {
   const base = {
     command: "node",
@@ -667,7 +671,9 @@ function planInstructions(plan, home, target, keepLocal) {
 function planCodexConfig(plan, home, target, env, profile = "legacy") {
   const absolute = join(plan.root, CODEX_CONFIG);
   const existing = readOptional(absolute);
-  const rendered = renderCodexBlock(target.manifest, profile);
+  const historicalCwd = target.manifest.compatibility?.codex_conversation_cwd !== true;
+  const rendered = renderCodexBlock(target.manifest, profile, { historicalCwd });
+  if (historicalCwd) plan.notes.push("CODEX_RELATIVE_CWD: target runtime requires the historical block; select a corrected runtime to use conversation-relative startup");
   const conflict = (code, message) =>
     plan.conflicts.push({
       code,
