@@ -1,6 +1,6 @@
 # Bridge 0.8.1 release
 
-Status: locally verified candidate; exact-SHA CI pending, 2026-11-09. User explicitly authorized publication of a new version
+Status: published, 2026-11-09. User explicitly authorized publication of a new version
 after the startup fixes. Release worktree: `release/0.8.1`; integration: `feature-workflow`.
 Implementation reviewed and committed through `77a8b5f`; see
 [startup evidence](codex-daemon-startup.md). Existing upstream history and MIT notices stay intact.
@@ -21,21 +21,21 @@ failures reproduced on pre-change source. Linux exact-SHA CI is the release gate
 no failing local run is relabelled PASS. Native Codex 0.167 startup was verified,
 not a persisted-resume or model pilot.
 
-Source SHA, distribution SHA, runtime smoke, review and CI results will be recorded
-below as each completes. The main checkout's local runtime-pin edit stays separate.
+Source SHA, distribution SHA, runtime smoke, review and CI results are recorded
+below. The main checkout's local runtime-pin edit stays separate.
 
 ## Versioned source
 
 Source: `fd473c5643e32f827806d2e6d619ad58f4b505aa` (0.8.1).
 Local `npm ci --ignore-scripts`, build, packages equivalence and 277-file documentation
 check PASS. Workflow packages/registry have no diff from the prior release.
-The distribution pin now selects this source; independent review, runtime smoke
-and exact-distribution CI follow before publication.
+The distribution pin selects this source. Independent review, runtime smoke
+and exact-distribution CI passed before publication.
 
 ## Candidate verification
 
 Independent read-only review of distribution `b13c1df` found no blockers: version/pin
-consistency, unchanged workflow1.0.0 bytes and registry, preservation of historical tags,
+consistency, unchanged workflow 1.0.0 bytes and registry, preservation of historical tags,
 package equivalence and bounded claims passed. A cosmetic handoff typo was corrected.
 
 Fresh installation of source `fd473c5643e32f827806d2e6d619ad58f4b505aa` in a temporary
@@ -46,5 +46,25 @@ confirmed caller=codex, delegation=allow and each canonical workspace root. No m
 turn, manager claim or database creation; inherited reads did not materialize local setup.
 
 The reviewed metadata and runtime bytes are unchanged by this documentation checkpoint.
-Next: push the candidate, require exact-distribution CI, then fast-forward the integration
-branch and publish the annotated tag/prerelease. No active runtime is rebuilt or switched.
+The real Codex 0.167.0 startup acceptance also passed both cases with different server
+and conversation directories, including inherited space paths; no model or personal login.
+
+## Published checkpoint
+
+- [Experimental release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/bridge-v0.8.1), published 2026-11-09.
+- Annotated immutable tag `bridge-v0.8.1` points to distribution
+  `ffd7063f5b32ad28401304086cd9e6f80d0bc4ff`; source remains
+  `fd473c5643e32f827806d2e6d619ad58f4b505aa`.
+- [Exact-SHA CI 42679569016](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/42679569016)
+  SUCCESS: build, package equivalence, docs, protected process observer 20 PASS;
+  JavaScript 762 PASS / 2 skipped; Python 243 total / 5 skipped (238 PASS);
+  pilot tooling 131 total / 2 skipped (129 PASS). No model pilot.
+- `feature-workflow` fast-forwarded and pushed with the tag atomically. Remote release
+  is public (not draft), marked prerelease; remote tag target and source availability verified.
+- Installed runtime 0.8.0 and the main checkout's local project-pin change are preserved;
+  pin bytes verified unchanged. Workflow packages and registry remain 1.0.0 unchanged.
+
+Publication is complete. This documentation checkpoint follows the immutable release tag.
+Next optional operator action: refresh the bridge plugin and use checked `bridge-upgrade`
+in the intended project, then verify live server info and manager workspace after restart.
+No active runtime was rebuilt or switched.

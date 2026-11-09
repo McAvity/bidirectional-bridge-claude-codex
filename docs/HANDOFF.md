@@ -1,11 +1,17 @@
 # Current handoff
 
-## Bridge 0.8.1 publication authorized — 2026-11-09
+## Bridge 0.8.1 published — 2026-11-09
 
-[Release checkpoint](tasks/bridge-0.8.1-release.md): user authorized publication of
-the completed startup fixes. Release worktree `release/0.8.1`; workflow 1.0.0 unchanged.
-Prepare versioned source/pinned distribution, verify exact-SHA CI and publish the
-experimental bridge tag/release. Active installed runtime and local project pin stay separate.
+[Release checkpoint](tasks/bridge-0.8.1-release.md): startup fixes integrated into
+`feature-workflow`; source `fd473c5`, distribution `ffd7063`, immutable annotated tag
+`bridge-v0.8.1` and experimental GitHub prerelease published. Exact-SHA CI 42679569016
+SUCCESS: JS 762 PASS/2 skipped; Python 238 PASS/5 skipped; pilot 129 PASS/2 skipped;
+build/packages/docs/protected-process checks PASS. Independent review found no blockers;
+fresh pinned runtime served 41 tools in project/inherited worktree, and real Codex startup
+2 cases passed without a model. Persisted resume/model pilot not certified.
+Workflow 1.0.0 bytes unchanged. Active runtime 0.8.0 and the local pin edit are preserved.
+Next optional action: refresh plugin, checked upgrade in the chosen project and live MCP
+verification after restart. Publication itself is complete.
 
 ## Codex daemon startup fixes delivered — 2026-11-09
 
