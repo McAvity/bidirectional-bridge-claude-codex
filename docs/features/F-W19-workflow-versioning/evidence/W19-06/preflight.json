@@ -1,0 +1,502 @@
+{
+  "format": "claude-codex-bridge.w19-06-preflight-evidence/v1",
+  "models": false,
+  "logins": false,
+  "pilot": "NOT_TESTED",
+  "container_full_validation": {
+    "source": "501a6b24cdebf43b36272adfcaad47da8c638f5b",
+    "image": "node:24.15.0-bookworm-slim + git, python3 (3.11), procps; UID 1000; fresh clone",
+    "recipe_sha256": "ac713f54cd7666da1459b62a54d79d826f538bb94925d2975769d67a225b2b5b",
+    "checks": [
+      {
+        "name": "install",
+        "exit_code": 0
+      },
+      {
+        "name": "build",
+        "exit_code": 0
+      },
+      {
+        "name": "packages",
+        "exit_code": 0
+      },
+      {
+        "name": "docs",
+        "exit_code": 0
+      },
+      {
+        "name": "process-visibility",
+        "exit_code": 0
+      },
+      {
+        "name": "js",
+        "exit_code": 0
+      },
+      {
+        "name": "python",
+        "exit_code": 0
+      },
+      {
+        "name": "pilot-tools",
+        "exit_code": 0
+      },
+      {
+        "name": "workflow-contract",
+        "exit_code": 0
+      },
+      {
+        "name": "diff",
+        "exit_code": 0
+      }
+    ],
+    "git_status_clean": true,
+    "js": {
+      "total": 753,
+      "passed": 752,
+      "failed": 0,
+      "skipped": 1,
+      "files": 54
+    },
+    "python": [
+      "Ran 242 tests in 51.150s",
+      "OK (skipped=8)"
+    ],
+    "pilot_tools": [
+      "Ran 131 tests in 13.855s",
+      "OK (skipped=2)"
+    ],
+    "workflow_contract": [
+      "Ran 27 tests in 4.874s",
+      "OK"
+    ],
+    "note": "claude/codex CLIs were not on PATH in this container: 8 client-dependent Python tests and 2 pilot-tool tests skipped (not passed)"
+  },
+  "pilot_setup_in_container": {
+    "setup": "pilot_w19.py setup (real candidate runtime install + pin via bridge-plugin.mjs setup, isolated homes)",
+    "preflight": {
+      "format": "claude-codex-bridge.w19-pilot/v1",
+      "kind": "preflight",
+      "ready": false,
+      "pilot": "NOT_TESTED",
+      "blocking": [
+        "PILOT-AUTH"
+      ],
+      "checks": [
+        {
+          "id": "P-ISO-01",
+          "status": "PASS",
+          "detail": "env.sh points every client profile and the bridge home inside the run directory"
+        },
+        {
+          "id": "P-ISO-02",
+          "status": "PASS",
+          "detail": "personal Claude/Codex plugin state unchanged since setup (size/mtime only; content never read)",
+          "data": {
+            "plugin_state_changed": [],
+            "other_personal_files_changed_by_own_use": []
+          }
+        },
+        {
+          "id": "P-ENV-p1",
+          "status": "PASS",
+          "detail": "the bridge server of this project forwards CLAUDE_CODEX_BRIDGE_HOME and CLAUDE_CONFIG_DIR (PILOT-ENV-01)",
+          "data": {
+            "env_vars": [
+              "CLAUDE_CODEX_BRIDGE_HOME",
+              "XDG_DATA_HOME",
+              "CLAUDE_CONFIG_DIR"
+            ],
+            "dispatcher": true,
+            "trusted": true,
+            "tools_approved": true
+          }
+        },
+        {
+          "id": "P-ENV-p2",
+          "status": "PASS",
+          "detail": "the bridge server of this project forwards CLAUDE_CODEX_BRIDGE_HOME and CLAUDE_CONFIG_DIR (PILOT-ENV-01)",
+          "data": {
+            "env_vars": [
+              "CLAUDE_CODEX_BRIDGE_HOME",
+              "XDG_DATA_HOME",
+              "CLAUDE_CONFIG_DIR"
+            ],
+            "dispatcher": true,
+            "trusted": true,
+            "tools_approved": true
+          }
+        },
+        {
+          "id": "P-RT-01",
+          "status": "PASS",
+          "detail": "both projects pin the same installed runtime that advertises workflow binding",
+          "data": {
+            "p1": {
+              "runtime_id": "0.7.0-501a6b24cdeb",
+              "installed": true,
+              "advertises_binding": true
+            },
+            "p2": {
+              "runtime_id": "0.7.0-501a6b24cdeb",
+              "installed": true,
+              "advertises_binding": true
+            }
+          }
+        },
+        {
+          "id": "P-REL-01",
+          "status": "PASS",
+          "detail": "releases A/B/C have distinct identities; bridge packages identical in A and B",
+          "data": {
+            "A": {
+              "version": "1.0.0",
+              "workflow_id": "1.0.0-cd491dad690c"
+            },
+            "B": {
+              "version": "1.0.1",
+              "workflow_id": "1.0.1-db247d4836d8"
+            },
+            "C": {
+              "version": "1.0.2",
+              "workflow_id": "1.0.2-692b56994676"
+            },
+            "market_at": "A"
+          }
+        },
+        {
+          "id": "P-CONTAM-01",
+          "status": "PASS",
+          "detail": "no release token or operator material inside the projects"
+        },
+        {
+          "id": "P-BUD-01",
+          "status": "PASS",
+          "detail": "budget (decision02) and usage so far",
+          "data": {
+            "limits": {
+              "claude_rounds": 6,
+              "reserve_rounds": 1,
+              "max_turns_per_round": 64,
+              "round_deadline_min": 75,
+              "mcp_timeout_min": 90,
+              "model_minutes_total": 180,
+              "astra_turns": 24
+            },
+            "used": {
+              "claude_rounds": 0,
+              "astra_turns": 0,
+              "model_minutes": 0.0,
+              "rounds_over_turn_limit": [],
+              "rounds_over_deadline": [],
+              "exceeded": []
+            }
+          }
+        },
+        {
+          "id": "PILOT-AUTH",
+          "status": "PENDING",
+          "detail": "client and login checks not run (use --clients after logging in the isolated profiles)"
+        }
+      ]
+    },
+    "checks": {
+      "format": "claude-codex-bridge.w19-pilot/v1",
+      "kind": "checks",
+      "at_ms": 1793954063218,
+      "checks": [
+        {
+          "id": "CHK-INCOMPATIBLE",
+          "status": "PASS",
+          "detail": "an incompatible release is refused by resolve and begin with a named diagnosis and no write",
+          "data": {
+            "resolve": "WORKFLOW_INCOMPATIBLE",
+            "begin": "WORKFLOW_INCOMPATIBLE",
+            "unchanged": true
+          }
+        },
+        {
+          "id": "CHK-RESTORE",
+          "status": "PASS",
+          "detail": "a missing store copy is detected and restored exactly (same tree) from the package of that identity, without network",
+          "data": {
+            "missing": "BUNDLE_MISSING",
+            "restore_exit": 0,
+            "after": "BOUND_BUNDLE",
+            "identical": true
+          }
+        },
+        {
+          "id": "CHK-STANDALONE",
+          "status": "PASS",
+          "detail": "without a pin or MCP the workflow begins a feature and serves it from the store",
+          "data": {
+            "resolve_new": "SELECTION_REQUIRED",
+            "begin": "BEGUN",
+            "resolve": "BOUND_BUNDLE"
+          }
+        }
+      ]
+    },
+    "collect": {
+      "format": "claude-codex-bridge.w19-pilot/v1",
+      "kind": "result",
+      "overall": "NOT_TESTED",
+      "budget": {
+        "limits": {
+          "claude_rounds": 6,
+          "reserve_rounds": 1,
+          "max_turns_per_round": 64,
+          "round_deadline_min": 75,
+          "mcp_timeout_min": 90,
+          "model_minutes_total": 180,
+          "astra_turns": 24
+        },
+        "used": {
+          "claude_rounds": 0,
+          "astra_turns": 0,
+          "model_minutes": 0.0,
+          "rounds_over_turn_limit": [],
+          "rounds_over_deadline": [],
+          "exceeded": []
+        }
+      },
+      "snapshots": [
+        "smoke"
+      ],
+      "cases": [
+        {
+          "id": "C01",
+          "ac": "AC-01",
+          "result": "NOT_TESTED",
+          "detail": "needs the `updated-b` (Codex) and `claude-updated` (Claude) snapshots of the client updates"
+        },
+        {
+          "id": "C02",
+          "ac": "AC-02",
+          "result": "NOT_TESTED",
+          "detail": "no feature was begun after release B was installed"
+        },
+        {
+          "id": "C03",
+          "ac": "AC-03",
+          "result": "NOT_TESTED",
+          "detail": "needs a feature begun under A and a `cache-removed` snapshot before its next round"
+        },
+        {
+          "id": "C04",
+          "ac": "AC-04",
+          "result": "NOT_TESTED",
+          "detail": "no release token was written by any agent"
+        },
+        {
+          "id": "C06",
+          "ac": "AC-06",
+          "result": "NOT_TESTED",
+          "detail": "no explicit switch was recorded"
+        },
+        {
+          "id": "C05",
+          "ac": "AC-05",
+          "result": "PASS",
+          "detail": "an incompatible release is refused by resolve and begin with a named diagnosis and no write"
+        },
+        {
+          "id": "C08",
+          "ac": "AC-08",
+          "result": "PASS",
+          "detail": "a missing store copy is detected and restored exactly (same tree) from the package of that identity, without network"
+        },
+        {
+          "id": "C10",
+          "ac": "AC-10",
+          "result": "PASS",
+          "detail": "without a pin or MCP the workflow begins a feature and serves it from the store"
+        },
+        {
+          "id": "S-p1",
+          "ac": "AC-04/06",
+          "result": "NOT_TESTED",
+          "detail": "one native manager session for the project (resumed after restarts, never replaced)",
+          "data": {
+            "status": "missing",
+            "candidates": 0,
+            "session": null
+          }
+        },
+        {
+          "id": "S-p2",
+          "ac": "AC-04/06",
+          "result": "NOT_TESTED",
+          "detail": "one native manager session for the project (resumed after restarts, never replaced)",
+          "data": {
+            "status": "missing",
+            "candidates": 0,
+            "session": null
+          }
+        }
+      ],
+      "layers": {
+        "configured": "lock and bridge binding",
+        "admitted": "attempt_workflow per attempt",
+        "followed": "release token written by the agent itself (only a model run produces it)"
+      }
+    }
+  },
+  "host_isolated_clients_preflight": {
+    "format": "claude-codex-bridge.w19-pilot/v1",
+    "kind": "preflight",
+    "ready": false,
+    "pilot": "NOT_TESTED",
+    "blocking": [
+      "P-ENV-p1",
+      "P-ENV-p2",
+      "P-RT-01",
+      "PILOT-AUTH-01",
+      "PILOT-AUTH-02",
+      "P-MCP-p1",
+      "P-MCP-p2"
+    ],
+    "checks": [
+      {
+        "id": "P-ISO-01",
+        "status": "PASS",
+        "detail": "env.sh points every client profile and the bridge home inside the run directory"
+      },
+      {
+        "id": "P-ISO-02",
+        "status": "PASS",
+        "detail": "personal Claude/Codex plugin state unchanged since setup (size/mtime only; content never read)",
+        "data": {
+          "plugin_state_changed": [],
+          "other_personal_files_changed_by_own_use": []
+        }
+      },
+      {
+        "id": "P-ENV-p1",
+        "status": "FAIL",
+        "detail": "the bridge server of this project forwards CLAUDE_CODEX_BRIDGE_HOME and CLAUDE_CONFIG_DIR (PILOT-ENV-01)",
+        "data": {
+          "error": "FileNotFoundError"
+        }
+      },
+      {
+        "id": "P-ENV-p2",
+        "status": "FAIL",
+        "detail": "the bridge server of this project forwards CLAUDE_CODEX_BRIDGE_HOME and CLAUDE_CONFIG_DIR (PILOT-ENV-01)",
+        "data": {
+          "error": "FileNotFoundError"
+        }
+      },
+      {
+        "id": "P-RT-01",
+        "status": "FAIL",
+        "detail": "both projects pin the same installed runtime that advertises workflow binding",
+        "data": {
+          "p1": {
+            "runtime_id": null,
+            "installed": false,
+            "advertises_binding": false
+          },
+          "p2": {
+            "runtime_id": null,
+            "installed": false,
+            "advertises_binding": false
+          }
+        }
+      },
+      {
+        "id": "P-REL-01",
+        "status": "PASS",
+        "detail": "releases A/B/C have distinct identities; bridge packages identical in A and B",
+        "data": {
+          "A": {
+            "version": "1.0.0",
+            "workflow_id": "1.0.0-8422dd69e3c6"
+          },
+          "B": {
+            "version": "1.0.1",
+            "workflow_id": "1.0.1-c9172fa29b85"
+          },
+          "C": {
+            "version": "1.0.2",
+            "workflow_id": "1.0.2-c0302a2ed8a3"
+          },
+          "market_at": "A"
+        }
+      },
+      {
+        "id": "P-CONTAM-01",
+        "status": "PASS",
+        "detail": "no release token or operator material inside the projects"
+      },
+      {
+        "id": "P-BUD-01",
+        "status": "PASS",
+        "detail": "budget (decision02) and usage so far",
+        "data": {
+          "limits": {
+            "claude_rounds": 6,
+            "reserve_rounds": 1,
+            "max_turns_per_round": 64,
+            "round_deadline_min": 75,
+            "mcp_timeout_min": 90,
+            "model_minutes_total": 180,
+            "astra_turns": 24
+          },
+          "used": {
+            "claude_rounds": 0,
+            "astra_turns": 0,
+            "model_minutes": 0.0,
+            "rounds_over_turn_limit": [],
+            "rounds_over_deadline": [],
+            "exceeded": []
+          }
+        }
+      },
+      {
+        "id": "PILOT-AUTH-01",
+        "status": "PENDING",
+        "detail": "log in the isolated Claude profile (OPERATOR.md \u00a7 1); never copy credentials",
+        "data": {
+          "logged_in": false,
+          "auth_method": "none",
+          "config_dir_is_isolated": true
+        }
+      },
+      {
+        "id": "PILOT-AUTH-02",
+        "status": "PENDING",
+        "detail": "log in the isolated Codex profile (OPERATOR.md \u00a7 1)",
+        "data": {
+          "exit": 1
+        }
+      },
+      {
+        "id": "P-MCP-p1",
+        "status": "FAIL",
+        "detail": "the project has no bridge definition (setup without runtime?)",
+        "data": {
+          "error": "FileNotFoundError"
+        }
+      },
+      {
+        "id": "P-MCP-p2",
+        "status": "FAIL",
+        "detail": "the project has no bridge definition (setup without runtime?)",
+        "data": {
+          "error": "FileNotFoundError"
+        }
+      },
+      {
+        "id": "P-ENTRIES",
+        "status": "INFO",
+        "detail": "workflow entry plugins installed in the isolated clients (configured, not loaded)",
+        "data": {
+          "claude": [],
+          "codex": []
+        }
+      }
+    ],
+    "note": "host run of `setup --no-runtime` + `preflight --clients`: runtime pin needs PILOT-HOST-01 on this host (ACTIVE_USE_UNKNOWN), so P-ENV/P-RT/P-MCP FAIL by construction; logins of the isolated profiles PENDING (PILOT-AUTH-01/02)"
+  }
+}

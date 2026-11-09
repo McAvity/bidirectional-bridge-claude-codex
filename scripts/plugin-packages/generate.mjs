@@ -3,21 +3,31 @@
 // this repository. There is exactly one copy of every instruction: `.agents/skills/`, the two role
 // `using-bridge` skills and `docs/features/README.md`. Nothing here is hand edited.
 //
-// Four packages: the bridge packages `bridge-codex` / `bridge-claude` (setup, upgrade, roles; the
-// Claude one is also the runtime's executor package) and the `feature-workflow` plugin for each
-// client (the seven feature-* skills with their resources and the instruction-source reader).
+// Two independently versioned components (contract F-W19 01-workflow-binding.md § 3):
 //
-//   node scripts/plugin-packages/generate.mjs            write the packages
-//   node scripts/plugin-packages/generate.mjs --check     fail when the tree differs
+//   bridge   — `bridge-codex` / `bridge-claude` (setup, upgrade, roles; the Claude one is also the
+//              runtime's executor role package). Version: package.json. No feature-* skills.
+//   workflow — the `feature-workflow` plugin for each client: the seven feature-* skills with their
+//              resources, the guide, the instruction-source reader and the workflow helper, plus
+//              `bundle/` = the complete immutable dual-client bundle of this release. Version:
+//              scripts/workflow-source/release.json.
+//
+// Neither component's inputs reach the other's packages, digests or marketplace entry, so a
+// workflow-only change leaves every bridge byte unchanged and vice versa.
+//
+//   node scripts/plugin-packages/generate.mjs [--component bridge|workflow|all]           write
+//   node scripts/plugin-packages/generate.mjs --check [--component bridge|workflow|all]   compare
 //
 // `--check` is the source-equivalence gate: it regenerates into a temporary directory and
-// compares the whole tree, so a canonical skill edited without regenerating fails the build.
+// compares the selected component's trees and marketplace entries (all: every generated path),
+// so a canonical skill edited without regenerating fails the build.
 
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { byString, sha256, walkFiles } from "../setup/common.mjs";
+import * as W from "../workflow-source/workflow-lib.mjs";
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const GENERATED_MARKER = "GENERATED.json";
@@ -40,6 +50,13 @@ export const WORKFLOW_ENTRIES = ["feature-flow", "feature-design", "feature-plan
 /** Canonical instruction-source reader, copied verbatim into both workflow packages. */
 export const SOURCE_READER = "scripts/workflow-source/select-source.mjs";
 export const SOURCE_PREAMBLE = "scripts/plugin-packages/templates/workflow-source-preamble.md";
+/** Workflow helper (verify/restore/begin/finalize/resolve/switch), copied verbatim. */
+export const WORKFLOW_HELPER = "scripts/workflow-source/workflow.mjs";
+export const WORKFLOW_LIB = "scripts/workflow-source/workflow-lib.mjs";
+/** Workflow release source (version, requires) and the append-only registry of published ones. */
+export const WORKFLOW_RELEASE = "scripts/workflow-source/release.json";
+export const WORKFLOW_RELEASES = "scripts/workflow-source/releases.json";
+const THIN_ENTRY_TEMPLATE = "scripts/plugin-packages/templates/codex-entry-SKILL.md";
 export const CODEX_MARKETPLACE = ".agents/plugins/marketplace.json";
 export const CLAUDE_MARKETPLACE = ".claude-plugin/marketplace.json";
 export const MARKETPLACE_NAME = "claude-codex-bridge";
@@ -60,6 +77,7 @@ export const INSTALLER_FILES = [
   "scripts/setup/processes.mjs",
   "scripts/setup/process-observer.py",
   "scripts/setup/runtime.mjs",
+  "scripts/setup/workflow-status.mjs",
   "scripts/setup/workspace.mjs",
   "scripts/bridge-project/dispatch.mjs",
   "scripts/bridge-project/entry-template.mjs",
@@ -72,8 +90,14 @@ export const INSTALLER_FILES = [
 const skipGenerated = (_rel, entry) =>
   entry.name === "node_modules" || entry.name === "__pycache__" || entry.name.endsWith(".pyc");
 
-function packageVersion() {
+/** Bridge (engine) version: package.json. */
+export function packageVersion() {
   return JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")).version;
+}
+
+/** Workflow release source; its version is independent of the bridge version. */
+export function workflowRelease() {
+  return W.readRelease(join(REPO_ROOT, WORKFLOW_RELEASE));
 }
 
 /** Stable JSON: two-space indent, trailing newline, key order exactly as written here. */
@@ -177,7 +201,7 @@ function copyTree(fromRoot, from, toRoot, to, transform) {
   return out;
 }
 
-const THIN_ENTRY = () => readFileSync(join(REPO_ROOT, "scripts/plugin-packages/templates/codex-entry-SKILL.md"), "utf8");
+const THIN_ENTRY = () => readFileSync(join(REPO_ROOT, THIN_ENTRY_TEMPLATE), "utf8");
 
 
 function installerFiles(root) {
@@ -235,7 +259,7 @@ function claudePackage(root, version) {
     json({
       name: "bridge-claude",
       version,
-      description: "Feature workflow and bridge role instructions for Claude Code.",
+      description: "Bridge role, setup and upgrade instructions for Claude Code; the runtime's executor role package.",
       author: { name: AUTHOR },
       license: "MIT",
       skills: "./skills/",
@@ -243,17 +267,12 @@ function claudePackage(root, version) {
   );
   files.push(".claude-plugin/plugin.json");
 
+  // Role-only since F-W19: the feature workflow is its own component (feature-workflow-claude), so
+  // a workflow release never changes a byte of this package and its copies cannot shadow the
+  // selected workflow by plugin name.
   files.push(...installerFiles(root));
   files.push(...copyTree(REPO_ROOT, UPGRADE_SKILL, root, "skills/bridge-upgrade"));
-  files.push(...copyTree(REPO_ROOT, WORKFLOW_SKILLS, root, "skills", rewriteForClaude));
   files.push(...copyTree(REPO_ROOT, CLAUDE_ROLE_SKILL, root, "skills/using-bridge", rewriteForClaude));
-
-  mkdirSync(join(root, "workflow"), { recursive: true });
-  writeFileSync(
-    join(root, "workflow", "README.md"),
-    rewriteForClaude(readFileSync(join(REPO_ROOT, WORKFLOW_GUIDE), "utf8")),
-  );
-  files.push("workflow/README.md");
   return files.sort(byString);
 }
 
@@ -265,16 +284,16 @@ function claudePackage(root, version) {
  * points at, and it must not point onward again.
  */
 export function sourcePreamble(client, skill) {
-  const reader = client === "claude"
-    ? 'node "${CLAUDE_PLUGIN_ROOT}/scripts/select-source.mjs"'
-    : 'node "<package>/scripts/select-source.mjs"';
+  const helper = client === "claude"
+    ? 'node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs"'
+    : 'node "<package>/scripts/workflow.mjs"';
   const note = client === "claude"
     ? ""
     : "\n> `<package>` is this plugin's directory, two levels above this SKILL.md; the skills list " +
       "gives its absolute path.";
   return readFileSync(join(REPO_ROOT, SOURCE_PREAMBLE), "utf8")
     .replaceAll("{{ENTRY}}", `${WORKFLOW_PLUGIN}:${skill}`)
-    .replaceAll("{{READER}}", reader)
+    .replaceAll("{{HELPER}}", helper)
     .replaceAll("{{SKILL}}", skill)
     .replaceAll("{{PACKAGE_NOTE}}", note);
 }
@@ -290,7 +309,8 @@ function qualifyMentions(text) {
   return text.replace(/\$(feature-(?:flow|design|plan|execute|review|decide|exchange))\b/gu, `$${WORKFLOW_PLUGIN}:$1`);
 }
 
-function workflowPackage(root, client, version) {
+/** One client variant of the workflow: the plugin's own files, without `bundle/` or a marker. */
+function workflowVariant(root, client, version) {
   const files = [];
   const rewrite = client === "claude" ? rewriteForClaude : rewriteForCodex;
   const manifestPath = client === "claude" ? ".claude-plugin/plugin.json" : ".codex-plugin/plugin.json";
@@ -337,33 +357,84 @@ function workflowPackage(root, client, version) {
   writeFileSync(join(root, "workflow", "README.md"), rewrite(readFileSync(join(REPO_ROOT, WORKFLOW_GUIDE), "utf8")));
   files.push("workflow/README.md");
 
-  // Code is copied, never rewritten: the reader resolves its package root from its own location.
+  // Code is copied, never rewritten: the reader and the helper resolve their package root from
+  // their own location.
   mkdirSync(join(root, "scripts"), { recursive: true });
-  writeFileSync(join(root, "scripts", "select-source.mjs"), readFileSync(join(REPO_ROOT, SOURCE_READER)), { mode: 0o755 });
-  files.push("scripts/select-source.mjs");
+  for (const [source, name] of [[SOURCE_READER, "select-source.mjs"], [WORKFLOW_HELPER, "workflow.mjs"], [WORKFLOW_LIB, "workflow-lib.mjs"]]) {
+    writeFileSync(join(root, "scripts", name), readFileSync(join(REPO_ROOT, source)), { mode: 0o755 });
+    files.push(`scripts/${name}`);
+  }
   return files.sort(byString);
+}
+
+/**
+ * The workflow release: both client variants and the bundle manifest (§ 3.1). Built in a temporary
+ * directory so the variants are exactly what the packages carry. The registry is consulted, never
+ * embedded: a registered version must reproduce its registered identity (VERSION_REUSED).
+ */
+export function workflowBundle() {
+  const release = workflowRelease();
+  const temp = mkdtempSync(join(tmpdir(), "workflow-variants-"));
+  try {
+    const variants = {};
+    for (const client of W.CLIENTS) {
+      const dir = join(temp, client);
+      mkdirSync(dir, { recursive: true });
+      workflowVariant(dir, client, release.version);
+      variants[client] = W.readVariant(dir);
+    }
+    const manifest = W.bundleManifest({
+      version: release.version,
+      requires: release.requires,
+      variants,
+      // Provenance only, outside the identity. The commit holding these sources cannot name itself;
+      // it is recorded in releases.json when the release is published.
+      source: { repository: release.repository ?? null, release_source: WORKFLOW_RELEASE, commit: null },
+    });
+    const registryPath = join(REPO_ROOT, WORKFLOW_RELEASES);
+    const registry = existsSync(registryPath) ? JSON.parse(readFileSync(registryPath, "utf8")) : { format: W.RELEASES_FORMAT, releases: [] };
+    const registration = W.checkRegistry(registry, manifest);
+    return { release, manifest, variants, registration };
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+}
+
+/** A workflow plugin package: its client variant at the root plus the whole bundle in `bundle/`. */
+function workflowPackage(root, client, bundle) {
+  for (const [rel, file] of Object.entries(bundle.variants[client])) {
+    const target = join(root, rel);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, file.data, { mode: file.mode === "755" ? 0o755 : 0o644 });
+  }
+  W.writeBundle(join(root, W.BUNDLE_DIR), bundle.manifest, bundle.variants);
+  return walkFiles(root, skipGenerated).filter((rel) => rel !== GENERATED_MARKER).sort(byString);
 }
 
 // ---------------------------------------------------------------------------
 // provenance
 // ---------------------------------------------------------------------------
 
-/** Digest of the canonical sources a package was generated from. */
+/**
+ * Digest of the canonical sources the *bridge* packages are generated from: roles, upgrade skill,
+ * installer files and the thin entry. No workflow input contributes (F-W19 § 3.5).
+ */
 export function sourceDigest(repoRoot = REPO_ROOT) {
   const parts = [];
-  for (const top of [WORKFLOW_SKILLS, CODEX_ROLE_SKILL, CLAUDE_ROLE_SKILL, UPGRADE_SKILL]) {
+  for (const top of [CODEX_ROLE_SKILL, CLAUDE_ROLE_SKILL, UPGRADE_SKILL]) {
     for (const rel of walkFiles(join(repoRoot, top), skipGenerated)) {
       parts.push(`${top}/${rel}:${sha256(readFileSync(join(repoRoot, top, rel)))}`);
     }
   }
-  parts.push(`${WORKFLOW_GUIDE}:${sha256(readFileSync(join(repoRoot, WORKFLOW_GUIDE)))}`);
+  for (const rel of [...INSTALLER_FILES, THIN_ENTRY_TEMPLATE]) parts.push(`${rel}:${sha256(readFileSync(join(repoRoot, rel)))}`);
   parts.sort(byString);
   return sha256(parts.join("\n"));
 }
 
 /**
- * Digest of what a workflow package is generated from: the seven skills, the guide, the reader and
- * the preamble template. The reader reports it as the package's instruction identity.
+ * Digest of what a workflow package is generated from: the seven skills, the guide, the reader,
+ * the helper, the preamble template and the release source (not the registry). The bundle
+ * identity, not this digest, is the identity of the instructions.
  */
 export function workflowSourceDigest(repoRoot = REPO_ROOT) {
   const parts = [];
@@ -371,7 +442,7 @@ export function workflowSourceDigest(repoRoot = REPO_ROOT) {
     const top = `${WORKFLOW_SKILLS}/${skill}`;
     for (const rel of walkFiles(join(repoRoot, top), skipGenerated)) parts.push(`${top}/${rel}:${sha256(readFileSync(join(repoRoot, top, rel)))}`);
   }
-  for (const rel of [WORKFLOW_GUIDE, SOURCE_READER, SOURCE_PREAMBLE]) parts.push(`${rel}:${sha256(readFileSync(join(repoRoot, rel)))}`);
+  for (const rel of [WORKFLOW_GUIDE, SOURCE_READER, SOURCE_PREAMBLE, WORKFLOW_HELPER, WORKFLOW_LIB, WORKFLOW_RELEASE]) parts.push(`${rel}:${sha256(readFileSync(join(repoRoot, rel)))}`);
   parts.sort(byString);
   return sha256(parts.join("\n"));
 }
@@ -393,92 +464,149 @@ function writeMarker(root, { name, version, files, sources, digest = sourceDiges
 // generation
 // ---------------------------------------------------------------------------
 
-export function generate(outRoot) {
-  const version = packageVersion();
-  for (const target of [CODEX_PACKAGE, CLAUDE_PACKAGE, WORKFLOW_CODEX_PACKAGE, WORKFLOW_CLAUDE_PACKAGE]) {
-    rmSync(join(outRoot, target), { recursive: true, force: true });
-  }
+export const COMPONENTS = {
+  bridge: { packages: [CODEX_PACKAGE, CLAUDE_PACKAGE], entries: ["bridge-codex", "bridge-claude"] },
+  workflow: { packages: [WORKFLOW_CODEX_PACKAGE, WORKFLOW_CLAUDE_PACKAGE], entries: [WORKFLOW_PLUGIN] },
+};
 
+function componentsOf(component) {
+  if (component === "all") return ["bridge", "workflow"];
+  if (!COMPONENTS[component]) throw new Error(`unknown component ${component}; use bridge, workflow or all`);
+  return [component];
+}
+
+function generateBridge(outRoot) {
+  const version = packageVersion();
+  for (const target of COMPONENTS.bridge.packages) rmSync(join(outRoot, target), { recursive: true, force: true });
   const codexRoot = join(outRoot, CODEX_PACKAGE);
   mkdirSync(codexRoot, { recursive: true });
-  writeMarker(codexRoot, {
-    name: "bridge-codex",
-    version,
-    files: codexPackage(codexRoot, version),
-    sources: [CODEX_ROLE_SKILL, UPGRADE_SKILL],
-  });
-
+  writeMarker(codexRoot, { name: "bridge-codex", version, files: codexPackage(codexRoot, version), sources: [CODEX_ROLE_SKILL, UPGRADE_SKILL] });
   const claudeRoot = join(outRoot, CLAUDE_PACKAGE);
   mkdirSync(claudeRoot, { recursive: true });
-  writeMarker(claudeRoot, {
-    name: "bridge-claude",
-    version,
-    files: claudePackage(claudeRoot, version),
-    sources: [WORKFLOW_SKILLS, CLAUDE_ROLE_SKILL, WORKFLOW_GUIDE, UPGRADE_SKILL],
-  });
+  writeMarker(claudeRoot, { name: "bridge-claude", version, files: claudePackage(claudeRoot, version), sources: [CLAUDE_ROLE_SKILL, UPGRADE_SKILL] });
+  return version;
+}
 
+function generateWorkflow(outRoot) {
+  const bundle = workflowBundle();
+  for (const target of COMPONENTS.workflow.packages) rmSync(join(outRoot, target), { recursive: true, force: true });
   for (const [client, target] of [["codex", WORKFLOW_CODEX_PACKAGE], ["claude", WORKFLOW_CLAUDE_PACKAGE]]) {
     const workflowRoot = join(outRoot, target);
     mkdirSync(workflowRoot, { recursive: true });
     writeMarker(workflowRoot, {
       name: WORKFLOW_PLUGIN,
-      version,
-      files: workflowPackage(workflowRoot, client, version),
-      sources: [...WORKFLOW_ENTRIES.map((skill) => `${WORKFLOW_SKILLS}/${skill}`), WORKFLOW_GUIDE, SOURCE_READER, SOURCE_PREAMBLE],
+      version: bundle.release.version,
+      files: workflowPackage(workflowRoot, client, bundle),
+      sources: [...WORKFLOW_ENTRIES.map((skill) => `${WORKFLOW_SKILLS}/${skill}`), WORKFLOW_GUIDE, SOURCE_READER, SOURCE_PREAMBLE, WORKFLOW_HELPER, WORKFLOW_LIB, WORKFLOW_RELEASE],
       digest: workflowSourceDigest(),
     });
   }
+  return bundle;
+}
 
-  mkdirSync(join(outRoot, dirname(CODEX_MARKETPLACE)), { recursive: true });
-  writeFileSync(
-    join(outRoot, CODEX_MARKETPLACE),
-    json({
-      name: MARKETPLACE_NAME,
-      interface: { displayName: "Claude Code <-> Codex bridge" },
-      plugins: [
-        {
-          name: "bridge-codex",
-          source: { source: "local", path: `./${CODEX_PACKAGE}` },
-          policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
-          category: "Productivity",
-        },
-        {
-          name: WORKFLOW_PLUGIN,
-          source: { source: "local", path: `./${WORKFLOW_CODEX_PACKAGE}` },
-          policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
-          category: "Productivity",
-        },
-      ],
-    }),
-  );
+/** Marketplace entries of one component, derived only from that component's version and paths. */
+function marketplaceEntries(component, { bridgeVersion, workflowVersion }) {
+  if (component === "bridge") {
+    return {
+      codex: [{
+        name: "bridge-codex",
+        source: { source: "local", path: `./${CODEX_PACKAGE}` },
+        policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+        category: "Productivity",
+      }],
+      claude: [{
+        name: "bridge-claude",
+        source: `./${CLAUDE_PACKAGE}`,
+        description:
+          "Bridge role, setup and upgrade instructions for Claude Code, and the runtime's executor role package. " +
+          "The feature workflow is the separate feature-workflow plugin.",
+        version: bridgeVersion,
+      }],
+    };
+  }
+  return {
+    codex: [{
+      name: WORKFLOW_PLUGIN,
+      source: { source: "local", path: `./${WORKFLOW_CODEX_PACKAGE}` },
+      policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+      category: "Productivity",
+    }],
+    claude: [{
+      name: WORKFLOW_PLUGIN,
+      source: `./${WORKFLOW_CLAUDE_PACKAGE}`,
+      description: "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
+      version: workflowVersion,
+    }],
+  };
+}
 
-  mkdirSync(join(outRoot, dirname(CLAUDE_MARKETPLACE)), { recursive: true });
-  writeFileSync(
-    join(outRoot, CLAUDE_MARKETPLACE),
-    json({
-      name: MARKETPLACE_NAME,
-      owner: { name: AUTHOR },
-      description: "Feature workflow and bridge role instructions for Claude Code.",
-      plugins: [
-        {
-          name: "bridge-claude",
-          source: `./${CLAUDE_PACKAGE}`,
-          description:
-            "Bridge role and upgrade instructions for Claude Code, and the runtime's executor package. " +
-            "For the feature workflow install feature-workflow; disable this plugin's feature-* copies by disabling it.",
-          version,
-        },
-        {
-          name: WORKFLOW_PLUGIN,
-          source: `./${WORKFLOW_CLAUDE_PACKAGE}`,
-          description: "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
-          version,
-        },
-      ],
-    }),
-  );
+const MARKETPLACE_HEADS = {
+  codex: { name: MARKETPLACE_NAME, interface: { displayName: "Claude Code <-> Codex bridge" } },
+  claude: { name: MARKETPLACE_NAME, owner: { name: AUTHOR }, description: "Feature workflow and bridge role instructions for Claude Code." },
+};
 
-  return [CODEX_PACKAGE, CLAUDE_PACKAGE, WORKFLOW_CODEX_PACKAGE, WORKFLOW_CLAUDE_PACKAGE, CODEX_MARKETPLACE, CLAUDE_MARKETPLACE];
+/**
+ * Write both marketplace files. Entries of a component that is not being generated are kept as
+ * they are in `outRoot` (when present), so `--component workflow` cannot touch a bridge entry.
+ */
+function writeMarketplaces(outRoot, selected, versions) {
+  for (const [client, path] of [["codex", CODEX_MARKETPLACE], ["claude", CLAUDE_MARKETPLACE]]) {
+    let existing = null;
+    try {
+      existing = JSON.parse(readFileSync(join(outRoot, path), "utf8"));
+    } catch {
+      existing = null;
+    }
+    const plugins = [];
+    for (const component of ["bridge", "workflow"]) {
+      if (selected.includes(component) || !existing) {
+        plugins.push(...marketplaceEntries(component, versions)[client]);
+      } else {
+        const kept = (existing.plugins ?? []).filter((entry) => COMPONENTS[component].entries.includes(entry.name));
+        plugins.push(...kept);
+      }
+    }
+    mkdirSync(join(outRoot, dirname(path)), { recursive: true });
+    writeFileSync(join(outRoot, path), json({ ...MARKETPLACE_HEADS[client], plugins }));
+  }
+}
+
+/** Generate `component` ("bridge", "workflow" or "all") into `outRoot`; returns the written targets. */
+export function generate(outRoot, { component = "all" } = {}) {
+  const selected = componentsOf(component);
+  const versions = { bridgeVersion: packageVersion(), workflowVersion: workflowRelease().version };
+  const targets = [];
+  if (selected.includes("bridge")) {
+    generateBridge(outRoot);
+    targets.push(...COMPONENTS.bridge.packages);
+  }
+  if (selected.includes("workflow")) {
+    generateWorkflow(outRoot);
+    targets.push(...COMPONENTS.workflow.packages);
+  }
+  writeMarketplaces(outRoot, selected, versions);
+  return [...targets, CODEX_MARKETPLACE, CLAUDE_MARKETPLACE];
+}
+
+/** Canonical JSON of each marketplace entry of `component`, keyed by file and name (AC-01 test). */
+export function marketplaceEntrySnapshot(root, component) {
+  const out = new Map();
+  for (const path of [CODEX_MARKETPLACE, CLAUDE_MARKETPLACE]) {
+    let doc;
+    try {
+      doc = JSON.parse(readFileSync(join(root, path), "utf8"));
+    } catch {
+      out.set(`${path}#<file>`, "<missing>");
+      continue;
+    }
+    for (const entry of doc.plugins ?? []) {
+      if (COMPONENTS[component].entries.includes(entry.name)) out.set(`${path}#${entry.name}`, W.canonicalJson(entry).toString("utf8"));
+    }
+    const head = { ...doc };
+    delete head.plugins;
+    out.set(`${path}#<head>`, W.canonicalJson(head).toString("utf8"));
+  }
+  return out;
 }
 
 /** Every generated path with its digest, for comparing two generations. */
@@ -516,12 +644,25 @@ export function diffSnapshots(expected, actual) {
 
 const PACKAGES = [CODEX_PACKAGE, CLAUDE_PACKAGE, WORKFLOW_CODEX_PACKAGE, WORKFLOW_CLAUDE_PACKAGE];
 
+function parseArgs(argv) {
+  const options = { check: false, json: false, component: "all" };
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] === "--check") options.check = true;
+    else if (argv[i] === "--json") options.json = true;
+    else if (argv[i] === "--component") options.component = argv[++i];
+    else throw new Error(`unknown argument ${argv[i]}`);
+  }
+  componentsOf(options.component);
+  return options;
+}
+
 async function main(argv) {
-  const check = argv.includes("--check");
-  const asJson = argv.includes("--json");
+  const { check, json: asJson, component } = parseArgs(argv);
+  const selected = componentsOf(component);
+  const packages = selected.flatMap((name) => COMPONENTS[name].packages);
   if (!check) {
-    const targets = generate(REPO_ROOT);
-    const forbidden = PACKAGES.flatMap((target) => scanForbidden(join(REPO_ROOT, target)));
+    const targets = generate(REPO_ROOT, { component });
+    const forbidden = packages.flatMap((target) => scanForbidden(join(REPO_ROOT, target)));
     if (forbidden.length > 0) {
       process.stderr.write(`generated packages still reference the bridge checkout:\n${forbidden.map((f) => `  ${f.file}: ${f.reference}`).join("\n")}\n`);
       return 1;
@@ -532,16 +673,36 @@ async function main(argv) {
 
   const temp = mkdtempSync(join(tmpdir(), "bridge-packages-"));
   try {
-    const targets = generate(temp);
-    const problems = diffSnapshots(snapshot(temp, targets), snapshot(REPO_ROOT, targets));
-    const forbidden = PACKAGES.flatMap((target) => scanForbidden(join(temp, target)));
-    const ok = problems.length === 0 && forbidden.length === 0;
+    // The marketplace files of a component-only check start from the repository's, so the entries
+    // of the other component are compared as they are, never regenerated.
+    if (component !== "all") {
+      for (const path of [CODEX_MARKETPLACE, CLAUDE_MARKETPLACE]) {
+        if (existsSync(join(REPO_ROOT, path))) cpSync(join(REPO_ROOT, path), join(temp, path), { recursive: false });
+      }
+    }
+    generate(temp, { component });
+    const problems = diffSnapshots(snapshot(temp, packages), snapshot(REPO_ROOT, packages));
+    const entryComponents = component === "all" ? ["bridge", "workflow"] : selected;
+    for (const name of entryComponents) problems.push(...diffSnapshots(marketplaceEntrySnapshot(temp, name), marketplaceEntrySnapshot(REPO_ROOT, name)));
+    if (component === "all") problems.push(...diffSnapshots(snapshot(temp, [CODEX_MARKETPLACE, CLAUDE_MARKETPLACE]), snapshot(REPO_ROOT, [CODEX_MARKETPLACE, CLAUDE_MARKETPLACE])));
+    const forbidden = packages.flatMap((target) => scanForbidden(join(temp, target)));
+    const unique = [...new Map(problems.map((p) => [`${p.path}:${p.problem}`, p])).values()].sort((a, b) => byString(a.path, b.path));
+    const ok = unique.length === 0 && forbidden.length === 0;
+    const bundle = selected.includes("workflow") ? JSON.parse(readFileSync(join(temp, WORKFLOW_CLAUDE_PACKAGE, W.BUNDLE_DIR, W.BUNDLE_MANIFEST), "utf8")) : null;
+    const summary = {
+      ok, component, problems: unique, forbidden_references: forbidden,
+      ...(selected.includes("bridge") ? { source_digest: sourceDigest(), bridge_version: packageVersion() } : {}),
+      ...(bundle ? { workflow_version: bundle.version, workflow_identity: bundle.identity, workflow_id: bundle.workflow_id } : {}),
+    };
     if (asJson) {
-      process.stdout.write(json({ ok, problems, forbidden_references: forbidden, source_digest: sourceDigest() }));
+      process.stdout.write(json(summary));
     } else if (ok) {
-      process.stdout.write(`packages match their canonical sources (source digest ${sourceDigest().slice(0, 12)})\n`);
+      const parts = [];
+      if (summary.source_digest) parts.push(`bridge ${summary.bridge_version} source digest ${summary.source_digest.slice(0, 12)}`);
+      if (bundle) parts.push(`workflow ${bundle.workflow_id}`);
+      process.stdout.write(`packages match their canonical sources (${parts.join("; ")})\n`);
     } else {
-      for (const problem of problems) process.stderr.write(`  ${problem.path}: ${problem.problem}\n`);
+      for (const problem of unique) process.stderr.write(`  ${problem.path}: ${problem.problem}\n`);
       for (const bad of forbidden) process.stderr.write(`  ${bad.file}: references ${bad.reference}\n`);
       process.stderr.write("run `node scripts/plugin-packages/generate.mjs` and commit the result\n");
     }

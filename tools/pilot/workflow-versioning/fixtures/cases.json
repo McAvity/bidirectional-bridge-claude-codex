@@ -1,0 +1,857 @@
+{
+  "cases": [
+    {
+      "ac": [
+        "AC-01"
+      ],
+      "id": "REL-01",
+      "outcome": "SAME_IDENTITY",
+      "scenario": "identity is content-only: same files from another commit give the same identity"
+    },
+    {
+      "ac": [
+        "AC-01"
+      ],
+      "id": "REL-02",
+      "outcome": "VERSION_REUSED",
+      "scenario": "same version number with different bytes is a different identity; release registry refuses it"
+    },
+    {
+      "ac": [
+        "AC-01"
+      ],
+      "detail": {
+        "workflow_entry_changed": true
+      },
+      "id": "REL-03",
+      "outcome": "BRIDGE_ENTRY_UNCHANGED",
+      "scenario": "workflow-only release: the bridge marketplace entry is unchanged, only the workflow entry differs"
+    },
+    {
+      "ac": [
+        "AC-03",
+        "AC-08"
+      ],
+      "detail": {
+        "again": "1.0.0-5f0a32cc9caa",
+        "first": "1.0.0-5f0a32cc9caa"
+      },
+      "id": "STORE-01",
+      "outcome": "PUBLISHED",
+      "scenario": "publish A into the store; republish is idempotent"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "BUNDLE-modified-file",
+      "outcome": "BUNDLE_CORRUPT",
+      "scenario": "verification refuses a bundle with modified-file"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "missing": [
+          "codex/workflow/README.md"
+        ]
+      },
+      "id": "BUNDLE-missing-file",
+      "outcome": "BUNDLE_INCOMPLETE",
+      "scenario": "verification refuses a bundle with missing-file"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "extra": [
+          "claude/skills/feature-plan/extra.md"
+        ]
+      },
+      "id": "BUNDLE-extra-file",
+      "outcome": "BUNDLE_EXTRA_FILES",
+      "scenario": "verification refuses a bundle with extra-file"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "BUNDLE-symlink",
+      "outcome": "BUNDLE_SYMLINK",
+      "scenario": "verification refuses a bundle with symlink"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "BUNDLE-traversal",
+      "outcome": "BUNDLE_PATH_UNSAFE",
+      "scenario": "verification refuses a bundle with traversal"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "BUNDLE-recursive",
+      "outcome": "BUNDLE_RECURSIVE",
+      "scenario": "verification refuses a bundle with recursive"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "BUNDLE-runtime-owned",
+      "outcome": "BUNDLE_RUNTIME_OWNED",
+      "scenario": "verification refuses a bundle with runtime-owned"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "BUNDLE-manifest-edited",
+      "outcome": "BUNDLE_CORRUPT",
+      "scenario": "verification refuses a bundle with manifest-edited"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "expected": "sha256:ef5a2846767c3b3a12bf753dbf2e87f0d9b4f93bff9d5e669f381672e97a93f5"
+      },
+      "id": "BUNDLE-expected-identity",
+      "outcome": "BUNDLE_IDENTITY_MISMATCH",
+      "scenario": "store entry whose identity differs from the lock is refused"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "STORE-02",
+      "outcome": "STORE_ID_COLLISION",
+      "scenario": "store directory exists with a different identity: no overwrite"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "again": true,
+        "first": "CRASHED",
+        "swept": 1,
+        "visible_after_crash": []
+      },
+      "id": "STORE-03",
+      "outcome": "RECOVERED",
+      "scenario": "publication interrupted before rename leaves no visible bundle; retry publishes"
+    },
+    {
+      "ac": [
+        "AC-03",
+        "AC-08"
+      ],
+      "detail": {
+        "after": "BOUND_BUNDLE",
+        "before": "BUNDLE_MISSING"
+      },
+      "id": "STORE-04",
+      "outcome": "RESTORED",
+      "scenario": "store copy deleted → BUNDLE_MISSING; restore from a plugin bundle of the same identity; then cache deleted and store still serves"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "id": "COMPAT-01",
+      "outcome": "COMPATIBLE",
+      "scenario": "binding runtime, all capabilities"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "detail": {
+        "problems": [
+          {
+            "code": "RUNTIME_WITHOUT_BINDING",
+            "next_step": "one-time runtime upgrade to a runtime advertising workflow_binding"
+          }
+        ]
+      },
+      "id": "COMPAT-02",
+      "outcome": "RUNTIME_WITHOUT_BINDING",
+      "scenario": "runtime without workflow_binding (e.g. 0.7.0)"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "detail": {
+        "problems": [
+          {
+            "code": "CAPABILITY_MISSING",
+            "missing": [
+              "feature.close/v1"
+            ]
+          }
+        ]
+      },
+      "id": "COMPAT-03",
+      "outcome": "CAPABILITY_MISSING",
+      "scenario": "runtime missing one required capability"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "detail": {
+        "problems": [
+          {
+            "code": "BINDING_CONTRACT_UNSUPPORTED",
+            "required": 1,
+            "supported": [
+              2
+            ]
+          }
+        ]
+      },
+      "id": "COMPAT-04",
+      "outcome": "BINDING_CONTRACT_UNSUPPORTED",
+      "scenario": "runtime supports only binding contract 2"
+    },
+    {
+      "ac": [
+        "AC-05",
+        "AC-10"
+      ],
+      "id": "COMPAT-05",
+      "outcome": "COMPATIBLE",
+      "scenario": "standalone ignores bridge requirements"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "id": "COMPAT-06",
+      "outcome": "COMPATIBLE",
+      "scenario": "text-only patch B on the unchanged runtime passes"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "LOCK-01",
+      "outcome": "VALID",
+      "scenario": "lock before brief/index validates"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "LOCK-02",
+      "outcome": "LOCK_INVALID",
+      "scenario": "lock with a native session id"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "LOCK-03",
+      "outcome": "LOCK_INVALID",
+      "scenario": "lock with an absolute personal path"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "LOCK-04",
+      "outcome": "LOCK_INVALID",
+      "scenario": "lock with a lifecycle status"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "LOCK-05",
+      "outcome": "LOCK_INVALID",
+      "scenario": "generation without matching history"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "feature_dir": "F-001-search"
+      },
+      "id": "DRAFT-01",
+      "outcome": "FINALIZED",
+      "scenario": "draft → final id, no target"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "after": "mark"
+      },
+      "id": "DRAFT-02a",
+      "outcome": "CRASHED",
+      "scenario": "crash after marking the draft lock"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "feature_dir": "F-002-x"
+      },
+      "id": "DRAFT-02b",
+      "outcome": "FINALIZED",
+      "scenario": "rerun after crash completes"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "feature_dir": "F-002-x"
+      },
+      "id": "DRAFT-02c",
+      "outcome": "ALREADY_FINAL",
+      "scenario": "rerun after completion is idempotent"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "after": "move"
+      },
+      "id": "DRAFT-03a",
+      "outcome": "CRASHED",
+      "scenario": "target holds only the brief: lock moved in; crash after move"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "feature_dir": "F-003-y"
+      },
+      "id": "DRAFT-03b",
+      "outcome": "ALREADY_FINAL",
+      "scenario": "rerun after crash after move"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "reason": "target already holds a different workflow lock"
+      },
+      "id": "DRAFT-04",
+      "outcome": "FEATURE_DIR_COLLISION",
+      "scenario": "target already holds a different lock"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "draft_files": [
+          "brief.md"
+        ],
+        "reason": "both directories hold documents"
+      },
+      "id": "DRAFT-05",
+      "outcome": "FEATURE_DIR_COLLISION",
+      "scenario": "both directories hold documents"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "id": "DRAFT-06",
+      "outcome": "DRAFT_ALREADY_ASSIGNED",
+      "scenario": "the same draft cannot be assigned a second id"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "detail": {
+        "problems": [
+          {
+            "code": "RUNTIME_WITHOUT_BINDING",
+            "next_step": "one-time runtime upgrade to a runtime advertising workflow_binding"
+          }
+        ]
+      },
+      "id": "BIND-01",
+      "outcome": "RUNTIME_WITHOUT_BINDING",
+      "scenario": "bind refused on a runtime without binding"
+    },
+    {
+      "ac": [
+        "AC-07",
+        "AC-08"
+      ],
+      "id": "RUN-01",
+      "outcome": "WORKFLOW_UNBOUND",
+      "scenario": "round on an unbound feature is refused"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "generation": 1
+      },
+      "id": "BIND-02",
+      "outcome": "BOUND",
+      "scenario": "bind imports the verified lock"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "same": true
+      },
+      "id": "BIND-03",
+      "outcome": "BOUND",
+      "scenario": "repeated bind is idempotent"
+    },
+    {
+      "ac": [
+        "AC-04",
+        "AC-06"
+      ],
+      "detail": {
+        "bound": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19"
+      },
+      "id": "RUN-02",
+      "outcome": "WORKFLOW_ACK_MISMATCH",
+      "scenario": "manager acknowledges a different identity"
+    },
+    {
+      "ac": [
+        "AC-04"
+      ],
+      "id": "RUN-03",
+      "outcome": "WORKFLOW_EXECUTOR_UNSUPPORTED",
+      "scenario": "Codex executor under a binding is refused"
+    },
+    {
+      "ac": [
+        "AC-03",
+        "AC-04"
+      ],
+      "detail": {
+        "generation": 1,
+        "identity_is_A": true
+      },
+      "id": "RUN-04",
+      "outcome": "RESERVED",
+      "scenario": "attempt records identity and generation"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "id": "SWITCH-01",
+      "outcome": "WORKFLOW_SWITCH_ACTIVE_ATTEMPT",
+      "scenario": "switch while the attempt is active: refused, nothing changes"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "detail": {
+        "expected": 0
+      },
+      "id": "SWITCH-02",
+      "outcome": "WORKFLOW_GENERATION_CONFLICT",
+      "scenario": "stale expected generation"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "id": "SWITCH-03",
+      "outcome": "WORKFLOW_SWITCH_WAITING_USER",
+      "scenario": "switch while waiting for the user"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "detail": {
+        "crashed": "CRASHED",
+        "final_status": "in-sync",
+        "replay": "ALREADY_APPLIED",
+        "run_while_pending": "WORKFLOW_SWITCH_PENDING",
+        "status_after_crash": "switch-pending:intent",
+        "switch_entries": 1
+      },
+      "id": "SWITCH-crash-intent",
+      "outcome": "SWITCHED",
+      "scenario": "crash after intent: status, run blocked, retry completes exactly once"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "detail": {
+        "crashed": "CRASHED",
+        "final_status": "in-sync",
+        "replay": "ALREADY_APPLIED",
+        "run_while_pending": "WORKFLOW_SWITCH_PENDING",
+        "status_after_crash": "switch-pending:commit",
+        "switch_entries": 1
+      },
+      "id": "SWITCH-crash-commit",
+      "outcome": "SWITCHED",
+      "scenario": "crash after commit: status, run blocked, retry completes exactly once"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "detail": {
+        "crashed": "CRASHED",
+        "final_status": "in-sync",
+        "replay": "ALREADY_APPLIED",
+        "run_while_pending": "WORKFLOW_SWITCH_PENDING",
+        "status_after_crash": "switch-pending:commit",
+        "switch_entries": 1
+      },
+      "id": "SWITCH-crash-project",
+      "outcome": "SWITCHED",
+      "scenario": "crash after project: status, run blocked, retry completes exactly once"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "detail": {
+        "attempt_t1_still_A": true,
+        "feature_id": "F-001-search",
+        "generation": 2,
+        "history_ops": [
+          "bind",
+          "switch"
+        ],
+        "lock_generation": 2,
+        "status": "in-sync"
+      },
+      "id": "SWITCH-04",
+      "outcome": "SWITCHED",
+      "scenario": "full switch A→B keeps feature/task ids and appends history"
+    },
+    {
+      "ac": [
+        "AC-06"
+      ],
+      "id": "SWITCH-05",
+      "outcome": "WORKFLOW_SWITCH_PENDING",
+      "scenario": "a second key while a switch is pending is refused"
+    },
+    {
+      "ac": [
+        "AC-09"
+      ],
+      "detail": {
+        "file_unchanged_by_status": true
+      },
+      "id": "STATUS-01",
+      "outcome": "PROJECTION_BEHIND",
+      "scenario": "lock edited by hand to an older generation is reported, never repaired"
+    },
+    {
+      "ac": [
+        "AC-06",
+        "AC-04"
+      ],
+      "detail": {
+        "identity_is_B": true
+      },
+      "id": "SWITCH-06",
+      "outcome": "RESERVED",
+      "scenario": "first round after the switch must acknowledge B"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "excluded": [
+          {
+            "path": ".claude/skills/using-bridge/SKILL.md",
+            "reason": "runtime-owned role (served by the current runtime)"
+          },
+          {
+            "path": ".codex/skills/using-bridge/SKILL.md",
+            "reason": "runtime-owned role (served by the current runtime)"
+          }
+        ],
+        "included": [
+          ".agents/skills/feature-execute/SKILL.md",
+          ".agents/skills/feature-execute/references/local-delivery.md",
+          ".agents/skills/feature-exchange/scripts/feature_exchange.py",
+          "docs/features/README.md"
+        ]
+      },
+      "id": "LEGACY-01",
+      "outcome": "PARTITIONED",
+      "scenario": "legacy snapshot takes only workflow-owned files; roles stay with the current runtime"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "basis": "ledger INSTRUCTIONS record",
+        "runtime_id": "0.7.0-6ed9a4537e37",
+        "set_sha256": "8c05792ad75e"
+      },
+      "id": "LEGACY-02",
+      "outcome": "PROVEN",
+      "scenario": "ledger record proves the old set"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "candidates": [
+          "0.6.2-771e797a73d3",
+          "0.7.0-6ed9a4537e37"
+        ],
+        "next_step": "explicit user choice of one recorded runtime (bind_legacy with runtime_id)",
+        "sets": [
+          "aaaa",
+          "bbbb"
+        ]
+      },
+      "id": "LEGACY-03",
+      "outcome": "AMBIGUOUS",
+      "scenario": "ambiguous history (pin moved during the feature)"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "next_step": "no recorded instruction set and no pin; explicit user choice required"
+      },
+      "id": "LEGACY-04",
+      "outcome": "UNPROVEN",
+      "scenario": "no record and no pin"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "basis": "ledger INSTRUCTIONS record",
+        "next_step": "reinstall exactly runtime 0.7.0-6ed9a4537e37 (setup install by pin); no newer set is substituted",
+        "runtime_id": "0.7.0-6ed9a4537e37"
+      },
+      "id": "LEGACY-05",
+      "outcome": "SOURCE_MISSING",
+      "scenario": "interrupted upgrade: old runtime removed"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "basis": "project pin before upgrade (no ledger record)",
+        "runtime_id": "0.7.0-6ed9a4537e37",
+        "set_sha256": null
+      },
+      "id": "LEGACY-06",
+      "outcome": "PROVEN",
+      "scenario": "no ledger record: pin before upgrade is the basis"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "next_step": "no recorded instruction set and no pin; explicit user choice required"
+      },
+      "id": "LEGACY-07",
+      "outcome": "UNPROVEN",
+      "scenario": "only a standalone plugin record: unproven, never latest"
+    },
+    {
+      "ac": [
+        "AC-02"
+      ],
+      "detail": {
+        "next_step": "run begin from this entry; it records the active entry's bundle",
+        "source": "none"
+      },
+      "id": "RESOLVE-01",
+      "outcome": "SELECTION_REQUIRED",
+      "scenario": "new feature, binding runtime"
+    },
+    {
+      "ac": [
+        "AC-10"
+      ],
+      "detail": {
+        "next_step": "run begin from this entry; it records the active entry's bundle",
+        "source": "none"
+      },
+      "id": "RESOLVE-02",
+      "outcome": "SELECTION_REQUIRED",
+      "scenario": "new feature, no bridge (standalone)"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "next_step": "one-time runtime upgrade; nothing is changed automatically",
+        "source": "none"
+      },
+      "id": "RESOLVE-03",
+      "outcome": "RUNTIME_WITHOUT_BINDING",
+      "scenario": "new plugin + old pin: NEW feature"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "note": "unchanged pre-binding path; no lock is created",
+        "source": "runtime"
+      },
+      "id": "RESOLVE-04",
+      "outcome": "LEGACY_PINNED_RUNTIME",
+      "scenario": "new plugin + old pin: EXISTING lock-less feature"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "next_step": "manager runs bind_legacy for the proven old set",
+        "source": "none"
+      },
+      "id": "RESOLVE-05",
+      "outcome": "LEGACY_BIND_REQUIRED",
+      "scenario": "existing lock-less feature after one-time upgrade, proven set"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "source": "none"
+      },
+      "id": "RESOLVE-06",
+      "outcome": "LEGACY_AMBIGUOUS",
+      "scenario": "existing lock-less feature, ambiguous history"
+    },
+    {
+      "ac": [
+        "AC-03"
+      ],
+      "detail": {
+        "source": "bundle"
+      },
+      "id": "RESOLVE-07",
+      "outcome": "BOUND_BUNDLE",
+      "scenario": "locked feature, bundle present"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "next_step": "restore exactly the locked identity (workflow restore)",
+        "source": "none"
+      },
+      "id": "RESOLVE-08",
+      "outcome": "BUNDLE_MISSING",
+      "scenario": "locked feature, bundle missing"
+    },
+    {
+      "ac": [
+        "AC-08"
+      ],
+      "detail": {
+        "next_step": "restore exactly the locked identity (workflow restore)",
+        "source": "none"
+      },
+      "id": "RESOLVE-09",
+      "outcome": "BUNDLE_CORRUPT",
+      "scenario": "locked feature, bundle corrupt"
+    },
+    {
+      "ac": [
+        "AC-10"
+      ],
+      "detail": {
+        "source": "bundle"
+      },
+      "id": "RESOLVE-10",
+      "outcome": "BOUND_BUNDLE",
+      "scenario": "locked feature, standalone"
+    },
+    {
+      "ac": [
+        "AC-05"
+      ],
+      "detail": {
+        "source": "none"
+      },
+      "id": "RESOLVE-11",
+      "outcome": "WORKFLOW_INCOMPATIBLE",
+      "scenario": "new feature, incompatible workflow"
+    },
+    {
+      "ac": [
+        "AC-02"
+      ],
+      "detail": {
+        "next_step": "update the feature-workflow plugin",
+        "source": "none"
+      },
+      "id": "RESOLVE-12",
+      "outcome": "ENTRY_WITHOUT_BUNDLE",
+      "scenario": "new feature from an old plugin without bundle"
+    },
+    {
+      "ac": [
+        "AC-07"
+      ],
+      "detail": {
+        "next_step": "one-time runtime upgrade; nothing is changed automatically",
+        "source": "none"
+      },
+      "id": "RESOLVE-13",
+      "outcome": "RUNTIME_WITHOUT_BINDING",
+      "scenario": "locked feature after the pin was downgraded to a runtime without binding"
+    },
+    {
+      "ac": [
+        "AC-10"
+      ],
+      "detail": {
+        "next_step": "explicit begin/adopt for this existing feature; latest is never assigned silently",
+        "source": "none"
+      },
+      "id": "RESOLVE-14",
+      "outcome": "SELECTION_REQUIRED",
+      "scenario": "existing lock-less standalone feature"
+    }
+  ],
+  "format": "w19-01.contract-cases/v1"
+}

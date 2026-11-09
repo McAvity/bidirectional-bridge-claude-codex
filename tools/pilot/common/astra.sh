@@ -3,6 +3,8 @@
 # MCP server and project trust are passed as per-invocation `-c` overrides; the user's own Codex
 # configuration (model, approvals, auto-review) is used as in daily work. PILOT_DIR (required) is the
 # run directory created by a scenario setup; CODEX_PROFILE optionally selects a Codex profile.
+# PILOT_REPO overrides the project (default $PILOT_DIR/repo); CODEX_HOME and PILOT_MCP_FORWARD are
+# honoured for isolated pilots (F-W19: tools/pilot/workflow-versioning/env.sh of a run sets them).
 #
 #   operator/astra.sh check    show the effective bridge definition (`codex mcp list`), no model call
 #   operator/astra.sh start    open Astra's Codex TUI in the pilot repo (then paste START-ASTRA.md)
@@ -10,7 +12,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PILOT="$(cd "${PILOT_DIR:?set PILOT_DIR to the run directory}" && pwd)"
-REPO="$PILOT/repo"
+REPO="$(cd "${PILOT_REPO:-$PILOT/repo}" && pwd)"
 CODEX_BIN="${CODEX_BIN:-$(PATH="$PATH" command -v codex)}"
 PROFILE_ARGS=()
 if [ -n "${CODEX_PROFILE:-}" ]; then PROFILE_ARGS=(--profile "$CODEX_PROFILE"); fi

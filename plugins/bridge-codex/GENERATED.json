@@ -7,7 +7,7 @@
     ".codex/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "155ee41b931fad04e9c5459b23200bd98e390593d41934c73c550358bb82c7ca",
+  "source_digest": "28d9e4b0690efadc60b2d7ce1bfd02dd8bdfadf05a6e2455e19f3eec3d2811e4",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "scripts/diagnostics/collect.mjs",
-      "sha256": "28dda1da8a7f0603ecca12aa8cc39650e260edd9b7d57987b5a297e61bedd861"
+      "sha256": "c0071142cef5243b0b70d42fd9154fccf1a8b01e9d003d9e8cb98268500f88a1"
     },
     {
       "path": "scripts/diagnostics/project.mjs",
-      "sha256": "60e0bdd016ab07987aa65e007cec78fd3ebb88eeebdc2c9236756cced5f59b0f"
+      "sha256": "75241e60ee5072da369e2795c38da667710ca2bb51e3ab040a8e91f025ee1dba"
     },
     {
       "path": "scripts/diagnostics/safe-read.mjs",
@@ -71,11 +71,11 @@
     },
     {
       "path": "scripts/setup/distribution.mjs",
-      "sha256": "83a83bf0c98726f2f0137bbe70b924f6f418cbe9fde192763b3f1e30d3e308d5"
+      "sha256": "2161e0f6121652fcfd17143622daf4980a5325f7555643ff119ee98b52b28a73"
     },
     {
       "path": "scripts/setup/doctor.mjs",
-      "sha256": "93a85d73aa22d5efe91e59eb7cd7c8f309d7f9a08394af27ca44339d747d8704"
+      "sha256": "5ee7cf70840a73499db062bc9639c9cf7457d4a85f1796e5b6faa3ad7258163b"
     },
     {
       "path": "scripts/setup/process-observer.py",
@@ -87,7 +87,11 @@
     },
     {
       "path": "scripts/setup/runtime.mjs",
-      "sha256": "1f40d79a1792e30960b0cef152cd30a84f5c8b3c608f6176e2c95e6785e6ebbf"
+      "sha256": "4f6b67bd3fa3c6142d4a1117303d483bb5e03abfb9f7b290bf3c2ef8c3c5f450"
+    },
+    {
+      "path": "scripts/setup/workflow-status.mjs",
+      "sha256": "a086c47ae25a0a007479929c733fe45f17d8822e58df871a61196213527db310"
     },
     {
       "path": "scripts/setup/workspace.mjs",

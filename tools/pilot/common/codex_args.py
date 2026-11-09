@@ -5,12 +5,20 @@
                                                 per-invocation trust override for <repo>
   python3 codex_args.py session <repo> [since]  unique top-level CLI session id whose cwd is <repo>
                                                 (optionally started at/after ISO time `since`)
-Nothing is written; ~/.codex is only read.
+Nothing is written; the Codex home ($CODEX_HOME, else ~/.codex) is only read.
+PILOT_MCP_FORWARD (space-separated names, optional) adds variables to the server's `env_vars`, so an
+isolated pilot can forward e.g. CLAUDE_CONFIG_DIR to the bridge and its Claude executor (F-W19);
+PILOT_MCP_APPROVE=1 approves the bridge tools for this invocation, like the rework pilot's block.
 """
 import json
+import os
 import sys
 import tomllib
 from pathlib import Path
+
+
+def codex_home():
+    return Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex')
 
 
 def dotted(prefix, value, out):
@@ -25,14 +33,21 @@ def launch_args(repo):
     repo = Path(repo).resolve()
     config = tomllib.loads((repo / '.codex/config.toml').read_text())
     out = [f'projects."{repo}".trust_level="trusted"']
-    dotted('mcp_servers.bridge', config['mcp_servers']['bridge'], out)
+    bridge = dict(config['mcp_servers']['bridge'])
+    forward = (os.environ.get('PILOT_MCP_FORWARD') or '').split()
+    if forward:
+        bridge['env_vars'] = list(dict.fromkeys([*bridge.get('env_vars', []), *forward]))
+    if os.environ.get('PILOT_MCP_APPROVE') == '1':
+        # As in the rework pilot's own block: the user's start order authorizes the bridge calls.
+        bridge['default_tools_approval_mode'] = 'approve'
+    dotted('mcp_servers.bridge', bridge, out)
     return out
 
 
 def sessions(repo):
     """Yield (timestamp, session_id, rollout_path) for Codex sessions started in <repo>."""
     repo = str(Path(repo).resolve())
-    for path in Path.home().glob('.codex/sessions/*/*/*/rollout-*.jsonl'):
+    for path in codex_home().glob('sessions/*/*/*/rollout-*.jsonl'):
         try:
             with path.open(encoding='utf-8') as handle:
                 first = json.loads(handle.readline())

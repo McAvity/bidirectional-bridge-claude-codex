@@ -80,6 +80,8 @@ const VOCABULARY = {
   journal_mode: new Set(["wal", "delete", "truncate", "persist", "memory", "off", "WAL", "DELETE"]),
   recovery_mode: new Set(["timeout", "owner", "delegated_manager"]),
   doctor_status: new Set(["ok", "warn", "error", "unknown", "skipped"]),
+  workflow_kind: new Set(["release", "legacy"]),
+  workflow_op: new Set(["switch", "bind_legacy"]),
 };
 
 /** An attempt outcome is a status or an error code; both domains are closed. */
@@ -174,6 +176,8 @@ export function projectField(value, type, aliases) {
     case "journal_mode":
     case "recovery_mode":
     case "doctor_status":
+    case "workflow_kind":
+    case "workflow_op":
       return typeof value === "string" && VOCABULARY[type].has(value) ? value : INVALID;
     case "attempt_outcome":
       return typeof value === "string" && ATTEMPT_OUTCOMES.has(value) ? value : INVALID;
@@ -529,5 +533,40 @@ export function projectDistribution(value, aliases) {
       ...pick(value.executor, { configured_package_version: "version", observed_package_version: "version", observed_at: "iso" }),
     },
     pin: pick(value.pin, { declared: "version", applied: "version", diverged: "flag" }),
+    workflow: value.workflow ? {
+      ...pick(value.workflow, { runtime_advertises_binding: "flag", features_total: "count", features_bound: "count", admitted_attempts: "count" }),
+      database: ["read", "absent", "unreadable", "not-located"].includes(value.workflow.database) ? value.workflow.database : value.workflow.database == null ? null : INVALID,
+      entries: Array.isArray(value.workflow.entries) ? value.workflow.entries.slice(0, 50).map((e) => ({
+        client: ["claude", "codex"].includes(e?.client) ? e.client : INVALID,
+        plugin: ["feature-workflow", "bridge-claude", "bridge-codex"].includes(e?.plugin) ? e.plugin : INVALID,
+        bootstrap: ["resolve", "select-source-v1", "none", "unreadable"].includes(e?.bootstrap) ? e.bootstrap : INVALID,
+        ...pick(e, { version: "version", bundle_identity: "sha256", stale_feature_copies: "flag" }),
+      })) : [],
+      // Never filled from configuration; only a real run could observe what a model applied.
+      observed: null,
+    } : null,
   };
 }
+
+/** One feature's workflow binding in an incident package (F-W19): identities, never paths or text. */
+export const WORKFLOW_BINDING_SPEC = {
+  identity: "sha256",
+  version: "version",
+  workflow_id: "version",
+  kind: "workflow_kind",
+  generation: "count",
+  history_length: "count",
+  pending: "workflow_op",
+  legacy_runtime_id: "version",
+};
+
+/** One admitted attempt (F-W19 attempt_workflow): what the bridge admitted, not what a model did. */
+export const ATTEMPT_WORKFLOW_SPEC = {
+  task_id: "id",
+  attempt: "count",
+  identity: "sha256",
+  workflow_id: "version",
+  generation: "count",
+  kind: "workflow_kind",
+  admitted_at: "epoch_ms",
+};

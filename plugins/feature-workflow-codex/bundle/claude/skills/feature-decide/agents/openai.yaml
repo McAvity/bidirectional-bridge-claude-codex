@@ -1,0 +1,4 @@
+interface:
+  display_name: "feature-decide"
+  short_description: "Record decisions and authorize scoped corrections"
+  default_prompt: "Use $feature-decide for the selected feature and follow ${CLAUDE_PLUGIN_ROOT}/workflow/README.md."

@@ -3,22 +3,41 @@ name: feature-execute
 description: "Execute an authorized feature scope through tasks, integration, local review and corrections and maintain an evidence ledger. Use after planning/decision, including contract tasks; not for unsolicited redesign."
 ---
 
-> **Instruction source — check first.** This is `feature-workflow:feature-execute` from the `feature-workflow`
-> plugin. Before any phase work, from the target worktree root run
-> `node "${CLAUDE_PLUGIN_ROOT}/scripts/select-source.mjs" --json` (append `--standalone` only when the user explicitly asked to work
-> without the bridge) and follow its answer:
+> **Workflow selection — check first.** This is `feature-workflow:feature-execute` from the `feature-workflow` plugin.
+> Before any phase work, from the target worktree root run
+> `node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs" resolve --feature <feature id or docs/features/<dir>> --entry feature-execute --json`;
+> for a feature that has no directory yet (the start of design or flow) run `node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs" resolve --new --json`.
+> Append `--standalone` only when the user explicitly asked to work without the bridge. Follow its answer:
 >
-> - `source: plugin` — follow this file and this package's resources.
-> - `source: runtime` — the project pins a bridge runtime: follow
->   `<instructions.workflow_skills>/feature-execute/SKILL.md`, the guide `instructions.guide` and
->   the helper `instructions.exchange_helper` of that runtime instead of this file. Never mix
->   the two sets. If the selected runtime does not contain this entry, report that a runtime
->   upgrade is needed; do not fall back to the plugin copy.
-> - `source: none` (exit 3) — report `code` and `next_step` and stop. Do not install, set
->   up, move a pin or fall back to this copy.
+> - `source: bundle` (`BOUND_BUNDLE`) — follow `<instructions.workflow_skills>/feature-execute/SKILL.md`, the
+>   guide `instructions.guide` and the helpers of that stored, verified workflow, even if it is this
+>   file's own release; never mix two sets. With the bridge, pass `bundle.identity` as
+>   `workflow_identity` to every `bridge_feature_run` and `bridge_resume_*` call. After a workflow
+>   switch, or a `WORKFLOW_ACK_*` refusal, run `resolve` again and re-read the entry in this same
+>   session before the next call; do not open a new session.
+> - `SELECTION_REQUIRED` — a new feature: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs" begin` (or `begin --feature-id <id>`), then
+>   `resolve` again; after the design assigns the id run `node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs" finalize --draft <token>
+>   --feature-id <id>` and, with the bridge, `bridge_workflow_bind` after `bridge_feature_create`.
+>   An existing feature without a lock needs the user's explicit choice: `adopt --explicit`
+>   standalone, `bridge_workflow_bind_legacy` with the bridge. Never take the latest silently.
+>   `begin --feature-id` answering `FEATURE_EXISTS` means exactly that case: run
+>   `node "${CLAUDE_PLUGIN_ROOT}/scripts/workflow.mjs" resolve --feature <id>` and follow its answer.
+> - `source: runtime` (`LEGACY_PINNED_RUNTIME`) — the project pins a runtime without workflow binding:
+>   follow `<instructions.workflow_skills>/feature-execute/SKILL.md`, `instructions.guide` and
+>   `instructions.exchange_helper` of that runtime, as before. If that runtime lacks this entry,
+>   report that a runtime upgrade is needed.
+> - `LEGACY_BIND_REQUIRED` — a feature from before workflow binding whose old set is proven by its
+>   ledgers. With the bridge, the manager calls `bridge_workflow_bind_legacy` with the answer's
+>   `bind_legacy` values (the bridge feature id and a new idempotency key), then runs `resolve`
+>   again and continues the same phase under its gates with that old rule set; nothing else changes.
+>   `LEGACY_AMBIGUOUS` / `LEGACY_UNPROVEN` need the user's explicit choice of one recorded or
+>   installed runtime first (`explicit_choice: true`); `LEGACY_SOURCE_MISSING` needs that exact
+>   runtime reinstalled. Never bind the latest workflow instead.
+> - any other `source: none` (exit 3) — report `code` and `next_step` and stop. Do not install, set
+>   up, move a pin, restore, start a new session or fall back to this copy.
 >
-> Put the answer's `record` line in the ledger of a significant execution or review. Inside a
-> bridge round the round contract remains the authority.
+> Put the answer's `record` line in the ledger of a significant execution or review. Inside a bridge
+> round the round contract and its `Workflow binding` block remain the authority.
 
 Read [the shared workflow](../../workflow/README.md) first, then the relevant repository AGENTS.md and the selected feature files. Resolve all paths against the repository root; sibling skills ship together in `${CLAUDE_PLUGIN_ROOT}/skills/`. Use the user’s language for summaries and preserve the repository’s document conventions. The workflow is task-local guidance, not authority to alter unrelated work.
 
@@ -82,6 +101,12 @@ unless the contract changes it. A resumed task with a manager clarification cont
 same task. So does a task resumed after the bridge stopped the previous attempt at its
 deadline: check what your earlier attempt already changed and committed, keep it, and continue
 from there within the same contract instead of restarting the work.
+
+When the prompt carries a `Workflow binding` block (`WORKFLOW=… IDENTITY=… GENERATION=… ROOT=…`),
+those instructions are the workflow of this attempt and supersede any earlier one in the session:
+read the entries and references you follow from `ROOT/skills/…` and the guide from
+`ROOT/workflow/README.md`, not from the skill list or memory, and put its `INSTRUCTIONS=bundle:…`
+line in your ledger. An unreadable `ROOT` is a blocker; never substitute another copy.
 
 When the contract carries a repo-map reference (`REPO_MAP=<path> SHA256=<hash>`, more than one
 repository), also follow [references/multi-repo.md](references/multi-repo.md) § 6: it applies inside

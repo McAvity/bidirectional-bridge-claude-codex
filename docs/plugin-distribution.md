@@ -298,6 +298,81 @@ version. The same gate refuses a worktree whose applied selection differs from t
 copied setup record, a disabled or unrecognised declaration, and a pin whose commit does not match
 the runtime answering to its id — each before the server starts, with nothing written.
 
+## Independent workflow and bridge versions
+
+Since F-W19 the bridge (engine) and the feature workflow are two components with their own
+versions and releases in the same marketplace. They are compared by identity, never by number.
+
+| Component | Packages | Version source | Release tag (recommended) |
+| --- | --- | --- | --- |
+| Bridge | `bridge-codex`, `bridge-claude` (roles, setup, upgrade, installer) | `package.json`, pin `scripts/plugin-packages/release.json` | `bridge-v<version>` |
+| Feature workflow | `feature-workflow` for Codex and for Claude Code (seven entries, guide, helpers, and `bundle/` with both client variants) | `scripts/workflow-source/release.json` | `workflow-v<version>` |
+
+Existing `v*` tags stay unchanged. `node scripts/plugin-packages/generate.mjs --component
+workflow` regenerates only the two workflow packages and their marketplace entries; `--component
+bridge` only the bridge packages. `--check` (all, or `--component …`) compares whole trees, so a
+workflow-only release provably leaves every bridge byte unchanged and the other way round. A
+published workflow version is appended to `scripts/workflow-source/releases.json` with its
+identity and commit after that commit exists; regenerating a registered version with other bytes
+fails with `VERSION_REUSED`. Publishing and tagging are maintainer steps outside a feature.
+
+### Updating the workflow on a machine
+
+Update the `feature-workflow` plugin in **both** clients through their own marketplace commands —
+no project, pin or runtime changes:
+
+```sh
+claude plugin marketplace update claude-codex-bridge
+claude plugin update feature-workflow@claude-codex-bridge
+codex plugin add feature-workflow@claude-codex-bridge      # after the Codex marketplace source is refreshed
+```
+
+Restart (or reload) the client as it requires. New features then start on the installed release:
+`workflow.mjs begin` stores a verified copy under `<bridge-home>/workflows/<version>-<id>/` and writes
+`docs/features/<feature>/workflow.lock.json`. Features already started keep their recorded release
+— also after the plugin cache is updated or removed, and offline. A delegated Claude gets the
+release the bridge admitted for that attempt from the store (`bridge-claude` roles plus the stored
+Claude variant), whatever its personal plugins contain; only the coordinator's client needs the
+update.
+
+### One-time engine upgrade
+
+Workflow binding needs a runtime that advertises it (`compatibility.workflow_binding` in the
+runtime manifest, database schema 7). Upgrade the project once with the usual `update`
+(docs/setup.md § 5); after that, compatible workflow-only releases need no runtime, pin or
+configuration change. A schema-6 runtime refuses the schema-7 database, and `update`/`rollback`
+refuse such a target (`STATE_SCHEMA_NEWER`). With a project still pinned to an older runtime, an
+existing feature keeps following that runtime as before (`LEGACY_PINNED_RUNTIME`) and a new feature
+is refused with the upgrade as next step (`RUNTIME_WITHOUT_BINDING`); the plugin never upgrades by
+itself.
+
+### Existing features, switch and restore
+
+- A feature from before binding is bound to the exact old instruction set its ledgers record:
+  `resolve` answers `LEGACY_BIND_REQUIRED` with the arguments of
+  `bridge_workflow_bind_legacy`. An ambiguous or unproven history needs the user's explicit choice
+  (`explicit_choice: true`); the latest workflow is never assigned.
+- A feature with a lock is bound with `bridge_workflow_bind`; every round and recovery then passes
+  the identity as `workflow_identity`.
+- Changing the release of a running feature is explicit, between rounds:
+  `bridge_workflow_switch` (or `workflow.mjs switch` without the bridge). An interruption leaves a
+  pending projection that the same call or `bridge_workflow_project` finishes.
+- A missing or damaged store copy is restored to exactly its identity:
+  `workflow.mjs restore --identity <id> --from <plugin or bundle>` (damaged copies are quarantined,
+  never overwritten).
+
+`bridge_workflow_status` and doctor's `workflow` check separate the layers: what is configured
+(runtime advertisement, installed entries, lock and binding), verified (store copy), admitted (per
+attempt) and observed — the last is never known from configuration or a model-free check.
+
+### Old personal entries
+
+An old personal `bridge-claude` still lists `bridge-claude:feature-*` copies without the workflow
+bootstrap; it would run whatever rules it contains. Doctor reports it as
+`STALE_PERSONAL_FEATURE_ENTRIES` (and an old `feature-workflow` without `bundle/` as
+`ENTRY_WITHOUT_BOOTSTRAP`). Update that plugin or disable it (`claude plugin disable
+bridge-claude@<marketplace>`); doctor reads the client's plugin metadata only and changes nothing.
+
 ## Upgrade with the skill
 
 Ask **“Upgrade the bridge in this project”**, or invoke `bridge-upgrade` from the

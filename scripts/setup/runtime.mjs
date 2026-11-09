@@ -226,6 +226,11 @@ function readCompatibility(root) {
       const cp = await import(${JSON.stringify(controlPlane)});
       const schema = cp.SqliteStateStore?.schemaVersionSupported;
       if (Number.isInteger(schema)) out.state_schema_version = schema;
+      // F-W19 § 5.2: present only in runtimes that implement workflow binding; absent = none.
+      const binding = cp.WORKFLOW_BINDING_ADVERTISEMENT;
+      if (binding && Array.isArray(binding.contracts) && Array.isArray(binding.capabilities)) {
+        out.workflow_binding = { contracts: [...binding.contracts], capabilities: [...binding.capabilities] };
+      }
       if (cp.VERIFIED_ADAPTERS instanceof Map) out.codex_identity_adapters = [...cp.VERIFIED_ADAPTERS.keys()].sort();
     } catch {}
     try {

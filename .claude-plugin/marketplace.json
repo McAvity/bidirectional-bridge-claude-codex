@@ -8,14 +8,14 @@
     {
       "name": "bridge-claude",
       "source": "./plugins/bridge-claude",
-      "description": "Bridge role and upgrade instructions for Claude Code, and the runtime's executor package. For the feature workflow install feature-workflow; disable this plugin's feature-* copies by disabling it.",
+      "description": "Bridge role, setup and upgrade instructions for Claude Code, and the runtime's executor role package. The feature workflow is the separate feature-workflow plugin.",
       "version": "0.7.0"
     },
     {
       "name": "feature-workflow",
       "source": "./plugins/feature-workflow-claude",
       "description": "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
-      "version": "0.7.0"
+      "version": "1.0.0"
     }
   ]
 }

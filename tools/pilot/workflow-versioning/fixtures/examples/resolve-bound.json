@@ -1,0 +1,32 @@
+{
+  "bundle": {
+    "client_root": "<bridge-home>/workflows/1.0.0-5f0a32cc9caa/codex",
+    "identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19",
+    "root": "<bridge-home>/workflows/1.0.0-5f0a32cc9caa",
+    "verified": "full",
+    "version": "1.0.0",
+    "workflow_id": "1.0.0-5f0a32cc9caa"
+  },
+  "code": "BOUND_BUNDLE",
+  "entry": {
+    "identity": "<identity of the active plugin's own bundle>",
+    "plugin": "feature-workflow",
+    "same_as_bound": false,
+    "version": "1.0.1"
+  },
+  "feature": {
+    "feature_id": "F-001-search",
+    "generation": 2,
+    "lock": "docs/features/F-001-search/workflow.lock.json"
+  },
+  "format": "feature-workflow.instruction-source/v2",
+  "instructions": {
+    "exchange_helper": "<client_root>/skills/feature-exchange/scripts/feature_exchange.py",
+    "guide": "<client_root>/workflow/README.md",
+    "workflow_skills": "<client_root>/skills"
+  },
+  "next_step": null,
+  "reads_only": true,
+  "record": "INSTRUCTIONS=bundle:1.0.0-5f0a32cc9caa IDENTITY=sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19 GENERATION=2",
+  "source": "bundle"
+}

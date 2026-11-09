@@ -1,5 +1,45 @@
 # Current handoff
 
+## F-W19 — kod lokalnie zweryfikowany, pilot odłożony, 2026-11-06
+
+Branch feature/F-W19-workflow-versioning w `.worktrees/F-W19`, dostawa2298abf.
+I05/I06 fixed/verified; pełne kontrole dokładnego2298abf bez modeli PASS:
+JS 752 PASS/1 skipped/0 fail; Python242 PASS; pilot tooling129 PASS/2skipped (opcjonalne zależności PTY: pexpect/pyte nieobecne); workflow contract/operator27 PASS; wszystkie zestawy exit0.
+[Decyzja04](features/F-W19-workflow-versioning/decisions/04.md): użytkownik rezygnuje
+z dodatkowych loginów teraz, pilot odłożony. Nie prosić ponownie ani nie używać
+osobistych profili. AC04 NOT_TESTED, brak odbioru całości. T01/T02 do korekty przed
+późniejszym pilotem; N01 docs do najbliższej partii przed publikacją.
+[Progress](features/F-W19-workflow-versioning/PROGRESS.md),
+[review](features/F-W19-workflow-versioning/reviews/02-execution.md),
+[integracja](features/F-W19-workflow-versioning/execution/integration/01.md).
+Brak aktywnej rundy; ten sam root koordynatora zachowany jako BLOCKED dla odłożonego
+zakresu. Nie zaczynać feature’a od nowa. Bez merge/push/release/zmiany runtime0.6.2.
+
+
+## F-W19 W19-06 — zbiorcza walidacja i pilot, 2026-11-06
+
+Worktree `.worktrees/F-W19`, branch `feature/F-W19-workflow-versioning`.
+Etapy01…05 dostarczone, final7100fbe; niezależne full checks14e0501 PASS w izolacji
+(751JS/1skip,241Python,140pilot,12contract). Zbiorcze review REWORK: I05 begin
+istniejącego featura bez locka omija explicit choice; I06 doctor workflow gubi błąd
+odczytu bazy. Jedna partia korekt06 i przygotowanie pilota, potem modelowy AC04.
+Auth izolowanych klientów niepotwierdzone; nie kopiować sekretów/osobistego cache.
+[Progress](features/F-W19-workflow-versioning/PROGRESS.md) i jeden
+[rejestr](features/F-W19-workflow-versioning/reviews/02-execution.md).
+Zgoda03 ważna, bez nowego Gate1; Gate2 user acceptance jeszcze nieosiągnięta.
+Aktywny runtime0.6.2 nietknięty; bez merge/push/release/real-project upgrade.
+
+
+## F-W19 implementation active — 2026-11-06
+
+Isolated feature/F-W19-workflow-versioning, .worktrees/F-W19. W19-01…04 delivered in bounded stages;
+latest worker3488c7b, next W19-05/06 under decision03. See
+[progress](features/F-W19-workflow-versioning/PROGRESS.md) and the single
+[review register](features/F-W19-workflow-versioning/reviews/02-execution.md).
+Root task_vf2ajb3t4d, prior child task_10731g2yrb DONE, same Claude session.
+Known baseline host-test failures remain open; model pilot/auth not completed.
+No release/merge/push/project upgrade; supervising0.6.2 runtime unchanged.
+
 ## 0.7.0 published — F-W20 accepted,2026-11-05
 
 [Release checkpoint](tasks/w20-release.md): F-W20 accepted by user, integrated with

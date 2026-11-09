@@ -1,0 +1,18 @@
+{
+  "compatibility": {
+    "state_schema_version": 7,
+    "workflow_binding": {
+      "capabilities": [
+        "feature.lifecycle/v1",
+        "feature.close/v1",
+        "round.recovery/v1",
+        "round.report/v1",
+        "workflow.binding/v1"
+      ],
+      "contracts": [
+        1
+      ]
+    }
+  },
+  "format": "claude-codex-bridge.runtime/v1 (excerpt)"
+}

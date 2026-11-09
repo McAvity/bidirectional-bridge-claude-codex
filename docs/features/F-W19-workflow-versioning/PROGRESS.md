@@ -98,3 +98,77 @@ Po merge: check-doc-links241 PASS, git diff --check PASS, ancestor plan branch P
 drzewo czyste. Tylko dokumentacja/taski; testy produktu niepotrzebne dla tego kroku.
 Następne: feature-execute w osobnym worktree od aktualnego feature-workflow,
 W19-01 jako pierwszy task; bez ponownego Gate 1. Nie wykonano push ani modeli.
+
+## 2026-11-06 — rozpoczęcie wykonania po integracji F-W20
+
+Użytkownik: „dobra to teraz idziemy do F-W19”. Wznawiamy zatwierdzony zakres
+decyzji03, bez nowego Gate1. Baza wykonania8540de7 zawiera wydane F-W20 i lokalne
+poprawki skryptu upgrade; zachować je. Branch feature/F-W19-workflow-versioning,
+osobny worktree .worktrees/F-W19. Nie ma cudzych zmian w tym worktree.
+MCP związany z checkoutem koordynatora; scope ma prefiks .worktrees/F-W19/,
+a wszystkie Git/ledgery i dostawy dotyczą rzeczywistego korzenia worktree.
+Intencje w namespace koordynatora. Feature F-W19-workflow-versioning,
+root task_vf2ajb3t4d. Nadzorujący immutable runtime0.6.2 pozostaje bez zmian.
+
+W19-01 rozpoczęty: Claude dostarczy kontrakt i próby klientów bez modeli.
+Koordynator niezależnie recenzuje kontrakt przed zależną implementacją; dalszy
+główny ciąg W19-02…06 bez dodatkowych zgód, nieblokujące findingi jedną partią.
+Pilot produktu ma osobny limit decyzji03:6 rund/180min/24 tury Astr, nieuruchomiony.
+Bez merge/push/release/real-project upgrades; końcowy odbiór przez użytkownika.
+
+W19-01 dostarczony f8d092f (task_62fwmq4nrm); receipt i niezależne review02 PASS.
+Powtórzone fixtures10/10,11 przykładów i no-model próby obu klientów: zgodne findings.
+R19-C01…04 do partii implementacyjnej, PILOT-AUTH/ENV pozostają przed pilotem.
+W19-02 rozpoczęty, dalsza zgoda03 ważna. Baza8540de7: build PASS; JS642pass/76fail/7skip
+(2 znane pliki instalatora/process visibility), Python196/2 znane failures klienta,
+pilot tooling140/140 PASS. Pełne logi bazowe poza Git; nowe regresje oceniać względem
+tego punktu, nie kasować ani nie maskować starych failures.
+
+
+W19-02 ukończony aec3865, task_pqfare78qr DONE po trzech próbach tej samej sesji.
+Helper/generator, immutable bundle/store, korekta zapisu poza zakresemR19-I01;
+niezależny receipt/repro i35 testów PASS. Historyczne76JS/2Python failures nadal
+OPEN, nie naprawiamy hosta kosztem głównego ciągu. Następne W19-03, potem04/05/06.
+Składniki workflow mają lokalną kandydacką wersję1.0.0; silnik/piny bez zmian.
+Pilot jeszcze nieuruchomiony; izolowane auth potrzebne dopiero przed jego startem.
+Rejestr wszystkich findingów w reviews/02-execution.md. Runtime0.6.2 nietknięty.
+
+
+W19-03 ukończony df937ca, task_bsyah2z3pw DONE, ta sama sesja. Schemat7,
+workflow binding/legacy/switch/per-attempt identity i ack w run/recovery;
+niezależny receipt i19 testów PASS. W19-04 rozpoczyna kompozycję launchera/runnera
+oraz skille; R19-I02 (pending replay bez request hash) poprawić w tej partii.
+W19-06 ma działające izolowane środowisko testowe: na bazie91JS+2CodexHost PASS;
+full candidate checks i modelowy pilot jeszcze nieuruchomione. Auth nadal niepotwierdzone.
+
+
+W19-04 dostarczony3488c7b (kod3fb7819), task_10731g2yrb DONE, ta sama sesja.
+Niezależnie23 testy PASS, I02 fixed/verified;16 failed integration fixtures czeka
+na gotową łatkę W19-05 (I03). I04 bootstrap legacy również w tej partii. Status
+etapu nie oznacza pełnego PASS. W19-05 startuje bez nowej zgody; następnie06.
+Nie uruchomiono modeli pilota; auth izolowanych klientów nadal niepotwierdzone.
+
+
+W19-05 DONE7100fbe (kod4335cbe, testowany14e0501); raport odzyskany w tej samej
+sesji bez zmian produktu. W19-06 in_progress: pełne niezależne kontrole na świeżym
+klonie w kontenerze PASS (751JS/1skip,241Python,140pilot,12contract), dwa konkretne
+findingi I05/I06 do jednej partii; szczegóły i reprodukcje reviews/02-execution.md.
+Auth pilota nadal niepotwierdzone; użytkownikowi wyjaśniono cel izolacji. Następny
+kontrakt obejmuje korekty i preflight/procedurę pilota bez modeli, potem rzeczywisty
+pilot w zatwierdzonym budżecie03. Bez publikacji i bez podmiany aktywnego runtime0.6.2.
+
+
+## Końcowy checkpoint tego przebiegu — pilot odłożony przez użytkownika
+
+Dostawa2298abf, kod501a6b2; W19-01…05 DONE etapowo. W19-06: korekty I05/I06
+niezależnie zweryfikowane, pełne kontrole dokładnego2298abf PASS bez modeli:
+JS 752 PASS/1 skipped/0 fail; Python242 PASS; pilot tooling129 PASS/2skipped (opcjonalne zależności PTY: pexpect/pyte nieobecne); workflow contract/operator27 PASS; wszystkie zestawy exit0.
+Decyzja04 odkłada dodatkowe logowania i zależny pilot; nie ponawiać pytania,
+nie przechodzić do osobistych profili, nie oznaczać AC04 PASS. W19-06 i cały feature
+nie są odebrane. T01/T02 kolektora/procedury odłożone do wznowienia pilota, N01 docs
+nieblokujące do partii przed publikacją; lista w reviews/02-execution.md.
+Bridge: brak aktywnego workera; ostatni task task_spdas51dar DONE. Root koordynatora
+task_vf2ajb3t4d zostaje BLOCKED z powodu odłożonego zakresu; przy nowym zleceniu
+wznowić ten sam root/sesję, nie tworzyć zastępczego featura. Zanim zacznie się pilot,
+korekta T01/T02 i jego preflight, potem dostęp według przyszłej dyspozycji użytkownika.
+Bez dalszej pracy zależnej od loginu w tym przebiegu. Bez push/merge/release/upgrade.

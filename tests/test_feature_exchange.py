@@ -265,6 +265,64 @@ class ExistingContractTests(ExchangeCase):
         self.assertFalse((self.repo / review).exists())
 
 
+class WorkflowProvenanceTests(ExchangeCase):
+    """F-W19: the package records the feature's selected workflow; a return never changes it."""
+
+    LOCK = {
+        'format': 'feature-workflow.lock/v1',
+        'feature': {'feature_id': 'F-001-demo', 'draft_token': None},
+        'workflow': {'version': '1.0.0', 'identity': 'sha256:' + 'a' * 64, 'workflow_id': '1.0.0-aaaaaaaaaaaa', 'kind': 'release'},
+        'generation': 2,
+        'origin': {'kind': 'switch', 'from_identity': 'sha256:' + 'b' * 64},
+        'history': [],
+    }
+
+    def write_lock(self, lock=None):
+        (self.repo / FEATURE / 'workflow.lock.json').write_text(json.dumps(lock or self.LOCK, indent=2) + '\n')
+
+    def test_export_and_verify_record_the_selected_workflow(self):
+        self.write_lock()
+        archive = self.export(name='wf.zip', base=False)
+        with zipfile.ZipFile(archive) as z:
+            manifest = json.loads(z.read('exchange-manifest.json'))
+            self.assertIn(f'{FEATURE}/workflow.lock.json', z.namelist())
+        self.assertEqual({k: manifest['workflow'][k] for k in ('identity', 'version', 'workflow_id', 'kind', 'generation')},
+                         {'identity': 'sha256:' + 'a' * 64, 'version': '1.0.0', 'workflow_id': '1.0.0-aaaaaaaaaaaa', 'kind': 'release', 'generation': 2})
+        self.assertNotIn(str(self.repo), json.dumps(manifest['workflow']))
+        _, report = self.verify(archive)
+        self.assertEqual(report['workflow']['lock_in_package_matches_record'], True)
+        self.assertEqual(report['workflow']['local_lock_matches_package'], True)
+        self.write_lock({**self.LOCK, 'generation': 3})
+        _, report = self.verify(archive)
+        self.assertEqual(report['workflow']['local_lock_matches_package'], False)  # reported, never changed
+
+    def test_export_without_lock_says_so(self):
+        archive = self.export(name='nolock.zip', base=False)
+        with zipfile.ZipFile(archive) as z:
+            self.assertEqual(json.loads(z.read('exchange-manifest.json'))['workflow'], {'lock': None})
+
+    def test_returned_lock_change_is_refused_and_never_staged(self):
+        self.write_lock()
+        archive = self.export(name='orig-wf.zip', base=False)
+        lock_name = f'{FEATURE}/workflow.lock.json'
+        review = f'{FEATURE}/reviews/01-plan.md'
+        other = json.dumps({**self.LOCK, 'workflow': {**self.LOCK['workflow'], 'identity': 'sha256:' + 'c' * 64}}).encode()
+
+        def change(entries):
+            entries[lock_name] = other
+            entries[review] = b'# Review\nPASS\n'
+        incoming = self.rewrite(archive, self.out / 'return-wf.zip', change)
+        local_before = (self.repo / lock_name).read_bytes()
+        staging = self.tmp / 'staging-wf'
+        out = self.run_tool('inspect-return', '--original', str(archive), '--incoming', str(incoming), '--staging', str(staging))
+        self.assertEqual(json.loads(out.stdout)['selection_changes_refused'], 1)
+        report = json.loads((staging / 'return-report.json').read_text())
+        classes = {c['path']: c['classification'] for c in report['changes']}
+        self.assertEqual(classes, {lock_name: 'selection-change-refused', review: 'apply'})
+        self.assertFalse((staging / lock_name).exists())
+        self.assertEqual((self.repo / lock_name).read_bytes(), local_before)
+
+
 class NamespaceCase(unittest.TestCase):
     """Deterministic per-worktree exchange namespace (R13-01).
 

@@ -1,17 +1,18 @@
 /**
- * W17-03: the real launcher hands a delegated Claude the executor packages of its own runtime.
+ * W17-03 / F-W19 W19-04: the real launcher hands a delegated Claude its executor packages.
  *
- * A runtime that ships `plugins/feature-workflow-claude` passes it as a second `--plugin-dir`
- * after `plugins/bridge-claude`; an older runtime layout without it passes `bridge-claude` alone,
- * exactly as before. Asserted on the argv a stand-in `claude` on PATH records when the launcher
- * starts a round — no model runs, and no personal plugin installation is involved.
+ * `executorPackages` still lists the runtime's packages (the pre-binding set). Since W19-04 the
+ * launcher enforces workflow binding: a feature round runs only with an admitted workflow, and the
+ * executor then receives `plugins/bridge-claude` (current roles) plus the admitted store variant,
+ * never the runtime's own `feature-workflow-claude`, whatever the runtime layout. Asserted on the
+ * argv a stand-in `claude` on PATH records — no model runs, no personal plugin is involved.
  */
 
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -102,11 +103,14 @@ function meta(threadId: string): Record<string, unknown> {
 
 const cleanup: string[] = [];
 afterEach(() => {
-  for (const path of cleanup.splice(0)) rmSync(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  for (const path of cleanup.splice(0)) {
+    spawnSync("chmod", ["-R", "u+w", path]); // the workflow store is read-only by design
+    rmSync(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }
 });
 
-/** Start one round through the launcher and return the argv the stand-in `claude` recorded. */
-async function roundArgv(launcher: string): Promise<string[]> {
+/** Start one bound round through the launcher; return the argv and the admitted store variant. */
+async function roundArgv(launcher: string): Promise<{ args: string[]; clientRoot: string }> {
   const workspace = mkdtempSync(join(tmpdir(), "bridge-plugin-dirs-"));
   cleanup.push(workspace);
   const bin = join(workspace, "bin");
@@ -118,7 +122,15 @@ async function roundArgv(launcher: string): Promise<string[]> {
     PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}`,
     FAKE_CLAUDE_MODE: "hang",
     FAKE_CLAUDE_ARGV_FILE: argvFile,
+    CLAUDE_CODEX_BRIDGE_HOME: join(workspace, "bridge-home"),
   };
+  const lib = await import(pathToFileURL(join(repoRoot, "scripts/workflow-source/workflow-lib.mjs")).href);
+  const bundle = join(repoRoot, "plugins/feature-workflow-claude/bundle");
+  const manifest = lib.verifyBundle(bundle);
+  lib.storePublish(join(workspace, "bridge-home", "workflows"), bundle);
+  mkdirSync(join(workspace, "docs/features/F-dirs"), { recursive: true });
+  lib.writeLock(join(workspace, "docs/features/F-dirs"), lib.newLock(manifest, { origin: { kind: "active-plugin", client: "codex", plugin_version: manifest.version }, at: "2026-11-06T00:00:00Z", featureId: "F-dirs" }));
+  const clientRoot = join(lib.canonicalAnchor(join(workspace, "bridge-home", "workflows")), manifest.workflow_id, "claude");
   const server = new Launcher(launcher, workspace, env);
   const m = meta("thread-plugin-dirs");
   try {
@@ -134,14 +146,19 @@ async function roundArgv(launcher: string): Promise<string[]> {
     await server.call("bridge_claim_task", { task_id: root["task_id"] }, m);
     await server.call("bridge_set_state", { task_id: root["task_id"], to: "WORKING" }, m);
     await server.call("bridge_feature_create", { feature_id: "F-dirs", parent_task_id: root["task_id"] }, m);
+    const unbound = await server.call("bridge_feature_run", { feature_id: "F-dirs", spec, deadline_ms: 2_000, idempotency_key: "F-dirs:unbound" }, m);
+    expect(unbound["error"]?.["details"]?.["code"]).toBe("WORKFLOW_UNBOUND");
+    expect(existsSync(argvFile)).toBe(false); // refused before any worker
+    const bound = await server.call("bridge_workflow_bind", { feature_id: "F-dirs", lock_path: "docs/features/F-dirs/workflow.lock.json", expected_identity: manifest.identity, idempotency_key: "bind" }, m);
+    expect(bound["result"], JSON.stringify(bound)).toBe("BOUND");
     const round = await server.call(
       "bridge_feature_run",
-      { feature_id: "F-dirs", spec, deadline_ms: 2_000, idempotency_key: "F-dirs:round-1" },
+      { feature_id: "F-dirs", spec, deadline_ms: 2_000, idempotency_key: "F-dirs:round-1", workflow_identity: manifest.identity },
       m,
     );
     expect(round["error"]?.["code"], server.stderr.join("").slice(-1500)).toBe("TIMEOUT");
     expect(existsSync(argvFile)).toBe(true);
-    return (JSON.parse(readFileSync(argvFile, "utf8")) as { args: string[] }).args;
+    return { args: (JSON.parse(readFileSync(argvFile, "utf8")) as { args: string[] }).args, clientRoot };
   } finally {
     await server.stop();
   }
@@ -167,15 +184,13 @@ describe("executor packages passed by the real launcher", () => {
     expect(module.executorPackages(old)).toEqual([join(old, "plugins", "bridge-claude")]);
   });
 
-  it("passes bridge-claude then feature-workflow-claude from this runtime", async () => {
-    const args = await roundArgv(join(repoRoot, "scripts", "native-bridge-mcp.mjs"));
-    expect(pluginDirArgs(args)).toEqual([
-      join(repoRoot, "plugins", "bridge-claude"),
-      join(repoRoot, "plugins", "feature-workflow-claude"),
-    ]);
+  it("passes bridge-claude then the admitted store variant, never the runtime workflow package", async () => {
+    const { args, clientRoot } = await roundArgv(join(repoRoot, "scripts", "native-bridge-mcp.mjs"));
+    expect(pluginDirArgs(args)).toEqual([join(repoRoot, "plugins", "bridge-claude"), clientRoot]);
+    expect(args).not.toContain(join(repoRoot, "plugins", "feature-workflow-claude"));
   }, 60_000);
 
-  it("passes bridge-claude alone from a runtime layout without the workflow package", async () => {
+  it("passes bridge-claude and the store variant from a runtime layout without the workflow package", async () => {
     // An older runtime layout: its own launcher and bridge-claude, no feature-workflow-claude.
     const runtime = mkdtempSync(join(tmpdir(), "bridge-runtime-layout-"));
     cleanup.push(runtime);
@@ -185,7 +200,7 @@ describe("executor packages passed by the real launcher", () => {
     }
     mkdirSync(join(runtime, "plugins"));
     cpSync(join(repoRoot, "plugins", "bridge-claude"), join(runtime, "plugins", "bridge-claude"), { recursive: true });
-    const args = await roundArgv(join(runtime, "scripts", "native-bridge-mcp.mjs"));
-    expect(pluginDirArgs(args)).toEqual([join(runtime, "plugins", "bridge-claude")]);
+    const { args, clientRoot } = await roundArgv(join(runtime, "scripts", "native-bridge-mcp.mjs"));
+    expect(pluginDirArgs(args)).toEqual([join(runtime, "plugins", "bridge-claude"), clientRoot]);
   }, 60_000);
 });

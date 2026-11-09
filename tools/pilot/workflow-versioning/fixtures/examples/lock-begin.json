@@ -1,0 +1,29 @@
+{
+  "feature": {
+    "draft_token": "a1b2c3d4",
+    "feature_id": null
+  },
+  "format": "feature-workflow.lock/v1",
+  "generation": 1,
+  "history": [
+    {
+      "at": "2026-11-06T00:00:00Z",
+      "generation": 1,
+      "identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19",
+      "op": "begin",
+      "origin": "active-plugin",
+      "version": "1.0.0"
+    }
+  ],
+  "origin": {
+    "client": "codex",
+    "kind": "active-plugin",
+    "plugin_version": "1.0.0"
+  },
+  "workflow": {
+    "identity": "sha256:5f0a32cc9caa053bc6a7008903967f11205c3c728b80770265c60da87472cf19",
+    "kind": "release",
+    "version": "1.0.0",
+    "workflow_id": "1.0.0-5f0a32cc9caa"
+  }
+}

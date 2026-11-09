@@ -237,3 +237,14 @@ New initialize/initializeSchema/attach/readonly paths reject future versions bef
 changes. New skills with an old selected runtime cannot provide close; upgrade rather than
 calling accept or editing SQLite. No automatic downgrade, reopening, file deletion or
 worker cancellation is part of this operation.
+
+## Schema 7 and workflow binding
+
+A runtime with workflow binding (F-W19) migrates the database to schema 7 on an authorized write:
+a feature may carry a binding to one workflow release and every admitted attempt records the
+release it ran with. Read-only queries do not migrate and nothing is bound by a migration. A
+feature round and every recovery (`bridge_resume_task`, `bridge_resume_delegated_task`, also
+`recover_timeout` and `recover_invalid_delivery`) pass `workflow_identity`; a replay returns its
+stored reservation and never adopts a newer selection. Bind, switch and status are described in
+[plugin-distribution.md](plugin-distribution.md#independent-workflow-and-bridge-versions). A
+schema-6 runtime refuses the schema-7 database; there is no lossless downgrade.

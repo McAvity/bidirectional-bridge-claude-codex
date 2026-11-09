@@ -1,0 +1,286 @@
+{
+  "component": "feature-workflow",
+  "files": [
+    {
+      "mode": "644",
+      "path": "claude/.claude-plugin/plugin.json",
+      "sha256": "e6542f6a1ce46f8a2e7da5afd782702dda3e9dc19e8025799deb4ba4797f011b"
+    },
+    {
+      "mode": "755",
+      "path": "claude/scripts/select-source.mjs",
+      "sha256": "d701223bc02895f7b9536e8761314b904b0ebea24e2c5da945ce1ccd6fbdce48"
+    },
+    {
+      "mode": "755",
+      "path": "claude/scripts/workflow-lib.mjs",
+      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+    },
+    {
+      "mode": "755",
+      "path": "claude/scripts/workflow.mjs",
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-decide/SKILL.md",
+      "sha256": "d28a9579bf982097090d35ca2dcfb6fdffb99a2a42e3136680503a7f4902b6c4"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-decide/agents/openai.yaml",
+      "sha256": "9e40c65c0b5602f11641732431df31ed17401c0839dbba09848bbb8e9ebe2b17"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-design/SKILL.md",
+      "sha256": "60fd828bb220ec0c4a558b8ed9f245281dc496e61b8ab5da4545efba2c726fe3"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-design/agents/openai.yaml",
+      "sha256": "a05d136a42900fab623f77d74b468e0efd05885d59156c24643cc896669d8d28"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-exchange/SKILL.md",
+      "sha256": "e4f96e4d60c237d85f8fa01d0bdb8124fd8feb7b9a28ee365bd06f20d39e6734"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-exchange/agents/openai.yaml",
+      "sha256": "f0c45536e2c35597f70d727497a55f7c5282d5f7c3a3547ebb13a3ec548e4f2a"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-exchange/scripts/feature_exchange.py",
+      "sha256": "0617049e593399c616b97b1060923fcb365c57b337fb5abf1eb16486481c7dac"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/SKILL.md",
+      "sha256": "365985a65f739f8e43e1b80a1738098a14dbd8c490d71960f58c5eee39211741"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/agents/openai.yaml",
+      "sha256": "dd32ef41c92a5703d312c0edd4e66e7611ee844fd0196bb6c3e1a44e033b6b80"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/references/bridge-loop.md",
+      "sha256": "e993668c2a9afe3a26c2aa39d342372410a5aa8e87e72d784dcd8faa919ec549"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/references/local-delivery.md",
+      "sha256": "64f0df0b04b2810cbdd84c24c19210b2e9d92272ffe84285eca524ddcf0b97fd"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/references/multi-repo.md",
+      "sha256": "654456911a1c58aa62ef42c825634d9c5e5190a581250fd594a4b1d207fa3c24"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-execute/scripts/multi_repo.py",
+      "sha256": "ae6916319261a2837fb640864f430632d48d2f17375aba37384e29e745581043"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-flow/SKILL.md",
+      "sha256": "0d0619f7d8e12a6875ac8b269b01fa970b9d5d95df83fcc07f463dce7735ea56"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-flow/agents/openai.yaml",
+      "sha256": "9986d71092bc4a6915e9884b40aa4dde4e25aee00edfab026d93ae77b61db1b3"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-plan/SKILL.md",
+      "sha256": "ce6667b20071f4bfc76e158f9d051719dc9c2635acdd570aa6d145fcf12b7512"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-plan/agents/openai.yaml",
+      "sha256": "3cd76093a506bc38da723234b0cad94d3509347b14478e9f66d1cf85cdb55c28"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-review/SKILL.md",
+      "sha256": "1d49188d3381811f804128921af5d7bd6416f0e8c3debb684232d0014da2fef9"
+    },
+    {
+      "mode": "644",
+      "path": "claude/skills/feature-review/agents/openai.yaml",
+      "sha256": "d2fbb52200c9dd7e610da952c04deb555269460945ef0a606183c26e6a4581b9"
+    },
+    {
+      "mode": "644",
+      "path": "claude/workflow/README.md",
+      "sha256": "769d9fc5a326b59001cd86ba23de15a3fca1dca02572a8ab5058be4425678fcd"
+    },
+    {
+      "mode": "644",
+      "path": "codex/.codex-plugin/plugin.json",
+      "sha256": "4887a23327858a056dff8cbbc8f7edead022f6c6cf6fb9f8339f9f9faab86380"
+    },
+    {
+      "mode": "755",
+      "path": "codex/scripts/select-source.mjs",
+      "sha256": "d701223bc02895f7b9536e8761314b904b0ebea24e2c5da945ce1ccd6fbdce48"
+    },
+    {
+      "mode": "755",
+      "path": "codex/scripts/workflow-lib.mjs",
+      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+    },
+    {
+      "mode": "755",
+      "path": "codex/scripts/workflow.mjs",
+      "sha256": "b78b4a43b0944de18d3b62d461875657994591dc3f6fcc95eef9e2776e3b5ad1"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-decide/SKILL.md",
+      "sha256": "9916f5b3aed9b7ef2ea098ee4ec6500bd7f9e6105bf106200a619d9f3834b991"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-decide/agents/openai.yaml",
+      "sha256": "c044eedb6ab5b1da4372a4f949ccaad3a62da10f6aac0ca022227975dd885b28"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-design/SKILL.md",
+      "sha256": "37fc8ba36ba56be719f4ac863f7d833446c687763afb3b52bde5ab1202030a7a"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-design/agents/openai.yaml",
+      "sha256": "16835425ed4d6a72d95f2f68b7da3890b904a6280a6d6a7eb831965752ef533d"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-exchange/SKILL.md",
+      "sha256": "52f1fb0837fe2e4a9a6d13cf9251cd98719e7c5e7aada3bc824ce0f8fd8c3069"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-exchange/agents/openai.yaml",
+      "sha256": "f0657f5f2f0018d83bc318ce054de50c5de2e90e77ed0e3c2a247dabf2bc13ff"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-exchange/scripts/feature_exchange.py",
+      "sha256": "0617049e593399c616b97b1060923fcb365c57b337fb5abf1eb16486481c7dac"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/SKILL.md",
+      "sha256": "74933667719a884485edb8b00b7c4752cfecd407009521cb810961e938871a6d"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/agents/openai.yaml",
+      "sha256": "33bc6411c2d34a9b34f15f04581fe59234d52c450b6b58a5932832f3e0564bee"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/references/bridge-loop.md",
+      "sha256": "01089265e2755fb7ba35c3052cc15ee3346886fb43398034e514b45969d90cab"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/references/local-delivery.md",
+      "sha256": "64f0df0b04b2810cbdd84c24c19210b2e9d92272ffe84285eca524ddcf0b97fd"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/references/multi-repo.md",
+      "sha256": "64ae8405e428ea3e97d082b65d10f5bdf64bfe5041131d8a678bbbe49fbf93c5"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-execute/scripts/multi_repo.py",
+      "sha256": "ae6916319261a2837fb640864f430632d48d2f17375aba37384e29e745581043"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-flow/SKILL.md",
+      "sha256": "36927de1db508444b3b6d01f03dc5a30dc9fa6358e7ca27995c97545890abbef"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-flow/agents/openai.yaml",
+      "sha256": "d9b6c64502d8d6234040eb28a600fe789c1f8d04c0356e89bfaac6420e13e167"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-plan/SKILL.md",
+      "sha256": "6ecde662684421f561de8a90da91b40805601fe995623f363e196009ab79ee7d"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-plan/agents/openai.yaml",
+      "sha256": "e98e214cb233238e877370983fcd1072700b526caed828f526cfd92c792c456c"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-review/SKILL.md",
+      "sha256": "a2b7f107c24c7f815a98b6747a5a8e8aa6fc4f5e28ba84f1847b01198b6a3ef9"
+    },
+    {
+      "mode": "644",
+      "path": "codex/skills/feature-review/agents/openai.yaml",
+      "sha256": "aae0c1600ef7438a027a9204c7b4895a20f8456ee761f63979141751c09bb661"
+    },
+    {
+      "mode": "644",
+      "path": "codex/workflow/README.md",
+      "sha256": "f198d13f6beb155891c14a734f5be49bc9c420fd389ab89715a72a81fb6e233e"
+    }
+  ],
+  "format": "feature-workflow.bundle/v1",
+  "identity": "sha256:8db292ac9a2aee5dc93d83c88bfe8ecc0347c514a60c356930e9d58704c690e8",
+  "kind": "release",
+  "requires": {
+    "bridge": {
+      "binding_contract": 1,
+      "capabilities": [
+        "feature.lifecycle/v1",
+        "feature.close/v1",
+        "round.recovery/v1",
+        "round.report/v1",
+        "workflow.binding/v1"
+      ],
+      "known_incompatible": []
+    },
+    "standalone": {
+      "node": ">=22.13.0",
+      "python": ">=3.11"
+    },
+    "workflow_formats": {
+      "bundle": 1,
+      "lock": 1
+    }
+  },
+  "source": {
+    "commit": null,
+    "release_source": "scripts/workflow-source/release.json",
+    "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git"
+  },
+  "variants": {
+    "claude": {
+      "plugin_manifest": ".claude-plugin/plugin.json",
+      "root": "claude"
+    },
+    "codex": {
+      "plugin_manifest": ".codex-plugin/plugin.json",
+      "root": "codex"
+    }
+  },
+  "version": "1.0.0",
+  "workflow_id": "1.0.0-8db292ac9a2a"
+}

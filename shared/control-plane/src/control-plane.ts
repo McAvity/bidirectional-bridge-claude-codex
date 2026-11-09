@@ -1,5 +1,6 @@
 import { dirname, join, resolve } from "node:path";
 import { TerminationEvidenceStore } from "./evidence-store.js";
+import { WorkflowBindings, type WorkflowBindingOptions, type WorkflowStorePort } from "./workflow-binding.js";
 /**
  * The control plane facade.
  *
@@ -76,6 +77,11 @@ export class ControlPlane {
   readonly databasePath: string;
   /** Diagnostics observation sink; absent for embedders and unit tests. */
   readonly logger: DiagnosticsLogger | undefined;
+  /**
+   * Workflow binding (F-W19). Undefined until the composition root enables it with the helper
+   * library; then every feature round and feature recovery is admitted against the binding.
+   */
+  workflows: WorkflowBindings | undefined;
 
   private services: Services | undefined;
   private openMode: StoreOpenMode | undefined;
@@ -304,6 +310,12 @@ export class ControlPlane {
   close(): void {
     this.closeRead();
     this.closeStore();
+  }
+
+  /** Enable F-W19 workflow binding with the W19-02 helper library (see loadWorkflowStore). */
+  enableWorkflowBinding(port: WorkflowStorePort, options: WorkflowBindingOptions = {}): WorkflowBindings {
+    this.workflows = new WorkflowBindings(this, port, options);
+    return this.workflows;
   }
 }
 

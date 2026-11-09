@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { statusLabel, LOCAL_DIR, SetupError, canonical, newTag, readJson, readOptional, run, sha256 } from "./common.mjs";
 import { readBounded } from "../diagnostics/safe-read.mjs";
 import { distributionMetadata } from "./distribution.mjs";
+import { workflowStatus } from "./workflow-status.mjs";
 import { findActiveUse } from "./processes.mjs";
 import { TOOL_TIMEOUT_SEC, knownInstructionHashes, listRuntimes, verifyRuntime } from "./runtime.mjs";
 import {
@@ -31,6 +32,7 @@ import {
 
 export const DOCTOR_FORMAT = "claude-codex-bridge.doctor/v1";
 const DEFAULT_NODE_MINIMUM = "22.13.0";
+const WORKFLOW_TOOLS = ["bridge_workflow_status", "bridge_workflow_bind", "bridge_workflow_bind_legacy", "bridge_workflow_switch", "bridge_workflow_project"];
 const BASE_FEATURE_TOOLS = [
   "bridge_feature_create", "bridge_feature_get", "bridge_feature_run",
   "bridge_feature_wait_user", "bridge_feature_answer_user", "bridge_feature_accept",
@@ -40,6 +42,8 @@ const BASE_FEATURE_TOOLS = [
 export function missingRequiredFeatureTools(tools, manifest) {
   const required = [...BASE_FEATURE_TOOLS];
   if (manifest?.compatibility?.state_schema_version >= 6) required.push("bridge_feature_close");
+  // F-W19: a runtime that advertises workflow binding must serve its tools (not keyed by schema).
+  if (manifest?.compatibility?.workflow_binding) required.push(...WORKFLOW_TOOLS);
   const available = new Set(Array.isArray(tools) ? tools : []);
   return required.filter((name) => !available.has(name));
 }
@@ -851,6 +855,17 @@ export async function runDoctor({
     }
   }
 
+  // F-W19 § 8: runtime, client entries and each feature's selected workflow, kept apart from what
+  // a model observed (never known here). Pure read: no lock, store entry or binding is created.
+  let workflow = null;
+  try {
+    const databasePath = controlPlane && identity ? controlPlane.resolveDatabasePath(identity) : null;
+    workflow = await workflowStatus({ runtime, worktree: root, databasePath, env });
+    workflowCheck(add, workflow);
+  } catch (error) {
+    add("workflow", "unknown", "WORKFLOW_STATUS_UNREADABLE", `workflow status could not be read: ${error?.message ?? String(error)}`);
+  }
+
   const errors = checks.filter((check) => check.status === "error");
   const open = checks.filter((check) => check.status === "unknown" || check.status === "skipped");
   const status = errors.length > 0 ? "problems" : open.length > 0 ? "incomplete" : "ok";
@@ -866,6 +881,7 @@ export async function runDoctor({
     codex_context: { profile: codexContext.profile, source: codexContext.source, ...(codexContext.invalid ? { invalid: true } : {}) },
     next_step: first ? first.next_step ?? `resolve ${first.code}` : null,
     checks,
+    workflow,
     distribution: distributionMetadata({
       home,
       worktree: root,
@@ -873,8 +889,52 @@ export async function runDoctor({
       declaration,
       selection: record.kind === "valid" ? { runtime_id: record.value.runtime?.id ?? null } : null,
       integrationSource,
+      workflow,
     }),
   };
+}
+
+/** One doctor check summarising the workflow layers; advice only, never a profile change. */
+export function workflowCheck(add, status) {
+  const codes = new Set(status.warnings.map((w) => w.code));
+  const bound = status.features.filter((f) => f.binding).length;
+  // R19-I06: a failed or impossible read leaves the bindings unknown; never report it as 0/0.
+  const dbState = status.database?.state ?? (status.database?.available ? "read" : "absent");
+  const bindings = dbState === "unreadable" ? "feature bindings unknown (database unreadable)"
+    : dbState === "not-located" && status.runtime.advertises_binding ? "feature bindings unknown (database not located)"
+      : `${bound}/${status.features.length} feature(s) bound`;
+  const summary = `runtime ${status.runtime.advertises_binding ? "advertises" : "does not advertise"} workflow binding; ` +
+    `${bindings}; ${status.entries.claude.length + status.entries.codex.length} workflow entry plugin(s) installed (configured, not proof of loading)`;
+  if (codes.has("BUNDLE_UNAVAILABLE")) {
+    add("workflow", "error", "WORKFLOW_BUNDLE_UNAVAILABLE", `${summary}; a bound feature's workflow is missing or damaged in the store`, {
+      details: { warnings: status.warnings },
+      nextStep: "restore exactly that identity: node <feature-workflow plugin>/scripts/workflow.mjs restore --identity <identity> --from <plugin or bundle of that identity>",
+    });
+  } else if (codes.has("DATABASE_UNREADABLE") || codes.has("DATABASE_NOT_LOCATED") || codes.has("FEATURE_RECORD_UNREADABLE")) {
+    add("workflow", "unknown", codes.has("DATABASE_NOT_LOCATED") ? "WORKFLOW_DATABASE_NOT_LOCATED" : "WORKFLOW_DATABASE_UNREADABLE", `${summary}; the workflow layer could not be read`, {
+      details: { warnings: status.warnings },
+      nextStep: "see the state check for this worktree's database; doctor reads it readonly and changes nothing",
+    });
+  } else if (codes.has("HELPER_UNAVAILABLE")) {
+    add("workflow", "unknown", "WORKFLOW_HELPER_UNAVAILABLE", `${summary}; the selected runtime advertises binding but its workflow helper cannot be loaded, so no lock or store copy was verified`, {
+      details: { warnings: status.warnings },
+      nextStep: "reinstall or repair the selected runtime (bridge-upgrade); doctor changes nothing",
+    });
+  } else if (codes.has("STALE_PERSONAL_FEATURE_ENTRIES")) {
+    add("workflow", "warn", "STALE_PERSONAL_FEATURE_ENTRIES", `${summary}; an old bridge plugin still offers its own feature-* copies without the workflow bootstrap`, {
+      details: { warnings: status.warnings },
+      nextStep: "update that bridge plugin in the client (it no longer carries feature-*) or disable it, e.g. `claude plugin disable bridge-claude@<marketplace>`; doctor changes nothing",
+    });
+  } else if (codes.size > 0) {
+    add("workflow", "warn", [...codes][0], `${summary}; see details`, {
+      details: { warnings: status.warnings },
+      nextStep: codes.has("ENTRY_WITHOUT_BOOTSTRAP") ? "update the feature-workflow plugin in that client through its marketplace"
+        : codes.has("FEATURE_UNBOUND") ? "run the workflow entry's resolve for that feature; bind its lock or its proven legacy set (bridge_workflow_bind / bridge_workflow_bind_legacy)"
+          : "run bridge_workflow_status for the feature and finish or repair the projection (bridge_workflow_project)",
+    });
+  } else {
+    add("workflow", "ok", "OK", summary);
+  }
 }
 
 /** The committed project declaration, when this project has one. Read-only. */

@@ -11,6 +11,7 @@ operator runs by hand, following a scenario's `OPERATOR.md`.
 | `rework/operator/` | Operator | Setup, preflight, controlled intervention, collector, reference implementation, expected flow, dry run with a scripted `claude` stand-in |
 | `rework/OPERATOR.md`, `rework/PLAN.md` | Operator | How to run the correction test and what it measures |
 | `tests/` | CI | Synthetic regression tests and the tooling dry run |
+| `workflow-versioning/` | Operator | F-W19 model-free probes, contract fixtures and the W19-06 pilot (`OPERATOR.md`, `pilot_w19.py`) |
 
 Keep operator material out of agent inputs. A run directory is created outside this checkout
 (`setup_rework.py --dest`). Only `repo/`, `acceptance-owner/`, `exchange/` and `START-ASTRA.txt`

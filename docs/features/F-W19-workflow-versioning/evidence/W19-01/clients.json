@@ -1,0 +1,403 @@
+{
+  "auth": {
+    "claude": {
+      "auth_method": "none",
+      "config_directory": "<run>/auth-claude-config",
+      "logged_in": false,
+      "projects_directory": "<run>/auth-claude-config/projects",
+      "status_exit": 1,
+      "supported_login_commands": {
+        "auth login --claudeai (subscription, default)": true,
+        "setup-token (long-lived subscription token)": true
+      }
+    },
+    "codex": {
+      "status_exit": 1,
+      "status_text": [
+        "Not logged in"
+      ],
+      "supported_login_commands": {
+        "login (browser, ChatGPT account)": true,
+        "login --device-auth": true
+      }
+    },
+    "findings": {
+      "claude_isolated_profile_logged_in": false,
+      "claude_status_reports_isolated_config_dir": true,
+      "codex_isolated_profile_logged_in": false,
+      "no_login_attempted_and_no_credentials_copied": true
+    }
+  },
+  "claude": {
+    "cases": [
+      {
+        "case": "A-first",
+        "entry_descriptions_in_request": [
+          "1.0.0"
+        ],
+        "entry_expansions_in_request": [
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "1.0.0"
+          }
+        ],
+        "exit_code": 1,
+        "init_plugin_paths": [
+          "<run>/claude-market/plugins/w19wf"
+        ],
+        "override_lines": [],
+        "request_sha256": "39dfad0a64cb99344958836e9b1dfe31204cfa96989eefb94d75015ef59948bf",
+        "requests_to_stub": 8,
+        "session_id": "<id:984430a7>",
+        "spent_nothing": true
+      },
+      {
+        "case": "B-resume-same-session",
+        "entry_descriptions_in_request": [
+          "1.0.0",
+          "2.0.0"
+        ],
+        "entry_expansions_in_request": [
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "1.0.0"
+          },
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "2.0.0"
+          }
+        ],
+        "exit_code": 1,
+        "init_plugin_paths": [
+          "<run>/claude-market/plugins/w19wf"
+        ],
+        "override_lines": [],
+        "request_sha256": "12415558a7e0e0caa805e081f4d1ad64767b5b11a47933382dd377e0ff89d479",
+        "requests_to_stub": 8,
+        "session_id": "<id:984430a7>",
+        "spent_nothing": true
+      },
+      {
+        "case": "C-resume-with-executor-plugin-dir",
+        "entry_descriptions_in_request": [
+          "1.0.0",
+          "2.0.0",
+          "3.0.0"
+        ],
+        "entry_expansions_in_request": [
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "1.0.0"
+          },
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "2.0.0"
+          },
+          {
+            "root": "<run>/bridge-home/workflows/probe-identity-c/claude",
+            "version": "3.0.0"
+          }
+        ],
+        "exit_code": 1,
+        "init_plugin_paths": [
+          "<run>/bridge-home/workflows/probe-identity-c/claude"
+        ],
+        "override_lines": [
+          "Plugin \"w19wf\" from --plugin-dir overrides installed version"
+        ],
+        "request_sha256": "6a94a95a96c868f7362bc850a76f47bd3bdf89c54da8ef4fe45cd89d12244cac",
+        "requests_to_stub": 8,
+        "session_id": "<id:984430a7>",
+        "spent_nothing": true
+      },
+      {
+        "case": "D-resume-no-entry-invocation",
+        "entry_descriptions_in_request": [
+          "1.0.0",
+          "2.0.0",
+          "3.0.0"
+        ],
+        "entry_expansions_in_request": [
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "1.0.0"
+          },
+          {
+            "root": "<run>/claude-market/plugins/w19wf",
+            "version": "2.0.0"
+          },
+          {
+            "root": "<run>/bridge-home/workflows/probe-identity-c/claude",
+            "version": "3.0.0"
+          }
+        ],
+        "exit_code": 1,
+        "init_plugin_paths": [
+          "<run>/claude-market/plugins/w19wf"
+        ],
+        "override_lines": [],
+        "request_sha256": "ba16d9faf8ab82126ee118ac22b48fc26964fc1e3920062ceafb452f119f6958",
+        "requests_to_stub": 8,
+        "session_id": "<id:984430a7>",
+        "spent_nothing": true
+      }
+    ],
+    "findings": {
+      "entry_root_expanded_to_active_package": true,
+      "every_session_model_free": true,
+      "install_and_cache_inside_isolated_config": true,
+      "local_directory_marketplace_served_from_source_folder": true,
+      "resume_after_update_shows_new_entry": true,
+      "resume_history_still_contains_old_entry_text": true,
+      "resume_keeps_session_id": true,
+      "resume_listing_tail_matches_active_package": false,
+      "resume_plugin_dir_overrides_installed_plugin": true,
+      "resume_without_invocation_injects_no_new_entry_text": true,
+      "transcripts_inside_isolated_config": true
+    },
+    "installed_after_A": {
+      "install_path": "<run>/claude-config/plugins/cache/w19m/w19wf/1.0.0",
+      "read_from_folder": "<run>/claude-market/plugins/w19wf",
+      "version": "1.0.0"
+    },
+    "installed_after_update": {
+      "install_path": "<run>/claude-config/plugins/cache/w19m/w19wf/2.0.0",
+      "read_from_folder": "<run>/claude-market/plugins/w19wf",
+      "version": "2.0.0"
+    },
+    "steps": [
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "marketplace",
+          "add"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "install",
+          "w19wf@w19m"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "list",
+          "--json"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "marketplace",
+          "update"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "update",
+          "w19wf@w19m"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "claude",
+          "plugin",
+          "list",
+          "--json"
+        ],
+        "exit_code": 0
+      }
+    ],
+    "transcripts": [
+      "<run>/claude-config/projects/<encoded-project-path>/<uuid>.jsonl"
+    ]
+  },
+  "codex": {
+    "cases": [
+      {
+        "case": "A-first",
+        "entry_descriptions_in_request": [
+          "1.0.0",
+          "1.0.0"
+        ],
+        "entry_paths_in_request": [
+          "<run>/codex-home/plugins/cache/w19m/w19wf/1.0.0/skills/probe-entry/SKILL.md"
+        ],
+        "entry_texts_in_request": [
+          "1.0.0"
+        ],
+        "exit_code": 1,
+        "request_sha256": "ba1b50453dfe7a12e6d7d04899614df5a9057ce35fb59d18c74d4df29b0dfd22",
+        "requests_to_stub": [
+          {
+            "method": "POST",
+            "path": "/v1/responses"
+          }
+        ],
+        "thread_id": "<id:a8162e0c>",
+        "turn_failed_on_stub": true
+      },
+      {
+        "case": "B-resume-same-thread",
+        "entry_descriptions_in_request": [
+          "1.0.0",
+          "1.0.0",
+          "2.0.0",
+          "2.0.0"
+        ],
+        "entry_paths_in_request": [
+          "<run>/codex-home/plugins/cache/w19m/w19wf/1.0.0/skills/probe-entry/SKILL.md",
+          "<run>/codex-home/plugins/cache/w19m/w19wf/2.0.0/skills/probe-entry/SKILL.md"
+        ],
+        "entry_texts_in_request": [
+          "1.0.0",
+          "2.0.0"
+        ],
+        "exit_code": 1,
+        "request_sha256": "03b55cc77c10461cd82093bbc69dd5040d5e3325dfcfcb14f8c37a36fa50cbe1",
+        "requests_to_stub": [
+          {
+            "method": "POST",
+            "path": "/v1/responses"
+          }
+        ],
+        "thread_id": "<id:a8162e0c>",
+        "turn_failed_on_stub": true
+      },
+      {
+        "case": "C-resume-no-entry-mention",
+        "entry_descriptions_in_request": [
+          "1.0.0",
+          "1.0.0",
+          "2.0.0",
+          "2.0.0"
+        ],
+        "entry_paths_in_request": [
+          "<run>/codex-home/plugins/cache/w19m/w19wf/1.0.0/skills/probe-entry/SKILL.md",
+          "<run>/codex-home/plugins/cache/w19m/w19wf/2.0.0/skills/probe-entry/SKILL.md"
+        ],
+        "entry_texts_in_request": [
+          "1.0.0",
+          "2.0.0"
+        ],
+        "exit_code": 1,
+        "request_sha256": "97145422603f3180f5a8dd7b43298e648e002d28dbe6c53726e7102c430069d1",
+        "requests_to_stub": [
+          {
+            "method": "POST",
+            "path": "/v1/responses"
+          }
+        ],
+        "thread_id": "<id:a8162e0c>",
+        "turn_failed_on_stub": true
+      }
+    ],
+    "findings": {
+      "entry_mention_injects_text_and_absolute_path": true,
+      "every_turn_failed_on_local_stub": true,
+      "install_and_cache_inside_isolated_home": true,
+      "resume_after_update_shows_new_entry": true,
+      "resume_history_still_contains_old_entry_text_and_path": true,
+      "resume_keeps_thread_id": true,
+      "resume_without_mention_lists_current_version": true,
+      "sessions_inside_isolated_home": true,
+      "update_removes_cache_path_the_history_names": true
+    },
+    "installed_path_A": "<run>/codex-home/plugins/cache/w19m/w19wf/1.0.0",
+    "installed_path_B": "<run>/codex-home/plugins/cache/w19m/w19wf/2.0.0",
+    "old_cache_version_exists_after_update": false,
+    "session_files": [
+      "<run>/codex-home/sessions/2026/11/06/rollout-2026-11-06T06-28-08-<uuid>.jsonl"
+    ],
+    "steps": [
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "marketplace",
+          "add"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "add",
+          "w19wf@w19m"
+        ],
+        "exit_code": 0
+      },
+      {
+        "command": [
+          "codex",
+          "plugin",
+          "add",
+          "w19wf@w19m"
+        ],
+        "exit_code": 0
+      }
+    ]
+  },
+  "hosts": {
+    "claude": {
+      "available": true,
+      "path": "<home>/.local/bin/claude",
+      "version": "2.1.316 (Claude Code)"
+    },
+    "codex": {
+      "available": true,
+      "path": "<home>/.nvm/versions/node/v24.15.0/bin/codex",
+      "version": "codex-cli 0.166.0"
+    }
+  },
+  "mcp_env": {
+    "cases": {
+      "bridge-setup-env-vars": {
+        "CLAUDE_CODEX_BRIDGE_HOME": "<run>/pilot-bridge-home",
+        "CLAUDE_CONFIG_DIR": null,
+        "HOME_present": true,
+        "exit_code": 1,
+        "server_started": true
+      },
+      "plus-CLAUDE_CONFIG_DIR": {
+        "CLAUDE_CODEX_BRIDGE_HOME": "<run>/pilot-bridge-home",
+        "CLAUDE_CONFIG_DIR": "<run>/pilot-claude-config",
+        "HOME_present": true,
+        "exit_code": 1,
+        "server_started": true
+      }
+    },
+    "findings": {
+      "adding_env_var_forwards_isolated_claude_config": true,
+      "bridge_env_vars_alone_drop_CLAUDE_CONFIG_DIR": true,
+      "bridge_home_forwarded": true
+    }
+  },
+  "personal_profiles_unchanged": true,
+  "probe": "w19-01-clients",
+  "provenance": {
+    "head": "914c018dcd13813e701b3378e0efc813a12e99ec",
+    "sha256": {
+      "scripts/plugin-probes/probe_lib.py": "231bd637ffca1a03a90f9d660039f8ab02f7da686e4c0085175301a6ac6e86cc",
+      "scripts/plugin-probes/recorder_mcp.mjs": "fcbca53fbd56c465cc56bbe7ecaf6a0eedbe40e6cef71064a5852a1386e0273b",
+      "tools/pilot/workflow-versioning/probe_clients.py": "27b8655b0d1fc4e7a704d488942094d866f205cd1c359543650f2f9454ccc688",
+      "tools/pilot/workflow-versioning/w19lib.py": "b92f84709d9f6ef9f34b5ea23d872471eb1d6023709935322cc39926d28f3ac1"
+    }
+  },
+  "raw_captures_outside_git": "<home>/tmp/w19-01-probes/clients-20261106-062804-3866823",
+  "run_root": "<run>"
+}

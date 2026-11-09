@@ -66,6 +66,12 @@ same task. So does a task resumed after the bridge stopped the previous attempt 
 deadline: check what your earlier attempt already changed and committed, keep it, and continue
 from there within the same contract instead of restarting the work.
 
+When the prompt carries a `Workflow binding` block (`WORKFLOW=… IDENTITY=… GENERATION=… ROOT=…`),
+those instructions are the workflow of this attempt and supersede any earlier one in the session:
+read the entries and references you follow from `ROOT/skills/…` and the guide from
+`ROOT/workflow/README.md`, not from the skill list or memory, and put its `INSTRUCTIONS=bundle:…`
+line in your ledger. An unreadable `ROOT` is a blocker; never substitute another copy.
+
 When the contract carries a repo-map reference (`REPO_MAP=<path> SHA256=<hash>`, more than one
 repository), also follow [references/multi-repo.md](references/multi-repo.md) § 6: it applies inside
 a round despite this section replacing the rest of the skill. Before the first write, run its full

@@ -29,6 +29,7 @@ import {
 } from "@bridge/protocol";
 import {
   FeatureWorkflow,
+  type WorkflowBindings,
   featureTerminal,
   assertFeatureOpen,
   digestRef,
@@ -159,6 +160,12 @@ const idemArg = {
     .string()
     .optional()
     .describe("Replay-safety key. Retrying with the same key returns the original result."),
+};
+const idemRequiredArg = { idempotency_key: z.string().min(1).max(256) };
+/** F-W19 § 6.4: the workflow identity the manager just read with resolve. */
+const workflowAckArg = {
+  workflow_identity: z.string().regex(/^sha256:[0-9a-f]{64}$/u).optional()
+    .describe("F-W19: identity of the feature's bound workflow as the manager just read it (resolve). Required for a bound feature when workflow binding is enabled; refused when it differs."),
 };
 /** Per-attempt recovery budget. It never changes the persisted task contract. */
 const recoveryBudgetArgs = {
@@ -318,12 +325,13 @@ export const TOOLS: readonly ToolDefinition[] = [
     title: "Run a feature round",
     description: "Explicitly launch one Claude round. After DONE, create a new task and strictly resume the same session. BLOCKED tasks use bridge_resume_delegated_task. Replays never launch another worker.",
     inputShape: { feature_id: z.string(), spec: taskSpecShape, input_artifacts: z.array(z.string()).default([]),
-      deadline_ms: z.number().int().min(1000).max(86_400_000), idempotency_key: z.string().min(1), ...agentArg },
+      deadline_ms: z.number().int().min(1000).max(86_400_000), idempotency_key: z.string().min(1), ...workflowAckArg, ...agentArg },
     handler: (a, c) => {
       if (c.delegationPolicy === "deny") throw new BridgeError(ErrorCode.INVALID_ARGUMENT, "delegation is denied by this server's startup policy");
       return new FeatureWorkflow(c.cp, c.orchestrator).run({ feature_id: a["feature_id"] as string,
         manager: who(a, c), spec: a["spec"] as TaskSpec, input_artifacts: (a["input_artifacts"] as string[]) ?? [],
         deadline_ms: a["deadline_ms"] as number, idempotency_key: a["idempotency_key"] as string,
+        ...(a["workflow_identity"] !== undefined ? { workflow_identity: a["workflow_identity"] as string } : {}),
         ...(c.authorize
           ? {
               authorize: () => {
@@ -399,6 +407,64 @@ export const TOOLS: readonly ToolDefinition[] = [
       attribution: c.managerSession ? {workspace_id: c.identity?.workspaceId ?? null,
         native_thread_id: c.managerSession.binding.native_thread_id, epoch: c.managerSession.binding.epoch} : null,
     }),
+  },
+  {
+    name: "bridge_workflow_status",
+    klass: "read",
+    title: "Read the workflow binding",
+    description: "F-W19: runtime workflow-binding advertisement and, for a feature, its bound workflow identity/generation, lock projection state, store availability and the identities admitted for its latest task. Pure read: never binds, migrates, repairs or creates a lock.",
+    inputShape: { feature_id: z.string().optional(), ...agentArg },
+    handler: (a, c) => {
+      if (!c.cp.workflows) return { runtime: { binding: "not-configured", schema_version: c.cp.store.schemaVersion?.() ?? null } };
+      return c.cp.workflows.status(a["feature_id"] as string | undefined);
+    },
+  },
+  {
+    name: "bridge_workflow_bind",
+    title: "Bind a feature to its workflow lock",
+    description: "F-W19: import a verified workflow.lock.json (docs/features/<name>/workflow.lock.json) into this manager's feature. Verifies the exact bundle and compatibility; idempotent; refuses another selection (use switch) and a busy feature. Launches nothing.",
+    inputShape: { feature_id: z.string().min(1), lock_path: z.string().min(1), expected_identity: z.string().min(1), ...idemRequiredArg, ...agentArg },
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      claimFeatureSlot(c, feature_id);
+      return requireWorkflows(c).bind({ feature_id, manager: who(a, c), lock_path: a["lock_path"] as string,
+        expected_identity: a["expected_identity"] as string, idempotency_key: a["idempotency_key"] as string });
+    },
+  },
+  {
+    name: "bridge_workflow_bind_legacy",
+    title: "Bind a pre-binding feature to its proven old workflow",
+    description: "F-W19: bind a lock-less feature to the exact instruction set of an installed old runtime proven by its ledger INSTRUCTIONS records (or chosen explicitly by the user when the history is ambiguous/unproven). Never the latest workflow. Writes the store entry and the lock projection.",
+    inputShape: { feature_id: z.string().min(1), feature_dir: z.string().min(1), runtime_id: z.string().min(1), expected_set_sha256: z.string().length(64),
+      explicit_choice: z.boolean().optional().describe("true only when the user explicitly chose this runtime for an ambiguous or unproven history"),
+      ...idemRequiredArg, ...agentArg },
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      return requireWorkflows(c).bindLegacy({ feature_id, manager: who(a, c), feature_dir: a["feature_dir"] as string, runtime_id: a["runtime_id"] as string,
+        expected_set_sha256: a["expected_set_sha256"] as string, explicit_choice: a["explicit_choice"] === true, idempotency_key: a["idempotency_key"] as string,
+        authorize: workflowAuthorize(c, feature_id) });
+    },
+  },
+  {
+    name: "bridge_workflow_switch",
+    title: "Switch a feature to another workflow release",
+    description: "F-W19: explicit, crash-safe change of the feature's workflow between rounds. Requires the expected generation, an idle feature whose latest round is DONE, a verified compatible target. Commits the binding, then projects the lock; a retry with the same key finishes exactly once. Never touches an active worker's instructions.",
+    inputShape: { feature_id: z.string().min(1), target_identity: z.string().min(1), expected_generation: z.number().int().min(1), ...idemRequiredArg, ...agentArg },
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      return requireWorkflows(c).switch({ feature_id, manager: who(a, c), target_identity: a["target_identity"] as string,
+        expected_generation: a["expected_generation"] as number, idempotency_key: a["idempotency_key"] as string, authorize: workflowAuthorize(c, feature_id) });
+    },
+  },
+  {
+    name: "bridge_workflow_project",
+    title: "Finish a pending workflow lock projection",
+    description: "F-W19: explicit repair after an interrupted switch/bind_legacy: write the committed selection to workflow.lock.json and clear the pending marker. Refuses a diverged lock instead of overwriting it.",
+    inputShape: { feature_id: z.string().min(1), ...agentArg },
+    handler: (a, c) => {
+      const feature_id = a["feature_id"] as string;
+      return requireWorkflows(c).project({ feature_id, manager: who(a, c), authorize: workflowAuthorize(c, feature_id) });
+    },
   },
   {
     name: "bridge_manager_status",
@@ -656,6 +722,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     inputShape: {
       task_id: z.string(),
       ...recoveryBudgetArgs,
+      ...workflowAckArg,
       ...idemArg,
     },
     handler: (args, ctx) =>
@@ -664,6 +731,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           task_id: args["task_id"] as string,
           requested_by: ctx.defaultAgent,
           ...recoveryBudget(args),
+          ...(args["workflow_identity"] !== undefined ? { workflow_identity: args["workflow_identity"] as string } : {}),
           ...(args["idempotency_key"] ? { idempotency_key: args["idempotency_key"] as string } : {}),
         },
         {
@@ -692,6 +760,7 @@ export const TOOLS: readonly ToolDefinition[] = [
       recover_timeout: z.boolean().optional()
         .describe("Reopen a FAILED child whose last attempt ended at the bridge deadline (TIMEOUT) with a persisted session. Requires deadline_ms and idempotency_key; use only after the extra runtime is authorized."),
       ...recoveryBudgetArgs,
+      ...workflowAckArg,
       ...idemArg,
     },
     handler: (args, ctx) =>
@@ -700,6 +769,7 @@ export const TOOLS: readonly ToolDefinition[] = [
           task_id: args["task_id"] as string,
           requested_by: ctx.defaultAgent,
           ...recoveryBudget(args),
+          ...(args["workflow_identity"] !== undefined ? { workflow_identity: args["workflow_identity"] as string } : {}),
           ...(args["recover_timeout"] !== undefined ? { recover_timeout: args["recover_timeout"] as boolean } : {}),
           ...(args["recover_invalid_delivery"] !== undefined ? { recover_invalid_delivery: args["recover_invalid_delivery"] as boolean } : {}),
           ...(args["message"] !== undefined ? { message: args["message"] as string } : {}),
@@ -1130,6 +1200,24 @@ function claimFeatureSlot(ctx: ToolContext, featureId: string): void {
   registry.claimFeature(featureId, binding);
 }
 
+function requireWorkflows(ctx: ToolContext): WorkflowBindings {
+  if (!ctx.cp.workflows) {
+    throw new BridgeError(ErrorCode.UNIMPLEMENTED, "workflow binding is not enabled in this server (no workflow store configured)");
+  }
+  return ctx.cp.workflows;
+}
+
+/** Guard for asynchronous workflow mutations: runs inside each of their transactions. */
+function workflowAuthorize(ctx: ToolContext, featureId: string): (() => void) | undefined {
+  if (!ctx.authorize) return undefined;
+  return () => {
+    ctx.authorize!();
+    const registry = ctx.cp.managers;
+    const binding = registry.read();
+    if (binding) registry.claimFeature(featureId, binding);
+  };
+}
+
 function requireIdentity(ctx: ToolContext): IdentityRuntime {
   if (!ctx.identity) {
     throw new BridgeError(
@@ -1144,6 +1232,11 @@ function requireIdentity(ctx: ToolContext): IdentityRuntime {
 const ASYNC_MUTATORS = new Set([
   "bridge_delegate",
   "bridge_feature_run",
+  // Commit, then write the lock projection, then commit again: each step is its own guarded
+  // transaction so an interruption leaves an explicit pending state (F-W19 § 7.2).
+  "bridge_workflow_bind_legacy",
+  "bridge_workflow_switch",
+  "bridge_workflow_project",
   "bridge_resume_task",
   "bridge_resume_delegated_task",
 ]);

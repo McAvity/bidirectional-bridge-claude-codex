@@ -520,6 +520,8 @@ export interface ResumeTaskRequest {
   readonly deadline_ms?: number;
   /** Turn ceiling for this recovery attempt only; the persisted contract is unchanged. */
   readonly max_turns?: number;
+  /** F-W19: workflow identity acknowledged for a bound feature task (contract § 6.4). */
+  readonly workflow_identity?: string;
 }
 
 /** Internal request derived from a caller-bound manager MCP session. */
@@ -536,6 +538,11 @@ export interface ResumeDelegatedTaskRequest {
   readonly recover_timeout?: boolean;
   readonly deadline_ms?: number;
   readonly max_turns?: number;
+  /**
+   * F-W19: the workflow identity the manager acknowledges for a bound feature task. Required for
+   * every recovery path (stranded, message, timeout, invalid-delivery) when binding is enabled.
+   */
+  readonly workflow_identity?: string;
 }
 
 /** Result of resuming one existing task without changing its identity or lineage. */

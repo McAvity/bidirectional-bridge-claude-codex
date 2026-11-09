@@ -245,9 +245,10 @@ evidence beside it.
 | `timeline.md` | Readable chronology of the database and the log side by side, with their separate cutoffs |
 | `records/tasks.json`, `records/attempts.json`, `records/telemetry.json`, `records/events.json` | Machine records of the selected scope, allowlisted field by field and typed value by value |
 | `records/feature.json`, `records/workspace.json` | Feature routing state and worktree/manager identity, without the question or answer text |
+| `records/feature-workflow.json`, `records/attempt-workflows.json` | F-W19: the feature's bound workflow (identity as hex, version, kind, generation, pending flag) and the release admitted per attempt — what the bridge admitted, not what a model applied; no lock path, skill text or prompt |
 | `logs/<file>.jsonl` | The diagnostics records of the scope, projected again on the way in |
 | `evidence/index.json` | Termination-evidence metadata: attempt, file name, size, SHA-256, termination kind, whether the content is included |
-| `doctor.json` | Includes a typed `distribution` block (runtime/plugin versions, instruction digest, declared/applied pin, location classes/digests; configured and observed facts remain separate). Doctor's safe subset: ids, machine codes and aliased summaries. `handshake` and `codex_project` are skipped, so no client/server is started and no project configuration is executed |
+| `doctor.json` | Includes a typed `distribution` block (runtime/plugin versions, instruction digest, declared/applied pin, location classes/digests; configured and observed facts remain separate; a `workflow` summary of installed entries, bound features and admitted attempts, with `observed: null`). Doctor's safe subset: ids, machine codes and aliased summaries. `handshake` and `codex_project` are skipped, so no client/server is started and no project configuration is executed |
 | `ANALYSIS.md` | The instruction below, travelling with the package |
 
 ## One scope for every source
