@@ -3,21 +3,32 @@
   "component": "feature-workflow",
   "version": "1.0.0",
   "tag": "workflow-v1.0.0",
-  "state": "candidate",
+  "state": "released",
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "requires": {
-    "workflow_formats": { "bundle": 1, "lock": 1 },
+    "workflow_formats": {
+      "bundle": 1,
+      "lock": 1
+    },
     "bridge": {
       "binding_contract": 1,
-      "capabilities": ["feature.lifecycle/v1", "feature.close/v1", "round.recovery/v1", "round.report/v1", "workflow.binding/v1"],
+      "capabilities": [
+        "feature.lifecycle/v1",
+        "feature.close/v1",
+        "round.recovery/v1",
+        "round.report/v1",
+        "workflow.binding/v1"
+      ],
       "known_incompatible": []
     },
-    "standalone": { "node": ">=22.13.0", "python": ">=3.11" }
+    "standalone": {
+      "node": ">=22.13.0",
+      "python": ">=3.11"
+    }
   },
   "notes": [
     "Source, not a generated artefact. The generator reads `version` and `requires` into bundle.json;",
-    "this file itself is not part of any bundle or package (contract 01-workflow-binding.md § 2.3, R19-C01).",
-    "`state: candidate` means a local candidate: no tag, no publication and no registry entry yet.",
+    "this file itself is not part of any bundle or package (contract 01-workflow-binding.md \u00a7 2.3, R19-C01).",
     "Publishing appends {version, identity, commit} to releases.json after the commit exists; a",
     "registered version is never regenerated with other bytes (VERSION_REUSED)."
   ]

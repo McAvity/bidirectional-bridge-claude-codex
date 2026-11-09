@@ -1,9 +1,9 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.7.0",
+  "package_version": "0.8.0",
   "pinned": {
-    "commit": "6ed9a4537e376165aa72bbd5a52cb0c41988a90a",
-    "describe": "0.7.0: isolated multi-repository feature execution and per-repository delivery checks"
+    "commit": "5210fdbee712cebab431777b759a6532031f049c",
+    "describe": "0.8.0: independently versioned workflow binding, exact restore and explicit switching"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [

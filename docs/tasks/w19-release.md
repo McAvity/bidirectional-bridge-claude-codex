@@ -14,3 +14,7 @@ publication is authorized separately from full behavioral acceptance.
 
 Next: generate packages; validate; commit source; pin source/register workflow identity;
 validate distribution; integrate/push; exact-SHA CI; annotated component tags and releases.
+
+Source pinned: 5210fdbee712cebab431777b759a6532031f049c; workflow identity sha256:34ff737662b404b6409be2596a190318b27d2cbfa390351e2c7c22ea75c63396.
+Both workflow variants have this identity; registry refers to the source commit.
+Local source build, package equivalence and doc links PASS. Distribution validation pending.

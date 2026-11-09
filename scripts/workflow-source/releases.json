@@ -1,4 +1,10 @@
 {
   "format": "feature-workflow.releases/v1",
-  "releases": []
+  "releases": [
+    {
+      "version": "1.0.0",
+      "identity": "sha256:34ff737662b404b6409be2596a190318b27d2cbfa390351e2c7c22ea75c63396",
+      "commit": "5210fdbee712cebab431777b759a6532031f049c"
+    }
+  ]
 }

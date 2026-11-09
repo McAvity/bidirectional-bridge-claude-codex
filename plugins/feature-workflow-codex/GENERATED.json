@@ -18,7 +18,7 @@
     "scripts/workflow-source/workflow-lib.mjs",
     "scripts/workflow-source/release.json"
   ],
-  "source_digest": "f3206d7a5b2d452a87396d957442cad95259180697cf90a959813528ac4da8ba",
+  "source_digest": "bcb4cd1ab86c4c7a8d5fbb0e9524b9f04452bcb9cb679bcd5abda3dd89c45e1d",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
