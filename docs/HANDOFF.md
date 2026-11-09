@@ -1,5 +1,19 @@
 # Current handoff
 
+## Bridge0.8.0 / workflow1.0.0 published — 2026-11-09
+
+[Release checkpoint](tasks/w19-release.md): F-W19 integrated into feature-workflow,
+source5210fdb, distributione1f5fee, annotated bridge-v0.8.0 and workflow-v1.0.0.
+Both experimental releases published; exact-SHA CI42624893899 SUCCESS.
+Local JS752PASS/1skip, Python242PASS, pilot129PASS/2skip, workflow/operator27PASS;
+CI host skips are explicit. Fresh runtime installation/MCP41-tool handshake PASS without models.
+R19-P01 fixture publication issue and R19-N01 docs closed; deferred pilot T01/T02 remain open.
+AC-04/model evidence remains NOT_TESTED; W19-06 partial, no full feature_accept.
+Next: user upgrades a chosen project via marketplace + bridge-upgrade and evaluates a
+new feature. Existing features keep their workflow. This checkout's runtime remains0.6.2;
+no personal plugin or external project activation. Publication required no extra logins.
+
+
 ## Bridge 0.8.0 / workflow 1.0.0 publication authorized — 2026-11-09
 
 [Release progress](tasks/w19-release.md) is the current checkpoint. F-W19 implementation

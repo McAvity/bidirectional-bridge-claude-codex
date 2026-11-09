@@ -178,3 +178,10 @@ Bez dalszej pracy zależnej od loginu w tym przebiegu. Bez push/merge/release/up
 Decision05 approves integration and experimental bridge0.8.0/workflow1.0.0 publication.
 Current checkpoint: [release progress](../../tasks/w19-release.md). Pilot remains deferred;
 no full feature_accept. R19-N01 corrected in the publication documentation batch.
+
+## Published — 2026-11-09
+
+Bridge0.8.0 and workflow1.0.0 are published on feature-workflow, distributione1f5fee.
+[Checkpoint, CI and adoption](../../tasks/w19-release.md). R19-P01/N01 closed;
+T01/T02 deferred, AC-04 NOT_TESTED, W19-06 partial. Runtime0.6.2 unchanged here.
+Next: user-side ordinary upgrade and evaluation; no new isolated-profile login request.

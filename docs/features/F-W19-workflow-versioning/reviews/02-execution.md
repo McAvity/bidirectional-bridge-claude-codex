@@ -192,4 +192,8 @@ and the private pilot release generator attempted to reuse that version and corr
 hit VERSION_REUSED. Reproduced on33e455a (3 Python failures/errors and operator setup).
 Correction: candidate-only fixture versions and private 0.0.0-pilot.a/b/c releases;
 the production registry and its refusal test stay intact. R19-T01/T02 remain deferred.
-Status: fixed, revalidation pending in docs/tasks/w19-release.md.
+Status: CLOSED. Final local Python242/workflow27 PASS; exact-distribution CI42624893899 PASS. See docs/tasks/w19-release.md.
+
+R19-N01 CLOSED in release5210fdb: current store/binding guidance separated from legacy
+reader behavior, seven entries and role-only bridge package documented, generated plugin
+description updated. Generated packages/docs validation PASS; no runtime behavior change.

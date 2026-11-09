@@ -26,7 +26,7 @@
   ],
   "latest_review": "docs/features/F-W19-workflow-versioning/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W19-workflow-versioning/decisions/05.md",
-  "next_action": "Decision05 authorizes experimental publication of bridge0.8.0/workflow1.0.0; see docs/tasks/w19-release.md. Model pilot remains deferred/NOT_TESTED, W19-06 partial; no full feature_accept.",
+  "next_action": "Published experimentally: bridge0.8.0/workflow1.0.0, e1f5fee, CI42624893899 PASS; see docs/tasks/w19-release.md. User-side ordinary upgrade/evaluation next. Model pilot remains deferred/NOT_TESTED, W19-06 partial; no full feature_accept.",
   "bridge": {
     "feature_id": "F-W19-workflow-versioning",
     "parent_task_id": "task_vf2ajb3t4d"
