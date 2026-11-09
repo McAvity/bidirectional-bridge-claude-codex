@@ -3,7 +3,7 @@
 ## Bridge 0.8.1 publication authorized — 2026-11-09
 
 [Release checkpoint](tasks/bridge-0.8.1-release.md): user authorized publication of
-the completed startup fixes. Release worktree `release/0.8.1`; workflow1.0.0 unchanged.
+the completed startup fixes. Release worktree `release/0.8.1`; workflow 1.0.0 unchanged.
 Prepare versioned source/pinned distribution, verify exact-SHA CI and publish the
 experimental bridge tag/release. Active installed runtime and local project pin stay separate.
 
