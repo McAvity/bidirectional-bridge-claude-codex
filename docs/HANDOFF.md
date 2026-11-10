@@ -1,5 +1,24 @@
 # Current handoff
 
+## Workflow 1.1.1 — published — 2026-11-10
+
+[Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.1),
+[checkpoint](tasks/workflow-1.1.1-release.md). Sourcecb864a9, distribution/tag37280cb,
+workflow identity0b8d7d20e82c. Exact-SHA CI42867143236 SUCCESS: JS782 PASS/2skip,
+Python296 OK/5skip, pilot131 OK/2skip, protected observer21 PASS. Local Python296
+covered after six sandbox-limited host retries passed; focused JS72 PASS. Local
+macOS pilot observer limitation retained, covered by Linux CI. Independent review
+has no blockers. Remote feature-workflow fast-forwarded; immutable annotated tag
+and experimental GitHub release published. No npm/model run/client activation.
+
+Stable check IDs, worker-side report scaffold/validation, same-round report-only
+correction and guarded/durable normal exit are available in workflow1.1.1.
+[All 15 permission approvals and remedies](hcom-mvp/permission-audit.md) recorded;
+default permissions unchanged. Existing locks/blocked trial remain historical;
+its bootstrap refuses automatic replay. Main checkout/local pin preserved. New
+features can select1.1.1 after plugin refresh. Release complete; another real
+pilot/recovery is a separate task. Earlier pending entries below are historical.
+
 ## Workflow 1.1.1 — receipt fixes and release authorized — 2026-11-10
 
 User requested implementation/publication after the blocked real-repository trial.
