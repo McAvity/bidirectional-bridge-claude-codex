@@ -318,7 +318,8 @@ class IndependentGeneration(Workspace):
         src = self.source_copy()
         identity = self.regenerate(src)["identity"]
         registry = src / "scripts/workflow-source/releases.json"
-        registry.write_text(json.dumps({"format": "feature-workflow.releases/v1", "releases": [{"version": "1.0.0", "identity": identity, "commit": "0" * 40}]}) + "\n")
+        version = json.loads((src / "scripts/workflow-source/release.json").read_text())["version"]
+        registry.write_text(json.dumps({"format": "feature-workflow.releases/v1", "releases": [{"version": version, "identity": identity, "commit": "0" * 40}]}) + "\n")
         self.assertEqual(self.generate(src, "--check").returncode, 0)
         before = self.snap(src)
         with (src / ".agents/skills/feature-plan/SKILL.md").open("a") as handle:
