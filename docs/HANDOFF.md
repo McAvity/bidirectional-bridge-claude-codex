@@ -1,5 +1,19 @@
 # Current handoff
 
+## F-W21 repository trial — code PASS, protocol blocked — 2026-11-10
+
+Prepared hcom trial executed in F-W21-test. Preparation7f0e215, Claude fixture/ledger
+deliveryf50dc9a; [independent review](features/F-W21-repo-trial/reviews/01-implementation.md).
+Clean delivered-SHA export: evidence8/8, runner64/64, direct100001 stderr bytes/tail,
+exit3/init-only framing PASS. No full-suite claim; intermittent deadline-test cause
+unverified. One worker/session, one dispatch, 15 individual permissions+trust, 13m18s
+to final blocked receipt. Report shortened a required command; helper refused accepted.
+Coordinator mistakenly /exit'ed before checking helper success. Owned worker stopped
+normally; no replacement/relaunch or report rewrite, stable private state retained.
+[Progress](features/F-W21-repo-trial/PROGRESS.md): trial partial/unaccepted, code ready
+for review; protocol recovery requires explicit direction. F-W21 acceptance unchanged.
+No push/merge/publication or runtime/config/lock changes.
+
 ## Hcom test branch — prepared version, no manual selection — 2026-11-10
 
 Supersedes the standalone handoff in 930c498. F-W21 now commits the portable
