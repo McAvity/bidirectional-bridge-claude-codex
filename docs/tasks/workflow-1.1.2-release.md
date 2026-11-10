@@ -18,3 +18,6 @@ append immutable source/identity registration, distribution commit, exact-SHA CI
 annotated tag and experimental GitHub release, then publication checkpoint.
 
 The main checkout and unrelated pin are preserved. Foreign Bridge MCP state is not used.
+
+Source commit: `2d413b2186a745964c7f9cd8a5154513ec50a176`. Registered identity: `sha256:0a0994b841cb9d74785f15e6cf3e5e2f18619b16ccfdf4a3ce3526f75060a30b`.
+Distribution commit and exact-SHA CI pending.
