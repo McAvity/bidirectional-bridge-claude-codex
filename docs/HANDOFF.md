@@ -1,5 +1,19 @@
 # Current handoff
 
+## Bridge 0.8.2 published — 2026-11-10
+
+[Release checkpoint](tasks/bridge-0.8.2-release.md): reusable installed-release updater
+and bounded wait, updated bridge-upgrade skill, macOS shared Codex writer attribution.
+Source `a303b64`, distribution/tag `531d1db`, experimental `bridge-v0.8.2` published;
+feature-workflow integrated. Exact-SHA CI 42799719049 SUCCESS: JS 782 PASS/2 skipped,
+Python 256 PASS/5 skipped, pilot 129 PASS/2 skipped, protected observer 21 PASS.
+Local Python 261 cases covered after six sandbox-blocked retries passed; focused
+62 PASS/1 skipped and installed-updater integration 3 PASS. Fresh immutable runtime
+served 41 tools with exact roots in project/inherited worktree; no model pilot.
+Workflow 1.0.0 unchanged; personal plugins, supervising runtime and existing local
+project-pin edit preserved. Publication complete; next optional action is per-project
+bridge-upgrade followed by live MCP verification after restart.
+
 ## Bridge 0.8.2 implementation and publication authorized — 2026-11-10
 
 [Release progress](tasks/bridge-0.8.2-release.md): durable installed-release updater,
