@@ -37,3 +37,12 @@ that did not run is treated as passed. No release tag/source pin exists yet.
   passed before later timeout regression additions. Diagnostic-only timeout wording
   finding corrected with last refusal retained. Skill scenario uses only the immutable
   runtime path after plugin refresh. Full Python/CI remain in progress.
+
+## Pinned source
+
+Source a303b643983bf1ed1e896b1cbd252420ae30806b (runtime 0.8.2-a303b643983b).
+Distribution metadata regenerated to that exact commit. Workflow bytes/registry unchanged.
+Local full Python: 261 cases, 255 PASS and 6 sandbox-blocked failures/errors (three
+loopback socket permissions, one Git worktree metadata write, two Codex setup process
+visibility checks). These six will be rerun outside the sandbox; original failures
+are preserved. Full exact-SHA Linux CI is required before publishing the tag.
