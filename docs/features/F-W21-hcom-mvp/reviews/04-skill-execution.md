@@ -92,3 +92,89 @@ pilot od skilla oraz końcowe wyniki regresji nadal do rozliczenia.
 
 Nie otwarto nowych findingów. Niezależny review całego rozszerzonego wyniku należy
 dopisać tutaj po W21-04, zachowując tę ocenę etapową.
+
+## W21-04 i korekta fixture — 2026-11-10
+
+**PASS dla realnego pilota rozszerzenia i korekty fixture** na
+0d2cffca496a45b9e05166f6f9c1b675c703344f, obejmującego c5a1cc61fb9c1506a844db2da3d00981d871178c.
+Funkcjonalne AC-07–10 są wykazane w uzgodnionym minimalnym zakresie. Nie znaleziono
+defektu skilla/helpera ani błędnej interpretacji pilota wymagającej poprawki.
+**Końcowe rozliczenie szerszej regresji pozostaje pending**: zakończony npm run
+ma 27 failed / 755 passed / 2 skipped w 56 plikach. Nie oznaczono go PASS.
+Przyczyny i celowane ponowienia wymagają oddzielnego dopisku przed końcową
+rekomendacją odbioru całego rozszerzenia. Gate 2 pozostaje otwarta.
+
+### Niezależnie sprawdzone dowody pilota
+
+Reviewer odczytał opublikowane evidence/skill-pilot, ledger W21-04 oraz wskazane
+prywatne pliki zakończonej próby: run/state, trzy snapshoty sesji, historię, zapis
+odczytu przed ack i recovered-sent, receipts, artefakty obu rund i stopped.
+Odczytał również obiekty Git źródłowego repo pilota. Nie czytał transkryptów,
+nie uruchamiał hcom/modelu ani mutacji MCP. Prywatne ID/ścieżki nie są kopiowane.
+
+- Oba requesty6/34 odsyłają do nowego feature-execute w dokładnym worker_root,
+  jego roli executor oraz właściwego digestu kontraktu. Nie używają starego
+  worker.md. Publikowane kontrakty różnią się od oryginałów tylko placeholderami
+  workspace/workflow_bundle/worker_root; hashe oryginałów zgadzają się ze stanem
+  i ledgerami. W obu dostarczonych HEAD feature ma transport hcom oraz lock
+  przypięty do kandydata1.1.0 o identity2205a80f5109… z etapu W21-03.
+- Niezależne, odczytowe `workflow.mjs verify --bundle --identity` dla dokładnego
+  wybranego bundle: PASS. Ledgery wykonawcy podają verify oraz zgodną tożsamość;
+  bez transkryptu reviewer nie rekonstruuje każdej komendy modelu. Zgodność
+  przekazanego zestawu, jego bytes i śladów dostawy jest sprawdzona.
+- Session.json, session-r2 i session-final mają tę samą nazwę, native session_id
+  i katalog co binding. Nie stwierdzono zamiany wykonawcy. Stopped potwierdza
+  zwykłe zakończenie exit:prompt_input_exit; repo pilota pozostaje czyste.
+- Dla obu BASE..HEAD sprawdzono ancestry, brak merge, zakres endpoint i każdego
+  commita, zgodność changed_scope oraz dodanie nowego ledgera. Druga runda
+  zachowuje wcześniejszy ledger. Publikowane words.py/tests są bajtowo zgodne
+  z obiektami Git dokładnych HEAD; ledgery po jedynej redakcji nazwy workera
+  odpowiadają commitom. Raporty odpowiadają kopiom operatora i receipt w stanie.
+- Runda1 ma receipt=rework, runda2=accepted. Korekta to rzeczywisty test Unicode
+  whitespace i opis str.split; logika oraz sześć wcześniejszych testów zachowane.
+  Nie przedstawiono poprawy pokrycia jako nieistniejącego błędu funkcjonalnego.
+- Resume-before-sent zawiera już prepared contract, brak send_event_id oraz
+  launch_permitted=false i dispatch_permitted=false. Historia zawiera dokładnie
+  request6 dla pierwszej rundy; recovered-sent zapisuje ten sam ID bez nowego
+  grantu. Pełna historia ma dwa task requesty6/34 i wyniki31/50. Jest to realny
+  send i ponowny odczyt w nowym procesie helpera, nie restart/crash klienta.
+- Czasy i recipient_count observations zgadzają się z historią. Utrzymano
+  pozostały budżet: druga próba F-W21, dwa nowe task prompty, łącznie2/4.
+  Obie rundy mieszczą się w10 minutach, nowa część w30 minutach. Licznik13 zgód
+  plus trust pozostaje zapisem operatora; koszt i czas aktywnej obsługi są
+  jawnie nieznane. Broadcast jest odbierany przez historię, nie inbox Codexa.
+
+### Walidacja i zakres twierdzeń
+
+- Niezależne unittest na publikowanych plikach, wcześniej porównanych z dokładnymi
+  obiektami Git: **6 PASS** w rundzie1 i **7 PASS** w rundzie2. Nie uruchomiono
+  ponownie modelu. To sprawdzenie dostarczonych artefaktów.
+- Fixture c5a1cc6 rejestruje w syntetycznym registry rzeczywistą wersję źródła
+  zamiast stałej1.0.0. Wciąż sprawdza VERSION_REUSED, odmowę przed zapisem oraz
+  działanie po usunięciu wpisu. Nie osłabia immutability. Niezależny
+  `IndependentGeneration.test_a_registered_version_with_other_bytes_is_refused`
+  z TMPDIR=/private/tmp: **PASS**.
+- Checker dokumentacji: **299 Markdown**, zero broken_links i absolute_paths;
+  tylko wcześniejszy loose substring w F-W19. Diff-check94074d8..0d2cffc: PASS.
+- Zachowane dowody wykonawcy: pełny Python miał273 PASS i jeden błąd poprawionego
+  fixture, oba quick_validate PASS po użyciu dostępnego PyYAML. Pilot tooling
+  ma128 PASS /2 skip /1 odmowę macOS dotyczącą /proc. Tych zbiorczych przebiegów
+  reviewer nie powtarzał i nie przedstawia ich jako niezależnego pełnego PASS.
+- Odczytany npm log ma także błędy setup/doctor/profile, obok zgłoszonych
+  aliasów ścieżek, fixture i stderr. Kod runtime'u/instalatora/testów npm nie
+  został zmieniony przez rozszerzenie, ale samo to nie dowodzi braku regresji
+  generowanych zasobów. Weryfikacja hcom i jego pakietów jest pozytywna;
+  triage/ponowienia npm muszą rozliczyć pozostałe błędy osobno.
+
+| Kryterium | Ocena w świetle W21-04 |
+| --- | --- |
+| AC-07 | met: zapisany transport hcom zachowany, requesty i state korzystają z niego; flow routing oceniony w instrukcjach, nie oddzielnym modelowym flow |
+| AC-08 | met: ten sam zweryfikowany bundle, dwie dostawy Git z nowymi ledgerami/reportami oraz niezależnym receipt |
+| AC-09 | met: realny odczyt prepared state po send przed ack, jeden request, rozpoznanie istniejącego eventu bez resend i bez zamiany sesji |
+| AC-10 | ścieżka produktu met: wygenerowane zasoby, realny feature-execute, korekta i odczyt stanu; szeroka regresja zwykłego Bridge nadal wymaga rozliczenia opisanego powyżej |
+
+Pojedyncza próba wspiera użycie ograniczonej integracji, nie gwarancję recovery,
+niezawodności, niższego kosztu ani całkowicie samodzielnego działania. Rozróżnienie
+realnego feature-execute od sprawdzenia routingu feature-flow jest jawne i zgodne
+z planem jednego modelowego pilota. Brak potrzeby kolejnego modelu do powtarzania
+tych samych dowodów; pozostała praca to wyjaśnienie regresji bezmodelowej.
