@@ -1,0 +1,14 @@
+{
+  "task_id": "f-w21-tags-pilot",
+  "round": 2,
+  "workspace": "<PILOT_REPO>",
+  "objective": "Review of round 1: all six tests and the implementation pass. This is a test/documentation improvement, not a functional bug. Add a regression test proving normalize_tags leaves the original list unchanged and returns a distinct list. Clarify the docstring that matching is case-sensitive and the function returns a new list. Preserve existing semantics and tests. Do not commit. Save full current tracked-file diff against the original base in .hcom-mvp/diff-r2.patch. Do not overwrite round-1 report/diff.",
+  "write_scope": [
+    "tags.py",
+    "tests/test_tags.py",
+    ".hcom-mvp/report-r2.json",
+    ".hcom-mvp/diff-r2.patch"
+  ],
+  "check": "python3 -m unittest discover -s tests -v",
+  "report_path": ".hcom-mvp/report-r2.json"
+}

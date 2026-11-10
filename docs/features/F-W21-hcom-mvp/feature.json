@@ -14,7 +14,7 @@
     "docs/PROTOCOL.md",
     "docs/feature-workflow.md"
   ],
-  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/01-plan.md",
+  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/02-execution.md",
   "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/03.md",
-  "next_action": "feature-flow: zgoda03 udzielona; wykonać W21-01, W21-02, review i korekty w budżecie, następnie Gate 2. Branch F-W21."
+  "next_action": "feature-flow: W21-01 i pilot W21-02 dostarczone na F-W21; niezale\u017cne ko\u0144cowe review02, nast\u0119pnie Gate 2."
 }

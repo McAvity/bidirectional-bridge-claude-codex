@@ -1,0 +1,57 @@
+diff --git a/tags.py b/tags.py
+index 369308c..09aa95e 100644
+--- a/tags.py
++++ b/tags.py
+@@ -1,2 +1,16 @@
+ def normalize_tags(values):
+-    raise NotImplementedError("Implement the contract")
++    """Return a new list of normalized tags.
++
++    Each value is stripped of surrounding whitespace; values that are empty
++    after stripping are dropped. Duplicates are removed, keeping the first
++    occurrence. Matching is case-sensitive ("A" and "a" are different tags).
++    The input list is not modified.
++    """
++    seen = set()
++    result = []
++    for value in values:
++        tag = value.strip()
++        if tag and tag not in seen:
++            seen.add(tag)
++            result.append(tag)
++    return result
+diff --git a/tests/test_tags.py b/tests/test_tags.py
+index 7cb4c01..f1b63a3 100644
+--- a/tests/test_tags.py
++++ b/tests/test_tags.py
+@@ -4,3 +4,30 @@ from tags import normalize_tags
+ class TagTests(unittest.TestCase):
+     def test_public_example(self):
+         self.assertEqual(normalize_tags([" A ", "", "B", "A"]), ["A", "B"])
++
++    def test_empty_input(self):
++        self.assertEqual(normalize_tags([]), [])
++
++    def test_all_whitespace_values(self):
++        self.assertEqual(normalize_tags(["", " ", "\t", "\n  "]), [])
++
++    def test_stable_order(self):
++        self.assertEqual(normalize_tags(["c", " b", "a "]), ["c", "b", "a"])
++
++    def test_nonconsecutive_duplicates(self):
++        self.assertEqual(normalize_tags(["x", "y", " x ", "z", "y"]), ["x", "y", "z"])
++
++    def test_case_sensitive(self):
++        self.assertEqual(normalize_tags(["A", "a", " A"]), ["A", "a"])
++
++    def test_input_unchanged_and_new_list_returned(self):
++        original = [" A ", "", "B", "A"]
++        snapshot = list(original)
++        result = normalize_tags(original)
++        self.assertEqual(original, snapshot)
++        self.assertIsNot(result, original)
++        # Already-normalized input must still yield a distinct list.
++        clean = ["x", "y"]
++        clean_result = normalize_tags(clean)
++        self.assertEqual(clean_result, clean)
++        self.assertIsNot(clean_result, clean)

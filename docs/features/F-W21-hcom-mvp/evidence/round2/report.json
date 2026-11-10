@@ -1,0 +1,33 @@
+{
+  "task_id": "f-w21-tags-pilot",
+  "round": 2,
+  "outcome": "complete",
+  "summary": "Expanded the normalize_tags docstring (case-sensitive matching, returns a new list, input not modified) and added a regression test showing the input list is unchanged and the result is a distinct list object, including for already-normalized input. Implementation logic and existing tests unchanged. Not committed.",
+  "changes": {
+    "base_commit": "21690303878f735eda0fb42e8484dd2d7f04ade4",
+    "commit": null,
+    "diff_path": ".hcom-mvp/diff-r2.patch",
+    "diff_scope": "Full cumulative tracked-file diff (rounds 1+2) against base_commit, generated with git diff --binary 2169030.",
+    "paths": [
+      "tags.py",
+      "tests/test_tags.py"
+    ],
+    "new_files": [],
+    "round2_delta": [
+      "tags.py: docstring only; function body unchanged from round 1",
+      "tests/test_tags.py: added test_input_unchanged_and_new_list_returned; the six round-1 tests are unchanged"
+    ],
+    "notes": "No new untracked source files were created. Round-1 report-r1.json and diff-r1.patch left untouched (sha1 unchanged)."
+  },
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "result": "passed",
+      "details": "Ran 7 tests in 0.000s, OK (exit 0): test_all_whitespace_values, test_case_sensitive, test_empty_input, test_input_unchanged_and_new_list_returned, test_nonconsecutive_duplicates, test_public_example, test_stable_order."
+    }
+  ],
+  "remaining": [
+    "Running the check creates __pycache__/ and tests/__pycache__/; both are excluded via .git/info/exclude and were left in place.",
+    "Non-string inputs remain unhandled, per the contract's assumption that inputs are strings."
+  ]
+}

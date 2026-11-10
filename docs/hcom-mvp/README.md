@@ -124,3 +124,10 @@ Dodatkowe mechanizmy dobieramy dopiero do problemów zaobserwowanych w próbie.
 Przed modelem ustal budżet; dla pilota F-W21 obowiązują 2 podejścia, 4 zlecenia
 łącznie i 45 minut części modelowej, bez nowych zakupów/API keys. Każdy task prompt
 (w tym startowy, gdy zmieniasz procedurę) liczy się do tego limitu.
+
+## Sprawdzona próba
+
+[Realny pilot F-W21](../features/F-W21-hcom-mvp/evidence/pilot-summary.md) zamknął
+dwie rundy w jednej sesji (hcom0.7.31, Claude2.1.321). Domyślne uprawnienia klienta
+wymagały trust i 11 pojedynczych zgód operatora. Procedura działa, lecz nie jest
+bezobsługowa; odczyt historii hcom potwierdza powiadomienia także bez odbiorcy inbox.

@@ -1,0 +1,78 @@
+{
+  "format": "f-w21.pilot-evidence/v1",
+  "kind": "sanitized-observed-run",
+  "attempts": 1,
+  "task_prompts": 2,
+  "same_native_session": true,
+  "workspace_verified": true,
+  "versions": {
+    "hcom": "0.7.31",
+    "claude": "2.1.321"
+  },
+  "model_observed": "claude-opus-5-5",
+  "cost_usd": null,
+  "events": [
+    {
+      "event_id": 6,
+      "timestamp": "2026-11-10T12:17:19.877695+00:00",
+      "round": 1,
+      "kind": "request",
+      "sender": "coordinator",
+      "task_id": "f-w21-tags-pilot",
+      "transport": "hcom",
+      "recipient_count": 1
+    },
+    {
+      "event_id": 23,
+      "timestamp": "2026-11-10T12:20:47.810510+00:00",
+      "round": 1,
+      "kind": "result_ready",
+      "sender": "worker",
+      "task_id": "f-w21-tags-pilot",
+      "transport": "hcom",
+      "recipient_count": 0
+    },
+    {
+      "event_id": 26,
+      "timestamp": "2026-11-10T12:21:45.419148+00:00",
+      "round": 2,
+      "kind": "request",
+      "sender": "coordinator",
+      "task_id": "f-w21-tags-pilot",
+      "transport": "hcom",
+      "recipient_count": 1
+    },
+    {
+      "event_id": 46,
+      "timestamp": "2026-11-10T12:25:51.113554+00:00",
+      "round": 2,
+      "kind": "result_ready",
+      "sender": "worker",
+      "task_id": "f-w21-tags-pilot",
+      "transport": "hcom",
+      "recipient_count": 0
+    }
+  ],
+  "coordinator_checks": {
+    "round1_tests_passed": 6,
+    "round2_tests_passed": 7,
+    "both_saved_diffs_match_actual_git_diff": true,
+    "round1_report_and_diff_preserved": true,
+    "round2_received_at": "2026-11-10T12:28:37.266120+00:00"
+  },
+  "interventions": [
+    {
+      "kind": "workspace_trust",
+      "count": 1
+    },
+    {
+      "kind": "round1_permission_prompt",
+      "count": 5
+    },
+    {
+      "kind": "round2_permission_prompt",
+      "count": 6
+    }
+  ],
+  "identity_note": "Native IDs and private paths omitted; equality checked against private launch/list records. No assertion of cryptographic provenance."
+}

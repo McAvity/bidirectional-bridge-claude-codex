@@ -1,0 +1,14 @@
+{
+  "task_id": "f-w21-tags-pilot",
+  "round": 1,
+  "workspace": "<PILOT_REPO>",
+  "objective": "Implement normalize_tags(values): strip whitespace, discard empty values, deduplicate preserving first occurrence. Do not commit. Save the tracked-file diff in .hcom-mvp/diff-r1.patch. Inputs are strings; equality is case-sensitive. Add tests for empty input, all-whitespace values, stable order and nonconsecutive duplicates. Preserve unrelated files. Do not spawn agents or use Bridge.",
+  "write_scope": [
+    "tags.py",
+    "tests/test_tags.py",
+    ".hcom-mvp/report-r1.json",
+    ".hcom-mvp/diff-r1.patch"
+  ],
+  "check": "python3 -m unittest discover -s tests -v",
+  "report_path": ".hcom-mvp/report-r1.json"
+}
