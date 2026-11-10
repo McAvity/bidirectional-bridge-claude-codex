@@ -98,3 +98,23 @@ jest kompletne; wszystkie produktowe kryteria nadal wymagają wykonania/dowodów
 
 Nie uruchamiano testów runtime'u dla planu dokumentacyjnego. Nie stwierdzono
 wykonania celu produktu: AC-01/03 są obecnie unverified, a Gate 1 pozostaje otwarta.
+
+## Potwierdzenie doprecyzowań — 2026-11-10
+
+Werdykt: **PASS**. Zachowano powyższy pierwotny werdykt i jego zakres.
+Sprawdzono wyłącznie korektę design.md i work-items/W21-01.md w diffie
+c7268e53138ed31c80748ec06815d84874678bb7..433884f3055f6a1f306475ab935eb97b14a7783a,
+zgodnie z decyzją01; nie powtarzano pełnego review planu.
+
+- **R01-N01: resolved.** Design §2 wymaga startu bez zadaniowego promptu,
+  odczytu i kontroli sesji oraz jednego send z instrukcją wykonawcy i kontraktem.
+  W21-01 przenosi tę kolejność do zakresu gotowej instrukcji. Design §5 jawnie
+  liczy każdy zadaniowy prompt, także ewentualny startowy, do limitu czterech.
+- **R01-N02: resolved.** Design §2 i W21-01 wymagają query historii aktualnej
+  rundy przed wait oraz po timeout. Zakres query ma obejmować okres od wysłania
+  rundy, z jawnym oknem wyników; domyślne 20 zdarzeń i 10-sekundowy lookback
+  nie są uznawane za pełną historię. Nie dodano nowego komponentu.
+
+Brak nowych ustaleń wymagających korekty w sprawdzonym diffie. Doprecyzowania
+zachowują minimalny zakres i budżet; nie stanowią dowodu działania pilota.
+Nie uruchamiano hcom ani modeli. Zgoda wykonawcza Gate 1 nadal pozostaje wymagana.
