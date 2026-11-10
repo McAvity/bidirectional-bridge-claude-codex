@@ -16,7 +16,9 @@ oraz wykonał jego hcom-loop. Executor otrzymał ścieżkę entry tego samego bu
 w wariancie Claude, hash kontraktu i jedną rundę; oba ledgery potwierdzają verify.
 Nie użyto starego worker.md ani polecenia „przeczytaj instrukcję pilota”.
 
-Hcom0.7.31, Claude CLI2.1.321; konto istniejące jak w pierwszym pilocie. Worker
+Hcom0.7.31, Claude2.1.322; konto istniejące jak w pierwszym pilocie.
+Klient zaktualizował się między próbami;2.1.322 potwierdzono z pola version
+metadanych zakończonej sesji oraz CLI po próbie, bez eksportu treści transkryptu. Worker
 raportował Python3.15.2 (jego shell wybierał tę wersję); koordynator powtórzył
 testy na Python3.12.16. Model pola usage: claude-opus-5-5, koszt null. Nie było
 nowych kluczy, zakupów, zmiany trybu uprawnień ani aktywacji w cudzym projekcie.

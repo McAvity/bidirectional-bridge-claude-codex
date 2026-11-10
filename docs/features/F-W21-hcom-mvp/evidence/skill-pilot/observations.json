@@ -9,9 +9,10 @@
   "same_native_session": true,
   "versions": {
     "hcom": "0.7.31",
-    "claude": "2.1.321",
+    "claude": "2.1.322",
     "worker_python": "3.15.2",
-    "coordinator_test_python": "3.12.16"
+    "coordinator_test_python": "3.12.16",
+    "claude_evidence": "top-level version metadata of completed worker transcript; CLI confirmed after pilot; no transcript content exported"
   },
   "events": [
     {
