@@ -4,7 +4,7 @@
     {
       "mode": "644",
       "path": "claude/.claude-plugin/plugin.json",
-      "sha256": "7f90ba71f0158d46a4e1b83d1292b2d6787600b0697ed79248cc16cf9c6c7165"
+      "sha256": "e550aea6a3f637c45350b43e6f12f84b8e26b2dd44091f649eb0e7ffe3d9773d"
     },
     {
       "mode": "755",
@@ -74,7 +74,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-execute/references/hcom-loop.md",
-      "sha256": "2a2ba6d08f49f008174a96dd88b13ee9de043ca287c1b52c2f2e1485e1e28334"
+      "sha256": "158c55ff9a02c858d78675b9eeccc0480f9a607e5c483d9522d793482348fbc9"
     },
     {
       "mode": "644",
@@ -144,7 +144,7 @@
     {
       "mode": "644",
       "path": "codex/.codex-plugin/plugin.json",
-      "sha256": "cc8c44a4903851eae95dc3d9064e1d39ed21999cd829cc77574a87f4b90f956a"
+      "sha256": "4b9ad892aa8e7ccb09b6e00ee91fbd520a6d9f70e9665e94b644869290aff0c8"
     },
     {
       "mode": "755",
@@ -214,7 +214,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-execute/references/hcom-loop.md",
-      "sha256": "2a2ba6d08f49f008174a96dd88b13ee9de043ca287c1b52c2f2e1485e1e28334"
+      "sha256": "158c55ff9a02c858d78675b9eeccc0480f9a607e5c483d9522d793482348fbc9"
     },
     {
       "mode": "644",
@@ -283,7 +283,7 @@
     }
   ],
   "format": "feature-workflow.bundle/v1",
-  "identity": "sha256:0b8d7d20e82c6051c14fd258adeba98f9deb9d7c35110516170ac63d3f25d9cf",
+  "identity": "sha256:0a0994b841cb9d74785f15e6cf3e5e2f18619b16ccfdf4a3ce3526f75060a30b",
   "kind": "release",
   "requires": {
     "bridge": {
@@ -321,6 +321,6 @@
       "root": "codex"
     }
   },
-  "version": "1.1.1",
-  "workflow_id": "1.1.1-0b8d7d20e82c"
+  "version": "1.1.2",
+  "workflow_id": "1.1.2-0a0994b841cb"
 }

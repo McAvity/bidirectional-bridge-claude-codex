@@ -60,3 +60,14 @@ permissions shared with worktrees. See the official
 [CLI reference](https://code.claude.com/docs/en/cli-reference),
 [session settings](https://code.claude.com/docs/en/settings#change-a-setting-for-one-session)
 and [permission rules](https://code.claude.com/docs/en/permissions).
+
+
+## Follow-up: session auto mode
+
+The user subsequently selected auto mode. Workflow1.1.2 starts new hcom workers
+with `--permission-mode auto`, keeping task authorization, review and receipt
+unchanged. It records the requested mode and checks startup support/notices;
+unsupported/fallback modes are reported rather than silently replaced. Existing
+sessions, trial evidence and locks are not rewritten. No broad allowlist, global
+permission setting or bypass is introduced. A new real trial is needed to measure
+prompt reduction; the 15 approvals above remain evidence of the earlier manual run.

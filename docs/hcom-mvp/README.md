@@ -37,8 +37,15 @@ poza katalogiem wykonawcy. Nie udostępniaj mu prywatnych danych innych projekt�
 
 ```sh
 hcom claude --headless --dir "$PWD" --json \
-  --permission-mode default --strict-mcp-config --mcp-config '{"mcpServers":{}}'
+  --permission-mode auto --strict-mcp-config --mcp-config '{"mcpServers":{}}'
 ```
+
+Od workflow1.1.2 nowe sesje wykonawcy używają `auto`: klient ocenia operacje
+klasyfikatorem, a zakres zadania i odbiór pozostają obowiązujące. To ustawienie
+konkretnej sesji, bez zmiany globalnych uprawnień. Wcześniejsze pomiary F-W21
+wykonano w `default`; nie są pomiarem liczby pytań w `auto`. Jawnie wybrany
+przez użytkownika inny tryb ma pierwszeństwo. Brak obsługi `auto` lub fallback
+klienta zgłoś przed zleceniem; nie zmieniaj samodzielnie trybu ani modelu.
 
 Wewnątrz agenta hcom może najpierw wypisać preview. Dopiero rzeczywiste wykonanie
 tej samej komendy z globalnym `--go` uruchamia klienta. Preview nie jest sesją.

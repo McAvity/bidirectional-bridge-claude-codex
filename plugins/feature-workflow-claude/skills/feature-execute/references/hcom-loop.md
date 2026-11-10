@@ -51,7 +51,26 @@ requires diagnosis, never a replacement worker. Identity changes are not recover
 ## Launch and bind once
 
 Check hcom/Claude versions and existing login; tested hcom0.7.31, interactive Claude2.1.322.
-Keep default permissions and existing account; no Claude -p, bypass flags or new API keys.
+For a new worker, use session-scoped `--permission-mode auto` unless the user explicitly
+selects another mode. Record the requested mode in `feature.json.execution.permission_mode`
+while preserving other execution fields, and record the observed mode when available in
+startup metadata. Existing sessions retain their mode; do not relaunch or change a bound
+session merely to apply this default. Keep the existing account; no Claude -p, bypass flags,
+blanket tool allowances or new API keys.
+
+Auto mode delegates permission review to the client's classifier; it is not an OS sandbox
+or additional task authority. Put the authorized local edits, checks, commits and hcom
+communication in the round contract. Push, publication, deployment, production operations,
+global configuration changes and writes to other projects need separate user authorization
+unless already explicitly included in the user's scope. Contract scope, Git review, receipt
+and guarded finish remain required. Do not modify global/project permission settings.
+
+Before dispatch, confirm the installed client supports auto and inspect any mode/startup
+notice. If account/model/policy restrictions or classifier fallback prevent the requested
+mode, report the actual mode and blocker; do not silently substitute manual/bypass, change
+models/accounts, disable checks or start a replacement worker. Existing approval of auto
+covers its normal startup confirmation; inspect the exact prompt rather than blindly
+accepting unrelated trust or tool permissions.
 Prepare a clean baseline and preserve unrelated dirt. Add `.hcom-work/` to this worktree's
 Git info/exclude (resolve it with `git rev-parse --git-path info/exclude` for linked worktrees).
 It holds contracts and reports, not delivered source. No ignored state is committed.
@@ -61,7 +80,7 @@ When fresh init granted launch, run once without a task prompt:
 
 ```sh
 hcom --go claude --headless --dir "$HCOM_FLOW_WORKSPACE" --json \
-  --permission-mode default --strict-mcp-config --mcp-config '{"mcpServers":{}}'
+  --permission-mode auto --strict-mcp-config --mcp-config '{"mcpServers":{}}'
 ```
 
 Read launch JSON and `hcom list EXACT_NAME --json`, save the latter privately as session.json,
@@ -251,7 +270,7 @@ a new explicit contract in the same native session. Do not self-approve the feat
 
 ## Reduce avoidable permission interruptions
 
-Keep default permissions. Batch one logical edit, use native reads instead of shell pipelines
+Use the selected session permission mode. Batch one logical edit, use native reads instead of shell pipelines
 where possible, and use simple commands under a launch-time environment. Review any new
 script before granting its execution; moving shell into a script is not itself a safety
 boundary. Run the agreed decisive checks once after the last relevant change. Repeat only
