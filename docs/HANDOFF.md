@@ -1,5 +1,27 @@
 # Current handoff
 
+## F-W21 — feature-flow preparation — 2026-11-10
+
+User invoked feature-flow. [W21-P01](../work-items/W21-P01.md) covers preparatory
+commits. Resolve of the existing feature returned LEGACY_PINNED_RUNTIME 0.6.2,
+set 5961e6804bdde8fba699388c2206a90e7e6ecf880919650946812c2cf784bb74; its flow/phase
+skills exist. This supersedes the earlier --new selection blocker below. No pin
+change. Live MCP is foreign, so no writes there. Next: minimal plan, independent
+native review and execution proposal; stop at Gate 1 before implementation/pilot.
+
+## F-W21 — hcom MVP brief — 2026-11-10
+
+[Brief](features/F-W21-hcom-mvp/brief.md), branch docs/F-W21-hcom-mvp. User asked
+for a new feature with minimal process constraints and a fast evidence-led pilot.
+One local pair/task, short contract/report, same-session correction and explicit
+receipt; full Bridge adapter/recovery/parallelism deferred pending observed needs.
+Brief only: no implementation, model run, installation, commit or publication.
+Plugin resolver in this inherited worktree reports RUNTIME_WITHOUT_BINDING for
+its committed 0.6.2 pin; no pin change or workflow binding was performed. The
+product brief is recorded using repository feature-design; execution selection
+remains unresolved and must not be represented as a verified bound workflow.
+Next: feature-plan for F-W21; choose the smallest viable MVP and pilot budget.
+
 ## Bridge 0.8.2 published — 2026-11-10
 
 [Release checkpoint](tasks/bridge-0.8.2-release.md): reusable installed-release updater
