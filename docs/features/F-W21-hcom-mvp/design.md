@@ -187,3 +187,50 @@ Następna fala jest warunkowa. Zapisujemy problem, jego koszt dla użytkownika i
 najmniejszą możliwą naprawę. Nie planujemy obecnie lease/recovery/full adaptera.
 Brak produktu poza checkoutem jest świadomym ograniczeniem MVP: wydanie pluginu,
 migracja i publiczny release wymagają oddzielnego zlecenia.
+
+## 7. Rozszerzenie skilla — decyzja05
+
+Baza f836899; pierwotny plan i wyniki W21-01/02 pozostają historyczne. Aktualne
+źródła: feature-execute ma oddzielny bridge-loop, local-delivery opisuje sprawdzenie
+Git, feature-flow routuje fazy, generator kopiuje zasoby skilli do obu klientów.
+Workflow jest wersjonowany niezależnie od Bridge; opublikowanego1.0.0 nie wolno
+nadpisać inną tożsamością. Przygotujemy niewydaną wersję1.1.0, bez registry/release.
+
+Najmniejsza realizacja:
+- feature.json.execution.transport = hcom lub bridge. Brak pola zachowuje dotychczasowe
+  zachowanie. Jawna prośba hcom ustawia pole przed pierwszą rundą; istniejący stan
+  Bridge lub inny transport wymaga jawnego rozliczenia zamiast cichej migracji.
+- Nowa references/hcom-loop.md obsługuje start, kontrakt, historię, odbiór, poprawki
+  i zakończenie. feature-flow czyta wybór przed routingiem do Bridge. Guide/using-bridge
+  uznają jawny hcom jako tryb alternatywny; bez wyłączania kontroli zwykłego Bridge.
+- Wspólne minimum wykonawcy wydzielone do round-executor.md; bridge zachowuje swój
+  envelope/Workflow binding i local-v1, hcom raportuje tę samą dostawę Git w pliku.
+  Hcom worker dostaje absolutny root wybranego wariantu Claude oraz tożsamość
+  wydania z resolve. Stary zestaw bez hcom nie przełącza się na latest: wymaga jawnego
+  wybrania nowego workflow. W teście nowy feature wybiera nową paczkę standalone.
+- Mały standard-library helper hcom_state.py zapisuje prywatne powiązanie worktree,
+  feature, sesji i instrukcji oraz append-only kontrakty/receipt. Nigdy nie uruchamia
+  hcom/modelu/Git write i nie wybiera najnowszej sesji. Odczyt i walidacja wystarczają
+  do wznowienia; przygotowany zamiar przed send oznacza brak prawa do ślepej powtórki.
+  Stan lokalny poza Git, stabilny namespace worktree/feature; jawna ścieżka przekazywana
+  do komend, HCOM_DIR wspólny launch/send/events. Coordinator files poza write_scope.
+- Komendy hcom pozostają kierowane przez agenta według sprawdzonej procedury0.7.31.
+  Timeout→history/status/term; wynik→kontrola Git/ledger/checks→niezależne review;
+  poprawka do dokładnie tej samej natywnej sesji. Default permissions pozostają.
+- Reguły source resolution zachowane. Wybrany wariant Claude bundle jest sprawdzony
+  i przekazany workerowi; nie kopiujemy najnowszej osobistej instalacji ani nie
+  dopuszczamy do nadpisania wyboru przez domyślne pluginy wykonawcy.
+
+Task W21-03: instrukcje/routing, helper z testami istotnych odmów, wersja i generacja
+paczek. Task W21-04 zależy od W21-03: niezależny test nowych instrukcji, realny pilot
+przez feature-execute, kontrolowane ponowne odczytanie stanu koordynatora między
+wysyłką a odbiorem, korekta w tej samej sesji, review i dowody. Nie symulujemy crashu
+ani nie obiecujemy recovery. Koordynator zarządza produktem/indexem i integracją.
+
+Testy bez modelu: niezmienność wyboru, obca sesja/workspace/workflow, duplikat rundy,
+stan przed niepewnym send, stary raport, wznowienie bez resend; istniejące testy
+local-delivery/workflow/distribution. Pakiety wygenerowane, sprawdzenie równości
+źródeł i linków. Pilot: pozostały budżet decyzji05, jedno nowe syntetyczne zadanie,
+commity+ledger+raport i poprawka; zgody liczone, koszt nieznany gdy konto go nie podaje.
+AC07–10 mają być wykazane osobno od historycznego AC01–06. Brak dowodu modelowego
+nie może być zastąpiony samym PASS testów helpera. Dalej niezależny review, Gate2.

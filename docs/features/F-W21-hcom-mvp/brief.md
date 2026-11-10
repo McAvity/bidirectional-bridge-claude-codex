@@ -154,3 +154,18 @@ ani automatycznym odbiorem całego featura.
 Nie ma decyzji produktowej blokującej zapis briefu. Następny krok:
 `$feature-plan` dla `docs/features/F-W21-hcom-mvp/brief.md`, z dokładnym planem
 wyłącznie MVP i dalszym zakresem uzależnionym od wyników próby.
+
+## Rozszerzenie uzgodnione 2026-11-10 — skill jako wejście
+
+Decyzja05 rozszerza pierwotne MVP: użytkownik wywołuje feature-execute lub
+feature-flow z poleceniem „przez hcom”. Koordynator sam prowadzi istniejącą pętlę
+zadania/review/poprawek; użytkownik nie odsyła do osobnej instrukcji pilota ani
+nie zarządza komendami CLI. Zachowujemy commity i ledger zwykłego feature-execute.
+Wcześniejsza procedura i pilot pozostają historycznym dowodem wykonalności.
+
+| ID | Dodatkowe kryterium |
+| --- | --- |
+| AC-07 | feature-execute i feature-flow rozpoznają jawny wybór hcom, zapisują go i zachowują przy wznowieniu; nie wywołują wtedy Bridge MCP do zarządzania rundami |
+| AC-08 | Worker korzysta z tego samego wybranego wydania instrukcji, wykonuje ograniczoną rundę i dostarcza commity, ledger oraz raport; koordynator weryfikuje dostawę |
+| AC-09 | Wznowienie koordynatora odczytuje istniejący kontrakt/stan/historię i nie wysyła zadania drugi raz; niejasny send lub zmieniona sesja wymagają diagnozy |
+| AC-10 | Generowane paczki zawierają nowe zasoby; dotychczasowa ścieżka Bridge zachowuje zachowanie; rzeczywisty pilot rozpoczyna się od skilla, obejmuje poprawkę i ponowny odczyt stanu koordynatora |
