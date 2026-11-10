@@ -1,5 +1,18 @@
 # Current handoff
 
+## Hcom repository trial — handoff prepared — 2026-11-10
+
+[Procedure and coordinator prompt](tasks/hcom-repository-trial.md),
+[W21-T01](../work-items/W21-T01.md): separate real-repository trial after accepted
+F-W21. Fix the fake Claude CLI stderr flush on macOS through feature-execute/hcom;
+one worker, at most two rounds and 20 minutes. User creates a new worktree from
+the commit containing this handoff, not feature-workflow's HEAD. No trial model
+launched here. Explicit standalone selection with a locally disabled inherited
+pin passed verify-plugin/begin/resolve in a disposable repo, exact candidate1.1.0
+identity unchanged. Main checkout pin/global plugins/runtimes untouched. Runtime
+upgrade is separate from workflow selection. Execution and review remain pending;
+do not reopen F-W21 acceptance. Preparation changes are documentation only.
+
 ## F-W21 — accepted and locally closed — 2026-11-10
 
 User accepted proposal06; [decision07](features/F-W21-hcom-mvp/decisions/07.md)
