@@ -25,6 +25,7 @@
     "codex/*"
   ],
   "scripts": {
+    "hcom:prepare": "node scripts/prepare-hcom-trial.mjs",
     "build": "tsc --build",
     "typecheck": "tsc --build --force",
     "clean": "tsc --build --clean",

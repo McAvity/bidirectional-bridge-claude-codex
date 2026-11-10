@@ -7,7 +7,6 @@
 [mcp_servers.bridge]
 command = "node"
 args = ["./.bridge-project/entry.mjs", "--caller", "codex", "--delegation", "allow"]
-cwd = "."
 env_vars = ["CLAUDE_CODEX_BRIDGE_HOME", "XDG_DATA_HOME"]
 required = false
 startup_timeout_sec = 30

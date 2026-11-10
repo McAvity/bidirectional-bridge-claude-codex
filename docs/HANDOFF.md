@@ -1,5 +1,28 @@
 # Current handoff
 
+## Hcom test branch — prepared version, no manual selection — 2026-11-10
+
+Supersedes the standalone handoff in 930c498. F-W21 now commits the portable
+Bridge pin 0.8.2-a303b643983b and removes Codex's old cwd setting. The separate
+F-W21-repo-trial includes its 1.1.0 workflow lock, hcom transport, brief/design
+and decision. Candidate bundle identity remains 2205a80f5109; no public release.
+Start from the latest F-W21 commit and ask the coordinator to execute the
+[prepared trial](tasks/hcom-repository-trial.md). `npm run hcom:prepare` verifies
+and prepares the exact dependencies through existing tools, with no project
+configuration/lock changes, standalone override, version questions or model launch.
+
+Validation: isolated runtime install/build and checked updater/doctor passed;
+standalone MCP probe 41 tools passed, no manager claimed. Doctor warnings:
+unverified Codex0.167.0 and active client observation; live-client MCP not checked.
+Four bootstrap refusal tests PASS, syntax/diff/package checks PASS. An inherited
+clone with no project runtime state and an empty workflow store ran preparation
+twice: correct own root, exact versions, store restored from bundled files, no
+tracked changes or model. That test reused the installed immutable runtime via a
+private store link; it does not claim an offline fresh-machine npm installation.
+No full runtime suite rerun for this test-branch entry. Earlier macOS fixture
+limits remain. Main checkout/local pin and F-W21-test remain unchanged during
+preparation. Next: test agent executes W21-T01; F-W21 acceptance stays closed.
+
 ## Hcom repository trial — handoff prepared — 2026-11-10
 
 [Procedure and coordinator prompt](tasks/hcom-repository-trial.md),

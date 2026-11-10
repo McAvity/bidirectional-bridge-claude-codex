@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W21-repo-trial",
+  "phase": "execution",
+  "brief": "docs/features/F-W21-repo-trial/brief.md",
+  "design": "docs/features/F-W21-repo-trial/design.md",
+  "tasks": ["work-items/W21-T01.md"],
+  "context_files": ["AGENTS.md", "docs/tasks/hcom-repository-trial.md"],
+  "latest_review": null,
+  "latest_decision": "docs/features/F-W21-repo-trial/decisions/01.md",
+  "execution": {"transport": "hcom"},
+  "next_action": "Run npm run hcom:prepare, read the selected feature-execute entry, then execute W21-T01 in the user-created test worktree under the committed scope and budget."
+}

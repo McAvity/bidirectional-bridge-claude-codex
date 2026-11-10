@@ -1,9 +1,14 @@
 # Hcom: bounded trial on this repository
 
-Status: prepared; no model launched for this trial. F-W21 remains accepted.
-Preparation baseline: F-W21 acceptance commit `9e25ca9`. Create the execution
-worktree from the later commit containing this document, not from feature-workflow.
-The user creates that worktree and gives its coordinator the prompt below.
+Status: ready to test; no model launched for this trial. F-W21 remains accepted.
+Create the execution worktree from the latest F-W21 commit containing this version,
+not from feature-workflow or the earlier handoff commit 930c498. The branch records
+runtime 0.8.2, workflow 1.1.0, the trial lock, scope and hcom transport together.
+This supersedes the temporary-disable/standalone procedure from 930c498.
+
+The coordinator starts with `npm run hcom:prepare`. There are no version/transport
+choices or configuration edits to ask the user to perform. Standard client permission
+prompts still apply. This is a local test distribution, not a public release.
 
 ## Scope and authorization
 
@@ -32,78 +37,69 @@ is for an actual finding, not an artificial change to demonstrate messaging.
 At the deadline, stop dispatching; inspect unfinished work and settle/stop only
 the owned worker normally. Timeout is not proof of delivery or cancellation.
 
-Pasting the prompt authorizes this bounded execution, local commits and the local
-standalone configuration below. Preparation alone has not run it. Final feature
+Pasting the prompt authorizes this bounded execution, local commits and preparation
+of the exact recorded dependencies. Preparation alone has not run it. Final feature
 acceptance remains with the user; a task receipt is not feature acceptance.
 
-## Bridge pin versus workflow selection
+## One prepared version
 
-The main checkout's local pin can be 0.8.0 while this branch's committed pin is
-0.6.2. A new worktree inherits committed files, not another checkout's local edit.
-Bridge runtime 0.8.2 and workflow 1.1.0 are separate releases. Updating the runtime
-alone does not select this candidate workflow; 1.1.0 has not been published.
+The committed project pin is `0.8.2-a303b643983b`, source commit
+`a303b643983bf1ed1e896b1cbd252420ae30806b`. Bridge stays enabled. Its portable Codex
+configuration omits the historical `cwd = "."` setting. No local pin edits or
+runtime selection/database from another worktree are needed for this trial.
 
-This trial deliberately selects standalone hcom in the new execution worktree.
-It does not require upgrading the main checkout or restarting its client. Do not
-invoke any Bridge MCP tools, including a manager claim. A loaded MCP connection
-is not proof that it belongs to this worktree. Do not modify global plugins,
-installed runtimes, another worktree's declaration or an existing feature's lock.
-
-Before selection, confirm this is the user's new isolated worktree, not F-W21's
-preparation checkout or the main checkout. Record canonical root, branch, HEAD and
-starting dirt. Ensure there is no existing active trial/Bridge workstream in it.
-Save the exact original `.bridge-project/bridge.json` bytes privately, and set only
-`enabled` to `false` in that worktree. Keep the pin fields intact. This is a
-deliberate test configuration, not a fallback around a resolver refusal. Do not
-commit this local change; record it as coordinator-owned baseline dirt, excluded
-from worker delivery. Do not change `.codex/config.toml` or repair global MCP.
-
-Use Node 24 and Python >=3.11, checking the actual binaries available. On this
-host Python 3.12 and `TMPDIR=/private/tmp` avoid unrelated test-environment errors.
-Keep a private persistent trial directory outside the worktree and record its
-location for resumption. Use its `workflow-store` as
-`CLAUDE_CODEX_BRIDGE_HOME` consistently for every workflow helper call, and its
-`state` as the explicit hcom helper state. This does not select a Bridge runtime.
-Never reuse another trial's state or change these paths to evade a refusal.
-
-From the actual new worktree, after the explicit local disable:
-
-```sh
-node plugins/feature-workflow-codex/scripts/workflow.mjs verify-plugin --json
-node plugins/feature-workflow-codex/scripts/workflow.mjs begin \
-  --feature-id F-W21-repo-trial --standalone --json
-node plugins/feature-workflow-codex/scripts/workflow.mjs resolve \
-  --feature F-W21-repo-trial --entry feature-execute --standalone --json
-```
-
-Run `begin` only for a new trial before creating its feature documents. On resume,
-resolve the existing lock instead. Require `source: bundle`, `code: BOUND_BUNDLE`,
-`project.pin: standalone`, version 1.1.0 and identity:
+The committed feature lock selects workflow 1.1.0 with identity:
 
 `sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb`
 
-Read the guide and feature-execute entry from the returned instruction root,
-including `references/hcom-loop.md` and `references/local-delivery.md`. Verify
-the returned bundle; the worker gets that bundle's `claude` directory, not an
-installed global skill. Any mismatch blocks dispatch; do not regenerate packages
-or silently choose another source. This is a local candidate test, not proof of
-marketplace installation or a Bridge runtime upgrade.
+The exact candidate bundle is included under `plugins/feature-workflow-codex/bundle`.
+The feature index already selects hcom, and brief/design/decision/task are present.
+The coordinator does not run begin/adopt/switch or replace the lock. Existing
+F-W21-hcom-mvp acceptance and its historical workflow remain unchanged.
+
+```sh
+npm run hcom:prepare
+```
+
+Run in the new worktree with Node 24. This composes existing tools: verify the local
+bundle against the lock, install the pinned runtime from this repository's exact
+Git commit if absent, verify its contents, restore the exact included workflow to
+its store, and resolve the recorded feature-execute entry. It does not update project
+configuration, select a new version, start a model, claim a manager or install global
+plugins. Repeating it does not reset trial execution state or change tracked files.
+A missing runtime may require network access for its existing npm installer; the
+repository includes sources and lockfiles, not OS binaries, npm cache or credentials.
+Hcom, Claude and their existing login are host prerequisites. This host already has
+the pinned runtime installed; its separate MCP doctor handshake passed.
+
+Read the guide and feature-execute skill at the returned verified instruction root.
+The executor uses that same bundle's Claude variant. Hcom is the transport even
+though the project retains an enabled Bridge runtime. No Bridge manager/round calls
+are used for this trial. Do not infer the current conversation's live MCP root from
+an independent doctor result. No existing client restart is needed to load a new
+Bridge connection for a task that does not use that connection.
+
+Use Python >=3.11; on this host Python 3.12 and `TMPDIR=/private/tmp` avoid unrelated
+fixture/environment errors. Use hcom_state.py's stable default namespace for this
+canonical worktree and feature, save private launch/session metadata there, and use
+its HCOM_DIR consistently. Do not copy state from another worktree or create a new
+namespace to bypass a pending/unknown round. Contracts/reports stay in the committed
+ignore pattern `.hcom-work/`. No private machine paths belong in tracked documents.
 
 ## Coordinator procedure
 
-1. Record this approved scope in a minimal separate trial brief/design/decision,
-   task and feature index, using the selected workflow conventions. Record
-   `execution.transport: hcom`; leave accepted F-W21 documents unchanged. No new
-   planning gate is needed for the exact scope authorized by the prompt.
+1. Read the prepared brief/design/decision/index and W21-T01. Verify the actual
+   worktree, branch, HEAD and starting dirt. Resolve with `npm run hcom:prepare`;
+   follow its selected skill. The scope and transport are already recorded: no new
+   planning gate, feature creation, standalone override or configuration edits.
 2. Prepare dependencies with `npm ci --ignore-scripts` and `npm run build` in this
    worktree, not in an installed runtime. Record environment and reproduce the
    focused failure before sending a task. Run the focused suite:
    `npm test -- claude/claude-side/src/adapters/claude-code-runner.evidence.test.ts`.
    If the reported defect is absent, investigate with a direct fixture reproduction;
    do not invent another task. Ordinary build/tests use no model budget.
-3. Commit coordinator documents/lock separately. Do not stage the local declaration
-   change. Add `.hcom-work/` to Git's resolved info/exclude if absent (it can be
-   shared by linked worktrees; append only this pattern, preserve existing entries).
+3. Commit any coordinator-owned preparation/evidence separately before dispatch.
+   Preserve unrelated changes. `.hcom-work/` is already ignored by this branch.
 4. Follow the selected hcom loop exactly: stable private state/HCOM_DIR, fresh
    init launch grant, one headless interactive Claude with default permissions and
    empty MCP config, exact session binding, immutable round contract, prepare
@@ -119,10 +115,9 @@ marketplace installation or a Bridge runtime upgrade.
    commit's scope, new ledger, declared checks and dirt attribution. Rerun decisive
    tests at delivered HEAD. Review independently and record accepted/rework/blocked
    receipt; send a fresh contract in the same session only if round 2 is needed.
-7. Stop the owned worker normally and confirm stopped. Restore the original local
-   declaration bytes only after confirming it still contains exactly the local
-   test edit and no later edits; never reset unrelated dirt. If work is unsettled,
-   preserve the exact state/config and report it for resumption instead.
+7. Stop the owned worker normally and confirm stopped. Keep private state/history
+   for diagnosis. If work is unsettled, preserve its exact state and report it for
+   resumption; never reset/relaunch or discard unfinished changes.
 8. Commit coordinator review, sanitized evidence and progress/handoff. Report
    commits, tests, round count, session continuity, approval interventions, duration,
    remaining issues and whether receipt was accepted. Never commit raw transcripts,
@@ -131,35 +126,27 @@ marketplace installation or a Bridge runtime upgrade.
 
 ## Preparation validation
 
-On 2026-11-10 a disposable Git repository with the inherited pin explicitly
-disabled and a separate store passed verify-plugin, begin and resolve above.
-Resolve returned the exact identity and standalone BOUND_BUNDLE. No model was
-launched. This validates bootstrap selection only; actual repository delegation
-and the fixture fix remain for the new agent. Candidate bundle bytes are unchanged.
+The earlier disposable standalone check is historical and not the start procedure.
+The current branch was upgraded with the installed 0.8.2 updater; its standalone
+MCP handshake passed (41 tools), with no manager claimed or model launched. Doctor
+warned about unverified Codex 0.167.0 and a detected active Codex client; live MCP
+verification remains separate. Workflow begin/resolve selected the exact 1.1.0
+bundle against the enabled 0.8.2 pin. Candidate bundle bytes are unchanged.
+Bootstrap regression checks and inherited-checkout evidence are recorded in handoff.
+Actual repository delegation and fixture implementation remain for the test agent.
 
 ## Prompt for the new coordinator
 
 ```text
-Przeprowadź opisaną w docs/tasks/hcom-repository-trial.md próbę feature-execute
-przez hcom w tym nowym worktree. To zlecenie wykonania, nie samo planowanie.
-Przeczytaj AGENTS.md, docs/HANDOFF.md i procedurę próby. Ustal rzeczywisty root,
-branch i HEAD; nie pracuj w głównym checkoutcie ani przygotowawczym F-W21.
+Wykonaj przygotowaną próbę F-W21-repo-trial przez hcom zgodnie z
+AGENTS.md i docs/tasks/hcom-repository-trial.md. Zacznij od npm run hcom:prepare
+w tym worktree i użyj wskazanego feature-execute. Wersje, transport i zadanie
+są już zapisane w branchu; nie wybieraj ich ponownie ani nie wyłączaj Bridge'a.
 
-Jawnie wybieram standalone hcom tylko dla tego worktree. Zgadzam się na opisane
-tymczasowe enabled=false w jego deklaracji Bridge'a, z zachowaniem pina,
-bez commitowania tej konfiguracji i z bezpiecznym przywróceniem po próbie.
-Wybierz i zweryfikuj wskazany lokalny pakiet workflow 1.1.0 przez begin/resolve
---standalone. Nie używaj starego zainstalowanego skilla ani Bridge MCP.
-
-Zleć jednemu Claude'owi przez hcom poprawkę ucinanego stderr w fake-claude-cli,
-zgodnie z zakresem i kontrolami z dokumentu. Autoryzuję realną delegację na
-istniejącym koncie, maksymalnie dwie rundy w tej samej sesji i 20 minut od
-pierwszego zlecenia do odbioru, ze standardowymi uprawnieniami. Autoryzuję
-potrzebne lokalne commity kodu, ledgerów i dokumentacji. Jako koordynator
-wykonaj niezależny review dostawy i ewentualną drugą rundę konkretnych poprawek.
-
-F-W21 pozostaje zaakceptowany; dla próby użyj F-W21-repo-trial / W21-T01.
-Nie poszerzaj zakresu, nie uruchamiaj dodatkowych agentów, nie rób push/merge
-ani wydania. Zakończ raportem testów, commitów i rzeczywistego przebiegu hcom.
-Przy blokadzie zachowaj stan i wskaż konkretną przyczynę; bez cichego fallbacku.
+Autoryzuję jednego Claude'a, maksymalnie dwie rundy w tej samej sesji i 20 minut,
+na istniejącym koncie ze standardowymi uprawnieniami. Zleć poprawkę stderr
+w fake-claude-cli, odbierz commity/ledger i przeprowadź niezależny review.
+W razie konkretnego findingu zleć drugą rundę. Autoryzuję lokalne commity
+w ustalonym zakresie. Bez dodatkowych agentów, push, merge i publikacji.
+Zakończ raportem testów, commitów i działania hcom; nie poszerzaj zakresu.
 ```

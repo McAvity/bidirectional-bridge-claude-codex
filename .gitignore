@@ -9,6 +9,7 @@ coverage/
 # Bridge and SQLite runtime state
 .bridge/
 .bridge-runtime/
+.hcom-work/
 *.db
 *.db-journal
 *.db-wal

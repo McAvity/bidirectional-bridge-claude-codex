@@ -1,0 +1,29 @@
+{
+  "feature": {
+    "draft_token": null,
+    "feature_id": "F-W21-repo-trial"
+  },
+  "format": "feature-workflow.lock/v1",
+  "generation": 1,
+  "history": [
+    {
+      "at": "2026-11-10T16:03:03.936Z",
+      "generation": 1,
+      "identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+      "op": "begin",
+      "origin": "active-plugin",
+      "version": "1.1.0"
+    }
+  ],
+  "origin": {
+    "client": "codex",
+    "kind": "active-plugin",
+    "plugin_version": "1.1.0"
+  },
+  "workflow": {
+    "identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+    "kind": "release",
+    "version": "1.1.0",
+    "workflow_id": "1.1.0-2205a80f5109"
+  }
+}

@@ -9,6 +9,12 @@ Sources: shared/*/src/ (bridge packages), scripts/native-bridge-mcp.mjs (MCP ent
 Read the relevant skill before running its workflow. Operator-only fixtures must not be
 shown to pilot agents. Pilot tools are not the production installer or diagnostics product.
 
+For the prepared F-W21-repo-trial only, read docs/tasks/hcom-repository-trial.md
+and run `npm run hcom:prepare` from the actual worktree root. Follow the returned,
+verified feature-execute entry and the committed hcom transport/authorization.
+Do not reselect a workflow, disable the project, or use Bridge MCP for that trial.
+Preparation starts no model; the user's execution request starts the bounded trial.
+
 Use one branch/worktree per change, with a clear scope and a progress note. Herdr may
 create worktrees outside this checkout. Resolve the actual workspace; never assume the
 main checkout path. Git worktrees share Git metadata, not their working files.
