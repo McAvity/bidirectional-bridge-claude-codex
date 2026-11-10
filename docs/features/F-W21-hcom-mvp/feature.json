@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W21-hcom-mvp",
-  "phase": "decision",
+  "phase": "execution",
   "brief": "docs/features/F-W21-hcom-mvp/brief.md",
   "design": "docs/features/F-W21-hcom-mvp/design.md",
   "tasks": [
@@ -15,6 +15,6 @@
     "docs/feature-workflow.md"
   ],
   "latest_review": "docs/features/F-W21-hcom-mvp/reviews/01-plan.md",
-  "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/02.md",
-  "next_action": "feature-flow: Gate 1 — czeka na zgodę użytkownika na całe W21-01/W21-02, izolowany pilot (2 podejścia, 4 zlecenia, 45 min), integrację, niezależne review, zwykłe korekty i lokalne commity. Plan/review PASS; bez zgody nie zaczynać wykonania."
+  "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/03.md",
+  "next_action": "feature-flow: zgoda03 udzielona; wykonać W21-01, W21-02, review i korekty w budżecie, następnie Gate 2. Branch F-W21."
 }
