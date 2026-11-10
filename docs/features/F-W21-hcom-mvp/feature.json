@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W21-hcom-mvp",
-  "phase": "execution",
+  "phase": "decision",
   "brief": "docs/features/F-W21-hcom-mvp/brief.md",
   "design": "docs/features/F-W21-hcom-mvp/design.md",
   "tasks": [
@@ -17,6 +17,6 @@
     "docs/feature-workflow.md"
   ],
   "latest_review": "docs/features/F-W21-hcom-mvp/reviews/04-skill-execution.md",
-  "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/05.md",
-  "next_action": "feature-flow: W21-04 realny pilot dostarczony, końcowe review04 i rozliczenie suite; potem Gate2 rozszerzonego MVP."
+  "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/06.md",
+  "next_action": "feature-flow Gate 2 pending: odpowiedź użytkownika na propozycję06 odbioru integracji hcom ze skillami, review33443e9 PASS. Po akceptacji zapis decyzji i lokalne zamknięcie; bez publikacji/push/merge."
 }

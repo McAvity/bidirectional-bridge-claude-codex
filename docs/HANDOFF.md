@@ -1,5 +1,26 @@
 # Current handoff
 
+## F-W21 — skill integration delivered, Gate 2 pending — 2026-11-10
+
+Branch F-W21; decision05 authorized hcom in feature-execute/feature-flow.
+Product94074d8; immutable-version fixture fixc5a1cc6; real skill pilot0d2cffc;
+validation0b02334; client metadata2656464; final independent review33443e9 PASS.
+[Proposal06](features/F-W21-hcom-mvp/decisions/06.md) awaits actual acceptance.
+[Skill pilot](features/F-W21-hcom-mvp/evidence/skill-pilot/summary.md): hcom0.7.31,
+Claude2.1.322, two Git deliveries/ledgers, tests6→7 PASS, same native session,
+intent reread after send before ack without resend.13 client approvals+trust.
+Own worker stopped normally; total model budget2 attempts/4 prompts used.
+
+Candidate workflow1.1.0 packages generated; no public release/install/push/merge.
+Bridge runtime and role packages unchanged, main-checkout local pin preserved,
+foreign MCP untouched. Build/helper/local-delivery/packages/skill validators PASS;
+Python274 covered after one targeted fixture correction.25/27 npm failures pass
+with corrected TMPDIR/Python; two unchanged macOS fixtures remain, plus /proc pilot
+guard limitation. [Exact validation](features/F-W21-hcom-mvp/execution/W21-03/03.md)
+does not claim a fully green suite. W21-03/04 done; feature unaccepted.
+Next: answer to Gate2 proposal06, then local decision/closing commit. Earlier
+pending gates below are historical; do not repeat planning or Gate1.
+
 ## F-W21 — Gate 2 pending — 2026-11-10
 
 Branch F-W21, isolated worktree; user execution approval03 recorded in3cf2488.
