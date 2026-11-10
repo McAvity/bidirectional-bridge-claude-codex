@@ -76,6 +76,7 @@ export const INSTALLER_FILES = [
   "scripts/setup/distribution.mjs",
   "scripts/setup/processes.mjs",
   "scripts/setup/process-observer.py",
+  "scripts/setup/codex-writer-workspaces.py",
   "scripts/setup/runtime.mjs",
   "scripts/setup/workflow-status.mjs",
   "scripts/setup/workspace.mjs",

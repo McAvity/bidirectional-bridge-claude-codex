@@ -131,11 +131,22 @@ then run the resume command above. This affects other connected clients; it is n
 an automatic installer step. A native writer lock is separate from a bridge
 manager lease and is not repaired by manager takeover or recovery tools.
 
-`CLIENT_WORKSPACE_UNKNOWN` means process inspection saw an open native conversation
-writer in a shared server whose cwd is elsewhere. It does not establish which
-project owns the conversation; it may conservatively block an unrelated project's
-upgrade too. Release the relevant client work normally before retrying. Elevated
-process-read permissions do not resolve that ambiguity.
+`CLIENT_WORKSPACE_UNKNOWN` means process inspection cannot attribute a shared Codex
+server's conversation writers to this worktree. Released 0.8.1 conservatively blocks
+unrelated projects too. The macOS installer hotfix queries the observed server through
+its local socket, verifies the peer PID, and reads current local `environments` with
+`thread/read` (no turns). Historical `thread.cwd` alone is not sufficient. Other
+projects and confirmed unloaded guardians no longer block; live target conversations,
+extra workspace roots and open bridge state still do. Missing Python 3, unsupported
+API/metadata, a mismatched peer or an unstable snapshot keep the refusal. Linux keeps
+its prior conservative behavior pending an equivalent validated implementation.
+
+Exit clients using the target worktree normally; other projects may remain open with
+the macOS hotfix. Codex 0.167 defaults to a 60-second thread unload delay after the last
+subscriber leaves, so retry after that interval. Merely being idle does not mean a
+conversation has unloaded. No daemon shutdown, lock deletion, transcript read or
+automatic thread unload is performed. Elevated process-read permissions alone do
+not resolve attribution failures.
 
 If upgrade reports `PROJECT_PIN_RUNTIME_MISSING`, the committed declaration is
 unchanged but its historical runtime is absent locally. Verify/install the exact

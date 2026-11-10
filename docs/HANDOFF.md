@@ -1,5 +1,15 @@
 # Current handoff
 
+## Shared Codex writer hotfix — 2026-11-10
+
+[Progress and evidence](tasks/shared-writer-hotfix.md): local macOS installer correction
+on `fix/shared-writer-workspaces`; live environment attribution removes unrelated
+project/completed-guardian false refusals. Node build, 21 JS cases and 18 Python cases
+PASS (2 explicit JS skips); independent review and real isolated Codex checks PASS.
+Private stable updater prepared for the affected project; apply remains pending normal
+exit of its clients. No new release, runtime replacement or unrelated project change.
+
+
 ## Bridge 0.8.1 published — 2026-11-09
 
 [Release checkpoint](tasks/bridge-0.8.1-release.md): startup fixes integrated into

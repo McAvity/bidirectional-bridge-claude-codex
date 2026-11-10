@@ -3,8 +3,9 @@
 
 import { readFileSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { run } from "./common.mjs";
+import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
-import { basename, resolve, sep } from "node:path";
+import { basename, dirname, resolve, sep } from "node:path";
 
 function realOrNull(path) {
   try {
@@ -204,7 +205,20 @@ function findMacActiveUse(root, { env, selfPid, execute, inspectClientWriters })
     if (inspectClientWriters && /^codex(?:$|-)/u.test(program) && cwd !== canonicalRoot && info.paths.some(nativeWriter)) {
       const args = probe("/bin/ps", ["-ww", "-p", String(pid), "-o", "args="]);
       if (args.error || args.status !== 0 || args.stderr.trim() || !args.stdout.trim()) return { ...unknown("macOS could not identify a native conversation writer; retry the command"), transient: true };
-      if (/(?:^|\s)app-server(?:\s|$)/u.test(args.stdout) && !/(?:^|\s)--no-daemon(?:\s|$)/u.test(args.stdout)) return { ...unknownWriter(), entries };
+      if (/(?:^|\s)app-server(?:\s|$)/u.test(args.stdout) && !/(?:^|\s)--no-daemon(?:\s|$)/u.test(args.stdout)) {
+        const writers = info.paths.filter(nativeWriter);
+        const homes = new Set(writers.map(path => dirname(dirname(path))));
+        if (homes.size !== 1) return { ...unknownWriter(), entries };
+        const input = JSON.stringify({ home: [...homes][0], root: canonicalRoot, pid,
+          writer_ids: writers.map(path => basename(path, ".lock")) });
+        const observation = execute("python3", ["-I", "-S", fileURLToPath(new URL("./codex-writer-workspaces.py", import.meta.url))],
+          { env, input, timeoutMs: 15000 });
+        let report;
+        try { report = JSON.parse(observation.stdout); } catch { /* fail closed */ }
+        if (observation.error || observation.signal || observation.status !== 0 || observation.stderr?.trim() ||
+            report?.supported !== true || typeof report.active !== "boolean") return { ...unknownWriter(), entries };
+        if (report.active) kinds.push("client");
+      }
     }
     if (cwd === canonicalRoot && /^(codex|claude)(?:$|-)/u.test(program)) kinds.push("client");
     if (info.paths.some((path) => path.startsWith(stateDirectory))) kinds.push("state-open");

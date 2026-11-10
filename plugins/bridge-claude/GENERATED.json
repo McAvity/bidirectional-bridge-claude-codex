@@ -7,7 +7,7 @@
     ".claude/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "dafcb1e037d0d59af0d372c038dfb2e3c1d153ea2199469b72842ab000c2a56e",
+  "source_digest": "411ab12431d296197d29dcce30bd2f9b664850d2ccd6ac6719cfd8056e157c41",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
@@ -62,6 +62,10 @@
       "sha256": "db287fc9b59a61ad76dfdac310414463ffc6767ce026a38b38e0f9eb1339579a"
     },
     {
+      "path": "scripts/setup/codex-writer-workspaces.py",
+      "sha256": "a0fc4ca20000d909e5edb23559e5e47ec182256e4896f750a5f886e12b7bb675"
+    },
+    {
       "path": "scripts/setup/common.mjs",
       "sha256": "9e65f3f68ad2c275ff5b0c63b7fca81829ec218f0a2f3065ed922afac27f59a5"
     },
@@ -83,7 +87,7 @@
     },
     {
       "path": "scripts/setup/processes.mjs",
-      "sha256": "b1bda30a150347725fa0607c73d6a6429b67b2fba003503031d18a6fb49ff19f"
+      "sha256": "de8cef6b63d596c30c2c8d67dd2d1e3874ae133f84a31db350c515c76a4912d8"
     },
     {
       "path": "scripts/setup/runtime.mjs",
