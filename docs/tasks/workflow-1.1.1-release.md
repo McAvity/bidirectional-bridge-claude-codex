@@ -40,3 +40,8 @@ Independent helper/finish review found two shutdown gaps: terminal composer stat
 and retry across wrapper invocations. Both corrected with empty-ready terminal
 validation and an exclusive persistent finish-intent; six finish tests now pass.
 Final rereview pending. No real-agent path is claimed from these scripted tests.
+
+Source commit: `cb864a92ac553021027e808cac8aac9ac0a57c89`. Registered exact workflow identity against that
+source; distribution commit follows. Final independent rereview found no blockers,
+six finish tests PASS; local hcom0.7.31 help/changelog confirm the terminal JSON
+fields used by the guard. No live shutdown/model was used for this validation.
