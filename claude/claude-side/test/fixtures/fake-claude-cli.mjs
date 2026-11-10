@@ -80,7 +80,8 @@ emit({
 });
 
 // Diagnostics a real CLI may print on stderr (warnings, API retries, fatal startup errors).
-// Pipes are synchronous on Linux, so this is fully written even before an immediate exit.
+// Pipe writes are asynchronous on macOS, so no mode may call process.exit() after this:
+// that drops whatever has not been flushed (anything past the 64 KiB pipe buffer).
 if (env.FAKE_CLAUDE_STDERR) {
   process.stderr.write(env.FAKE_CLAUDE_STDERR);
 }
@@ -89,7 +90,8 @@ if (mode === "hang") {
   // Hold stdout open forever; the adapter must terminate us on deadline or cancel.
   setInterval(() => {}, 1 << 30);
 } else if (mode === "noresult") {
-  process.exit(3);
+  // Exit 3 once stdout/stderr have drained; nothing else keeps the event loop alive.
+  process.exitCode = 3;
 } else if (mode === "error") {
   emit({
     is_error: true,
