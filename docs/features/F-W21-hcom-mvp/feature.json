@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W21-hcom-mvp",
-  "phase": "plan-review",
+  "phase": "decision",
   "brief": "docs/features/F-W21-hcom-mvp/brief.md",
   "design": "docs/features/F-W21-hcom-mvp/design.md",
   "tasks": [
@@ -14,7 +14,7 @@
     "docs/PROTOCOL.md",
     "docs/feature-workflow.md"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/01-plan.md",
   "latest_decision": null,
-  "next_action": "feature-flow: niezależne review planu, następnie proposed decyzja i Gate 1 dla całego MVP; bez wykonania przed zgodą."
+  "next_action": "feature-flow: rozliczyć nieblokujące R01-N01/N02, doprecyzować procedurę i przygotować Gate 1; wykonanie niezatwierdzone."
 }
