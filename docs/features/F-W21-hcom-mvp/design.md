@@ -1,6 +1,7 @@
 # F-W21 — plan MVP komunikacji przez hcom
 
-Status: proposed, do niezależnego review; bez zgody wykonawczej.
+Status: proposed do wykonania; review 01 PASS, doprecyzowania według decyzji01.
+Wykonanie nadal wymaga Gate 1.
 Baza kodu: 8e239939c486e11b85bab02a220fe6f4f169ee1a; brief zapisany w d5447e4.
 Brief SHA-256: 73a087e4635e382a8be6f43c9c83dd52fc02244306db65fe408b10f46788f875.
 
@@ -62,10 +63,20 @@ odczyt samego pliku i nie ogłaszamy komunikacji sprawdzonej. Dopuszczalne zawę
 składni do równoważnej wspieranej formy CLI nie zmienia celu ani nie wymaga nowej bramki.
 
 Start: dokładna ścieżka repo + `hcom claude --headless` (normalny PTY, bez -p),
-z jawną instrukcją worker.md i odniesieniem do pierwszego kontraktu. W razie braku
+bez zadaniowego promptu startowego. Po odczycie i kontroli sesji pojedynczy send
+przekazuje worker.md i pierwszy kontrakt — tylko on rozpoczyna pierwszą rundę.
+Wymagane przez hcom potwierdzenie launch (np. --go wewnątrz agenta) musi być
+uwzględnione w gotowej instrukcji W21-01, bez uruchamiania drugiego wykonawcy. W razie braku
 jednoznacznej sesji koordynator nie wysyła pracy. Z launch/list zapisuje lokalnie
 pełną nazwę hcom, natywny session_id i katalog. Przed korektą potwierdza to samo
 powiązanie; sam zgodny alias nie dowodzi tej samej natywnej sesji.
+
+Odbiór zaczyna się zwykłym query zapisanych wiadomości od wykonawcy i wyborem
+aktualnego task_id/rundy. Dopiero przy braku wyniku następuje ograniczone wait,
+a po timeout ponowne query historii. events --wait ma 10-sekundowy lookback,
+więc nie zastępuje odczytu wcześniejszego wyniku. Query musi objąć okres od
+wysłania rundy (np. --after z zapisaną datą i --last większym niż domyślne 20);
+nie polega na samym domyślnym oknie ostatnich zdarzeń.
 
 Ponowne wysłanie po timeout jest ręczną decyzją po odczycie zdarzeń i stanu.
 Nie zakładamy exactly-once delivery. Plik raportu i ID rundy pozwalają odróżnić
@@ -129,6 +140,7 @@ Proponowane w ramach jednej zgody wykonawczej:
   natywnej sesji. Te same publiczne wymagania i kryteria obowiązują oba etapy;
 - maksymalnie 2 podejścia do całego cyklu i 4 wysłane zlecenia modelowe łącznie,
   nie więcej niż 10 minut oczekiwania na rundę, 45 minut całej części modelowej;
+  każdy zadaniowy prompt, również ewentualny startowy, liczy się do limitu czterech;
 - korzystamy z istniejącego skonfigurowanego modelu/konta, bez nowego zakupu kredytów,
   płatnych kluczy API i przełączenia na tryb Claude -p. Zużywa to limity konta;
   koszt, jeśli klient go nie udostępnia, pozostaje nieznany, nie „zero”.
