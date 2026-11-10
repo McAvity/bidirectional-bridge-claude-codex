@@ -1,0 +1,23 @@
+{
+  "feature_id": "F-HCOM-PILOT",
+  "task_id": "T-01",
+  "round": 2,
+  "workspace": "<WORKSPACE>",
+  "workflow_identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+  "workflow_bundle": "<BUNDLE>",
+  "worker_root": "<BUNDLE>/claude",
+  "base_commit": "2c28139f725916c693f2cf6c5c6ef5e1bf3fda36",
+  "objective": "Review: round1 implementation and all six tests pass. This is a test/documentation improvement, not a functional bug. Add a regression test that Unicode whitespace (NBSP and em space) separates words and duplicates still preserve first-seen order. Clarify the docstring that Python str.split Unicode whitespace semantics apply. Preserve all six existing tests and behavior. Commit scoped changes and a NEW ledger02, preserve ledger01 and report01. Do not push/merge/delegate.",
+  "decision": "docs/features/F-HCOM-PILOT/decisions/01.md",
+  "write_scope": [
+    "words.py",
+    "tests/test_words.py",
+    "docs/features/F-HCOM-PILOT/execution/T-01/02.md",
+    ".hcom-work/report-r2.json"
+  ],
+  "checks": [
+    "python3 -m unittest discover -s tests -v"
+  ],
+  "ledger_dir": "docs/features/F-HCOM-PILOT/execution/T-01",
+  "report_path": ".hcom-work/report-r2.json"
+}

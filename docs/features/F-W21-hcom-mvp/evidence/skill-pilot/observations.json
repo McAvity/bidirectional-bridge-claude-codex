@@ -1,0 +1,66 @@
+{
+  "kind": "sanitized-observation-not-raw-log",
+  "workflow_identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+  "workflow_candidate": "1.1.0",
+  "attempt": 2,
+  "task_prompts_this_attempt": 2,
+  "total_attempts": 2,
+  "total_task_prompts": 4,
+  "same_native_session": true,
+  "versions": {
+    "hcom": "0.7.31",
+    "claude": "2.1.321",
+    "worker_python": "3.15.2",
+    "coordinator_test_python": "3.12.16"
+  },
+  "events": [
+    {
+      "event_id": 6,
+      "timestamp": "2026-11-10T14:47:47.103873+00:00",
+      "intent": "request",
+      "round": 1,
+      "recipient_count": 1
+    },
+    {
+      "event_id": 31,
+      "timestamp": "2026-11-10T14:52:48.970977+00:00",
+      "intent": "inform",
+      "round": 1,
+      "recipient_count": 0
+    },
+    {
+      "event_id": 34,
+      "timestamp": "2026-11-10T14:53:38.388264+00:00",
+      "intent": "request",
+      "round": 2,
+      "recipient_count": 1
+    },
+    {
+      "event_id": 50,
+      "timestamp": "2026-11-10T14:57:02.044222+00:00",
+      "intent": "inform",
+      "round": 2,
+      "recipient_count": 0
+    }
+  ],
+  "resume": {
+    "stage": "after send before ack persistence",
+    "launch_permitted": false,
+    "dispatch_permitted": false,
+    "existing_request_event_id": 6,
+    "request_count_round1": 1,
+    "kind": "state reread in fresh helper process; not a native coordinator crash"
+  },
+  "permissions": {
+    "trust": 1,
+    "round1": 8,
+    "round2": 5
+  },
+  "round1_head": "2c28139f725916c693f2cf6c5c6ef5e1bf3fda36",
+  "round2_head": "d61b20cb00a63a3e7e9daca8080ddc6c93aeca20",
+  "round1_receipt_at": "2026-11-10T14:53:34.509952+00:00",
+  "round2_receipt_at": "2026-11-10T14:57:40.090087+00:00",
+  "worker_stopped": true,
+  "cost_usd": null,
+  "worker_shell_retry": "Explicit paths replaced an incorrectly expanded shell list; no new task prompt."
+}

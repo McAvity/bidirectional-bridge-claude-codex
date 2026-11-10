@@ -1,0 +1,24 @@
+{
+  "feature_id": "F-HCOM-PILOT",
+  "task_id": "T-01",
+  "round": 1,
+  "workflow_identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+  "status": "COMPLETE",
+  "summary": "DELIVERY=local-v1 BASE=8fc53fe1a5bfcde480a4ba72f3ff478e048ae4a2 HEAD=2c28139f725916c693f2cf6c5c6ef5e1bf3fda36 LEDGER=docs/features/F-HCOM-PILOT/execution/T-01/01.md OUTCOME=COMPLETE WORKTREE=clean\nImplemented unique_words(text) (whitespace split, first-seen order, case-sensitive, empty -> []) and added tests for empty/whitespace input, stable order, separated duplicates and case sensitivity. One local commit; no push/merge/delegation.",
+  "changed_scope": [
+    "docs/features/F-HCOM-PILOT/execution/T-01/01.md",
+    "tests/test_words.py",
+    "words.py"
+  ],
+  "verification_results": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "result": "passed",
+      "details": "6 tests OK, exit 0, Python 3.15.2, on final code at HEAD 2c28139"
+    }
+  ],
+  "remaining_risks": [
+    "Executor self-check only; independent review pending with coordinator."
+  ],
+  "blocker": null
+}

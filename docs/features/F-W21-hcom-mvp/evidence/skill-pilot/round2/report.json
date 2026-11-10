@@ -1,0 +1,24 @@
+{
+  "feature_id": "F-HCOM-PILOT",
+  "task_id": "T-01",
+  "round": 2,
+  "workflow_identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+  "status": "COMPLETE",
+  "summary": "DELIVERY=local-v1 BASE=2c28139f725916c693f2cf6c5c6ef5e1bf3fda36 HEAD=d61b20cb00a63a3e7e9daca8080ddc6c93aeca20 LEDGER=docs/features/F-HCOM-PILOT/execution/T-01/02.md OUTCOME=COMPLETE WORKTREE=clean\nDocstring clarifies str.split() Unicode whitespace semantics; added regression test for NBSP/em-space separation with first-seen duplicate order. Six earlier tests and behavior preserved. One local commit; no push/merge/delegation.",
+  "changed_scope": [
+    "docs/features/F-HCOM-PILOT/execution/T-01/02.md",
+    "tests/test_words.py",
+    "words.py"
+  ],
+  "verification_results": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "result": "passed",
+      "details": "7 tests OK, exit 0, Python 3.15.2, on final code at HEAD d61b20c"
+    }
+  ],
+  "remaining_risks": [
+    "Executor self-check only; independent review pending with coordinator."
+  ],
+  "blocker": null
+}

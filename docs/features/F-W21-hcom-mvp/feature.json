@@ -16,7 +16,7 @@
     "docs/PROTOCOL.md",
     "docs/feature-workflow.md"
   ],
-  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/03-skill-plan.md",
+  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/04-skill-execution.md",
   "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/05.md",
-  "next_action": "feature-flow: W21-03 dostarczone do review/testów, potem realny W21-04 w budżecie05; końcowy Gate2 po AC07–10."
+  "next_action": "feature-flow: W21-04 realny pilot dostarczony, końcowe review04 i rozliczenie suite; potem Gate2 rozszerzonego MVP."
 }

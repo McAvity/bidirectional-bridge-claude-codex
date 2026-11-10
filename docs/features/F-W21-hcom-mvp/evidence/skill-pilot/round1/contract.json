@@ -1,0 +1,23 @@
+{
+  "feature_id": "F-HCOM-PILOT",
+  "task_id": "T-01",
+  "round": 1,
+  "workspace": "<WORKSPACE>",
+  "workflow_identity": "sha256:2205a80f5109effb2596b021a4dc7738c86a9803db6fe93071f4cbf170a386eb",
+  "workflow_bundle": "<BUNDLE>",
+  "worker_root": "<BUNDLE>/claude",
+  "base_commit": "8fc53fe1a5bfcde480a4ba72f3ff478e048ae4a2",
+  "objective": "Implement unique_words(text): split on whitespace; keep first occurrence of each case-sensitive word, preserving order; empty input returns []. Add tests for empty/whitespace input, stable order, separated duplicates and case sensitivity. Follow the selected feature-execute Hcom round executor. Local commits of scoped files plus a new ledger are authorized. Do not push/merge/delegate. This is one round only.",
+  "decision": "docs/features/F-HCOM-PILOT/decisions/01.md",
+  "write_scope": [
+    "words.py",
+    "tests/test_words.py",
+    "docs/features/F-HCOM-PILOT/execution/T-01/**",
+    ".hcom-work/report-r1.json"
+  ],
+  "checks": [
+    "python3 -m unittest discover -s tests -v"
+  ],
+  "ledger_dir": "docs/features/F-HCOM-PILOT/execution/T-01",
+  "report_path": ".hcom-work/report-r1.json"
+}
