@@ -1,15 +1,20 @@
 # Current handoff
 
-## Workflow 1.1.2 — session auto mode — 2026-11-10
+## Workflow 1.1.2 — published — 2026-11-10
 
-User accepted auto mode for new Claude hcom workers. Release worktree/branch:
-release/workflow-1.1.2, based on 10483ec. [Scope and progress](tasks/workflow-1.1.2-release.md).
-Session launch uses --permission-mode auto; explicit user choice wins. Record requested
-mode and inspect startup support/fallback. Existing sessions and historical trial locks
-stay unchanged. Contract scope, review, receipt and guarded finish remain mandatory.
-No global permission changes, blanket allowlists, bypass, runtime rebuild or paid trial.
-Package equivalence, skill validation, docs and hcom35 checks PASS; exact-release
-CI/publication pending. Main checkout's unrelated local pin remains untouched.
+[Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.2),
+[checkpoint](tasks/workflow-1.1.2-release.md). Source2d413b2, distribution/tag ef8965c,
+workflow identity0a0994b841cb. New Claude hcom workers launch with session-scoped
+--permission-mode auto, unless the user explicitly selects another mode. Requested mode
+is recorded; client support/fallback is inspected before dispatch. Existing sessions,
+feature locks and historical trial evidence stay unchanged. Task scope, review, receipt
+and guarded finish remain required. Bridge stays0.8.2; no global permissions changed.
+
+Local hcom35, package equivalence, skill validation and docs316 PASS. Exact-SHA
+CI42871152136 SUCCESS: JS782 PASS/2skip, Python296 OK/5skip, pilot131 OK/2skip.
+Annotated tag and experimental GitHub release published; remote feature-workflow
+fast-forwarded. No paid trial or client activation; actual prompt reduction remains
+unmeasured. Main checkout's unrelated local pin preserved. Release work complete.
 
 ## Workflow 1.1.1 — published — 2026-11-10
 
