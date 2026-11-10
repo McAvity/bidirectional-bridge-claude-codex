@@ -91,3 +91,10 @@ wygenerowane paczki, test przez skill i korekta; ograniczenia testu flow wyżej.
 Końcową ocenę niezależną zapisuje [review04](../../reviews/04-skill-execution.md).
 Rekomendacja: przyjąć ograniczoną integrację, zachować ręczną diagnozę niejasności
 oraz zbierać dane o zgodach przy dalszym użyciu. Publikacja/instalacja to osobny krok.
+
+## Walidacja repozytorium
+
+[Końcowe rozliczenie](../../execution/W21-03/03.md): testy helpera, dostawy Git,
+wyboru/dystrybucji workflow, build i walidatory skilli PASS. Szeroki npm i narzędzia
+pilota zachowują trzy opisane ograniczenia istniejących fixture'ów na macOS; pełny
+suite nie jest deklarowany jako zielony. Nie zmieniano ich w ramach integracji hcom.
