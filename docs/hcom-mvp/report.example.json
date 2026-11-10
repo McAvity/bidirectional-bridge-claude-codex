@@ -1,0 +1,25 @@
+{
+  "task_id": "demo-tags",
+  "round": 1,
+  "outcome": "partial",
+  "summary": "Synthetic example only; not evidence of an executed task.",
+  "changes": {
+    "paths": [
+      "tags.py",
+      "tests/test_tags.py"
+    ],
+    "base_commit": "<full-base-sha>",
+    "commit": null,
+    "diff_path": ".hcom-mvp/diff-r1.patch"
+  },
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests -v",
+      "result": "not_run",
+      "details": "Example only; replace with actual result before receipt."
+    }
+  ],
+  "remaining": [
+    "Example is not ready for acceptance: check has not run."
+  ]
+}
