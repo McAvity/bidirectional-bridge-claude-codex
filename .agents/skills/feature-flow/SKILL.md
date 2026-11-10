@@ -19,6 +19,19 @@ Load each phase's actual skill when needed. This file defines routing, delegated
 
 Use the conversation's language; when unavailable, use the brief's language. Invocation syntax alone is not a language preference. Respect the selected bridge manager/worker role: this skill does not turn a delegated worker into a coordinator or authorise a fallback to another runtime.
 
+## Execution transport
+
+After resolving the selected instructions, preserve an explicit request to use hcom in
+`feature.json.execution.transport = "hcom"` once the index exists. Before planning creates
+that index, carry the choice in the brief/decision. Read the recorded choice on every resume.
+Do not start a worker during planning or while execution approval is pending. Hcom execution
+uses feature-execute's [hcom loop](../feature-execute/references/hcom-loop.md); the same
+phases, local commits, independent review and human gates apply. Questions, decisions and
+acceptance are persisted in the ordinary feature documents, without Bridge state calls.
+A recorded Bridge workstream must be settled before an explicitly authorized migration;
+never switch transports merely because a tool is absent or a call failed. Missing selection
+preserves existing routing. Source resolution and workflow version pins still apply.
+
 ## Resume before advancing
 
 Resolve the named feature and read its brief, index if present, latest applicable decisions/reviews, execution evidence and Git state. With bridge, read its durable feature/root/question state too. Inspect the versions actually reviewed; an index phase alone does not establish approval or completion.

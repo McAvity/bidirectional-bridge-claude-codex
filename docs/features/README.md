@@ -243,9 +243,29 @@ Mapa repozytoriów to plik w lokalnej przestrzeni wymiany, poza Gitem. Kontrakt 
 
 Procedura: `.agents/skills/feature-execute/references/multi-repo.md`. Jej odczytowy helper: `.agents/skills/feature-execute/scripts/multi_repo.py`. Helper sprawdza mapę, digest, reuse, receipt i integrację, lecz niczego nie przygotowuje ani nie uruchamia. Zakresy bridge’a pozostają tekstowe; to nie jest sandbox runtime’u. Child wewnątrz parenta znika razem z nim, więc usunięcie parent worktree nie jest bezpiecznym sprzątaniem, dopóki jego historia nie jest zintegrowana albo zachowana.
 
+## Wybór wykonania przez hcom
+
+Polecenie `$feature-execute F-X — przez hcom` albo `$feature-flow F-X — przez hcom`
+wybiera transport wykonania, nie inne skille. Koordynator zapisuje w feature.json
+`"execution": {"transport": "hcom"}` i zachowuje wybór przy wznowieniu. Brak pola
+zachowuje dotychczasowy routing. Jawny hcom ma pierwszeństwo przed samą dostępnością
+MCP; aktywnego workstreamu Bridge nie migruje się automatycznie.
+
+Nowy tryb: jeden lokalny feature, jedno repo/worktree, jedna sesja Claude, dostawa
+przez commity i ledger. Koordynator sam przygotowuje kontrakt, uruchamia wykonawcę,
+odbiera raport i kieruje poprawki według references/hcom-loop.md skilla feature-execute.
+Stabilny prywatny stan pozwala wznowić odczyt bez ponownej wysyłki. Pytania i decyzje
+pozostają w dokumentach workflow; checklista/Git receipt nie są gwarancją runtime'u.
+Brak pełnego recovery, automatycznego resend i multi-worker. Zgody klienta nadal obowiązują.
+
+Najpierw zwykły resolve wybiera instrukcje; transport nie omija workflow.lock ani
+pinu projektu. Zestaw sprzed obsługi hcom wymaga jawnego upgrade/switch, nie odczytu
+latest. W projekcie bez pinu jawna prośba hcom upoważnia do standalone wyboru nowego
+workflow. W projekcie z pinem obowiązują istniejące zasady wyboru/zmiany workflow.
+
 ## Wykonanie przez bridge: koordynator i rundy Claude’a
 
-Gdy koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature_*`, implementację wykonują rundy Claude Code w jednej sesji przypisanej do featura. Procedura koordynatora jest w `.agents/skills/feature-execute/references/bridge-loop.md`, zasady wykonawcy w sekcji „Bridge round executor” skilla `feature-execute`. Pozostałe zasady tego przewodnika obowiązują bez zmian.
+Gdy wybrano tryb Bridge (brak jawnego hcom), a koordynator (manager w Codexie) ma narzędzia MCP bridge’a `bridge_feature_*`, implementację wykonują rundy Claude Code w jednej sesji przypisanej do featura. Procedura koordynatora jest w `.agents/skills/feature-execute/references/bridge-loop.md`, zasady wykonawcy w sekcji „Bridge round executor” skilla `feature-execute`. Pozostałe zasady tego przewodnika obowiązują bez zmian.
 
 - Runda to jawny kontrakt: taski, obowiązująca autoryzacja, ustalenia review do poprawy, zakres zapisu, weryfikacja, ścieżka ledgera i pełne SHA bazy. Po `DONE` każda poprawka lub kolejny task to nowa runda w tej samej sesji; task `BLOCKED` wznawia się istniejącym recovery z wiadomością koordynatora, bez zastępczego taska.
 - Wykonawca kończy rundę ledgerem i lokalnym commitem w granicach autoryzacji. Dostawą są te commity: pierwsza linia podsumowania `DELIVERY=local-v1 BASE=… HEAD=… LEDGER=… OUTCOME=… WORKTREE=…` wskazuje pełne SHA bazy z kontraktu i dostarczonego head. Koordynator sprawdza w Git bazę, pochodzenie, zakres zapisu każdego commita, ledger i niecommitowane zmiany (zastane oddzielnie od niedokończonej pracy wykonawcy, która wyklucza `COMPLETE`), po czym recenzuje dokładnie dostarczony SHA, a późniejszy dryf integracji opisuje osobno. Procedura: `.agents/skills/feature-execute/references/local-delivery.md`. ZIP rundy powstaje tylko wtedy, gdy wymaga go jej kontrakt (np. kontrakty wydane pod wcześniejszym runtime'em); wtedy koordynator dodatkowo uruchamia `verify`.

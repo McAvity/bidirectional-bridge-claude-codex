@@ -4,7 +4,12 @@ description: "Resolve feature review findings into an acceptance or an authorize
 ---
 
 > **Workflow selection — check first.** This is `feature-workflow:feature-decide` from the `feature-workflow` plugin.
-> Before any phase work, from the target worktree root run
+> Inside a delegated **hcom executor round**, use the supplied contract's exact workflow:
+> verify `workflow_bundle` against `workflow_identity` with
+> `node "<worker_root>/scripts/workflow.mjs" verify --bundle "<workflow_bundle>" --identity "<workflow_identity>" --json`,
+> require `worker_root` to be that bundle's `claude` directory, then read its feature-execute
+> entry and hcom executor reference. Do not select/adopt another workflow or coordinate.
+> For coordinators and ordinary phase work, from the target worktree root run
 > `node "<package>/scripts/workflow.mjs" resolve --feature <feature id or docs/features/<dir>> --entry feature-decide --json`;
 > for a feature that has no directory yet (the start of design or flow) run `node "<package>/scripts/workflow.mjs" resolve --new --json`.
 > Append `--standalone` only when the user explicitly asked to work without the bridge. Follow its answer:

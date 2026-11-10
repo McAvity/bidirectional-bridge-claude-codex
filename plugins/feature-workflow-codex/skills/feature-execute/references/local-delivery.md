@@ -1,10 +1,17 @@
-# Local delivery: bridge rounds through Git
+# Local delivery: delegated rounds through Git
 
-Load this when a Claude round executed through the bridge delivers its work to a coordinator
+Load this when a delegated Claude round delivers its work to a coordinator
 that shares the repository. The executor side applies §§ 1–3, the coordinator §§ 4–7. The
 delivered commits are the handoff: no ZIP, export or archive `verify` is needed. A
 `feature-exchange` package stays available for a recipient without repository access or on
 explicit request (§ 8).
+
+For hcom, use the report selected by the round contract instead of `bridge_get_task` or
+`bridge_read_artifact`; there is no Bridge adapter/task status. Check matching feature/task,
+round, workflow identity and report path first, then apply the same Git checks below.
+Treat `status`, the local-v1 outcome, blocker and checks conservatively: a mismatch or
+failed/missing check never becomes COMPLETE. No Bridge state mutation is needed. The
+Bridge-specific storage explanation below continues to apply to Bridge rounds only.
 
 ## 1. Why the first summary line
 

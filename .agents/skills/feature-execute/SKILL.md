@@ -7,6 +7,25 @@ Read [the shared workflow](../../../docs/features/README.md) first, then the rel
 
 # Feature Execute
 
+## Execution transport and delegated role
+
+After the normal instruction-source resolution, read `feature.json.execution.transport`.
+An explicit request such as “execute F-X through hcom” selects `hcom`; record it before
+launching work. Keep the recorded choice on continuation. Absence preserves the existing
+local/Bridge routing. Explicit `bridge` uses the existing Bridge mode below. Never silently
+switch an existing choice or bypass an active `feature.json.bridge` workstream: settle its
+state and obtain explicit migration scope first. A failed Bridge call is not hcom selection.
+
+For `hcom`, follow [references/hcom-loop.md](references/hcom-loop.md) as coordinator.
+Do not create a Bridge root, bind a manager or use Bridge round/question/acceptance tools
+for that workstream, even if MCP tools are available. Hcom changes execution transport,
+not instruction-source selection: if the selected set lacks this reference, report that an
+explicit workflow upgrade/switch is needed; never load a newer unselected copy.
+
+Inside a delegated hcom round, follow only the **Hcom round executor** section of that
+reference and [references/round-executor.md](references/round-executor.md). The supplied
+contract and verified workflow root are authoritative; do not become a coordinator.
+
 ## Establish executable scope
 
 Read the selected task(s), `feature.json`, brief, design, relevant contracts and governing decision. Respect the user's requested scope (one task, an accepted wave, integration, or corrections). Check dependencies and the actual Yumi lifecycle. A recorded user instruction already approving these inputs is sufficient; record it rather than asking again. If no approved scope exists, prepare the concrete blocker/decision needed and do not silently approve your own design.
@@ -56,6 +75,7 @@ without reviewing work-in-progress files. Review the delivered revision, not int
 
 ## Bridge round executor
 
+Read [references/round-executor.md](references/round-executor.md) for the shared round boundary.
 Inside a round, this section replaces the rest of this skill: do not continue to other tasks,
 set task statuses, update `feature.json`, arrange review or prepare external handoffs. The
 round contract in the bridge prompt is your authority: its objective, write scope and

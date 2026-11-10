@@ -131,3 +131,12 @@ Przed modelem ustal budżet; dla pilota F-W21 obowiązują 2 podejścia, 4 zlece
 dwie rundy w jednej sesji (hcom0.7.31, Claude2.1.321). Domyślne uprawnienia klienta
 wymagały trust i 11 pojedynczych zgód operatora. Procedura działa, lecz nie jest
 bezobsługowa; odczyt historii hcom potwierdza powiadomienia także bez odbiorcy inbox.
+
+## Integracja ze skillami
+
+W kandydacie workflow1.1.0 wejściem jest `feature-execute F-X — przez hcom` lub
+`feature-flow F-X — przez hcom`. Koordynator prowadzi procedurę z zasobów wybranego
+skilla i zachowuje transport w indexie. Dostawa używa commitów i ledgerów. Powyższy
+pilot pozostaje historycznym sprawdzeniem kanału z prostszym raportem/diffem.
+Wydanie1.1.0 nie zostało jeszcze opublikowane ani zainstalowane globalnie; dotychczas
+przypięte workflow nie zmieniają się automatycznie.

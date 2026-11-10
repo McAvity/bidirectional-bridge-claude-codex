@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W21-hcom-mvp",
-  "phase": "planning",
+  "phase": "execution",
   "brief": "docs/features/F-W21-hcom-mvp/brief.md",
   "design": "docs/features/F-W21-hcom-mvp/design.md",
   "tasks": [
@@ -16,7 +16,7 @@
     "docs/PROTOCOL.md",
     "docs/feature-workflow.md"
   ],
-  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/02-execution.md",
+  "latest_review": "docs/features/F-W21-hcom-mvp/reviews/03-skill-plan.md",
   "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/05.md",
-  "next_action": "feature-flow: decyzja05 autoryzuje integrację ze skillami; review planu rozszerzenia, potem W21-03/04 bez ponownego Gate1; końcowy Gate2 pozostaje."
+  "next_action": "feature-flow: W21-03 dostarczone do review/testów, potem realny W21-04 w budżecie05; końcowy Gate2 po AC07–10."
 }

@@ -4,7 +4,12 @@ description: "Execute an authorized feature scope through tasks, integration, lo
 ---
 
 > **Workflow selection — check first.** This is `feature-workflow:feature-execute` from the `feature-workflow` plugin.
-> Before any phase work, from the target worktree root run
+> Inside a delegated **hcom executor round**, use the supplied contract's exact workflow:
+> verify `workflow_bundle` against `workflow_identity` with
+> `node "<worker_root>/scripts/workflow.mjs" verify --bundle "<workflow_bundle>" --identity "<workflow_identity>" --json`,
+> require `worker_root` to be that bundle's `claude` directory, then read its feature-execute
+> entry and hcom executor reference. Do not select/adopt another workflow or coordinate.
+> For coordinators and ordinary phase work, from the target worktree root run
 > `node "<package>/scripts/workflow.mjs" resolve --feature <feature id or docs/features/<dir>> --entry feature-execute --json`;
 > for a feature that has no directory yet (the start of design or flow) run `node "<package>/scripts/workflow.mjs" resolve --new --json`.
 > Append `--standalone` only when the user explicitly asked to work without the bridge. Follow its answer:
@@ -43,6 +48,25 @@ description: "Execute an authorized feature scope through tasks, integration, lo
 Read [the shared workflow](../../workflow/README.md) first, then the relevant repository AGENTS.md and the selected feature files. Resolve all paths against the repository root; sibling skills ship together in `<package>/skills/`. Use the user’s language for summaries and preserve the repository’s document conventions. The workflow is task-local guidance, not authority to alter unrelated work.
 
 # Feature Execute
+
+## Execution transport and delegated role
+
+After the normal instruction-source resolution, read `feature.json.execution.transport`.
+An explicit request such as “execute F-X through hcom” selects `hcom`; record it before
+launching work. Keep the recorded choice on continuation. Absence preserves the existing
+local/Bridge routing. Explicit `bridge` uses the existing Bridge mode below. Never silently
+switch an existing choice or bypass an active `feature.json.bridge` workstream: settle its
+state and obtain explicit migration scope first. A failed Bridge call is not hcom selection.
+
+For `hcom`, follow [references/hcom-loop.md](references/hcom-loop.md) as coordinator.
+Do not create a Bridge root, bind a manager or use Bridge round/question/acceptance tools
+for that workstream, even if MCP tools are available. Hcom changes execution transport,
+not instruction-source selection: if the selected set lacks this reference, report that an
+explicit workflow upgrade/switch is needed; never load a newer unselected copy.
+
+Inside a delegated hcom round, follow only the **Hcom round executor** section of that
+reference and [references/round-executor.md](references/round-executor.md). The supplied
+contract and verified workflow root are authoritative; do not become a coordinator.
 
 ## Establish executable scope
 
@@ -93,6 +117,7 @@ without reviewing work-in-progress files. Review the delivered revision, not int
 
 ## Bridge round executor
 
+Read [references/round-executor.md](references/round-executor.md) for the shared round boundary.
 Inside a round, this section replaces the rest of this skill: do not continue to other tasks,
 set task statuses, update `feature.json`, arrange review or prepare external handoffs. The
 round contract in the bridge prompt is your authority: its objective, write scope and

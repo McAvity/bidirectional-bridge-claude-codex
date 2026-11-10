@@ -4,7 +4,12 @@ description: "Run or resume a whole feature-workflow lifecycle automatically, wi
 ---
 
 > **Workflow selection — check first.** This is `feature-workflow:feature-flow` from the `feature-workflow` plugin.
-> Before any phase work, from the target worktree root run
+> Inside a delegated **hcom executor round**, use the supplied contract's exact workflow:
+> verify `workflow_bundle` against `workflow_identity` with
+> `node "<worker_root>/scripts/workflow.mjs" verify --bundle "<workflow_bundle>" --identity "<workflow_identity>" --json`,
+> require `worker_root` to be that bundle's `claude` directory, then read its feature-execute
+> entry and hcom executor reference. Do not select/adopt another workflow or coordinate.
+> For coordinators and ordinary phase work, from the target worktree root run
 > `node "<package>/scripts/workflow.mjs" resolve --feature <feature id or docs/features/<dir>> --entry feature-flow --json`;
 > for a feature that has no directory yet (the start of design or flow) run `node "<package>/scripts/workflow.mjs" resolve --new --json`.
 > Append `--standalone` only when the user explicitly asked to work without the bridge. Follow its answer:
@@ -55,6 +60,19 @@ When loaded directly from a repository, pinned runtime or its `bridge-claude` ex
 Load each phase's actual skill when needed. This file defines routing, delegated decisions and pauses; the selected skills remain authoritative for their artefacts, checks, task lifecycle, reviews, bridge operations and recovery. Do not copy their procedures into a second workflow.
 
 Use the conversation's language; when unavailable, use the brief's language. Invocation syntax alone is not a language preference. Respect the selected bridge manager/worker role: this skill does not turn a delegated worker into a coordinator or authorise a fallback to another runtime.
+
+## Execution transport
+
+After resolving the selected instructions, preserve an explicit request to use hcom in
+`feature.json.execution.transport = "hcom"` once the index exists. Before planning creates
+that index, carry the choice in the brief/decision. Read the recorded choice on every resume.
+Do not start a worker during planning or while execution approval is pending. Hcom execution
+uses feature-execute's [hcom loop](../feature-execute/references/hcom-loop.md); the same
+phases, local commits, independent review and human gates apply. Questions, decisions and
+acceptance are persisted in the ordinary feature documents, without Bridge state calls.
+A recorded Bridge workstream must be settled before an explicitly authorized migration;
+never switch transports merely because a tool is absent or a call failed. Missing selection
+preserves existing routing. Source resolution and workflow version pins still apply.
 
 ## Resume before advancing
 
