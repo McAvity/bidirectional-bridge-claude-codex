@@ -178,3 +178,61 @@ niezawodności, niższego kosztu ani całkowicie samodzielnego działania. Rozr�
 realnego feature-execute od sprawdzenia routingu feature-flow jest jawne i zgodne
 z planem jednego modelowego pilota. Brak potrzeby kolejnego modelu do powtarzania
 tych samych dowodów; pozostała praca to wyjaśnienie regresji bezmodelowej.
+
+## Końcowe rozliczenie regresji i werdykt — 2026-11-10
+
+**PASS dla uzgodnionego rozszerzenia F-W21; rekomendacja Gate 2.** Ten wpis
+zamyka wcześniejsze pending dotyczące rozliczenia regresji, zachowując wyniki
+nieudanych przebiegów. Produkt94074d8, fixture c5a1cc6, pilot0d2cffc i zapis
+walidacji0b02334dab519d42e4d197e03f7195e070fb5892 są ocenionymi wejściami.
+Nie pozostały wymagane poprawki w zakresie featura. Akceptacja użytkownika,
+publikacja i instalacja nie wynikają automatycznie z tego PASS.
+
+Reviewer odczytał pełny npm log, focused log oraz końcowy ledger W21-03/03.
+Porównanie nazw testów niezależnie potwierdza: **25 z pierwotnych27 porażek
+przechodzi w powtórce** po kanonicznym TMPDIR i poprawnym Pythonie w PATH.
+Grupowa powtórka ma30 PASS /1 FAIL /127 odfiltrowanych; dodatkowe pięć PASS
+to sąsiednie przypadki. Nie sumujemy tych wyników jako jednego zielonego suite.
+
+Pozostały trzy jawne ograniczenia istniejących testów na macOS:
+
+1. **Stderr fixture.** Reviewer niezależnie uruchomił wyłącznie skryptowaną
+   fake-claude-cli, bez adaptera i modelu: z żądanych100001 bajtów stderr otrzymał
+   65536, exit3, bez TAIL-MARK. Źródło wykonuje write i natychmiast process.exit,
+   a komentarz zakłada synchroniczne pipe Linuxa. To wystarczająco izoluje błąd
+   założenia fixture od zachowania adaptera/hcom; test nadal pozostaje FAIL.
+2. **R2-06 i limit pliku.** Focused log pokazuje poprawnie zakończony eksport
+   wielkości13566 bajtów z jawnym gap backup_failed. Źródło testu ustawia
+   ulimit -f20; zapisany pomiar tego shella daje20480 bajtów. Ten eksport nie
+   osiąga progu wymuszonego błędu, więc ten przebieg nie testuje oczekiwanej
+   odmowy zapisu. Nie uznajemy go za dowód poprawności obsługi pełnego dysku
+   ani za regresję hcom. Eksporter i test nie zostały tu zmienione.
+3. **Quiescence tools/pilot.** Pierwotny log miał brak tomllib; odczytany teraz
+   osobny rerun na właściwym Pythonie kończy się odmową „no other process has
+   the target file open”. Niezmienione open_by zwraca unknown bez /proc, co
+   odpowiada tej odmowie na macOS. Zachowano fail-closed guard; nie oznaczono
+   niedostępnej kontroli jako PASS i nie osłabiono jej dla uzyskania zieleni.
+
+Porównanie f836899..HEAD potwierdza brak zmian tych fixture'ów, adaptera,
+eksportera i narzędzia quiescence. Powyższe ograniczenia są rozliczone poza
+zakresem F-W21, nie są odroczonymi niespełnionymi wymaganiami hcom. Naprawa ich
+przenośności wymaga osobnego zakresu, nie kolejnego modelowego pilota tego featura.
+
+Dla AC-10 zachowanie zwykłego Bridge ocenia się na podstawie niezmienionych
+runtime/role packages, przechodzących kontroli pakietów/local-delivery oraz
+rozliczonej regresji. Nie znaleziono naruszenia tego wymagania. W połączeniu
+z wcześniejszym review pierwotnego MVP i rzeczywistym W21-04, **AC-01–10 są
+spełnione w uzgodnionym zakresie**. Nadal nie ma twierdzenia o pełnym zielonym
+npm/pilot suite, pełnym modelowym przebiegu feature-flow, crash recovery,
+niezawodności populacyjnej ani przewadze nad Bridge'em. Wynik jest gotowy
+do decyzji użytkownika o odbiorze ograniczonej integracji.
+
+### Korekta metadanych klienta — 2026-11-10
+
+Sprawdzono2656464e3c38808afd71412e56cd491ccba69b96 oraz lokalny client-version.json.
+Pilot W21-04 używał **Claude2.1.322**, nie odziedziczonej z wcześniejszej próby
+wartości2.1.321. Lokalny wyciąg podaje wyłącznie2.1.322 z top-level version
+metadanych zakończonego workera i zgodne CLI sprawdzone po próbie. Reviewer
+porównał ten wyciąg z poprawionym summary/observations; nie czytał transkryptu.
+Korekta dotyczy wyłącznie pochodzenia dowodu wersji, bez zmian produktu, bundle
+czy zachowania. Historyczny pierwszy pilot pozostaje bez zmian. **PASS utrzymany.**
