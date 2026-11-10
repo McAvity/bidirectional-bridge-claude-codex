@@ -1,5 +1,15 @@
 # Current handoff
 
+## F-W21 — accepted and locally closed — 2026-11-10
+
+User accepted proposal06; [decision07](features/F-W21-hcom-mvp/decisions/07.md)
+records acceptance of25985bc, independent review33443e9 PASS. Tasks complete,
+index accepted; no owned Bridge root, foreign MCP untouched, pilot worker stopped.
+Candidate workflow1.1.0 remains local; no publish/push/merge or project activation.
+Validation and three macOS fixture limits remain as recorded below. Original pilot
+budget2 attempts/4 prompts used. User asks about a further real-repository trial;
+prepare a small separate scope/budget, do not reopen F-W21 acceptance.
+
 ## F-W21 — skill integration delivered, Gate 2 pending — 2026-11-10
 
 Branch F-W21; decision05 authorized hcom in feature-execute/feature-flow.
