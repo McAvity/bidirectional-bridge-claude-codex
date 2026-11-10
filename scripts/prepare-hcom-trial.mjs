@@ -29,6 +29,8 @@ try {
   const release = json("scripts/plugin-packages/release.json");
   const lock = json(`docs/features/${feature}/workflow.lock.json`);
   const index = json(`docs/features/${feature}/feature.json`);
+  requireCondition(index.phase !== 'blocked',
+    'TRIAL_BLOCKED: this historical trial is preserved on workflow 1.1.0. Read its review; a new release does not authorize replay or migrate its lock.');
   requireCondition(pin.enabled === true && pin.pinned?.commit === release.pinned.commit &&
     pin.pinned?.runtime_id === `${release.package_version}-${release.pinned.commit.slice(0, 12)}`,
   "Project pin differs from this branch's release; nothing was changed.");

@@ -24,12 +24,14 @@ LINE = re.compile(r'^DELIVERY=local-v1 BASE=([0-9a-f]{40}) HEAD=([0-9a-f]{40}) '
 
 
 class Refusal(ValueError):
-    pass
+    def __init__(self, code, details=None):
+        super().__init__(code)
+        self.details = details
 
 
-def require(condition, code):
+def require(condition, code, details=None):
     if not condition:
-        raise Refusal(code)
+        raise Refusal(code, details)
 
 
 def now():
@@ -107,11 +109,31 @@ def check_session(state, path):
     return observed
 
 
-def contract(path, state):
+def contract_checks(data):
+    """Keep legacy command keys; new contracts bind stable IDs to frozen commands."""
+    checks = data.get('checks')
+    require(isinstance(checks, list) and checks, 'CHECKS_REQUIRED')
+    if all(text(c) for c in checks):
+        require(len(set(checks)) == len(checks), 'DUPLICATE_CHECK')
+        return 'command', {c: c for c in checks}
+    require(all(isinstance(c, dict) for c in checks), 'CHECKS_FORMAT_MIXED_OR_INVALID')
+    for check in checks:
+        require(isinstance(check.get('id'), str) and
+                re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,63}', check['id']), 'CHECK_ID_INVALID')
+        require(text(check.get('command')), 'CHECK_COMMAND_REQUIRED', {'check_id': check['id']})
+    require(len({c['id'] for c in checks}) == len(checks), 'DUPLICATE_CHECK_ID')
+    return 'check_id', {c['id']: c['command'] for c in checks}
+
+
+def contract(path, state, expected_sha256=None):
     require(path is not None, 'CONTRACT_REQUIRED')
     resolved = Path(path).resolve()
     require(inside(resolved, state['workspace']), 'CONTRACT_OUTSIDE_WORKSPACE')
-    data = read_json(resolved)
+    raw = resolved.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    if expected_sha256 is not None:
+        require(digest == expected_sha256, 'CONTRACT_SHA256_MISMATCH')
+    data = json.loads(raw)
     require(isinstance(data, dict), 'CONTRACT_OBJECT_REQUIRED')
     require(data.get('feature_id') == state['feature_id'], 'FEATURE_MISMATCH')
     require(absolute(data.get('workspace')) == state['workspace'], 'WORKSPACE_MISMATCH')
@@ -124,12 +146,10 @@ def contract(path, state):
     require(isinstance(data.get('write_scope'), list) and bool(data['write_scope']), 'SCOPE_REQUIRED')
     for scope in data['write_scope']:
         relative_path(scope, state['workspace'])
-    require(isinstance(data.get('checks'), list) and data['checks'] and
-            all(text(c) for c in data['checks']) and len(set(data['checks'])) == len(data['checks']),
-            'CHECKS_REQUIRED')
+    contract_checks(data)
     relative_path(data.get('ledger_dir'), state['workspace'])
     relative_path(data.get('report_path'), state['workspace'])
-    return data, str(resolved), hashlib.sha256(resolved.read_bytes()).hexdigest()
+    return data, str(resolved), digest
 
 
 def report(path, state, current):
@@ -154,30 +174,114 @@ def report(path, state, current):
     require(data['status'] != 'PARTIAL' or text(data['blocker']), 'PARTIAL_NEEDS_BLOCKER')
     for field in ('changed_scope', 'remaining_risks'):
         require(isinstance(data.get(field), list) and all(text(v) for v in data[field]), field.upper() + '_REQUIRED')
+    key, expected_checks = contract_checks(c)
     checks = data.get('verification_results')
-    require(isinstance(checks, list) and all(isinstance(v, dict) and text(v.get('command')) and
+    require(isinstance(checks, list) and all(isinstance(v, dict) and text(v.get(key)) and
             v.get('result') in ('passed', 'failed', 'not_run') for v in checks), 'VERIFICATION_REQUIRED')
-    require(len({v['command'] for v in checks}) == len(checks), 'DUPLICATE_CHECK')
+    require(len({v[key] for v in checks}) == len(checks), 'DUPLICATE_CHECK')
+    if key == 'check_id':
+        for check in checks:
+            ident = check[key]
+            require(ident in expected_checks, 'UNKNOWN_CHECK_ID', {'check_id': ident})
+            require('command' not in check or check['command'] == expected_checks[ident],
+                    'CHECK_COMMAND_MISMATCH', {'check_id': ident})
     return data
+
+
+def acceptance_issues(delivered, c):
+    key, expected = contract_checks(c)
+    observed = {v[key]: v['result'] for v in delivered['verification_results']}
+    issues = {}
+    if delivered['status'] != 'COMPLETE':
+        issues['status'] = delivered['status']
+    if delivered['blocker'] is not None:
+        issues['blocker'] = delivered['blocker']
+    missing = [check for check in expected if check not in observed]
+    nonpassing = [check for check in observed if observed[check] != 'passed']
+    if missing:
+        issues['missing_checks'] = missing
+    if nonpassing:
+        issues['nonpassing_checks'] = nonpassing
+    return issues
+
+
+def stateless_contract(args, workspace):
+    require(args.contract is not None, 'CONTRACT_REQUIRED')
+    require(isinstance(args.contract_sha256, str) and
+            re.fullmatch(r'[0-9a-f]{64}', args.contract_sha256), 'CONTRACT_SHA256_REQUIRED')
+    path = Path(args.contract).resolve()
+    require(inside(path, workspace), 'CONTRACT_OUTSIDE_WORKSPACE')
+    raw = path.read_bytes()
+    require(hashlib.sha256(raw).hexdigest() == args.contract_sha256, 'CONTRACT_SHA256_MISMATCH')
+    c = json.loads(raw)
+    require(isinstance(c, dict), 'CONTRACT_OBJECT_REQUIRED')
+    require(text(c.get('workflow_identity')), 'WORKFLOW_IDENTITY_REQUIRED')
+    worker = absolute(c.get('worker_root'))
+    bundle = absolute(c.get('workflow_bundle'))
+    require(Path(worker).name == 'claude' and str(Path(worker).parent) == bundle,
+            'CLAUDE_VARIANT_REQUIRED')
+    state = {'workspace': workspace, 'feature_id': args.feature,
+             'workflow_identity': c['workflow_identity'], 'worker_root': worker,
+             'workflow_bundle': bundle}
+    c, _, _ = contract(path, state, args.contract_sha256)
+    return c, state
+
+
+def report_template(c):
+    key, checks = contract_checks(c)
+    return {field: c[field] for field in ('feature_id', 'task_id', 'round', 'workflow_identity')} | {
+        'status': 'PARTIAL', 'summary': '', 'changed_scope': [], 'remaining_risks': [],
+        'verification_results': [{key: ident, 'result': 'not_run', 'details': ''} for ident in checks],
+        'blocker': 'Report template: fill actual delivery, checks and remaining work before validation.'}
+
+
+def close_check(state, session_file):
+    check_session(state, session_file)
+    require(bool(state['rounds']), 'NO_PREPARED_ROUND')
+    current = state['rounds'][-1]
+    receipt = current.get('receipt')
+    require(isinstance(receipt, dict) and receipt.get('decision') == 'accepted', 'ACCEPTED_RECEIPT_REQUIRED')
+    require(text(current.get('send_event_id')), 'SEND_ACKNOWLEDGEMENT_REQUIRED')
+    path = relative_path(current['contract']['report_path'], state['workspace'])
+    require(hashlib.sha256(path.read_bytes()).hexdigest() == receipt.get('report_sha256'),
+            'ACCEPTED_REPORT_CHANGED')
+    delivered = report(path, state, current)
+    require(delivered == receipt.get('report'), 'ACCEPTED_REPORT_CHANGED')
+    issues = acceptance_issues(delivered, current['contract'])
+    require(not issues, 'REPORT_NOT_ACCEPTABLE', issues)
 
 
 def run(args):
     workspace = absolute(args.workspace)
     require(Path(workspace).is_dir(), 'WORKSPACE_MISSING')
     require(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', args.feature), 'FEATURE_ID_INVALID')
+    result = {'ok': True, 'launch_permitted': False, 'dispatch_permitted': False, 'shutdown_permitted': False}
+    if args.command in ('report-template', 'validate-report'):
+        c, context = stateless_contract(args, workspace)
+        if args.command == 'report-template':
+            return result | {'report': report_template(c)}
+        delivered = report(args.report, context, {'contract': c})
+        issues = acceptance_issues(delivered, c)
+        if delivered['status'] == 'COMPLETE' and issues:
+            return result | {'ok': False, 'code': 'REPORT_NOT_ACCEPTABLE',
+                             'acceptable': False, 'acceptance_issues': issues}
+        return result | {'acceptable': not issues, 'acceptance_issues': issues}
     root = Path(absolute(args.state)) if args.state else default_state(workspace, args.feature).resolve()
     require(not inside(root, workspace), 'STATE_INSIDE_WORKSPACE')
-    result = {'ok': True, 'state_dir': str(root), 'launch_permitted': False, 'dispatch_permitted': False}
+    result['state_dir'] = str(root)
     if args.command == 'namespace':
         return result
     target = root / 'state.json'
     # Missing/read-only queries do not create files or locks.
-    if args.command in ('status', 'check-session'):
+    if args.command in ('status', 'check-session', 'close-check'):
         require(target.is_file(), 'STATE_MISSING')
         state = read_json(target)
         validate_binding(state, workspace, args.feature)
         if args.command == 'check-session':
             check_session(state, args.session_file)
+        if args.command == 'close-check':
+            close_check(state, args.session_file)
+            result['shutdown_permitted'] = True
         return result | {'state': state}
     with locked(root):
         if args.command == 'init':
@@ -226,10 +330,8 @@ def run(args):
                 require(args.decision in ('accepted', 'rework', 'blocked') and text(args.note), 'DECISION_NOTE_REQUIRED')
                 delivered = report(args.report, state, current)
                 if args.decision == 'accepted':
-                    checks = {v['command']: v['result'] for v in delivered['verification_results']}
-                    require(delivered['status'] == 'COMPLETE' and delivered['blocker'] is None and
-                            all(checks.get(c) == 'passed' for c in current['contract']['checks']) and
-                            all(v == 'passed' for v in checks.values()), 'REPORT_NOT_ACCEPTABLE')
+                    issues = acceptance_issues(delivered, current['contract'])
+                    require(not issues, 'REPORT_NOT_ACCEPTABLE', issues)
                 current['receipt'] = {'decision': args.decision, 'note': args.note, 'at': now(),
                                       'report': delivered, 'report_sha256': hashlib.sha256(Path(args.report).read_bytes()).hexdigest()}
         save(root, state)
@@ -244,17 +346,21 @@ def validate_binding(state, workspace, feature):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('command', choices=['namespace', 'init', 'bind', 'status', 'check-session', 'prepare', 'sent', 'receipt'])
+    p.add_argument('command', choices=['namespace', 'init', 'bind', 'status', 'check-session', 'prepare', 'sent', 'receipt',
+                                      'report-template', 'validate-report', 'close-check'])
     for flag in ('workspace', 'feature'):
         p.add_argument('--' + flag, required=True)
-    for flag in ('state', 'workflow-identity', 'worker-root', 'session-file', 'contract', 'event-id', 'report', 'decision', 'note'):
+    for flag in ('state', 'workflow-identity', 'worker-root', 'session-file', 'contract', 'contract-sha256',
+                 'event-id', 'report', 'decision', 'note'):
         p.add_argument('--' + flag)
     try:
         answer = run(p.parse_args(argv))
         print(json.dumps(answer, ensure_ascii=False))
-        return 0
+        return 0 if answer['ok'] else 2
     except (Refusal, OSError, ValueError, TypeError, KeyError) as exc:
-        print(json.dumps({'ok': False, 'code': str(exc), 'launch_permitted': False, 'dispatch_permitted': False}))
+        print(json.dumps({'ok': False, 'code': str(exc), 'details': getattr(exc, 'details', None),
+                          'acceptable': False, 'launch_permitted': False, 'dispatch_permitted': False,
+                          'shutdown_permitted': False}))
         return 2
 
 

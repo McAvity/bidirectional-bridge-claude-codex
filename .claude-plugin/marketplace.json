@@ -15,7 +15,7 @@
       "name": "feature-workflow",
       "source": "./plugins/feature-workflow-claude",
       "description": "Feature workflow: continuous flow or individual design, plan, execution, review, decision and exchange.",
-      "version": "1.1.0"
+      "version": "1.1.1"
     }
   ]
 }

@@ -1,5 +1,19 @@
 # Current handoff
 
+## Workflow 1.1.1 — receipt fixes and release authorized — 2026-11-10
+
+User requested implementation/publication after the blocked real-repository trial.
+Worktree release/workflow-1.1.1, based on F-W21-test53f24e3. Scope/progress:
+[release checkpoint](tasks/workflow-1.1.1-release.md); exact
+[15-approval audit](hcom-mvp/permission-audit.md). Stable check IDs, report scaffold
+and validation, report-only same-round correction, guarded exit with an unchanged
+accepted receipt, live session/empty-terminal checks and durable finish intent.
+Legacy contracts remain readable. Original blocked trial/state/lock remain historical;
+the trial bootstrap refuses replay. New features use workflow1.1.1. Bridge stays0.8.2.
+Targeted helper/finish/bootstrap and JS72 tests pass; build/packages/skill/docs checks
+pass. Full Python/pilot runs and exact-release CI/publication pending. No model launched,
+global permissions changed or foreign MCP state claimed. Main local pin preserved.
+
 ## F-W21 repository trial — code PASS, protocol blocked — 2026-11-10
 
 Prepared hcom trial executed in F-W21-test. Preparation7f0e215, Claude fixture/ledger

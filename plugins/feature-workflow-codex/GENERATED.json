@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "feature-workflow",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills/feature-flow",
@@ -18,19 +18,19 @@
     "scripts/workflow-source/workflow-lib.mjs",
     "scripts/workflow-source/release.json"
   ],
-  "source_digest": "35c13a87f98acd4fab45cabbf8066d212b048f4922b95839b52df13834133e59",
+  "source_digest": "79b3c49140697731babdeedd235f788ca0066945ed1c3efebb7e47e6f221046b",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "c97854df0f93de41c7efac4c28a39c627ab2a98b6050cd8450fe2c4ab7729d60"
+      "sha256": "cc8c44a4903851eae95dc3d9064e1d39ed21999cd829cc77574a87f4b90f956a"
     },
     {
       "path": "bundle/bundle.json",
-      "sha256": "03eb6740729e2d36bd8064b227e74c30dc21629d89ab42417e607b7f56eb606c"
+      "sha256": "3f9e8e75ee3afef6de38542c00f572ecdd57237e8c36dce8c235148b4f4a8641"
     },
     {
       "path": "bundle/claude/.claude-plugin/plugin.json",
-      "sha256": "15071deec1ccefa22b508f81fe347e1adc91599f90f29a3376142a91a4c6c374"
+      "sha256": "7f90ba71f0158d46a4e1b83d1292b2d6787600b0697ed79248cc16cf9c6c7165"
     },
     {
       "path": "bundle/claude/scripts/select-source.mjs",
@@ -86,7 +86,7 @@
     },
     {
       "path": "bundle/claude/skills/feature-execute/references/hcom-loop.md",
-      "sha256": "9d419039bdf98616ba823cd779fabec182b93b754322097ddc61d462fca1c967"
+      "sha256": "2a2ba6d08f49f008174a96dd88b13ee9de043ca287c1b52c2f2e1485e1e28334"
     },
     {
       "path": "bundle/claude/skills/feature-execute/references/local-delivery.md",
@@ -101,8 +101,12 @@
       "sha256": "570529241cee2e38c69c0d12008ed7fff9abfc7c1a76b9461059d7f65a9f1e47"
     },
     {
+      "path": "bundle/claude/skills/feature-execute/scripts/hcom_finish.py",
+      "sha256": "d6a3c5d043017c218fa15286b127df9caf0b50cc666c916c1cf4c543df6b2a9c"
+    },
+    {
       "path": "bundle/claude/skills/feature-execute/scripts/hcom_state.py",
-      "sha256": "0a4133191fb89dd201a45d201434fcc62f5d421689958b723ab6ada978160a20"
+      "sha256": "ed6970baae05c90dc482321488ff42389fe02eb3a4de1189fd416fd43c7781c2"
     },
     {
       "path": "bundle/claude/skills/feature-execute/scripts/multi_repo.py",
@@ -138,7 +142,7 @@
     },
     {
       "path": "bundle/codex/.codex-plugin/plugin.json",
-      "sha256": "c97854df0f93de41c7efac4c28a39c627ab2a98b6050cd8450fe2c4ab7729d60"
+      "sha256": "cc8c44a4903851eae95dc3d9064e1d39ed21999cd829cc77574a87f4b90f956a"
     },
     {
       "path": "bundle/codex/scripts/select-source.mjs",
@@ -194,7 +198,7 @@
     },
     {
       "path": "bundle/codex/skills/feature-execute/references/hcom-loop.md",
-      "sha256": "9d419039bdf98616ba823cd779fabec182b93b754322097ddc61d462fca1c967"
+      "sha256": "2a2ba6d08f49f008174a96dd88b13ee9de043ca287c1b52c2f2e1485e1e28334"
     },
     {
       "path": "bundle/codex/skills/feature-execute/references/local-delivery.md",
@@ -209,8 +213,12 @@
       "sha256": "570529241cee2e38c69c0d12008ed7fff9abfc7c1a76b9461059d7f65a9f1e47"
     },
     {
+      "path": "bundle/codex/skills/feature-execute/scripts/hcom_finish.py",
+      "sha256": "d6a3c5d043017c218fa15286b127df9caf0b50cc666c916c1cf4c543df6b2a9c"
+    },
+    {
       "path": "bundle/codex/skills/feature-execute/scripts/hcom_state.py",
-      "sha256": "0a4133191fb89dd201a45d201434fcc62f5d421689958b723ab6ada978160a20"
+      "sha256": "ed6970baae05c90dc482321488ff42389fe02eb3a4de1189fd416fd43c7781c2"
     },
     {
       "path": "bundle/codex/skills/feature-execute/scripts/multi_repo.py",
@@ -298,7 +306,7 @@
     },
     {
       "path": "skills/feature-execute/references/hcom-loop.md",
-      "sha256": "9d419039bdf98616ba823cd779fabec182b93b754322097ddc61d462fca1c967"
+      "sha256": "2a2ba6d08f49f008174a96dd88b13ee9de043ca287c1b52c2f2e1485e1e28334"
     },
     {
       "path": "skills/feature-execute/references/local-delivery.md",
@@ -313,8 +321,12 @@
       "sha256": "570529241cee2e38c69c0d12008ed7fff9abfc7c1a76b9461059d7f65a9f1e47"
     },
     {
+      "path": "skills/feature-execute/scripts/hcom_finish.py",
+      "sha256": "d6a3c5d043017c218fa15286b127df9caf0b50cc666c916c1cf4c543df6b2a9c"
+    },
+    {
       "path": "skills/feature-execute/scripts/hcom_state.py",
-      "sha256": "0a4133191fb89dd201a45d201434fcc62f5d421689958b723ab6ada978160a20"
+      "sha256": "ed6970baae05c90dc482321488ff42389fe02eb3a4de1189fd416fd43c7781c2"
     },
     {
       "path": "skills/feature-execute/scripts/multi_repo.py",

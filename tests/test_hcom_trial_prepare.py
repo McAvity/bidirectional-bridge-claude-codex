@@ -27,6 +27,7 @@ class TrialPrepareTests(unittest.TestCase):
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPO / name, dest)
         self.store = Path(self.temp.name) / "private-store"
+        self.change(f"{FEATURE}/feature.json", lambda x: x.update(phase="execution"))
 
     def change(self, name, change):
         path = self.root / name
@@ -50,6 +51,10 @@ class TrialPrepareTests(unittest.TestCase):
 
     def test_wrong_worktree_does_not_prepare_script_checkout(self):
         self.refuse("from this worktree root", cwd=self.root.parent)
+
+    def test_blocked_historical_trial_is_not_replayed_by_new_release(self):
+        self.change(f"{FEATURE}/feature.json", lambda x: x.update(phase="blocked"))
+        self.refuse("TRIAL_BLOCKED")
 
     def test_disabled_project_is_not_silently_reenabled(self):
         self.change(".bridge-project/bridge.json", lambda x: x.update(enabled=False))

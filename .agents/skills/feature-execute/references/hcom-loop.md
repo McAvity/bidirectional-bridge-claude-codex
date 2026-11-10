@@ -50,7 +50,7 @@ requires diagnosis, never a replacement worker. Identity changes are not recover
 
 ## Launch and bind once
 
-Check hcom/Claude versions and existing login; tested hcom0.7.31, interactive Claude2.1.321.
+Check hcom/Claude versions and existing login; tested hcom0.7.31, interactive Claude2.1.322.
 Keep default permissions and existing account; no Claude -p, bypass flags or new API keys.
 Prepare a clean baseline and preserve unrelated dirt. Add `.hcom-work/` to this worktree's
 Git info/exclude (resolve it with `git rev-parse --git-path info/exclude` for linked worktrees).
@@ -80,9 +80,17 @@ contract in `.hcom-work/contract-rN.json`, with these fields:
 - `feature_id`, `task_id`, `round` (1-based sequential), canonical absolute `workspace`;
 - `workflow_identity`, absolute `workflow_bundle` and `worker_root` from verified resolve;
 - `base_commit` (full SHA), `objective`, governing `decision` and for corrections review/finding
-  references; `write_scope` relative paths/globs, `checks` list of concrete command strings;
+  references; `write_scope` relative paths/globs, `checks` list of `{ "id": "stderr",
+  "command": "python3 scripts/check_stderr.py" }` objects with unique stable IDs;
 - `ledger_dir` = feature execution/TASK directory; `report_path` = relative
   `.hcom-work/report-rN.json`; local commits explicitly authorized in objective/decision.
+
+Use simple, reproducible commands. Establish tool versions/environment at launch instead of
+repeating shell interpolation in every call. Put a substantial inline check in a reviewed
+script with a stable invocation; include that script in the authorized scope and freeze its
+inputs. The ID identifies the frozen check, not permission to substitute another test.
+Legacy string check lists remain readable, but require exact command strings in reports.
+Do not mix the two forms or mutate a prepared contract to accommodate a report.
 
 Scope includes code/tests, the new ledger and report path; excludes feature.json, decisions,
 reviews, task-status files and other features. Only report is ignored; ledger/source are Git
@@ -139,10 +147,23 @@ Rerun decisive tests on that revision. Independent review follows normal feature
 After these checks, record a brief receipt through `receipt ... --report PATH --decision
 accepted|rework|blocked --note TEXT`. This records the coordinator's decision, not automatic
 proof of Git correctness. It validates report correlation/basic completeness; it cannot replace
-review. `accepted` means this round was received, not user acceptance of the feature.
+review. Check the helper's exit status **and** JSON `ok:true` before continuing. Never chain
+receipt and `/exit` in a shell, even with a best-effort JSON extraction. A failed receipt does
+not settle the round, authorize shutdown, or require abandoning the task.
+`accepted` means this round was received, not user acceptance of the feature.
 `rework` records a settled delivery needing a new round; `blocked` stops automatic continuation.
 Questions for the user and scope decisions go into the normal documents; do not contact the
 worker until the coordinator explicitly transmits the resulting authorized contract.
+
+If report validation fails, keep the same worker available. Preserve the rejected report
+privately and send one explicit **report-only correction** request describing the validation
+error. The contract, round, code/HEAD and test facts stay unchanged; the executor corrects
+its own report at the contracted path, validates it and sends RESULT_READY again. Do not
+rerun implementation, create a new round, resend the original task or let the coordinator
+invent executor results. This is a bounded continuation under the existing prompt/time
+budget; record its request event and recheck the corrected report. Unknown delivery still
+requires history inspection, not blind retry. Record a blocked receipt only for an actual
+unresolved stop, not as an automatic response to a repairable formatting error.
 
 ## Corrections and finish
 
@@ -153,8 +174,18 @@ unknown or blocked work is not silently replaced. Repeat the same receipt and re
 Finish tasks and update feature.json according to the existing workflow. At Gate2 keep the
 feature unaccepted pending the user; no bridge_feature_accept is used in hcom mode.
 
-When the authorized work no longer needs the worker, inspect its terminal and use ordinary
-`/exit`, then confirm stopped. Keep private state/history and commits; do not delete records,
+When the authorized work no longer needs the worker and its latest receipt is accepted,
+use the selected `scripts/hcom_finish.py --workspace ABS --feature ID [--state ABS]`.
+This wrapper checks the fresh live session, listening state, empty ready terminal,
+acknowledged dispatch and unchanged accepted report through `close-check`. It records
+a private exclusive finish intent before issuing one normal `/exit`.
+It refuses pending, rejected, rework or blocked rounds and any existing finish intent.
+Keep that intent after an error and diagnose history; never delete it to retry. It never retries uncertain injection
+and returns `stopped_verified:false`; separately confirm the normal stop in hcom history.
+Do not replace a refused finish with a direct terminal injection. An explicitly authorized
+cancellation or an exhausted run deadline is a separate abort path: preserve unresolved
+state, inspect and stop only the owned worker normally, and report incomplete/cancelled,
+never accepted. A report validation failure alone is not a cancellation. Keep private state/history and commits; do not delete records,
 reset all hcom state, stop shared daemons or touch unrelated workers. A stopped session is
 not automatically resumed/replaced by this MVP. State and instructions expose this limit.
 
@@ -174,12 +205,37 @@ Follow the contract, shared round boundary and local-delivery §§2–3. Commit 
 and a new ledger, preserve earlier ledgers and unrelated files. For an out-of-scope question,
 stop affected work and report PARTIAL with blocker. Do not call Bridge tools or delegate.
 
-Write report JSON only at report_path, containing:
+Generate a report scaffold with the selected helper (stdout JSON's `report` member):
+
+```sh
+python3 <worker_root>/skills/feature-execute/scripts/hcom_state.py report-template \
+  --workspace ABS --feature ID --contract CONTRACT --contract-sha256 DIGEST
+```
+
+This reads only the hashed contract; it needs no access to the coordinator's private state.
+It sets no test to passed. Fill results from checks actually run, delivery/ledger information
+and blockers. Write report JSON only at report_path, containing:
 `feature_id`, `task_id`, `round`, `workflow_identity`, `status` (COMPLETE or PARTIAL),
 `summary` (first line exactly local-v1), `changed_scope`, `verification_results` (each has
-`command`, `result`: passed/failed/not_run, and details), `remaining_risks`, `blocker` (null
+`check_id`, `result`: passed/failed/not_run, and details), `remaining_risks`, `blocker` (null
 only when complete). Missing/failing checks, unfinished work or own/overlap dirt mean PARTIAL.
-The report itself is ignored, but the new ledger is committed. No archive unless contracted.
+Use each contract check ID exactly once. `command` is optional display text; if supplied it
+must equal the frozen command. For legacy string-list contracts, retain exact commands.
+Never abbreviate a multiline command or claim an unrun check passed. The report itself is
+ignored, but the new ledger is committed. No archive unless contracted.
+
+Before notifying, run the read-only validator using the dispatch's frozen digest:
+
+```sh
+python3 <worker_root>/skills/feature-execute/scripts/hcom_state.py validate-report \
+  --workspace ABS --feature ID --contract CONTRACT --contract-sha256 DIGEST \
+  --report REPORT
+```
+
+Require exit 0/`ok:true`. A COMPLETE report must also return `acceptable:true`; correct
+report errors before notifying. A structurally valid PARTIAL report may return
+`acceptable:false`; notify with its actual blocker so the coordinator can resolve it.
+Validation never accepts a delivery, runs tests or grants permission to finish the worker.
 
 After saving it, send through the inherited HCOM_DIR (use the exact own name from hcom):
 
@@ -192,3 +248,18 @@ This local broadcast remains readable in history even without an inbox recipient
 final answer is not a sent notification. If send fails, preserve the report and explain the
 failure; do not claim delivery or reconfigure hcom. Finish this turn and stay available for
 a new explicit contract in the same native session. Do not self-approve the feature.
+
+## Reduce avoidable permission interruptions
+
+Keep default permissions. Batch one logical edit, use native reads instead of shell pipelines
+where possible, and use simple commands under a launch-time environment. Review any new
+script before granting its execution; moving shell into a script is not itself a safety
+boundary. Run the agreed decisive checks once after the last relevant change. Repeat only
+for new failures or an explicitly scoped diagnosis; do not spend the task budget repeatedly
+probing an unrelated timing flake. If access to the exact selected instruction bundle is
+needed, request read access to that exact verified directory, never the whole home directory.
+`--add-dir` is not read-only access; it also expands the writable workspace. Session-scoped narrow
+permission allowances are an explicit user option, not a prerequisite or an automatic
+change. Never suppress prompts by switching to bypass/accept-all, blanket Bash allow rules,
+or modifying global permissions. Distinguish trust, file access and command approvals in
+pilot evidence, and record approved operations rather than only counting prompt events.

@@ -1,5 +1,6 @@
 """Exercise private hcom bookkeeping through its actual CLI; never launch a model."""
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -48,6 +49,7 @@ class HcomStateTests(unittest.TestCase):
         self.assertEqual(value['ok'], ok)
         if not ok:
             self.assertFalse(value['dispatch_permitted'])
+            self.assertFalse(value['shutdown_permitted'])
         return value
 
     def initialize(self):
@@ -204,6 +206,190 @@ class HcomStateTests(unittest.TestCase):
         stored = self.receipt()['state']['rounds'][0]['receipt']
         self.receipt(decision='rework', ok=False)
         self.assertEqual(self.cli('status')['state']['rounds'][0]['receipt'], stored)
+
+    def identified_checks(self):
+        self.c['checks'] = [{'id': 'unit', 'command': 'python3 -m unittest'},
+                            {'id': 'direct', 'command': "python3 -c 'first line\nsecond line'"}]
+
+    def identified_delivery(self):
+        delivery = self.delivery()
+        delivery['verification_results'] = [{'check_id': check['id'], 'result': 'passed'}
+                                            for check in self.c['checks']]
+        return delivery
+
+    def stateless(self, operation, data=None, ok=True, digest=None):
+        path = Path(self.write(self.work / 'contract-1.json', self.c))
+        digest = digest or hashlib.sha256(path.read_bytes()).hexdigest()
+        args = ['--contract', str(path), '--contract-sha256', digest]
+        if data is not None:
+            args += ['--report', self.write(self.workspace / self.c['report_path'], data)]
+        return self.cli(operation, *args, ok=ok)
+
+    def test_identified_multiline_check_needs_no_command_copy(self):
+        self.identified_checks()
+        self.ready()
+        self.prepare()
+        result = self.receipt(self.identified_delivery())
+        self.assertEqual(result['state']['rounds'][0]['receipt']['decision'], 'accepted')
+
+    def test_invalid_check_schemas_never_prepare(self):
+        self.ready()
+        for checks in [
+            ['python3 -m unittest', {'id': 'direct', 'command': 'python3 check.py'}],
+            [{'id': '', 'command': 'x'}], [{'id': '../outside', 'command': 'x'}],
+            [{'id': 'unsafe space', 'command': 'x'}], [{'id': 'a' * 65, 'command': 'x'}],
+            [{'id': True, 'command': 'x'}], [{'id': 'unit', 'command': ''}],
+            [{'id': 'same', 'command': 'x'}, {'id': 'same', 'command': 'y'}],
+        ]:
+            with self.subTest(checks=checks):
+                self.prepare(self.c | {'checks': checks}, ok=False)
+                self.assertEqual(self.cli('status')['state']['rounds'], [])
+
+    def test_identified_reports_refuse_unknown_duplicate_missing_or_changed_checks(self):
+        self.identified_checks()
+        self.ready()
+        self.prepare()
+        cases = [
+            [], [{'check_id': 'unit', 'result': 'passed'}],
+            [{'check_id': 'other', 'result': 'passed'}],
+            [{'check_id': 'unit', 'result': 'passed'}] * 2,
+            [{'command': 'python3 -m unittest', 'result': 'passed'}],
+            [{'check_id': 'unit', 'result': 'passed'}, {'command': 'other', 'result': 'passed'}],
+            [{'check_id': 'unit', 'result': 'failed'}, {'check_id': 'direct', 'result': 'passed'}],
+            [{'check_id': 'unit', 'command': 'different execution', 'result': 'passed'},
+             {'check_id': 'direct', 'result': 'passed'}],
+        ]
+        for checks in cases:
+            with self.subTest(checks=checks):
+                self.receipt(self.identified_delivery() | {'verification_results': checks}, ok=False)
+                self.assertIsNone(self.cli('status')['state']['rounds'][0]['receipt'])
+        good = self.identified_delivery()
+        good['verification_results'][0]['command'] = self.c['checks'][0]['command']
+        self.receipt(good)
+
+    def test_legacy_abbreviation_can_be_corrected_in_same_round(self):
+        self.c['checks'] = ["python3 -c 'first line\nsecond line'"]
+        self.ready()
+        self.prepare()
+        shortened = self.delivery() | {'verification_results': [
+            {'command': "python3 -c '<contract check>'", 'result': 'passed'}]}
+        before = (self.state / 'state.json').read_bytes()
+        refusal = self.receipt(shortened, ok=False)
+        self.assertEqual(refusal['code'], 'REPORT_NOT_ACCEPTABLE')
+        self.assertEqual(refusal['details']['missing_checks'], self.c['checks'])
+        self.assertEqual((self.state / 'state.json').read_bytes(), before)
+        # Correct the report, not the frozen contract or dispatch. Still one round.
+        received = self.receipt()
+        self.assertEqual(len(received['state']['rounds']), 1)
+        self.assertEqual(received['state']['rounds'][0]['receipt']['decision'], 'accepted')
+
+    def test_stateless_template_preserves_keys_without_claiming_pass(self):
+        template = self.stateless('report-template')['report']
+        self.assertEqual(template['verification_results'], [
+            {'command': self.c['checks'][0], 'result': 'not_run', 'details': ''}])
+        self.assertEqual(template['status'], 'PARTIAL')
+        self.assertTrue(template['blocker'])
+        self.assertFalse(self.state.exists())
+        self.identified_checks()
+        template = self.stateless('report-template')['report']
+        self.assertEqual([v['check_id'] for v in template['verification_results']], ['unit', 'direct'])
+        self.assertTrue(all(v['result'] == 'not_run' for v in template['verification_results']))
+        self.assertFalse(self.state.exists())
+
+    def test_worker_validation_is_read_only_and_not_a_receipt_or_grant(self):
+        self.identified_checks()
+        good = self.identified_delivery()
+        result = self.stateless('validate-report', good)
+        self.assertTrue(result['acceptable'])
+        self.assertEqual(result['acceptance_issues'], {})
+        for key in ('launch_permitted', 'dispatch_permitted', 'shutdown_permitted'):
+            self.assertFalse(result[key])
+        self.assertFalse(self.state.exists())
+        missing = good | {'verification_results': good['verification_results'][:1]}
+        result = self.stateless('validate-report', missing, ok=False)
+        self.assertFalse(result['acceptable'])
+        self.assertEqual(result['acceptance_issues']['missing_checks'], ['direct'])
+        self.assertFalse(self.state.exists())
+        self.ready()
+        self.prepare()
+        before = (self.state / 'state.json').read_bytes()
+        self.stateless('validate-report', good)
+        self.assertEqual((self.state / 'state.json').read_bytes(), before)
+
+    def test_worker_validation_complete_failure_exits_nonzero_but_partial_can_notify(self):
+        self.identified_checks()
+        failed = self.identified_delivery()
+        failed['verification_results'][0]['result'] = 'failed'
+        answer = self.stateless('validate-report', failed, ok=False)
+        self.assertEqual(answer['code'], 'REPORT_NOT_ACCEPTABLE')
+        self.assertEqual(answer['acceptance_issues']['nonpassing_checks'], ['unit'])
+        failed['status'] = 'PARTIAL'
+        failed['summary'] = failed['summary'].replace('OUTCOME=COMPLETE', 'OUTCOME=PARTIAL')
+        failed['blocker'] = 'Test failed; task is incomplete.'
+        answer = self.stateless('validate-report', failed)
+        self.assertTrue(answer['ok'])
+        self.assertFalse(answer['acceptable'])
+        self.assertFalse(answer['shutdown_permitted'])
+        self.assertFalse(self.state.exists())
+
+    def test_worker_validation_refuses_changed_contract_and_foreign_report(self):
+        self.assertEqual(self.stateless('validate-report', self.delivery(), digest='0' * 64,
+                                       ok=False)['code'], 'CONTRACT_SHA256_MISMATCH')
+        self.stateless('validate-report', self.delivery() | {'feature_id': 'F-other'}, ok=False)
+        self.assertFalse(self.state.exists())
+        path = Path(self.write(self.work / 'contract-1.json', self.c))
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        wrong = self.write(self.work / 'wrong-report.json', self.delivery())
+        self.cli('validate-report', '--contract', str(path), '--contract-sha256', digest,
+                 '--report', wrong, ok=False)
+        self.assertFalse(self.state.exists())
+
+    def test_close_check_requires_accepted_receipt_and_send_ack(self):
+        self.cli('close-check', '--session-file', str(self.session), ok=False)
+        self.assertFalse(self.state.exists())
+        self.ready()
+        self.cli('close-check', '--session-file', str(self.session), ok=False)
+        self.prepare()
+        self.cli('close-check', '--session-file', str(self.session), ok=False)
+        self.receipt(self.delivery() | {'verification_results': []}, ok=False)
+        self.cli('close-check', '--session-file', str(self.session), ok=False)
+        self.receipt()
+        refusal = self.cli('close-check', '--session-file', str(self.session), ok=False)
+        self.assertEqual(refusal['code'], 'SEND_ACKNOWLEDGEMENT_REQUIRED')
+        self.cli('sent', '--event-id', '23')
+        before = (self.state / 'state.json').read_bytes()
+        result = self.cli('close-check', '--session-file', str(self.session))
+        self.assertTrue(result['shutdown_permitted'])
+        self.assertEqual((self.state / 'state.json').read_bytes(), before)
+        self.assertFalse(self.cli('status')['shutdown_permitted'])
+
+    def test_close_check_refuses_rework_and_blocked_receipts(self):
+        for decision in ('rework', 'blocked'):
+            with self.subTest(decision=decision):
+                self.state = self.root / decision
+                self.ready()
+                self.prepare()
+                self.cli('sent', '--event-id', '23')
+                self.receipt(decision=decision)
+                self.cli('close-check', '--session-file', str(self.session), ok=False)
+
+    def test_close_check_refuses_changed_report_session_and_new_round(self):
+        self.ready()
+        self.prepare()
+        self.cli('sent', '--event-id', '23')
+        self.receipt()
+        path = self.workspace / self.c['report_path']
+        original = path.read_bytes()
+        path.write_bytes(original + b'\n')
+        self.assertEqual(self.cli('close-check', '--session-file', str(self.session), ok=False)['code'],
+                         'ACCEPTED_REPORT_CHANGED')
+        path.write_bytes(original)
+        self.write(self.session, {'name': 'worker-one', 'session_id': 'other', 'directory': str(self.workspace)})
+        self.cli('close-check', '--session-file', str(self.session), ok=False)
+        self.write(self.session, {'name': 'worker-one', 'session_id': 'native-one', 'directory': str(self.workspace)})
+        self.assertTrue(self.cli('close-check', '--session-file', str(self.session))['shutdown_permitted'])
+        self.prepare(self.c | {'round': 2, 'report_path': '.hcom-work/report-2.json'})
+        self.cli('close-check', '--session-file', str(self.session), ok=False)
 
 
 if __name__ == '__main__':

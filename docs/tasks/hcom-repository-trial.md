@@ -1,5 +1,12 @@
 # Hcom: bounded trial on this repository
 
+Historical checkpoint: the trial ran and ended code PASS / receipt BLOCKED on
+workflow1.1.0. See [review](../features/F-W21-repo-trial/reviews/01-implementation.md).
+The preparation procedure below records its original scope, not authorization to
+replay it after release1.1.1. Its lock/state remain unchanged; `hcom:prepare` now
+refuses this blocked trial. New features select the released workflow through the
+normal plugin begin/resolve entry; recovery of this stopped session is separate.
+
 Status: ready to test; no model launched for this trial. F-W21 remains accepted.
 Create the execution worktree from the latest F-W21 commit containing this version,
 not from feature-workflow or the earlier handoff commit 930c498. The branch records
