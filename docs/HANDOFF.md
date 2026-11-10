@@ -1,5 +1,17 @@
 # Current handoff
 
+## F-W21 — Gate 1 pending — 2026-11-10
+
+[Proposal02](features/F-W21-hcom-mvp/decisions/02.md) is proposed, not execution
+approval. Brief d5447e4, plan c7268e5, review de5fadc, delegated clarification
+decision bdca9ff, corrected plan 433884f; independent focused review PASS, both
+R01-N01/N02 resolved. Two tasks: opt-in instructions/templates and isolated hcom
+pilot; no new runtime/controller. Budget proposed: 2 attempts, 4 task prompts,
+45 minutes model phase, existing accounts only. No implementation or hcom/model
+pilot started. JSON/path/hash/docs/diff checks PASS. Workflow remains selected
+legacy0.6.2; foreign MCP untouched. Continue feature-flow from the actual user
+answer to Gate 1 in proposal02; do not reconstruct planning or infer approval.
+
 ## F-W21 — feature-flow preparation — 2026-11-10
 
 User invoked feature-flow. [W21-P01](../work-items/W21-P01.md) covers preparatory
