@@ -1,17 +1,17 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-claude",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".claude/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "411ab12431d296197d29dcce30bd2f9b664850d2ccd6ac6719cfd8056e157c41",
+  "source_digest": "c408d73018a51be078c78d680f99e6f7dfe6ed2ce94af9c53cd2f08f7a128df9",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
-      "sha256": "4b92b5326f5eadb8b4cb6070d61e2142ab8f72f37ef4e523580896adbdf7e47c"
+      "sha256": "3a4a7c448ef6cb83244f0b7be3d6fadbe4eacf41e4c48b193a7a6875968c1e8f"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
@@ -59,7 +59,7 @@
     },
     {
       "path": "scripts/plugin-packages/release.json",
-      "sha256": "db287fc9b59a61ad76dfdac310414463ffc6767ce026a38b38e0f9eb1339579a"
+      "sha256": "3d5cedf1643e9f17cfffecf3c5b56be576a172362b2a83682b05921c120e7dc5"
     },
     {
       "path": "scripts/setup/codex-writer-workspaces.py",
@@ -103,7 +103,7 @@
     },
     {
       "path": "skills/bridge-upgrade/SKILL.md",
-      "sha256": "9642f6c89dede6c6c1573ea84cd41300a84600fc41bdd5a70eae2ee746626973"
+      "sha256": "0fa3040463f260653145ac626819ba218a722011e01e181fc8fe40b050e8aaaa"
     },
     {
       "path": "skills/using-bridge/SKILL.md",

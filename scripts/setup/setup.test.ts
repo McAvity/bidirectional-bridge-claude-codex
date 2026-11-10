@@ -821,6 +821,53 @@ for await (const line of createInterface({input: process.stdin})) {
     }
   });
 
+  it.each(["legacy", "dispatcher", "inherited"])("installed release updater handles %s worktrees without a checkout or plugin cache", async (shape) => {
+    const base = makeProject(`durable updater ${shape}`);
+    if (shape === "legacy") init(base);
+    else {
+      const prepared = spawnSync(process.execPath, [join(repoRoot,"scripts/plugin-packages/bridge-plugin.mjs"),
+        "setup","--to",runtimeA.id,"--home",home,"--yes","--json"], {cwd:base,env,encoding:"utf8"});
+      expect(prepared.status, prepared.stdout+prepared.stderr).toBe(0);
+    }
+    let project=base;
+    if(shape==="inherited") {
+      git(base,"add","-A");git(base,"commit","-qm","portable project");
+      project=addWorktree(base,"durable updater inherited child");
+    }
+    const updater=join(runtimeB.path,"scripts/upgrade-local.mjs");
+    // The installed source contains an older distribution pin; the target must be
+    // its own manifest, and explicit --home must work with the env override absent.
+    const args=[updater,"--home",home,"--yes","--wait","30","--",project];
+    let stdout="",stderr="";
+    if(shape==="legacy") {
+      const server=new McpClient(project);await server.initialize();
+      const child=spawn(process.execPath,args,{cwd:tmp,env,stdio:["ignore","pipe","pipe"]});
+      const exited=new Promise<number|null>(done=>child.once("exit",done));
+      try {
+        await new Promise<void>((done,reject)=>{
+          const timer=setTimeout(()=>reject(new Error(`no WAIT: ${stdout} ${stderr}`)),20000);
+          child.stderr.on("data",chunk=>{stderr+=chunk;});
+          child.stdout.on("data",chunk=>{stdout+=chunk;if(stdout.includes("WAIT ")){clearTimeout(timer);done();}});
+          child.once("exit",code=>{clearTimeout(timer);if(!stdout.includes("WAIT "))reject(new Error(`early exit ${code}: ${stdout} ${stderr}`));});
+        });
+        expect(readlinkSync(join(project,".bridge-runtime/current"))).toBe(runtimeA.path);
+        await server.close();
+        expect(await exited,stdout+stderr).toBe(0);
+        expect(stdout).toContain("ACTIVE_SESSION");
+      } finally {if(child.exitCode===null)child.kill("SIGTERM");await server.close();}
+    } else {
+      const run=spawnSync(process.execPath,args,{cwd:tmp,env,encoding:"utf8",timeout:90000});
+      stdout=run.stdout;stderr=run.stderr;
+      expect(run.status,stdout+stderr).toBe(0);
+    }
+    expect(stdout).toContain(runtimeB.id);
+    expect(stdout).toContain("standalone doctor passed");
+    expect(stdout).toContain("Live client verification remains pending");
+    expect(readlinkSync(join(project,".bridge-runtime/current"))).toBe(runtimeB.path);
+    expect(existsSync(join(project,".bridge/bridge.db"))).toBe(false);
+    expect(existsSync(join(project,".bridge-project/bridge.json"))).toBe(shape!=="legacy");
+  },120000);
+
   it("refuses to switch a worktree that is in use and proceeds after a normal close", async () => {
     const project = makeProject("busy project");
     init(project);

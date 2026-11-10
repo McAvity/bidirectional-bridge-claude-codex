@@ -1,9 +1,9 @@
 {
   "format": "claude-codex-bridge.release/v1",
-  "package_version": "0.8.1",
+  "package_version": "0.8.2",
   "pinned": {
     "commit": "fd473c5643e32f827806d2e6d619ad58f4b505aa",
-    "describe": "0.8.1: conversation-workspace MCP startup, checked migration and explicit live verification"
+    "describe": "0.8.2: durable installed-release updater, bounded wait and shared Codex workspace attribution"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "notes": [

@@ -57,13 +57,13 @@ host's reinstall/update operation. Do not hand-edit marketplace caches or versio
 to force a refresh. Confirm the actual installed version/path after the operation;
 if the host kept an old version, say so rather than claiming an upgrade.
 
-A cache refresh may delete the skill's old directory. Before it, save the small
-checkpoint and any resources still needed into a private temporary directory outside
-the plugin cache. After it, locate the refreshed package from the host's installed
-plugin metadata and copy that complete package to the private directory. Use this
-stable copy as `<plugin>` for preparation and commands handed to the user. Never
-leave a deferred command pointing into a cache that may disappear. Do not claim the
-running model has loaded new plugin instructions; restart is a separate step.
+A cache refresh may delete the old plugin directory. Read the metadata needed for
+refresh first, then locate the refreshed package through the host's installed plugin
+metadata. Use that package only to prepare the immutable runtime. Deferred commands
+must point into the installed target runtime, never plugin cache, a source checkout
+or a temporary copy. A temporary source clone is fine during preparation; it is not
+a dependency of the later update. Do not claim the running model has loaded new
+plugin instructions; restart is a separate step.
 
 Read the refreshed package's `scripts/plugin-packages/release.json`: target is its
 full `pinned.commit` and declared repository, unless the user selected a specific
@@ -80,7 +80,10 @@ full target SHA, then install alongside the old runtime:
 node "<plugin>/scripts/bridge.mjs" install --source "<source-clone>" --ref "<full-commit>" --json
 ```
 
-Use the returned runtime id as `<target-id>` and verify its source commit. Preserve
+Use the returned runtime id as `<target-id>` and its absolute path as
+`<target-runtime>`. Verify its source commit. The updater inside an installed runtime
+selects that runtime from its verified manifest; its embedded distribution pin may
+refer to the preceding release and must not override that selection. Preserve
 the bridge home selected by CLAUDE_CODEX_BRIDGE_HOME/XDG_DATA_HOME; carry explicit
 `--home` into deferred commands when needed. Installing a separate immutable runtime
 is allowed while another runs; editing/rebuilding the supervising runtime is not.
@@ -88,26 +91,39 @@ A plan-only request stops before marketplace refresh, clone, install or any writ
 
 ## 3. Plan the project change and handle active clients
 
-For the portable dispatcher project, use `setup` when the local selection is absent
-(including inherited-pristine); use `update` when it is valid. Invalid/copied/partial
-state is a diagnostic, not permission to delete it. A known interrupted setup may
-be finished by the installer's existing checks; do not invent a repair.
+Use the updater shipped in the installed target release (0.8.2 or later):
 
 ```sh
-node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" setup --to "<target-id>" --json
-# Or, for a valid existing selection:
-node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" update --to "<target-id>" --json
+node "<target-runtime>/scripts/upgrade-local.mjs" --home "<home>" -- "<workspace>"
 ```
 
-Plain `setup` preserves the old declared pin: the explicit `--to` is essential.
-`update` without install.json refuses SETUP_NOT_INITIALIZED; use the verified setup
-path, not a handwritten record. A legacy per-worktree installation uses the matching
-`bridge.mjs update --workspace … --runtime …` path; do not silently migrate its layout.
+This prints the normal checked plan. It chooses setup for an inherited worktree,
+update for an existing selection, and preserves the legacy layout when present.
+Invalid/copied/partial state is a diagnostic, not permission to delete it. No
+marketplace refresh, install or write occurs during a plan from the installed release.
 
-Inspect the diff and named refusals. When the plan is valid and the target worktree
-is idle, apply the same command with `--yes`. The requested upgrade covers this;
-ask only about a genuine choice outside scope, such as discarding local edits.
-Do not use --keep-local to hide a pin/config conflict or change project preferences.
+Inspect the diff and named refusals. When ready to apply, use the same installed
+updater; a single command waits, backs up existing SQLite state, applies the checked
+change, verifies the selected pin and runs standalone doctor:
+
+```sh
+node "<target-runtime>/scripts/upgrade-local.mjs" --home "<home>" --yes --wait 180 -- "<workspace>"
+```
+
+Replace placeholders with exact shell-quoted paths in the command handed to the
+user. Preserve an explicitly selected Codex profile via `--codex-profile NAME`.
+`--wait` is a bounded delay in seconds (1..3600), only with `--yes`. It retries only
+active-client or incomplete-process-observation refusals and prints their actual
+codes/reasons. Conflicts and other errors stop immediately. Without `--wait`, the
+existing immediate-refusal behavior remains. A timeout does not start project apply.
+If verification fails after apply, report the applied state and the failed check;
+never repeat apply or roll back automatically just to rerun doctor.
+
+For an explicitly requested older target without this updater capability, use its
+supported checked setup/update commands and report that bounded waiting is unavailable;
+do not generate a replacement updater. The requested upgrade authorizes ordinary
+preparation/apply; ask only about genuine choices outside scope such as discarding
+local edits. Do not use --keep-local to hide a pin/config conflict or change preferences.
 
 `PROJECT_PIN_RUNTIME_MISSING` means the unchanged committed prior pin names a
 runtime absent on this host. Verify its full commit and install that historical
@@ -116,15 +132,16 @@ the old runtime or authorize editing the pin. An ordinary `PROJECT_FILE_MODIFIED
 still needs diagnosis; never treat an arbitrary declaration as an inherited pin.
 
 If this client or another process uses the target worktree, finish preparation but
-leave its pin and files unchanged. Do not bypass ACTIVE_SESSION, ACTIVE_USE_UNKNOWN or CLIENT_WORKSPACE_UNKNOWN,
-kill clients, or stop an active worker to make the update pass. Give one copyable
-shell command/script using the stable installer, exact workspace/home/target and
-normal refusal checks, to run after the affected Codex/Claude clients exit normally.
-Chain apply, verification and any restart with success checks; a failed step must
-not start the next one. Record the original native session id when available from
-trusted session metadata; never guess a session or pick the newest auto-review thread.
-Tell the user which client(s) to close and that the command goes in their shell after
-`/quit` or the client's normal exit. This skill cannot keep running after its host exits.
+leave its pin and files unchanged. Give the installed-runtime apply command above
+to run in the user's shell after `/quit` or normal exit of the affected clients.
+Do not wait inside a client whose own session must exit. Codex can delay unloading
+an unsubscribed conversation (observed default: 60 seconds); waiting is not permission
+to stop a daemon, unload a thread, remove writer locks or bypass a refusal.
+The macOS observer attributes shared-daemon writers to live workspaces; unrelated
+projects may stay open. An unreadable or unsupported observation remains a refusal.
+Record the original native session id when available from trusted session metadata;
+never guess a session or choose the newest auto-review thread. Restart/resume is a
+separate step, only after successful apply and verification.
 
 Native Codex conversations may remain owned by a shared app-server daemon after
 the TUI exits. A daemon's cwd is not an inventory of its conversations. If a resume
@@ -145,11 +162,13 @@ an active installation to apply this source change.
 
 ## 4. Verify and resume
 
-After apply, run the stable CLI's status and doctor in the target workspace:
+The installed updater already verifies selection and runs standalone doctor after
+apply. For an independent status check or a failed doctor's retry, use the same
+installed release:
 
 ```sh
-node "<plugin>/scripts/plugin-packages/bridge-plugin.mjs" status --json
-node "<plugin>/scripts/bridge.mjs" doctor --workspace "<workspace>" --json
+cd "<workspace>" && CLAUDE_CODEX_BRIDGE_HOME="<home>" node "<target-runtime>/scripts/plugin-packages/bridge-plugin.mjs" status --json
+node "<target-runtime>/scripts/bridge.mjs" doctor --home "<home>" --workspace "<workspace>" --json
 ```
 
 Confirm the exact pin/selection/commit, instruction paths and handshake. Distinguish

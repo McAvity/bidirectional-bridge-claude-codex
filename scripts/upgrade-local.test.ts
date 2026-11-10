@@ -35,6 +35,51 @@ describe("portable upgrade orchestration", () => {
     expect(()=>parseUpgradeArgs(["--codex-profile"])).toThrow();
     expect(()=>parseUpgradeArgs(["--force"])).toThrow();
   });
+  it("validates wait and custom home options before any work", () => {
+    expect(parseUpgradeArgs(["--yes","--wait","180","--home","state dir"],"/root")).toMatchObject({waitSeconds:180,home:"/root/state dir"});
+    for (const args of [["--wait","180"],["--yes","--wait","NaN"],["--yes","--wait","0"],["--yes","--wait","3601"],["--home"]]) {
+      expect(()=>parseUpgradeArgs(args)).toThrow();
+    }
+  });
+  it("uses its own installed runtime even when embedded distribution metadata pins the preceding release", async () => {
+    const f=fixture(), ownCommit="c".repeat(40);
+    const own={id:"installed-new",path:f.root,manifest:{source:{commit:ownCommit}}};
+    f.deps.loadRuntimeAt=()=>own;f.deps.verifyRuntime=()=>[];
+    // Model the normal <home>/runtimes/<id> shape.
+    own.path=join(f.home,"runtimes",own.id);
+    f.deps.source=own.path;mkdirSync(join(own.path,"scripts/plugin-packages"),{recursive:true});
+    writeFileSync(join(own.path,"scripts/plugin-packages/release.json"),JSON.stringify({format:"claude-codex-bridge.release/v1",package_version:"9.0.0",pinned:{commit:f.commit},repository:"https://example.invalid/repo.git"}));
+    f.deps.listRuntimes=()=>{throw new Error("must use this release");};
+    await upgrade({...f.options,apply:false},f.deps);
+    expect(f.calls[0].args).toContain(own.id);
+    expect(f.calls[0].args[0]).toBe(join(own.path,"scripts/plugin-packages/bridge-plugin.mjs"));
+  });
+  it("refuses an invalid installed updater without falling back to a release pin", async () => {
+    const f=fixture();f.deps.loadRuntimeAt=()=>{throw Object.assign(new Error("bad manifest"),{code:"RUNTIME_MANIFEST_INVALID"});};
+    await expect(upgrade(f.options,f.deps)).rejects.toThrow("bad manifest");expect(f.calls).toEqual([]);
+    f.deps.loadRuntimeAt=()=>({id:"own",path:f.root,manifest:{source:{commit:f.commit}}});
+    f.deps.verifyRuntime=()=>["modified file"];
+    await expect(upgrade(f.options,f.deps)).rejects.toThrow("incomplete");expect(f.calls).toEqual([]);
+  });
+  it("waits before backup/apply and performs fresh normal checks after readiness", async () => {
+    const f=fixture(), events:string[]=[];const run=f.deps.command;
+    f.deps.command=(p:string,a:string[],o:any)=>{events.push(a.includes("--yes")?"apply":p==="python3"?"backup":a[1]);run(p,a,o);};
+    f.deps.waitForPlan=async(args:string[],options:any)=>{expect(args).not.toContain("--yes");expect(options.seconds).toBe(180);events.push("wait");};
+    await upgrade({...f.options,waitSeconds:180,home:f.home},f.deps);
+    expect(events).toEqual(["wait","update","backup","apply","doctor"]);
+    expect(f.calls[0].opts.env.CLAUDE_CODEX_BRIDGE_HOME).toBe(f.home);
+  });
+  it("a wait timeout prevents every backup/apply and later project", async () => {
+    const f=fixture();f.deps.waitForPlan=async()=>{throw new Error("WAIT_TIMEOUT: CLIENT_WORKSPACE_UNKNOWN");};
+    await expect(upgrade({...f.options,waitSeconds:1},f.deps)).rejects.toThrow("WAIT_TIMEOUT");
+    expect(f.calls).toEqual([]);expect(existsSync(f.home)).toBe(false);
+  });
+  it("authenticates the read-only Linux observer before waiting if needed", async () => {
+    const f=fixture();f.deps.planNeedsObserver=()=>true;
+    f.deps.waitForPlan=async(_:any,options:any)=>{expect(f.calls[0].program).toBe("sudo");expect(options.env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION).toBe("sudo");};
+    await upgrade({...f.options,waitSeconds:180},f.deps);
+    expect(f.calls.filter(c=>c.program==="sudo")).toHaveLength(1);
+  });
   it("a missing-runtime plan creates neither a bridge home nor project files", async () => {
     const f=fixture();f.deps.listRuntimes=()=>[];
     const before=readdirSync(f.workspace,{recursive:true});

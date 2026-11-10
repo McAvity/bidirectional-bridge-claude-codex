@@ -4,16 +4,19 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { bridgeHome, SetupError, statusLabel } from "./setup/common.mjs";
-import { listRuntimes, installRuntime } from "./setup/runtime.mjs";
+import { bridgeHome, canonical, SetupError, statusLabel } from "./setup/common.mjs";
+import { listRuntimes, installRuntime, loadRuntimeAt, verifyRuntime } from "./setup/runtime.mjs";
 import { acquireSource, readRelease } from "./plugin-packages/acquire.mjs";
+import { waitForPlan } from "./setup/wait.mjs";
 import { status } from "./bridge-project/locate.mjs";
 
 const SOURCE = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const HELP = `Usage: bash scripts/upgrade-local.sh [--yes] [--sudo-observer]
+const HELP = `Usage: node <release>/scripts/upgrade-local.mjs [--yes] [--wait SECONDS]
+       [--home DIR] [--sudo-observer]
        [--codex-profile NAME] [--] [WORKTREE ...]
 
-Target: scripts/plugin-packages/release.json in this checkout, not arbitrary HEAD.
+Target: the installed runtime containing this updater, verified from its manifest.
+When run from a source checkout: scripts/plugin-packages/release.json, not arbitrary HEAD.
 Without WORKTREE, use the current directory's Git worktree. Without --yes, show
 plans only; an absent runtime is reported without installing or fetching anything.
 --yes installs the pinned runtime if needed, backs up existing SQLite state,
@@ -24,7 +27,11 @@ sudo may ask for your password; without a terminal it uses cached authorization 
 --sudo-observer selects that observer from the start. Plans never authenticate sudo.
 Never run the installer as root. macOS keeps native ps/lsof, without this fallback.
 Bridge home and Codex profile environment overrides are preserved.
-Close affected Codex/Claude clients before applying; refusals stop the sequence.
+Close affected Codex/Claude clients before applying. --wait SECONDS (1..3600,
+requires --yes) waits only on active-session/process-observation refusals, with their
+actual reasons shown. Default: fail immediately. It never stops a client or daemon.
+Conflicts and other errors stop immediately; apply is always freshly checked.
+From an installed runtime this command has no dependency on a plugin cache or /tmp.
 Exit codes: 0 = requested plan/apply completed; 1 = failed before verified selection;
 2 = WARN: runtime selection verified, but doctor failed. Applied changes are not rolled back.
 If your interactive Codex uses a profile, pass --codex-profile NAME for doctor.
@@ -32,12 +39,21 @@ This command does not refresh marketplace plugins, commit, push or restart clien
 `;
 
 export function parseUpgradeArgs(argv, cwd = process.cwd()) {
-  const options = { apply: false, sudoObserver: false, codexProfile: undefined, workspaces: [] };
+  const options = { apply: false, sudoObserver: false, codexProfile: undefined, waitSeconds: 0, home: undefined, workspaces: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--") { options.workspaces.push(...argv.slice(i + 1)); break; }
     if (arg === "--yes") options.apply = true;
     else if (arg === "--sudo-observer") options.sudoObserver = true;
+    else if (arg === "--wait") {
+      const value = argv[++i];
+      if (!/^[0-9]+$/u.test(value ?? "") || Number(value) < 1 || Number(value) > 3600) throw new Error("--wait requires an integer from 1 to 3600 seconds");
+      options.waitSeconds = Number(value);
+    } else if (arg === "--home") {
+      const value = argv[++i];
+      if (!value || value.startsWith("--")) throw new Error("--home requires a directory");
+      options.home = resolve(cwd, value);
+    }
     else if (arg === "--help" || arg === "-h") options.help = true;
     else if (arg === "--codex-profile") {
       const value = argv[++i];
@@ -46,6 +62,7 @@ export function parseUpgradeArgs(argv, cwd = process.cwd()) {
     } else if (arg.startsWith("-")) throw new Error(`unknown option: ${arg}`);
     else options.workspaces.push(arg);
   }
+  if (options.waitSeconds && !options.apply && !options.help) throw new Error("--wait requires --yes; a plan never waits or applies");
   if (!options.workspaces.length) options.workspaces.push(cwd);
   options.workspaces = [...new Set(options.workspaces.map(p => resolve(cwd, p)))];
   return options;
@@ -136,6 +153,8 @@ export function upgradeAction(report, hasDeclaration) {
 
 export async function upgrade(options, dependencies = {}) {
   const env = { ...process.env, ...dependencies.env };
+  if (options.waitSeconds && !options.apply) throw new Error("--wait requires --yes");
+  if (options.home) env.CLAUDE_CODEX_BRIDGE_HOME = resolve(options.home);
   const source = dependencies.source ?? SOURCE;
   const run = dependencies.command ?? command;
   const inspect = dependencies.status ?? status;
@@ -146,9 +165,21 @@ export async function upgrade(options, dependencies = {}) {
   const platform = dependencies.platform ?? process.platform;
   const needsObserver = dependencies.planNeedsObserver ?? planNeedsObserver;
   const doctorObserver = dependencies.doctorNeedsObserver ?? doctorNeedsObserver;
+  const wait = dependencies.waitForPlan ?? waitForPlan;
+  const loadOwn = dependencies.loadRuntimeAt ?? loadRuntimeAt;
+  const verify = dependencies.verifyRuntime ?? verifyRuntime;
   const interactive = dependencies.interactive ?? Boolean(process.stdin.isTTY);
   const release = readRelease(join(source, "scripts/plugin-packages/release.json"));
-  const commit = release.pinned.commit;
+  let own = null;
+  try { own = loadOwn(source); } catch (error) {
+    // An invalid installed manifest must never fall back to the older distribution pin.
+    if (error.code !== "RUNTIME_NOT_INSTALLED") throw error;
+  }
+  if (own) {
+    const problems = verify(own);
+    if (problems.length) throw new Error(`Installed updater runtime is incomplete: ${problems.join("; ")}`);
+  }
+  const commit = own?.manifest.source.commit ?? release.pinned.commit;
   const home = bridgeHome(env);
   if (options.apply && process.getuid?.() === 0) throw new Error("run as your regular user, never sudo the installer");
   if (options.sudoObserver) {
@@ -161,8 +192,11 @@ export async function upgrade(options, dependencies = {}) {
     const workspace = report.workspace.root;
     return [workspace, { workspace, action: upgradeAction(report, existsSync(join(workspace, ".bridge-project/bridge.json"))) }];
   })).values()];
-  out(`Target: ${release.package_version}, commit ${commit}`);
-  let runtime = getRuntimes(home).find(r => !r.error && r.manifest?.source.commit === commit);
+  out(`Target: ${own?.id ?? release.package_version}, commit ${commit}${own ? " (installed updater runtime)" : " (distribution pin)"}`);
+  let runtime = own ?? getRuntimes(home).find(r => !r.error && r.manifest?.source.commit === commit);
+  if (own && canonical(own.path) !== canonical(join(home, "runtimes", own.id))) {
+    throw new Error("Installed updater belongs to a different bridge home; pass --home for that installation");
+  }
   if (!runtime && !options.apply) {
     out("Plan only: the pinned runtime would be installed; no build, fetch or project writes performed.");
     out(`RESULT: ${statusLabel("OK", "ok")} [PLAN_OK] | runtime installation required before apply`);
@@ -187,6 +221,17 @@ export async function upgrade(options, dependencies = {}) {
       : [plugin, action, "--to", runtime.id, "--home", home];
     let stage = "plan";
     try {
+      // Poll only read-only plans. The normal plan/apply below still runs afterwards.
+      if (options.apply && options.waitSeconds) {
+        if (platform === "linux" && !env.CODEX_SANDBOX &&
+            [undefined, "native"].includes(env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION) &&
+            needsObserver(args, { cwd: workspace, env })) {
+          out("Native process inspection is incomplete. Authenticating the read-only sudo observer before waiting.");
+          run("sudo", interactive ? ["-v"] : ["-n", "-v"], { env });
+          env.CLAUDE_CODEX_BRIDGE_PROCESS_INSPECTION = "sudo";
+        }
+        await wait(args, { cwd: workspace, env, seconds: options.waitSeconds, log: out });
+      }
       // Both phases use the existing guard; apply checks again after backup and any race.
       try {
         run(process.execPath, args, { cwd: workspace, env });

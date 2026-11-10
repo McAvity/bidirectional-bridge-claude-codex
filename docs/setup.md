@@ -18,6 +18,35 @@ worktree of that project needs only its own local selection and no runtime insta
   `CODEX_VERSION_UNVERIFIED` warning; a version mismatch alone does not block setup or calls;
 - Claude Code for the worker; both clients logged in normally.
 
+## Update from a prepared release
+
+For Bridge 0.8.2 and later, `bridge-upgrade` prepares an immutable runtime and gives
+you one command from that release's permanent directory. After normally exiting
+clients using the target worktree:
+
+```sh
+node "<target-runtime>/scripts/upgrade-local.mjs" --home "<bridge-home>" --yes --wait 180 -- "<worktree>"
+```
+
+Use the actual paths reported by install, not the angle-bracket placeholders. The
+same command works for existing dispatcher projects, inherited worktrees and legacy
+setups. It reads its target from its installed manifest; no temporary launcher,
+plugin cache or source clone is needed afterwards. `--home` must name the store that
+contains this runtime. Omit `--yes --wait 180` to inspect a read-only plan first.
+
+`--wait` accepts 1..3600 seconds and requires `--yes`; without it a refusal stops
+immediately. It prints actual active-session or incomplete-observation reasons,
+retries only those checks, and stops on conflicts or other errors. Once ready it
+reruns the normal plan, backs up SQLite state, applies through the existing guard,
+verifies selection and runs doctor. A timeout never starts project apply. Linux's
+existing read-only sudo observation fallback remains available. No client, daemon
+or conversation is stopped automatically.
+
+On macOS, other projects using the shared Codex daemon may remain open. Closing the
+target client can be followed by Codex's unload delay (observed default 60 seconds).
+A successful standalone doctor still needs live `bridge_server_info` and
+`bridge_manager_status` verification after resuming the original conversation.
+
 ## 1. Install a pinned runtime
 
 ```sh

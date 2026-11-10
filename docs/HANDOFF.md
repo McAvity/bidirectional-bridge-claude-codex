@@ -1,5 +1,13 @@
 # Current handoff
 
+## Bridge 0.8.2 implementation and publication authorized — 2026-11-10
+
+[Release progress](tasks/bridge-0.8.2-release.md): durable installed-release updater,
+bounded waiting, updated bridge-upgrade skill and macOS writer attribution. User
+confirmed the earlier hotfix applied in the affected project and live MCP points at
+the correct worktree. No personal project activation or supervising runtime change
+is part of this release. Workflow 1.0.0 stays unchanged.
+
 ## Shared Codex writer hotfix — 2026-11-10
 
 [Progress and evidence](tasks/shared-writer-hotfix.md): local macOS installer correction

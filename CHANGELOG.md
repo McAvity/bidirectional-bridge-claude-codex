@@ -11,6 +11,30 @@ explicitly.
 
 ## Unreleased
 
+## Bridge 0.8.2 — 2026-11-10 (experimental)
+
+### Fixed
+
+- On macOS, shared Codex daemon writers are attributed to live local environments,
+  including extra workspace roots and hidden guardians. Unrelated projects and
+  confirmed unloaded conversations no longer block an upgrade. Unknown metadata
+  still refuses; Linux retains its conservative process observer.
+- An updater run from an installed release selects its own verified runtime manifest,
+  not the preceding distribution pin embedded in that source commit.
+
+### Added
+
+- `upgrade-local.mjs --yes --wait SECONDS` waits on existing active-use refusals,
+  showing the actual reason and stopping at a bounded deadline. Conflicts stop
+  immediately; the existing plan, backup, guarded apply, receipt and doctor remain.
+- Explicit `--home` for a durable, reusable command from the installed target runtime.
+
+### Documentation
+
+- `bridge-upgrade` now hands off the installed release's updater command, without a
+  temporary script or plugin-cache dependency. Live verification after resume remains
+  separate from standalone doctor. No workflow, database schema or MCP protocol change.
+
 ## Bridge 0.8.1 — 2026-11-09 (experimental)
 
 ### Fixed

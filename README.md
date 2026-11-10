@@ -52,9 +52,9 @@ runtime needs an upgrade before the new flow is available there.
 
 ## Updating bridge and feature skills
 
-Bridge **0.8.1** and **feature-workflow 1.0.0** are independent packages in the same
+Bridge **0.8.2** and **feature-workflow 1.0.0** are independent packages in the same
 marketplace. Refresh the marketplace and update the workflow plugin in each client you use.
-Ask `Use bridge-upgrade to upgrade this worktree to bridge 0.8.1, and update the
+Ask `Use bridge-upgrade to upgrade this worktree to bridge 0.8.2, and update the
 feature-workflow plugin to 1.0.0`. Close/restart clients when the updater requests it,
 then check status and doctor. An installed plugin alone does not move a project's runtime pin.
 
