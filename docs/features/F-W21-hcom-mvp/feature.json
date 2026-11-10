@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W21-hcom-mvp",
+  "phase": "plan-review",
+  "brief": "docs/features/F-W21-hcom-mvp/brief.md",
+  "design": "docs/features/F-W21-hcom-mvp/design.md",
+  "tasks": [
+    "work-items/W21-P01.md",
+    "work-items/W21-01.md",
+    "work-items/W21-02.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/PROTOCOL.md",
+    "docs/feature-workflow.md"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "feature-flow: niezależne review planu, następnie proposed decyzja i Gate 1 dla całego MVP; bez wykonania przed zgodą."
+}
