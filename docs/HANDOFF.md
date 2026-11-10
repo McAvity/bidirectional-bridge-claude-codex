@@ -1,5 +1,20 @@
 # Current handoff
 
+## F-W21 — Gate 2 pending — 2026-11-10
+
+Branch F-W21, isolated worktree; user execution approval03 recorded in3cf2488.
+Procedure c0cd9cf, staged review0ceac0d, full real pilot/evidence5ee958b;
+independent final review0de8d76 PASS, AC-01–06 met, no open findings.
+[Proposal04](features/F-W21-hcom-mvp/decisions/04.md) awaits actual user acceptance.
+[Instructions](hcom-mvp/README.md), [pilot report](features/F-W21-hcom-mvp/evidence/pilot-summary.md).
+One attempt, two prompts, same native session, tests6→7 PASS, explicit task receipt;
+trust plus11 individual approvals, no transport repair or user copy/paste.
+Own worker exited normally. JSON, links289 files, diffs and independent artifact
+checks PASS; no runtime changes or full runtime CI. Existing main-checkout pin
+and foreign MCP preserved. No push/merge/release. W21-01/02 done; feature unaccepted.
+Next: actual Gate2 answer; on acceptance record decision and local closing commit.
+Prior entries below are historical; do not repeat Gate1 or restart planning.
+
 ## F-W21 — Gate 1 pending — 2026-11-10
 
 [Proposal02](features/F-W21-hcom-mvp/decisions/02.md) is proposed, not execution

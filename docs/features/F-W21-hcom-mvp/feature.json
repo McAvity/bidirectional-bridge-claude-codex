@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W21-hcom-mvp",
-  "phase": "execution",
+  "phase": "decision",
   "brief": "docs/features/F-W21-hcom-mvp/brief.md",
   "design": "docs/features/F-W21-hcom-mvp/design.md",
   "tasks": [
@@ -15,6 +15,6 @@
     "docs/feature-workflow.md"
   ],
   "latest_review": "docs/features/F-W21-hcom-mvp/reviews/02-execution.md",
-  "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/03.md",
-  "next_action": "feature-flow: W21-01 i pilot W21-02 dostarczone na F-W21; niezale\u017cne ko\u0144cowe review02, nast\u0119pnie Gate 2."
+  "latest_decision": "docs/features/F-W21-hcom-mvp/decisions/04.md",
+  "next_action": "feature-flow Gate 2 pending: zapyta\u0107 u\u017cytkownika o akceptacj\u0119 ca\u0142ego MVP z decyzji04 (dostawa5ee958b, review0de8d76 PASS); po zgodzie zapisa\u0107 decyzj\u0119 i lokalnie zamkn\u0105\u0107. Bez push/merge/publikacji."
 }
