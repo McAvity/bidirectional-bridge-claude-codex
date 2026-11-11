@@ -1,12 +1,23 @@
 # Current handoff
 
-## Workflow1.1.3 startup corrections — in progress, 2026-11-11
+## Workflow1.1.3 — published — 2026-11-11
 
-[Scope and progress](tasks/workflow-1.1.3-startup.md). Separate fix/hcom-startup
-worktree from published1.1.2. User authorized inject startup, live readiness and
-one guarded pre-dispatch same-session repair. Both workflow packages are generated;
-tests/review/publication pending. Bridge and installed/trial state unchanged.
-No paid worker launched.
+[Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.3),
+[checkpoint](tasks/workflow-1.1.3-startup.md), [review](tasks/workflow-1.1.3-startup-review.md).
+Source5d07491, distribution/tag fd0f5a2, identityca0ed85dea2a. Fresh hcom Claude
+workers use session-scoped inject. Bundled startup helper checks exact session,
+process/hooks and ready empty PTY; prepare requires a fresh snapshot. One guarded
+same-session pre-dispatch stop/resume is available; prepared rounds/messages and
+uncertain prior intents prevent repair/retry. Existing receipt/permissions unchanged.
+
+Independent review PASS, local hcom50/50 and actual installed-hcom event-schema probe
+PASS without models. Exact-SHA CI42932494117 SUCCESS: JS782 PASS/2skip, Python311
+OK/6skip, pilot131 OK/2skip, protected observer21 PASS; build/packages/skill/docs PASS.
+Local sandbox-limited full-suite results are documented, not claimed all-green.
+Annotated tag/prerelease published; remote integration branch fast-forwarded.
+Bridge0.8.2 bytes and installed clients/bundles unchanged. No real fresh-agent trial
+of the released helper yet; that is the next optional validation. New features need
+plugin refresh; existing feature locks require an explicit switch between rounds.
 
 ## Workflow 1.1.2 — published — 2026-11-10
 
