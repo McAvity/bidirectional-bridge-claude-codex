@@ -109,6 +109,28 @@ def check_session(state, path):
     return observed
 
 
+def check_readiness(path, root):
+    observed = read_json(path)
+    readiness = observed.get('workflow_readiness', {})
+    require(isinstance(readiness, dict), 'LIVE_READINESS_REQUIRED')
+    terminal = readiness.get('terminal', {})
+    require(isinstance(terminal, dict), 'LIVE_READINESS_REQUIRED')
+    require(observed.get('tool') == 'claude' and observed.get('status') == 'listening' and
+            observed.get('hooks_bound') is True and observed.get('process_bound') is True and
+            terminal.get('ready') is True and terminal.get('prompt_empty') is True and
+            terminal.get('input_text') in ('', None), 'LIVE_READINESS_REQUIRED')
+    try:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(readiness['checked_at'])).total_seconds()
+    except (KeyError, TypeError, ValueError):
+        raise Refusal('LIVE_READINESS_REQUIRED')
+    require(0 <= age <= 60, 'LIVE_READINESS_STALE')
+    if (root / 'startup-stop-intent.json').exists():
+        require((root / 'startup-resume-intent.json').is_file(), 'STARTUP_REPAIR_PENDING')
+        resume = read_json(root / 'startup-resume-intent.json')
+        require(datetime.fromisoformat(readiness['checked_at']) > datetime.fromisoformat(resume['at']),
+                'LIVE_READINESS_BEFORE_RESUME')
+
+
 def contract_checks(data):
     """Keep legacy command keys; new contracts bind stable IDs to frozen commands."""
     checks = data.get('checks')
@@ -311,6 +333,7 @@ def run(args):
             state['session'] = observed
         elif args.command == 'prepare':
             check_session(state, args.session_file)
+            check_readiness(args.session_file, root)
             c, path, digest = contract(args.contract, state)
             require(c['round'] == len(state['rounds']) + 1, 'ROUND_ALREADY_PREPARED_OR_OUT_OF_ORDER')
             require(not state['rounds'] or (state['rounds'][-1].get('receipt') or {}).get('decision')

@@ -1,5 +1,13 @@
 # Current handoff
 
+## Workflow1.1.3 startup corrections — in progress, 2026-11-11
+
+[Scope and progress](tasks/workflow-1.1.3-startup.md). Separate fix/hcom-startup
+worktree from published1.1.2. User authorized inject startup, live readiness and
+one guarded pre-dispatch same-session repair. Both workflow packages are generated;
+tests/review/publication pending. Bridge and installed/trial state unchanged.
+No paid worker launched.
+
 ## Workflow 1.1.2 — published — 2026-11-10
 
 [Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.2),

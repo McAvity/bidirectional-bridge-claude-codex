@@ -4,8 +4,9 @@ Use only after the user selects hcom and authorizes this feature's execution/del
 `feature-flow` uses this same loop during execution; it does not invent a second scheduler.
 Support: one local Git worktree, one feature, one Claude session, sequential rounds.
 The coordinator owns contracts, index, task statuses, review and decisions. Hcom transports
-messages; the coordinator still verifies the Git delivery. No Bridge calls, auto-fallback,
-automatic crash recovery, multi-repo or parallel workers in this mode.
+messages; the coordinator still verifies the Git delivery. No Bridge calls, task retries after uncertain delivery, automatic crash recovery,
+multi-repo or parallel workers in this mode. A bounded pre-dispatch startup repair
+is described below; it never replaces a worker or restarts task execution.
 
 ## Select instructions and persistent state
 
@@ -76,10 +77,15 @@ Git info/exclude (resolve it with `git rev-parse --git-path info/exclude` for li
 It holds contracts and reports, not delivered source. No ignored state is committed.
 Set an authorized prompt/time budget before any launch; do not infer unlimited model work.
 
+Use session-scoped `HCOM_CLAUDE_DELIVERY=inject` for fresh launches. This uses the
+interactive PTY and avoids dependence on Claude's native-mod rollout. Do not change
+`hcom config` globally or infer the running worker's transport from a new shell's env.
+Record `feature.json.execution.delivery = "inject"` for this launch. Existing workers
+keep their transport unless the pre-dispatch repair below is applicable.
 When fresh init granted launch, run once without a task prompt:
 
 ```sh
-hcom --go claude --headless --dir "$HCOM_FLOW_WORKSPACE" --json \
+HCOM_CLAUDE_DELIVERY=inject hcom --go claude --headless --dir "$HCOM_FLOW_WORKSPACE" --json \
   --permission-mode auto --strict-mcp-config --mcp-config '{"mcpServers":{}}'
 ```
 
@@ -89,6 +95,61 @@ Here and below `...` means the same `--state`, `--workspace`, `--feature` argume
 Inspect trust/permission prompts through `hcom term EXACT_NAME --clean`; approve only a
 reviewed operation for this worker. No blind Enter loop, global permission change or second
 launch around a pending prompt. Record intervention count when measuring a pilot.
+
+## Live readiness and bounded startup repair
+
+The bundled `scripts/hcom_startup.py` is shared by all projects; do not create a
+project-specific launcher. It derives HCOM_DIR from the same private state and checks
+the bound native session, workspace, Claude/listening status, live process and hook
+bindings, and a ready PTY with an empty composer. `check-session` alone only checks
+identity. A shell command returning success or a visible session is not readiness.
+
+After startup prompts are settled, and immediately before **each** prepare, run:
+
+```sh
+python3 "$(dirname "$HCOM_FLOW_HELPER")/hcom_startup.py" check \
+  --state "$HCOM_FLOW_STATE" --workspace "$HCOM_FLOW_WORKSPACE" \
+  --feature "$HCOM_FLOW_FEATURE" --session-file "$HCOM_FLOW_STATE/ready-r1.json"
+```
+
+Choose a new private snapshot filename for each check (including retries). `prepare`
+requires this snapshot, at most60 seconds old. If it expires, check again before
+preparing; do not repeat a successful prepare. A failed check grants no dispatch.
+The check probes PTY/bindings, not a model turn or an end-to-end task acknowledgement.
+The fixed inject launch and this check are both required; do not send a probe prompt.
+If starting normally, allow up to30 seconds for binding, then inspect the actual
+terminal/launch diagnostic. Handle an explicitly visible trust/mode prompt under the
+existing authority. For a suspected placeholder/draft parsing mismatch, inspect the
+screen; only after confirming no user text exists may you clear the composer with
+Ctrl-U **without Enter**, then check again. Do not auto-clear unknown input.
+
+For a diagnosed pre-dispatch startup/transport failure, execution authorization also
+covers one normal stop and resume of the **same** native session, unless the user's
+protocol explicitly forbids restart. First inspect full history and current-session
+transcript: there must be no task prompt or work, including direct terminal input.
+The helper additionally requires zero prepared rounds and no messages anywhere in
+this private namespace. A prepared round, even without a send acknowledgement,
+forbids this repair: follow uncertain-delivery diagnosis instead.
+
+```sh
+python3 "$(dirname "$HCOM_FLOW_HELPER")/hcom_startup.py" stop \
+  --state "$HCOM_FLOW_STATE" --workspace "$HCOM_FLOW_WORKSPACE" --feature "$HCOM_FLOW_FEATURE"
+# Once normal stop has completed (inspect history/status; no repeated /exit):
+python3 "$(dirname "$HCOM_FLOW_HELPER")/hcom_startup.py" resume \
+  --state "$HCOM_FLOW_STATE" --workspace "$HCOM_FLOW_WORKSPACE" --feature "$HCOM_FLOW_FEATURE"
+```
+
+`stop` accepts only listening Claude or its specific `blocked/launch_blocked` startup
+state, requires a ready empty terminal, and persists intent before `/exit`. `resume`
+requires the same session's subsequent normal-stop event, absence from the live list,
+and zero prepared rounds/messages. It persists intent before a single `hcom r` with
+inject; tracked resume preserves the original model, permissions and launch settings.
+It does not grant dispatch: run `check` again and require the unchanged binding.
+Timeout/nonzero/ambiguous results preserve intent and block retries; inspect rather
+than resetting state, deleting intents, rebinding, launching a replacement or resending.
+A failed repair remains blocked with a specific diagnostic. Record the intervention
+and startup duration separately from dispatch-to-receipt timing. This is not general
+crash recovery, and it never expands the approved model/prompt/time budget.
 
 ## Prepare and dispatch one round
 
@@ -115,8 +176,8 @@ Scope includes code/tests, the new ledger and report path; excludes feature.json
 reviews, task-status files and other features. Only report is ignored; ledger/source are Git
 tracked delivery. Do not send operator-only fixtures. Choose a new report/contract per round.
 
-Save current `hcom list EXACT_NAME --json` and run `prepare ... --contract PATH
---session-file PATH`. Only a newly successful prepare gives `dispatch_permitted:true`.
+Run the live readiness check above and pass its fresh snapshot to
+`prepare ... --contract PATH --session-file PRIVATE_READINESS_SNAPSHOT`. Only a newly successful prepare gives `dispatch_permitted:true`.
 It records the intent and frozen contract before sending. Save the returned contract digest;
 include it and the path in the message so the worker can detect changed input. Do not mutate
 prepared contracts. Then, once, send (substitute exact round, paths and digest):

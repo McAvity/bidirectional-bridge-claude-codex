@@ -36,9 +36,14 @@ poza katalogiem wykonawcy. Nie udostępniaj mu prywatnych danych innych projekt�
 ## Uruchomienie bez pierwszego zlecenia
 
 ```sh
-hcom claude --headless --dir "$PWD" --json \
+HCOM_CLAUDE_DELIVERY=inject hcom claude --headless --dir "$PWD" --json \
   --permission-mode auto --strict-mcp-config --mcp-config '{"mcpServers":{}}'
 ```
+
+Workflow1.1.3 dodaje start przez `inject`, kontrolę gotowości PTY i ograniczoną
+naprawę startu tej samej sesji przed zleceniem. Standardowy feature-execute używa
+do tego helpera zawartego w skillu; nie trzeba pisać launchera dla projektu.
+Poniższa ręczna procedura MVP nie zastępuje tych kontroli.
 
 Od workflow1.1.2 nowe sesje wykonawcy używają `auto`: klient ocenia operacje
 klasyfikatorem, a zakres zadania i odbiór pozostają obowiązujące. To ustawienie

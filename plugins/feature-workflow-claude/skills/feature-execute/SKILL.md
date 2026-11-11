@@ -57,7 +57,9 @@ local/Bridge routing. Explicit `bridge` uses the existing Bridge mode below. Nev
 switch an existing choice or bypass an active `feature.json.bridge` workstream: settle its
 state and obtain explicit migration scope first. A failed Bridge call is not hcom selection.
 
-For `hcom`, follow [references/hcom-loop.md](references/hcom-loop.md) as coordinator.
+For `hcom`, follow [references/hcom-loop.md](references/hcom-loop.md) as coordinator,
+including inject startup, the bundled readiness helper before dispatch, and bounded
+same-session repair only before any prepared round.
 Do not create a Bridge root, bind a manager or use Bridge round/question/acceptance tools
 for that workstream, even if MCP tools are available. Hcom changes execution transport,
 not instruction-source selection: if the selected set lacks this reference, report that an

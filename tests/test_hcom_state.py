@@ -1,5 +1,6 @@
 """Exercise private hcom bookkeeping through its actual CLI; never launch a model."""
 import copy
+from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 import os
@@ -28,7 +29,10 @@ class HcomStateTests(unittest.TestCase):
         skill.write_text('synthetic selected skill')
         self.identity = 'sha256:' + 'a' * 64
         self.session = self.root / 'observed.json'
-        self.write(self.session, {'name': 'worker-one', 'session_id': 'native-one', 'directory': str(self.workspace)})
+        self.write(self.session, {'name': 'worker-one', 'session_id': 'native-one', 'directory': str(self.workspace),
+                                  'tool': 'claude', 'status': 'listening', 'hooks_bound': True, 'process_bound': True,
+                                  'workflow_readiness': {'checked_at': datetime.now(timezone.utc).isoformat(),
+                                      'terminal': {'ready': True, 'prompt_empty': True, 'input_text': ''}}})
         self.c = {'feature_id': 'F-test', 'task_id': 'T-1', 'round': 1, 'workspace': str(self.workspace),
                   'workflow_identity': self.identity, 'worker_root': str(self.worker),
                   'workflow_bundle': str(self.worker.parent), 'objective': 'Small change',
@@ -78,6 +82,19 @@ class HcomStateTests(unittest.TestCase):
         self.write(dest, data)
         return self.cli('receipt', '--report', str(dest), '--decision', decision,
                         '--note', 'Coordinator checked actual Git range and tests independently.', ok=ok)
+
+    def test_prepare_requires_live_readiness_not_just_identity(self):
+        self.ready()
+        original = json.loads(self.session.read_text())
+        for changed in [dict(original, workflow_readiness={}), dict(original, hooks_bound=False),
+                        dict(original, process_bound=False), dict(original, status='active')]:
+            self.write(self.session, changed)
+            self.assertEqual(self.prepare(ok=False)['code'], 'LIVE_READINESS_REQUIRED')
+        self.write(self.session, original | {'workflow_readiness': {
+            'checked_at': (datetime.now(timezone.utc) - timedelta(seconds=61)).isoformat(),
+            'terminal': {'ready': True, 'prompt_empty': True}}})
+        self.assertEqual(self.prepare(ok=False)['code'], 'LIVE_READINESS_STALE')
+        self.assertEqual(self.cli('status')['state']['rounds'], [])
 
     def test_init_is_bound_and_reentry_never_grants_launch(self):
         self.assertTrue(self.initialize()['launch_permitted'])
@@ -384,9 +401,10 @@ class HcomStateTests(unittest.TestCase):
         self.assertEqual(self.cli('close-check', '--session-file', str(self.session), ok=False)['code'],
                          'ACCEPTED_REPORT_CHANGED')
         path.write_bytes(original)
+        observed = json.loads(self.session.read_text())
         self.write(self.session, {'name': 'worker-one', 'session_id': 'other', 'directory': str(self.workspace)})
         self.cli('close-check', '--session-file', str(self.session), ok=False)
-        self.write(self.session, {'name': 'worker-one', 'session_id': 'native-one', 'directory': str(self.workspace)})
+        self.write(self.session, observed)
         self.assertTrue(self.cli('close-check', '--session-file', str(self.session))['shutdown_permitted'])
         self.prepare(self.c | {'round': 2, 'report_path': '.hcom-work/report-2.json'})
         self.cli('close-check', '--session-file', str(self.session), ok=False)
