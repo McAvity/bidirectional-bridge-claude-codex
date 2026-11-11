@@ -23,11 +23,13 @@ new worker, task resend, runtime upgrade or historical evidence rewrite.
 Implementation complete. Independent [review](workflow-1.1.3-startup-review.md) PASS;
 startup launch_blocked eligibility and the actual CLI ts field corrected. Malformed
 external containers now return structured refusals. Installed-hcom0.7.31 synthetic
-SQLite/CLI event probe PASS without launching any client. Focused hcom regression
-suite PASS before final extra diagnostic regression; final combined count pending.
+SQLite/CLI event probe PASS without launching any client. Final focused hcom regression suite50/50 PASS, including the installed-hcom schema probe.
 Node24 npm ci/build, package equivalence, skill validation and docs317 PASS.
 Full local Python/JS checks are in progress; pilot131 has one macOS process-observer
 failure and two PTY skips. Exact-distribution Linux CI is the publication gate. A real fresh-agent run remains untested;
 trial3 demonstrated the underlying inject/same-session approach, not this new helper.
 
 Next: commit source and register immutable identity, then exact-distribution CI before tag/publication.
+
+Source commit: `5d07491f907e5db44c364d2d659414d425117fc4`.
+Workflow identity: `sha256:ca0ed85dea2a1d8ce2814609a1a1e36416d52b3a00012aeefdee566a0aaeebb6`.
