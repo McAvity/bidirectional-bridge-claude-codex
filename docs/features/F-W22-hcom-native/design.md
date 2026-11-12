@@ -1,6 +1,7 @@
 # F-W22 — plan workflowu bez własnego MCP
 
-Status: proposed; przygotowanie przez feature-flow, bez zgody Gate 1 na wykonanie.
+Status: proposed; review01 PASS, doprecyzowania R01-01/02 przyjęte w planie;
+przygotowanie przez feature-flow, bez zgody Gate 1 na wykonanie.
 Baza źródeł: `1c74346` (brief); kod odziedziczony z `2aca4f5`.
 Brief SHA-256: `7e3b746399386e4404f652db432bc60fc42a45c68d8cf03454fb463c0a351a7d`.
 INSTRUCTIONS=bundle:1.1.3-ca0ed85dea2a IDENTITY=sha256:ca0ed85dea2a1d8ce2814609a1a1e36416d52b3a00012aeefdee566a0aaeebb6 GENERATION=1
@@ -102,6 +103,16 @@ hcom nie zostaje automatycznie podniesiony; zakończenie starej pracy albo jawny
 między rundami pozostają odrębną decyzją. Przy legacy bez locka odtwarzamy tylko
 udowodnioną wersję lub prosimy o konkretny wybór. Nie przypisujemy bieżącego pluginu.
 
+R01-01: obecność hcom nie jest wystarczającą zgodnością. W szczególności bundle1.1.3
+zawiera dawny resolver, który może odmówić po wyłączeniu pina. Kontrakt/testy obejmą
+cały łańcuch entry → resolver → wybrane helpery. Historia locka i bajty pozostają,
+ale nie oznacza to automatycznej możliwości wznowienia starej wersji po migracji.
+Jeżeli kontynuowana praca jest z nią niezgodna, migracja pozostaje pending z konkretną
+diagnozą i propozycją zakończenia pracy albo jawnego switch między rundami. Nie
+modyfikujemy starego bundle ani nie wymuszamy jego działania przez cichy override.
+Sama instalacja nowego wydania nadal jest możliwa. Test AC-05 aktualizacji n → n+1
+dotyczy zgodnych wydań nowego trybu; przypadek 1.1.3 jest osobnym testem migracji.
+
 ## 4. Skille, wersje i aktywacja klienta
 
 Domyślny transport hcom dotyczy nowych zleceń delegowanych w trybie bez MCP;
@@ -158,6 +169,9 @@ i dodaje nowe, porównując hashe i locki. Nie udaje to próby z rzeczywistym mo
 
 W22-06: dwie małe izolowane próbki repo (świeża i zmigrowana z syntetyczną, zakończoną
 historią Bridge), bez operatorowych AGENTS.md i bez dostępu do dawnych rozwiązań.
+R01-02: z `tools/pilot/rework/OPERATOR.md` przejmujemy wyłącznie zasady separacji,
+dowodów i limitów; nie wykonujemy jego launchera, `/mcp` ani starego preflightu.
+W22-06 zapisuje własny protokół startu i obserwacji hcom bez MCP przed próbą.
 Zwykły prompt: „Wykonaj feature F-001”. Każde repo ma wcześniej przygotowany brief,
 plan i zgodę na małe zadanie, aby nie mieszać Gate 1 zadania pilota z testem transportu.
 Świeży koordynator musi sam odnaleźć workflow i uruchomić hcom bez dopisku „przez hcom”.
