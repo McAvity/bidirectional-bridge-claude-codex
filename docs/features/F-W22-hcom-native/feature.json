@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "feature_id": "F-W22-hcom-native",
+  "phase": "plan-review",
+  "brief": "docs/features/F-W22-hcom-native/brief.md",
+  "design": "docs/features/F-W22-hcom-native/design.md",
+  "tasks": [
+    "work-items/W22-P01.md",
+    "work-items/W22-01.md",
+    "work-items/W22-02.md",
+    "work-items/W22-03.md",
+    "work-items/W22-04.md",
+    "work-items/W22-05.md",
+    "work-items/W22-06.md"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "docs/plugin-distribution.md",
+    "docs/features/README.md"
+  ],
+  "latest_review": null,
+  "latest_decision": null,
+  "next_action": "feature-flow: niezależny review planu i korekty, następnie propozycja całego wykonania i Gate 1. Implementacja niezatwierdzona."
+}
