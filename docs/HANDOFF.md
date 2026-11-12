@@ -1,5 +1,15 @@
 # Current handoff
 
+## Hcom placeholder fix — candidate and retry preparation — 2026-11-12
+
+[Checkpoint](tasks/hcom-placeholder-startup.md). Separate authorized hotfix after the
+F-001 startup failure, not F-W22 execution. Child-scoped display environment preserves
+the placeholder styles hcom requires; fresh launch and guarded resume use it. No
+readiness bypass or global setting change. Live startup/draft/request-response/normal
+exit checks passed; helper50/50 and package/skill checks PASS. Candidate workflow1.1.4,
+identity234b644986e9, unpublished. Independent review and fresh retry prep pending.
+Branch `fix/hcom-placeholder-startup`; preserve failed trial c09841a and its private state.
+
 ## F-W22 — feature-flow Gate 1 pending — 2026-11-12
 
 [Plan](features/F-W22-hcom-native/design.md), W22-01…06 and index committed in

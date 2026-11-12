@@ -33,7 +33,7 @@ class HcomStartupTests(unittest.TestCase):
         stub.write_text('#!/usr/bin/env python3\n' +
             'import json,os,pathlib,sys\n' +
             f'd=json.loads(pathlib.Path({str(self.data)!r}).read_text())\n' +
-            f'with open({str(self.log)!r},"a") as f: f.write(json.dumps([sys.argv[1:],os.environ.get("HCOM_DIR"),os.environ.get("HCOM_CLAUDE_DELIVERY"),os.environ.get("HCOM_CLAUDE_ARGS")])+"\\n")\n' +
+            f'with open({str(self.log)!r},"a") as f: f.write(json.dumps([sys.argv[1:],os.environ.get("HCOM_DIR"),os.environ.get("HCOM_CLAUDE_DELIVERY"),os.environ.get("HCOM_CLAUDE_ARGS"),{{k:os.environ.get(k) for k in ("NO_COLOR","CLICOLOR","CLICOLOR_FORCE","TERM","FORCE_COLOR")}}])+"\\n")\n' +
             'a=sys.argv[1:]\n' +
             'if a[0]=="list": print(json.dumps(d["rows"]))\n' +
             'elif a[:2]==["term","inject"] or a[:2]==["--go","r"]:\n' +
@@ -55,7 +55,8 @@ class HcomStartupTests(unittest.TestCase):
         self.snapshot = self.f.state / f'ready-{self.counter}.json'
         if action == 'check': args += ['--session-file', str(self.snapshot)]
         env = dict(os.environ, PATH=str(self.bin) + os.pathsep + os.environ['PATH'],
-                   HCOM_DIR='/foreign/state', HCOM_CLAUDE_DELIVERY='native', HCOM_CLAUDE_ARGS='unwanted prompt')
+                   HCOM_DIR='/foreign/state', HCOM_CLAUDE_DELIVERY='native', HCOM_CLAUDE_ARGS='unwanted prompt',
+                   NO_COLOR='1', CLICOLOR='0', CLICOLOR_FORCE='0', TERM='dumb', FORCE_COLOR='0')
         p = subprocess.run(args, env=env, text=True, capture_output=True, timeout=20)
         self.assertEqual(p.returncode, 0 if ok else 2, p.stdout + p.stderr)
         data = json.loads(p.stdout)
@@ -120,6 +121,8 @@ class HcomStartupTests(unittest.TestCase):
     def test_no_clear_or_enter_for_nonempty_unknown_or_unready_terminal(self):
         for screen in [{}, {'ready': False, 'prompt_empty': True},
                        {'ready': True, 'prompt_empty': False, 'input_text': 'draft'},
+                       {'ready': True, 'prompt_empty': False,
+                        'input_text': 'Try "create a util logging.py that..."', 'cursor': [20, 2]},
                        {'ready': True, 'prompt_empty': None}]:
             self.payload['screen'] = screen
             self.write()
@@ -138,7 +141,12 @@ class HcomStartupTests(unittest.TestCase):
         self.assertEqual(len(resumed), 1)
         self.assertEqual(resumed[0][0], ['--go', 'r', self.bound['name'], '--headless',
                                        '--dir', str(self.f.workspace), '--json'])
-        self.assertEqual(resumed[0][2:], ['inject', None])
+        self.assertEqual(resumed[0][2:4], ['inject', None])
+        self.assertEqual(resumed[0][4], {'NO_COLOR': None, 'CLICOLOR': None,
+                         'CLICOLOR_FORCE': None, 'TERM': 'xterm-256color', 'FORCE_COLOR': '1'})
+        # Observations/stop are not launches: do not change their parent's display env.
+        stop = next(c for c in self.calls() if c[0][:2] == ['term', 'inject'])
+        self.assertEqual(stop[4]['NO_COLOR'], '1')
         self.assertEqual(self.f.cli('status')['state']['session'], self.bound)
         self.run_guard('resume', False)
         self.run_guard('stop', False)

@@ -4,7 +4,7 @@
     {
       "mode": "644",
       "path": "claude/.claude-plugin/plugin.json",
-      "sha256": "1c985171b26c5200a15238c232ae65f703a80637c96c88737333b1576855878b"
+      "sha256": "218b2a1564713f03ef852c9140c90db16b4d0beceb1cb8c20e99d8ab58fb27df"
     },
     {
       "mode": "755",
@@ -59,7 +59,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-execute/SKILL.md",
-      "sha256": "aeecc7f1cb4cd581ab295531725358401e4fd202ce4e6aa54d63edda284b5220"
+      "sha256": "a9a7e25eac017c584c27a66556037aa99fe85a23a0fe13ffa423713029acf412"
     },
     {
       "mode": "644",
@@ -74,7 +74,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-execute/references/hcom-loop.md",
-      "sha256": "84e3679a995f4ecf44c46d1810b09a998162b151cdd2a9182f2d5802ecda7bfc"
+      "sha256": "6fa7963ca8b547189c27530ec1cb6e9929a957ecbf52bb4fd4bdfce0bca1273c"
     },
     {
       "mode": "644",
@@ -99,7 +99,7 @@
     {
       "mode": "644",
       "path": "claude/skills/feature-execute/scripts/hcom_startup.py",
-      "sha256": "ab789489b695f08f9aa088b2cd7310bbb61babc0d1a1b68a2b6336fbbc9ed435"
+      "sha256": "96bdd0190774b54e63ac45bb84bbaeda050db8a4912dfb74435bf2171e7cd6a7"
     },
     {
       "mode": "644",
@@ -149,7 +149,7 @@
     {
       "mode": "644",
       "path": "codex/.codex-plugin/plugin.json",
-      "sha256": "49f418aabb7a357b21fd56d4fa990e45381fd809e77191fe3eb7d57bd14496a1"
+      "sha256": "bbd1b870baf5cec50c41c744cb01d122a6d642da265a39cd52859ba254fc96b2"
     },
     {
       "mode": "755",
@@ -204,7 +204,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-execute/SKILL.md",
-      "sha256": "a69bef10c62bb588a8b9ed42e72fac0f8b862b2fc71f20c7f06dc8b8963a1c7f"
+      "sha256": "514afca5969e69d7a2a742d2d8a65a250d408db9e9b427f080ca55512933b221"
     },
     {
       "mode": "644",
@@ -219,7 +219,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-execute/references/hcom-loop.md",
-      "sha256": "84e3679a995f4ecf44c46d1810b09a998162b151cdd2a9182f2d5802ecda7bfc"
+      "sha256": "6fa7963ca8b547189c27530ec1cb6e9929a957ecbf52bb4fd4bdfce0bca1273c"
     },
     {
       "mode": "644",
@@ -244,7 +244,7 @@
     {
       "mode": "644",
       "path": "codex/skills/feature-execute/scripts/hcom_startup.py",
-      "sha256": "ab789489b695f08f9aa088b2cd7310bbb61babc0d1a1b68a2b6336fbbc9ed435"
+      "sha256": "96bdd0190774b54e63ac45bb84bbaeda050db8a4912dfb74435bf2171e7cd6a7"
     },
     {
       "mode": "644",
@@ -293,7 +293,7 @@
     }
   ],
   "format": "feature-workflow.bundle/v1",
-  "identity": "sha256:ca0ed85dea2a1d8ce2814609a1a1e36416d52b3a00012aeefdee566a0aaeebb6",
+  "identity": "sha256:234b644986e93983420bb1f3f523667229a9c35bb83ae8a94371c00babbff5c2",
   "kind": "release",
   "requires": {
     "bridge": {
@@ -331,6 +331,6 @@
       "root": "codex"
     }
   },
-  "version": "1.1.3",
-  "workflow_id": "1.1.3-ca0ed85dea2a"
+  "version": "1.1.4",
+  "workflow_id": "1.1.4-234b644986e9"
 }

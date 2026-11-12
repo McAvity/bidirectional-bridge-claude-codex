@@ -82,10 +82,17 @@ interactive PTY and avoids dependence on Claude's native-mod rollout. Do not cha
 `hcom config` globally or infer the running worker's transport from a new shell's env.
 Record `feature.json.execution.delivery = "inject"` for this launch. Existing workers
 keep their transport unless the pre-dispatch repair below is applicable.
+Hcom distinguishes Claude's placeholder from a real draft using terminal styling.
+For the child launch only, remove `NO_COLOR`, `CLICOLOR` and `CLICOLOR_FORCE`, and set
+`TERM=xterm-256color` and `FORCE_COLOR=1`. An inherited `NO_COLOR=1` can make an empty
+Claude prompt appear nonempty and block startup/delivery. These are terminal display
+settings, not permission changes; keep the parent shell and global settings unchanged.
+The bundled resume helper applies the same environment to its child launch.
 When fresh init granted launch, run once without a task prompt:
 
 ```sh
-HCOM_CLAUDE_DELIVERY=inject hcom --go claude --headless --dir "$HCOM_FLOW_WORKSPACE" --json \
+env -u NO_COLOR -u CLICOLOR -u CLICOLOR_FORCE TERM=xterm-256color FORCE_COLOR=1 \
+  HCOM_CLAUDE_DELIVERY=inject hcom --go claude --headless --dir "$HCOM_FLOW_WORKSPACE" --json \
   --permission-mode auto --strict-mcp-config --mcp-config '{"mcpServers":{}}'
 ```
 
@@ -122,6 +129,10 @@ terminal/launch diagnostic. Handle an explicitly visible trust/mode prompt under
 existing authority. For a suspected placeholder/draft parsing mismatch, inspect the
 screen; only after confirming no user text exists may you clear the composer with
 Ctrl-U **without Enter**, then check again. Do not auto-clear unknown input.
+If the placeholder still reads as nonempty, report the rendering/PTY compatibility
+blocker. Do not waive `prompt_empty`, classify text by a `Try ...` prefix, or repeat
+clears/relaunches. Changing the caller's environment does not repair an already
+running worker; preserve the session and follow the authorized stop/repair boundary.
 
 For a diagnosed pre-dispatch startup/transport failure, execution authorization also
 covers one normal stop and resume of the **same** native session, unless the user's

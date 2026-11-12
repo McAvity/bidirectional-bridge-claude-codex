@@ -16,6 +16,15 @@ import sys
 import hcom_state as state_helper
 
 
+def claude_pty_env(base):
+    """Keep placeholder styling available to hcom's PTY parser, for this child only."""
+    env = dict(base)
+    for key in ('NO_COLOR', 'CLICOLOR', 'CLICOLOR_FORCE'):
+        env.pop(key, None)
+    env.update(TERM='xterm-256color', FORCE_COLOR='1', HCOM_CLAUDE_DELIVERY='inject')
+    return env
+
+
 def command(argv, env):
     result = subprocess.run(['hcom', *argv], env=env, text=True, capture_output=True, timeout=45)
     state_helper.require(result.returncode == 0, 'HCOM_COMMAND_FAILED', result.stderr or result.stdout)
@@ -141,7 +150,7 @@ def main(argv=None):
                     # override model/permissions, or inherit a new prompt/CLI argument set.
                     for key in ('HCOM_CLAUDE_ARGS', 'HCOM_NOTES', 'HCOM_HINTS', 'HCOM_TAG'):
                         env.pop(key, None)
-                    env['HCOM_CLAUDE_DELIVERY'] = 'inject'
+                    env = claude_pty_env(env)
                     output = command(['--go', 'r', name, '--headless', '--dir', workspace, '--json'], env)
                     result = {'resume_requested': True, 'ready': False,
                               'launch': json.loads(output),
