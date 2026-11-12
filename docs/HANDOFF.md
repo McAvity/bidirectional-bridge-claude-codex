@@ -1,5 +1,20 @@
 # Current handoff
 
+## F-W22 — feature-flow Gate 1 pending — 2026-11-12
+
+[Plan](features/F-W22-hcom-native/design.md), W22-01…06 and index committed in
+`d097dd3`; independent [review01](features/F-W22-hcom-native/reviews/01-plan.md)
+PASS in `e615bdb`; two nonblocking clarifications adopted in `c2b5a43`.
+[Decision01](features/F-W22-hcom-native/decisions/01.md) proposes the entire execution,
+integration, review/corrections and bounded two-repository pilot. No execution approval
+yet. Branch `docs/f-w22-hcom-native`; same verified workflow1.1.3 as below.
+Old bundle compatibility includes its resolver, not only hcom support; the new pilot
+must not follow the old MCP launch instructions. Documentation references/hash/AC
+coverage and diff checks PASS. No product tests/models/migration/publication performed.
+W22-P01 complete. Next: wait for the user's real Gate 1 answer, record it in the next
+decision, then execute; do not repeat planning/review merely because phase is decision.
+Proposed execution uses hcom after settling this planning-only MCP task.
+
 ## F-W22 — hcom without custom MCP — brief — 2026-11-12
 
 User requested the next feature: [F-W22-hcom-native](features/F-W22-hcom-native/brief.md).

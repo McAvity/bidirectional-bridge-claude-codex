@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "feature_id": "F-W22-hcom-native",
-  "phase": "plan-review",
+  "phase": "decision",
   "brief": "docs/features/F-W22-hcom-native/brief.md",
   "design": "docs/features/F-W22-hcom-native/design.md",
   "tasks": [
@@ -19,6 +19,6 @@
     "docs/features/README.md"
   ],
   "latest_review": "docs/features/F-W22-hcom-native/reviews/01-plan.md",
-  "latest_decision": null,
-  "next_action": "feature-flow: plan review PASS; uwzględnić R01-01/02 i przygotować propozycję Gate 1. Wykonanie niezatwierdzone."
+  "latest_decision": "docs/features/F-W22-hcom-native/decisions/01.md",
+  "next_action": "feature-flow Gate 1 pending: czekać na zgodę na cały zakres W22-01…06, integrację, review/poprawki, lokalne commity i ograniczoną próbę dwóch repo według decisions/01.md. Zapisać rzeczywistą odpowiedź w następnej decyzji; do tego czasu bez implementacji i modeli."
 }
