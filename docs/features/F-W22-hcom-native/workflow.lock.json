@@ -1,0 +1,29 @@
+{
+  "feature": {
+    "draft_token": null,
+    "feature_id": "F-W22-hcom-native"
+  },
+  "format": "feature-workflow.lock/v1",
+  "generation": 1,
+  "history": [
+    {
+      "at": "2026-11-12T19:58:04.059Z",
+      "generation": 1,
+      "identity": "sha256:ca0ed85dea2a1d8ce2814609a1a1e36416d52b3a00012aeefdee566a0aaeebb6",
+      "op": "begin",
+      "origin": "active-plugin",
+      "version": "1.1.3"
+    }
+  ],
+  "origin": {
+    "client": "codex",
+    "kind": "active-plugin",
+    "plugin_version": "1.1.3"
+  },
+  "workflow": {
+    "identity": "sha256:ca0ed85dea2a1d8ce2814609a1a1e36416d52b3a00012aeefdee566a0aaeebb6",
+    "kind": "release",
+    "version": "1.1.3",
+    "workflow_id": "1.1.3-ca0ed85dea2a"
+  }
+}

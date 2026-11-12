@@ -1,5 +1,20 @@
 # Current handoff
 
+## F-W22 — hcom without custom MCP — brief — 2026-11-12
+
+User requested the next feature: [F-W22-hcom-native](features/F-W22-hcom-native/brief.md).
+Agreed direction: hcom as the default execution transport, migration away from the
+custom MCP/runtime, side-by-side workflow updates while clients remain open, and
+restart only when activation requires it. Preserve task/receipt/version checks and
+historical state; remove legacy client-use scanning from the MCP-free update path.
+Branch `docs/f-w22-hcom-native`, based on `2aca4f5`. Documentation only; no migration,
+runtime/config changes, model launch or publication. Workflow1.1.3 selected with the
+official begin helper; resolve returned verified BOUND_BUNDLE.
+`INSTRUCTIONS=bundle:1.1.3-ca0ed85dea2a IDENTITY=sha256:ca0ed85dea2a1d8ce2814609a1a1e36416d52b3a00012aeefdee566a0aaeebb6 GENERATION=1`.
+Validation: brief/acceptance scope and local links inspected; `git diff --check`.
+Open planning questions: dependency inventory, migration of existing state/locks,
+client reload support and legacy distribution policy. Next: feature-plan F-W22.
+
 ## Workflow1.1.3 — published — 2026-11-11
 
 [Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.3),
