@@ -18,7 +18,7 @@
     "docs/plugin-distribution.md",
     "docs/features/README.md"
   ],
-  "latest_review": null,
+  "latest_review": "docs/features/F-W22-hcom-native/reviews/01-plan.md",
   "latest_decision": null,
-  "next_action": "feature-flow: niezależny review planu i korekty, następnie propozycja całego wykonania i Gate 1. Implementacja niezatwierdzona."
+  "next_action": "feature-flow: plan review PASS; uwzględnić R01-01/02 i przygotować propozycję Gate 1. Wykonanie niezatwierdzone."
 }
