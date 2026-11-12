@@ -1,14 +1,19 @@
 # Current handoff
 
-## Hcom placeholder fix — candidate and retry preparation — 2026-11-12
+## Hcom placeholder fix — candidate and fresh retry ready — 2026-11-12
 
 [Checkpoint](tasks/hcom-placeholder-startup.md). Separate authorized hotfix after the
 F-001 startup failure, not F-W22 execution. Child-scoped display environment preserves
 the placeholder styles hcom requires; fresh launch and guarded resume use it. No
 readiness bypass or global setting change. Live startup/draft/request-response/normal
 exit checks passed; helper50/50 and package/skill checks PASS. Candidate workflow1.1.4,
-identity234b644986e9, unpublished. Independent review and fresh retry prep pending.
-Branch `fix/hcom-placeholder-startup`; preserve failed trial c09841a and its private state.
+identity234b644986e9, unpublished. Independent review of961ad34 PASS, startup14/14;
+workflow60 cases covered after one sandbox socket retry. New isolated trial209434f
+is ready at the same operator path, no AGENTS/custom launcher/history; old c09841a
+and private state archived. Baseline build/runner64 PASS; expected evidence7/8 and
+oracle65,536/100,001 failure preserved. Existing plugin resolves selected candidate.
+Branch `fix/hcom-placeholder-startup`. User starts fresh agent with minimal F-001
+through hcom request; do not claim the full trial/receipt passed or resume the old one.
 
 ## F-W22 — feature-flow Gate 1 pending — 2026-11-12
 
