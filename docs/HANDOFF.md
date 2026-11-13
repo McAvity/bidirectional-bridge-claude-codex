@@ -1,12 +1,17 @@
 # Current handoff
 
-## Workflow 1.1.5 — publication authorized — 2026-11-13
+## Workflow 1.1.5 — published — 2026-11-13
 
-[Release checkpoint](tasks/workflow-1.1.5-release.md). User requested publication of the
-Claude marker fix and instructions for updating Claude plugins. Source d11de43,
-identity 9fe269b83273. Branch `release/workflow-1.1.5`; registry/changelog prepared.
-Exact-SHA CI is required before the annotated tag and public experimental release.
-No installed plugin, project pin or existing feature lock is being changed automatically.
+[Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.5),
+[checkpoint and Claude update commands](tasks/workflow-1.1.5-release.md). Claude marker
+fix source d11de43, distribution/tag 5b83953, identity 9fe269b83273.
+Exact-SHA CI 43383595353 SUCCESS: JS 782 PASS / 2 skips, Python 333 OK / 6 skips,
+pilot 131 OK / 2 skips, protected observer 21 PASS. Local focused tests 50/50,
+build/packages/docs/diff checks and independent review PASS. Public experimental release
+and immutable annotated tag published; marketplace advanced without force.
+Installed plugins, Bridge runtime, project pins and existing feature locks unchanged.
+User can update the Claude plugin and run `/reload-plugins`; no full restart is required
+by the documented reload path. F-W22 execution remains separate. Publication complete.
 
 ## Claude plugin marker — fix prepared — 2026-11-13
 

@@ -19,12 +19,26 @@ review found no blockers. New verifier accepted the unchanged installed 1.1.3 ca
 with its marker present; the candidate resolver in the affected project reached ordinary
 `SELECTION_REQUIRED`. Neither result claims a new live model/session run.
 
-## Publication progress
+## Publication result
 
-Registry and changelog prepared. Publish an immutable annotated `workflow-v1.1.5` tag
-and experimental GitHub release only after exact-distribution CI succeeds. Advance
-the marketplace integration branch without force. No npm publication or installation
-into the user's running clients. Bridge 0.8.2 bytes and feature locks remain unchanged.
+[Workflow 1.1.5](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.5)
+published as a public experimental prerelease at 2026-11-13T07:19:42Z.
+Immutable annotated tag `workflow-v1.1.5` resolves to distribution commit
+`5b83953e9d9afd4d0b3d6651d4b98dc01879091a`; the registry retains the source commit above.
+The marketplace integration branch advanced without force. No npm publication or
+installation into the user's running clients. Bridge 0.8.2 bytes and feature locks remain unchanged.
+
+[Exact-SHA CI 43383595353](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/43383595353)
+completed successfully before the tag/release: build, package equivalence and documentation
+checks; protected observer 21 PASS; JavaScript 782 PASS / 2 skips across 56 files;
+Python 333 cases OK / 6 skips; pilot tooling 131 cases OK / 2 skips.
+Local build, package equivalence, documentation (327 files) and diff checks also passed.
+Focused local bundle/entry validation is recorded above. This release does not claim a
+new full macOS suite or live model run; earlier host-specific full-suite limitations remain
+recorded in the [1.1.4 checkpoint](workflow-1.1.4-release.md).
+
+Publication is complete. Next: user updates/reloads the Claude entry plugin using the
+commands below and retries the originally blocked feature-design request.
 
 ## Claude update instructions
 
