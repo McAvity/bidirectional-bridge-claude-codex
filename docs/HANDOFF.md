@@ -1,16 +1,20 @@
 # Current handoff
 
-## Workflow 1.1.6 — hcom recovery prepared — 2026-11-14
+## Workflow 1.1.6 — hcom recovery published — 2026-11-14
 
 [Release checkpoint and upgrade procedure](tasks/workflow-1.1.6-release.md).
 Branch `feat/hcom-lifecycle-recovery`: explicit unblock/resume/reconcile/cancel, durable
 operation records, v2 state guards and journalled feature lock/state upgrade. Existing
 blocked receipts and native session bindings remain intact. Independent review PASS;
 disposable projected real feature migration/unblock/next-prepare PASS, live files unchanged.
-No model or actual worker operation performed. Candidate packages generated; final stable
-tests and exact-distribution CI/publication remain. Bridge runtime stays 0.8.3; F-W22 remains
-separate. Next: finish release, then affected project's coordinator upgrades its feature
-lock/private state and resumes the authorized hcom work using the bundled recovery procedure.
+No model or actual worker operation performed. Source `2b9b3e8`, distribution/tag `4b60780`,
+identity `784c39436635`. Local hcom 101/101 and workflow 67/67 PASS. Exact-distribution
+CI 43526565500 SUCCESS: JS 796 PASS / 2 skips, Python 375 OK / 6 skips, pilot 131 OK /
+2 skips, protected observer 21 PASS, build/packages/docs PASS. Immutable annotated tag and
+public experimental release published; integration advanced without force. Bridge runtime
+stays 0.8.3; F-W22 remains separate. Installed plugins and live feature state unchanged.
+Next: affected project's coordinator upgrades its feature lock/private state and resumes
+the authorized hcom work using the bundled recovery procedure. Publication complete.
 
 ## Bridge 0.8.3 — cancellation fix published — 2026-11-13
 

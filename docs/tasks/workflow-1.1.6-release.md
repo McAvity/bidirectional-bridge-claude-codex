@@ -40,6 +40,25 @@ counted as passes; final stable-source checks and exact-commit CI supersede them
 skill quick-validator requires unavailable PyYAML locally; repository entry/package checks
 validate the actual distributed skill instead. Final publication evidence is recorded below.
 
+Stable-source local results: 101/101 hcom cases, 67/67 workflow bundle/entry/distribution
+cases, build, package equivalence and documentation (329 files) PASS. The distribution
+rerun used a local HTTP API stub outside the socket-restricted sandbox; no paid model.
+Bridge package source digest remains `5c765b09d1e4`, unchanged from Bridge 0.8.3.
+
+## Publication evidence
+
+Distribution/tag commit: `4b60780edd65cae9de366fc8d21c705b70b04c18`.
+[Exact-commit CI 43526565500](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/43526565500)
+passed before tag publication: protected observer 21 PASS; JavaScript 796 PASS / 2 skips;
+Python 375 cases OK / 6 skips; pilot tooling 131 cases OK / 2 skips, plus build, packages
+and docs. Annotated immutable tag `workflow-v1.1.6` and integration branch were pushed
+atomically without force. The public experimental
+[release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.6)
+contains this distribution. No npm publication or automatic user plugin/runtime/project upgrade.
+
+Publication is complete. The affected project's coordinator now performs the explicit
+feature migration and recovery below under the user's existing authorization.
+
 ## Upgrade an existing project without restarting its worker
 
 Keep the current hcom worker and private namespace. Do not run Bridge Update for this fix.
@@ -53,6 +72,16 @@ claude plugin update feature-workflow@claude-codex-bridge --scope user
 Reload client skill discovery as supported by that client, or use a fresh coordinator.
 The new plugin does not change an existing feature lock. The explicit migration below
 does not require restarting the hcom worker or the coordinator.
+
+For the configured Codex marketplace, its current CLI supports:
+
+```sh
+codex plugin marketplace upgrade claude-codex-bridge
+codex plugin add feature-workflow@claude-codex-bridge
+```
+
+CLI syntax was checked against the installed clients' help. Keep the affected worker;
+the direct published-tool path below also works without refreshing client skill discovery.
 
 An agent can obtain the exact published tools independently of client plugin discovery:
 
