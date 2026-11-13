@@ -11,6 +11,12 @@ explicitly.
 
 ## Unreleased
 
+### Fixed
+
+- Claude Code's plugin-cache `.in_use/` directory no longer causes a false
+  `ENTRY_BUNDLE_CORRUPT`. Only that root directory is excluded before traversal;
+  instruction files, immutable bundles and Codex packages retain strict verification.
+
 ## Feature workflow 1.1.4 — 2026-11-13 (experimental)
 
 ### Fixed

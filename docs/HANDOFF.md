@@ -1,5 +1,18 @@
 # Current handoff
 
+## Claude plugin marker — fix prepared — 2026-11-13
+
+[Diagnosis and correction](tasks/claude-plugin-in-use.md). Installed Claude workflow
+1.1.3 and synthetic published 1.1.4 both reject `.in_use/<pid>` as an extra entry file;
+`--standalone` does not bypass entry verification. `fix/claude-plugin-in-use` narrowly
+prunes only Claude's real cache-root metadata directory before traversal. Bundle/payload
+integrity stays strict. New verifier validates the unchanged installed plugin; candidate
+resolve in the affected project reaches ordinary new-feature selection. Candidate 1.1.5,
+identity 9fe269b83273, generated but not published/installed. Independent review has no
+blockers; bundle/entry tests 50/50, package/docs/diff checks PASS. No markers, project pins
+or existing locks changed.
+Next: authorized release/activation. F-W22 execution remains separate.
+
 ## Workflow 1.1.4 — published — 2026-11-13
 
 [Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.4),

@@ -4,7 +4,7 @@
     {
       "mode": "644",
       "path": "claude/.claude-plugin/plugin.json",
-      "sha256": "218b2a1564713f03ef852c9140c90db16b4d0beceb1cb8c20e99d8ab58fb27df"
+      "sha256": "625f49a819f97a77e7a4953cf1ce0e705fa88e10ed5c55ba42c745db034532a6"
     },
     {
       "mode": "755",
@@ -14,7 +14,7 @@
     {
       "mode": "755",
       "path": "claude/scripts/workflow-lib.mjs",
-      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+      "sha256": "596e6e6ecfb008836e1bb834a234e1e983723c4f92dd864ae4cb664ffccf3b14"
     },
     {
       "mode": "755",
@@ -154,7 +154,7 @@
     {
       "mode": "644",
       "path": "codex/.codex-plugin/plugin.json",
-      "sha256": "bbd1b870baf5cec50c41c744cb01d122a6d642da265a39cd52859ba254fc96b2"
+      "sha256": "3272d7403a017906d2491f1a2c77b731607bc8b57e25178bae211714682d4f31"
     },
     {
       "mode": "755",
@@ -164,7 +164,7 @@
     {
       "mode": "755",
       "path": "codex/scripts/workflow-lib.mjs",
-      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+      "sha256": "596e6e6ecfb008836e1bb834a234e1e983723c4f92dd864ae4cb664ffccf3b14"
     },
     {
       "mode": "755",
@@ -303,7 +303,7 @@
     }
   ],
   "format": "feature-workflow.bundle/v1",
-  "identity": "sha256:d114f0c5414ceb885826ef6de43f82c2990cdbf52d0b54a4f2e5257cfa8c43ba",
+  "identity": "sha256:9fe269b83273f2df8a3f10034d339f74343115e249ba49f91565158e61b01fb8",
   "kind": "release",
   "requires": {
     "bridge": {
@@ -341,6 +341,6 @@
       "root": "codex"
     }
   },
-  "version": "1.1.4",
-  "workflow_id": "1.1.4-d114f0c5414c"
+  "version": "1.1.5",
+  "workflow_id": "1.1.5-9fe269b83273"
 }

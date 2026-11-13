@@ -235,6 +235,109 @@ class GeneratedPackages(unittest.TestCase):
         self.assertNotIn("spawnSync(", LIB.read_text())  # the library never starts a process
 
 
+class PluginHostMetadata(Workspace):
+    """Claude cache liveness metadata is outside the immutable instruction payload."""
+
+    def marker(self, plugin: Path) -> Path:
+        path = plugin / '.in_use' / '12345'
+        path.parent.mkdir()
+        path.write_text('synthetic host liveness marker\n')
+        return path
+
+    def verify_plugin(self, plugin: Path) -> tuple[int, dict]:
+        return self.helper(plugin / 'scripts/workflow.mjs', 'verify-plugin', '--json')
+
+    def test_claude_root_markers_are_accepted_without_changes(self):
+        plugin = self.plugin_copy('claude')
+        self.marker(plugin)
+        (plugin / '.in_use/67890').write_text('second synthetic session\n')
+        before = tree(plugin)
+        code, result = self.verify_plugin(plugin)
+        self.assertEqual((code, result.get('client')), (0, 'claude'), result)
+        self.assertEqual(tree(plugin), before)
+
+    def test_host_directory_is_not_traversed(self):
+        plugin = self.plugin_copy('claude')
+        marker = self.marker(plugin)
+        marker.parent.chmod(0)
+        try:
+            code, result = self.verify_plugin(plugin)
+            self.assertEqual(code, 0, result)
+        finally:
+            marker.parent.chmod(0o700)
+
+    def test_extra_files_outside_exact_claude_root_directory_still_refuse(self):
+        for index, rel in enumerate(['unexpected.py', 'skills/.in_use/12345', '.in_use-extra/12345']):
+            with self.subTest(path=rel):
+                plugin = self.plugin_copy('claude', f'cache-{index}')
+                self.marker(plugin)
+                extra = plugin / rel
+                extra.parent.mkdir(parents=True, exist_ok=True)
+                extra.write_text('unexpected content')
+                code, result = self.verify_plugin(plugin)
+                self.assertEqual((code, result['code']), (3, 'ENTRY_BUNDLE_CORRUPT'))
+                self.assertEqual(result['detail'], rel)
+
+    def test_root_file_or_symlink_is_not_exempt(self):
+        for kind in ['file', 'symlink']:
+            with self.subTest(kind=kind):
+                plugin = self.plugin_copy('claude', f'cache-{kind}')
+                if kind == 'file':
+                    (plugin / '.in_use').write_text('not a directory')
+                else:
+                    (plugin / '.in_use').symlink_to(self.root / 'missing-target', target_is_directory=True)
+                code, result = self.verify_plugin(plugin)
+                self.assertEqual((code, result['code']), (3, 'ENTRY_BUNDLE_CORRUPT'))
+                self.assertEqual(result['detail'], '.in_use')
+
+    def test_bundle_metadata_and_codex_metadata_are_not_exempt(self):
+        plugin = self.plugin_copy('claude')
+        self.marker(plugin)
+        self.marker(plugin / 'bundle/claude')
+        code, result = self.verify_plugin(plugin)
+        self.assertEqual((code, result['code']), (3, 'BUNDLE_EXTRA_FILES'))
+        codex = self.plugin_copy('codex')
+        self.marker(codex)
+        code, result = self.verify_plugin(codex)
+        self.assertEqual((code, result['code']), (3, 'ENTRY_BUNDLE_CORRUPT'))
+
+    def test_marker_does_not_hide_changed_or_missing_skill(self):
+        for change in ['modified', 'missing']:
+            with self.subTest(change=change):
+                plugin = self.plugin_copy('claude', f'cache-{change}')
+                self.marker(plugin)
+                skill = plugin / 'skills/feature-design/SKILL.md'
+                if change == 'modified':
+                    skill.write_text(skill.read_text() + '\nUnexpected instruction.\n')
+                else:
+                    skill.unlink()
+                code, result = self.verify_plugin(plugin)
+                self.assertEqual((code, result['code']), (3, 'ENTRY_BUNDLE_CORRUPT'))
+                self.assertEqual(result['detail'], 'skills/feature-design/SKILL.md')
+
+    def test_packaged_new_and_existing_feature_resolution_preserves_marker_and_lock(self):
+        plugin = self.plugin_copy('claude')
+        marker = self.marker(plugin)
+        project = self.project()
+        script = plugin / 'scripts/workflow.mjs'
+        before = tree(project)
+        for extra in [[], ['--standalone']]:
+            code, result = self.helper(script, 'resolve', '--new', *extra, cwd=project)
+            self.assertEqual((code, result['code']), (3, 'SELECTION_REQUIRED'), result)
+        self.assertEqual(tree(project), before)
+        self.assertFalse(self.home.exists())
+        code, begun = self.helper(script, 'begin', '--feature-id', 'F-existing', cwd=project)
+        self.assertEqual(code, 0, begun)
+        lock = project / 'docs/features/F-existing/workflow.lock.json'
+        before_lock = lock.read_bytes()
+        before_store = tree(self.store)
+        code, resolved = self.helper(script, 'resolve', '--feature', 'F-existing', cwd=project)
+        self.assertEqual((code, resolved['code']), (0, 'BOUND_BUNDLE'), resolved)
+        self.assertEqual(lock.read_bytes(), before_lock)
+        self.assertEqual(tree(self.store), before_store)
+        self.assertEqual(marker.read_text(), 'synthetic host liveness marker\n')
+
+
 class IndependentGeneration(Workspace):
     """AC-01: one component's inputs never change the other's bytes (whole trees and entries)."""
 

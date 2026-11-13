@@ -1,7 +1,7 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "feature-workflow",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".agents/skills/feature-flow",
@@ -18,19 +18,19 @@
     "scripts/workflow-source/workflow-lib.mjs",
     "scripts/workflow-source/release.json"
   ],
-  "source_digest": "38af039d95ce153ee9e7f0177da0f631ccfa7ef7067a3c7a3c93041061bed8ab",
+  "source_digest": "e9e9e6b5de0325cc05f8fe5a2b09c502d0c94d18623a084df80277f58f573bb1",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "bbd1b870baf5cec50c41c744cb01d122a6d642da265a39cd52859ba254fc96b2"
+      "sha256": "3272d7403a017906d2491f1a2c77b731607bc8b57e25178bae211714682d4f31"
     },
     {
       "path": "bundle/bundle.json",
-      "sha256": "8a21556e9bbe6fb8be02c8608af224cf4a983324bef642565e5c1a9edde3c78b"
+      "sha256": "5a425abde0478e7758f5b4c572a95a12fbdab5606910365e4003cd9ad16df5f7"
     },
     {
       "path": "bundle/claude/.claude-plugin/plugin.json",
-      "sha256": "218b2a1564713f03ef852c9140c90db16b4d0beceb1cb8c20e99d8ab58fb27df"
+      "sha256": "625f49a819f97a77e7a4953cf1ce0e705fa88e10ed5c55ba42c745db034532a6"
     },
     {
       "path": "bundle/claude/scripts/select-source.mjs",
@@ -38,7 +38,7 @@
     },
     {
       "path": "bundle/claude/scripts/workflow-lib.mjs",
-      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+      "sha256": "596e6e6ecfb008836e1bb834a234e1e983723c4f92dd864ae4cb664ffccf3b14"
     },
     {
       "path": "bundle/claude/scripts/workflow.mjs",
@@ -150,7 +150,7 @@
     },
     {
       "path": "bundle/codex/.codex-plugin/plugin.json",
-      "sha256": "bbd1b870baf5cec50c41c744cb01d122a6d642da265a39cd52859ba254fc96b2"
+      "sha256": "3272d7403a017906d2491f1a2c77b731607bc8b57e25178bae211714682d4f31"
     },
     {
       "path": "bundle/codex/scripts/select-source.mjs",
@@ -158,7 +158,7 @@
     },
     {
       "path": "bundle/codex/scripts/workflow-lib.mjs",
-      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+      "sha256": "596e6e6ecfb008836e1bb834a234e1e983723c4f92dd864ae4cb664ffccf3b14"
     },
     {
       "path": "bundle/codex/scripts/workflow.mjs",
@@ -274,7 +274,7 @@
     },
     {
       "path": "scripts/workflow-lib.mjs",
-      "sha256": "c01fcb7ddc05843ed352423a40fa20289466c95d94eac63c0b1aa08f3ef5f697"
+      "sha256": "596e6e6ecfb008836e1bb834a234e1e983723c4f92dd864ae4cb664ffccf3b14"
     },
     {
       "path": "scripts/workflow.mjs",

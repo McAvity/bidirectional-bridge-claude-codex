@@ -111,11 +111,14 @@ const byBytes = (a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b));
 // filesystem helpers (never follow a symlink)
 // ---------------------------------------------------------------------------
 
-/** Every entry below `root` as `{rel, kind}`; symbolic links are reported, never followed. */
-export function walkEntries(root) {
+/** Every entry below `root` as `{rel, kind}`; symbolic links are reported, never followed.
+ * Optional root directories are pruned before traversal (never files or symlinks).
+ */
+export function walkEntries(root, { skipRootDirectories = [] } = {}) {
   const out = [];
   const visit = (dir, prefix) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!prefix && entry.isDirectory() && skipRootDirectories.includes(entry.name)) continue;
       const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isSymbolicLink()) out.push({ rel, kind: "symlink" });
       else if (entry.isDirectory()) {
@@ -398,7 +401,10 @@ export function verifyPlugin(packageRoot) {
   if (!client) throw new WorkflowError("ENTRY_WITHOUT_BUNDLE", "no client plugin manifest at the package root");
   const expected = new Map(manifest.files.filter((f) => f.path.startsWith(`${client}/`)).map((f) => [f.path.slice(client.length + 1), f]));
   const problems = [];
-  for (const entry of walkEntries(packageRoot)) {
+  // Claude owns these transient cache liveness markers, not the instruction bundle.
+  // Prune before traversal: a session may change markers while verification runs.
+  // Keep bundle verification strict and reject root files/symlinks with this name.
+  for (const entry of walkEntries(packageRoot, { skipRootDirectories: client === "claude" ? [".in_use"] : [] })) {
     if (entry.rel === BUNDLE_DIR || entry.rel.startsWith(`${BUNDLE_DIR}/`) || entry.rel === "GENERATED.json") continue;
     if (entry.kind === "symlink" || entry.kind === "other") problems.push({ path: entry.rel, problem: "link" });
     if (entry.kind !== "file") continue;
