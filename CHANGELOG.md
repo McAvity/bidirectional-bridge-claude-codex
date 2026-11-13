@@ -11,6 +11,28 @@ explicitly.
 
 ## Unreleased
 
+## Feature workflow 1.1.4 — 2026-11-13 (experimental)
+
+### Fixed
+
+- Fresh hcom Claude launches and guarded resumes preserve terminal styling in the
+  child environment, so placeholders can be distinguished from actual composer text.
+  Existing readiness checks remain required; global terminal settings are unchanged.
+- Coordinator instructions derive the private worktree/feature state directory with
+  the bundled namespace helper instead of asking the agent to invent a path.
+
+### Added
+
+- Read-only execution summaries in Markdown or JSON: bound sessions, rounds, startup
+  and receipt timings, latest receipt and separately verified normal termination.
+  Missing evidence stays unknown; worker approvals and coordinator permission issues
+  are reported separately. The summary does not imply user acceptance or launch work.
+
+Both client packages include the changes. Bridge remains 0.8.2; existing feature locks
+keep their selected bundle. Refresh the workflow plugin for new features; switching an
+existing feature is explicit and happens between rounds. Validation and behavioral
+limits are recorded in the [release checkpoint](docs/tasks/workflow-1.1.4-release.md).
+
 ## Bridge 0.8.2 — 2026-11-10 (experimental)
 
 ### Fixed

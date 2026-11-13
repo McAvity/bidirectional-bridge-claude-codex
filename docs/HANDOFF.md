@@ -1,5 +1,14 @@
 # Current handoff
 
+## Workflow 1.1.4 — publication authorized — 2026-11-13
+
+[Release checkpoint](tasks/workflow-1.1.4-release.md). User requested publication of the
+completed startup/state/summary changes. Release branch `release/workflow-1.1.4`, source
+b9e98cf, workflow identity d114f0c5414c. Registry and changelog prepared; local release
+validation and exact-SHA CI precede the immutable tag and experimental GitHub release.
+Installed clients, project pins and feature locks remain unchanged. F-W22 execution
+approval remains separate.
+
 ## Hcom state selection and summary — 2026-11-13
 
 [Checkpoint](tasks/hcom-state-summary.md). User authorized these two narrow improvements
