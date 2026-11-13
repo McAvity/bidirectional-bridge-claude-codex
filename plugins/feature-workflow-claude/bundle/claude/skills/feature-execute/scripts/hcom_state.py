@@ -371,14 +371,18 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('command', choices=['namespace', 'init', 'bind', 'status', 'check-session', 'prepare', 'sent', 'receipt',
                                       'report-template', 'validate-report', 'close-check'])
+    p.add_argument('--output', choices=['json', 'path'], default='json',
+                   help='path prints only the canonical state directory; namespace only')
     for flag in ('workspace', 'feature'):
         p.add_argument('--' + flag, required=True)
     for flag in ('state', 'workflow-identity', 'worker-root', 'session-file', 'contract', 'contract-sha256',
                  'event-id', 'report', 'decision', 'note'):
         p.add_argument('--' + flag)
     try:
-        answer = run(p.parse_args(argv))
-        print(json.dumps(answer, ensure_ascii=False))
+        args = p.parse_args(argv)
+        require(args.output != 'path' or args.command == 'namespace', 'PATH_OUTPUT_NAMESPACE_ONLY')
+        answer = run(args)
+        print(answer['state_dir'] if args.output == 'path' else json.dumps(answer, ensure_ascii=False))
         return 0 if answer['ok'] else 2
     except (Refusal, OSError, ValueError, TypeError, KeyError) as exc:
         print(json.dumps({'ok': False, 'code': str(exc), 'details': getattr(exc, 'details', None),

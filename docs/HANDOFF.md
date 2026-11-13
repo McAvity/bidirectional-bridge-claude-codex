@@ -1,5 +1,17 @@
 # Current handoff
 
+## Hcom state selection and summary — 2026-11-13
+
+[Checkpoint](tasks/hcom-state-summary.md). User authorized these two narrow improvements
+after the independent F-001 retry passed (receipt then verified normal stop; user acceptance
+remains separate). Branch `fix/hcom-state-summary`, based on 117ee13. Namespace path output
+removes manual path guessing; a bundled read-only summary derives timings/receipt/normal
+stop from correlated state and events, preserving unknowns and separating reported worker
+approvals from coordinator permission issues. Both generated client packages updated;
+candidate 1.1.4 identity d114f0c5414c, not published/installed. Independent review has no
+blockers; 65/65 focused tests, package/skill checks and retrospective history check PASS.
+F-W22 execution is still not approved; no model launched or existing feature lock changed.
+
 ## Hcom placeholder fix — candidate and fresh retry ready — 2026-11-12
 
 [Checkpoint](tasks/hcom-placeholder-startup.md). Separate authorized hotfix after the

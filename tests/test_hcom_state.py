@@ -110,6 +110,27 @@ class HcomStateTests(unittest.TestCase):
         self.cli('status', ok=False)
         self.assertFalse(self.state.exists())
 
+    def test_namespace_path_is_canonical_private_stable_and_read_only(self):
+        alias = self.root / 'repo alias'
+        alias.symlink_to(self.workspace, target_is_directory=True)
+        env = dict(os.environ, XDG_STATE_HOME=str(self.root / 'private state'))
+        def namespace(workspace, feature='F-test'):
+            p = subprocess.run([sys.executable, str(HELPER), 'namespace', '--workspace', str(workspace),
+                                '--feature', feature, '--output', 'path'], env=env,
+                               text=True, capture_output=True)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            return p.stdout.strip()
+        first = namespace(self.workspace)
+        self.assertEqual(first, namespace(alias))
+        self.assertNotEqual(first, namespace(self.workspace, 'F-other'))
+        other = self.root / 'another-worktree'
+        other.mkdir()
+        self.assertNotEqual(first, namespace(other))
+        self.assertTrue(first.startswith(str(self.root / 'private state/feature-workflow/hcom') + '/'))
+        self.assertFalse((self.root / 'private state').exists())
+        self.cli('init', '--output', 'path', ok=False)
+        self.assertFalse(self.state.exists())
+
     def test_state_must_be_outside_workspace_including_symlink(self):
         self.cli('init', '--workflow-identity', self.identity, '--worker-root', str(self.worker),
                  state=self.workspace / 'state', ok=False)

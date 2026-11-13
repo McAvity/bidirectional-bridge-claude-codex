@@ -22,10 +22,15 @@ is described below; it never replaces a worker or restarts task execution.
    `"execution": {"transport": "hcom"}` in feature.json before first launch. Do not overwrite
    other execution fields. An existing Bridge feature/root must be settled before migration;
    do not assume idle from an absent local process. Existing hcom state is resumed, not reset.
-3. Use the selected skill's `scripts/hcom_state.py` for local bookkeeping. `namespace
-   --workspace ABS --feature ID` gives a stable private directory outside the worktree
-   (XDG_STATE_HOME or ~/.local/state). For an isolated pilot, an explicit `--state ABS` is
-   allowed and must be recorded outside Git for resumption. Keep the same path throughout.
+3. Use the selected skill's `scripts/hcom_state.py` for local bookkeeping. Derive the state
+   directory with `namespace --output path`, as below; do not invent a path or search old
+   `/tmp` directories. The result is stable for the canonical worktree path and feature
+   (under XDG_STATE_HOME or ~/.local/state), and namespace does not create files.
+   On continuation restore an explicitly recorded custom state path, if any; otherwise
+   derive the default again with the same state-home environment. A custom `--state ABS`
+   is only for an explicitly configured isolated run, never a fallback after refusal.
+   Record that override outside Git and keep it throughout. Never reset an existing state
+   or choose another directory to escape a binding mismatch or uncertain launch.
    The helper never launches hcom, models or Git writes and never performs a full Git receipt.
 4. Define shell variables for the exact roots below; these are examples to fill from resolve,
    not literal installation paths. Every new shell/tool call must restore these variables:
@@ -33,11 +38,12 @@ is described below; it never replaces a worker or restarts task execution.
 ```sh
 HCOM_FLOW_WORKSPACE='/absolute/feature-worktree'
 HCOM_FLOW_FEATURE='F-X'
-HCOM_FLOW_STATE='/absolute/private/feature-state'
 HCOM_FLOW_HELPER='/selected/codex/skills/feature-execute/scripts/hcom_state.py'
 HCOM_FLOW_BUNDLE='/verified/bundle-root'
 HCOM_FLOW_WORKER_ROOT="$HCOM_FLOW_BUNDLE/claude"
 HCOM_FLOW_IDENTITY='sha256:identity-from-resolve'
+HCOM_FLOW_STATE="$(python3 "$HCOM_FLOW_HELPER" namespace \
+  --workspace "$HCOM_FLOW_WORKSPACE" --feature "$HCOM_FLOW_FEATURE" --output path)" || exit 1
 export HCOM_DIR="$HCOM_FLOW_STATE/hcom"
 python3 "$HCOM_FLOW_HELPER" init --state "$HCOM_FLOW_STATE" \
   --workspace "$HCOM_FLOW_WORKSPACE" --feature "$HCOM_FLOW_FEATURE" \
@@ -279,6 +285,38 @@ state, inspect and stop only the owned worker normally, and report incomplete/ca
 never accepted. A report validation failure alone is not a cancellation. Keep private state/history and commits; do not delete records,
 reset all hcom state, stop shared daemons or touch unrelated workers. A stopped session is
 not automatically resumed/replaced by this MVP. State and instructions expose this limit.
+
+## Summarize the run
+
+At handoff (including blocked or unfinished runs), generate the summary instead of manually
+reconstructing timings. Use the selected bundle's helper with the same state directory:
+
+```sh
+python3 "$(dirname "$HCOM_FLOW_HELPER")/hcom_summary.py" \
+  --workspace "$HCOM_FLOW_WORKSPACE" --feature "$HCOM_FLOW_FEATURE" --state "$HCOM_FLOW_STATE"
+```
+
+It reads state plus hcom history/live list; it never launches, sends, stops, or accepts work.
+Default output is Markdown; `--format json` returns structured measurements. It separates
+startup, initialization, each round and dispatch-to-accepted-receipt time. Receipt is a
+coordinator decision, not user acceptance. Confirmed normal stop requires the matching
+finish intent, accepted report, subsequent normal-stop event and absence from the live list.
+Only recorded bindings are counted, not a claim that no unrecorded workers ever existed.
+
+For offline diagnosis, use `--events-file PRIVATE_JSONL` and optionally `--live-file
+PRIVATE_JSON_ARRAY`; the result explicitly describes saved observations, not current status.
+Missing events/timestamps stay unknown. If history is truncated, preserve that limitation
+or supply a complete saved snapshot; do not substitute prepare time for dispatch time.
+Keep raw history and session metadata outside Git. Summaries omit prompts and report bodies.
+
+Approval counts cannot be inferred reliably from silence in the event stream. By default
+worker approvals and coordinator permission issues are reported separately as unknown.
+If measured, supply `--observations PRIVATE_JSON` with either or both fields:
+`{"worker_approvals":{"count":0,"evidence":"ledger reference describing observed approvals"},
+"coordinator_permission_issues":{"count":2,"evidence":"ledger reference describing tool refusals"}}`.
+These remain explicitly reported observations, not automatic measurements. Translate the
+summary into the user's language without turning unknown values into zero or elapsed time
+into model working time. The summary never replaces Git review or verification of checks.
 
 ## Hcom round executor
 
