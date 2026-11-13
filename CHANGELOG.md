@@ -11,6 +11,30 @@ explicitly.
 
 ## Unreleased
 
+## Feature workflow 1.1.6 — 2026-11-14 (experimental)
+
+### Fixed
+
+- A received hcom `blocked` round can continue after the prerequisite is verified,
+  without rewriting its receipt or changing transport. Stopped and launch-blocked
+  same-session workers have explicit recovery paths.
+- Interrupted prepare/send/resume/finish commands are reconciled from correlated
+  evidence. Durable intents prevent blind retries; proven unsent rounds remain
+  historical rather than being overwritten. History reads paginate instead of
+  making a long-running workflow permanently unmanageable.
+
+### Added
+
+- Explicit cancellation preserves partial work and evidence without acceptance or
+  integration. Normal shutdown and interrupted cancellation are reported separately.
+- Journalled hcom feature upgrade migrates the lock and private state together,
+  retaining unresolved operations, session identity, contracts and receipts. State
+  format v2 prevents old helpers from ignoring lifecycle guards. Existing features
+  require this explicit upgrade; refreshing the plugin alone does not migrate them.
+- Recovery instructions and summary lifecycle/continuation/pending-operation fields.
+
+Bridge runtime 0.8.3 is unchanged. See the [release and upgrade instructions](docs/tasks/workflow-1.1.6-release.md).
+
 ## Bridge 0.8.3 — 2026-11-13 (experimental)
 
 ### Fixed

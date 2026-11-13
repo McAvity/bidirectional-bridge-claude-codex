@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 
+sys.dont_write_bytecode = True
 import hcom_state as state_helper
 
 
@@ -31,12 +32,31 @@ def command(argv, env):
     return result.stdout
 
 
-def record(path, data):
+def record(path, data, raw=None):
     # Exclusive intent survives failure/timeout: uncertainty never grants a retry.
     with path.open('x') as handle:
-        json.dump(data, handle)
+        if raw is None:
+            json.dump(data, handle)
+        else:
+            handle.write(raw.decode('utf-8'))
         handle.flush()
         os.fsync(handle.fileno())
+    directory = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def archive_resolved(path):
+    if path.exists() and state_helper.intent_resolved(path.parent, path.name):
+        raw = path.read_bytes()
+        archive = path.with_name(path.stem + '-' + state_helper.hashlib.sha256(raw).hexdigest() + '.json')
+        if archive.exists():
+            state_helper.require(archive.read_bytes() == raw, 'INTENT_ARCHIVE_CONFLICT')
+        else:
+            record(archive, None, raw)
+        path.unlink()
 
 
 def live(state, env, startup_stop=False):
@@ -86,6 +106,9 @@ def main(argv=None):
         with state_helper.locked(root):
             state = state_helper.read_json(root / 'state.json')
             state_helper.validate_binding(state, workspace, args.feature)
+            state_helper.require(not state.get('upgrade_pending'), 'WORKFLOW_UPGRADE_PENDING')
+            if args.command != 'check':
+                state_helper.require_open(state, root)
             bound = state.get('session')
             state_helper.require(isinstance(bound, dict) and
                                  re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', bound.get('name', '')),
@@ -110,8 +133,10 @@ def main(argv=None):
                 no_dispatch(state, env)
                 stop_path = root / 'startup-stop-intent.json'
                 resume_path = root / 'startup-resume-intent.json'
+                archive_resolved(resume_path)
                 state_helper.require(not resume_path.exists(), 'STARTUP_RESUME_ALREADY_REQUESTED')
                 if args.command == 'stop':
+                    archive_resolved(stop_path)
                     state_helper.require(not stop_path.exists(), 'STARTUP_STOP_ALREADY_REQUESTED')
                     live(state, env, startup_stop=True)
                     empty_terminal(name, env)

@@ -1,5 +1,17 @@
 # Current handoff
 
+## Workflow 1.1.6 — hcom recovery prepared — 2026-11-14
+
+[Release checkpoint and upgrade procedure](tasks/workflow-1.1.6-release.md).
+Branch `feat/hcom-lifecycle-recovery`: explicit unblock/resume/reconcile/cancel, durable
+operation records, v2 state guards and journalled feature lock/state upgrade. Existing
+blocked receipts and native session bindings remain intact. Independent review PASS;
+disposable projected real feature migration/unblock/next-prepare PASS, live files unchanged.
+No model or actual worker operation performed. Candidate packages generated; final stable
+tests and exact-distribution CI/publication remain. Bridge runtime stays 0.8.3; F-W22 remains
+separate. Next: finish release, then affected project's coordinator upgrades its feature
+lock/private state and resumes the authorized hcom work using the bundled recovery procedure.
+
 ## Bridge 0.8.3 — cancellation fix published — 2026-11-13
 
 [Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/bridge-v0.8.3),

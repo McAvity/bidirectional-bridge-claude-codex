@@ -1,8 +1,8 @@
 {
   "format": "feature-workflow.release/v1",
   "component": "feature-workflow",
-  "version": "1.1.5",
-  "tag": "workflow-v1.1.5",
+  "version": "1.1.6",
+  "tag": "workflow-v1.1.6",
   "state": "candidate",
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
   "requires": {

@@ -4,9 +4,9 @@ Use only after the user selects hcom and authorizes this feature's execution/del
 `feature-flow` uses this same loop during execution; it does not invent a second scheduler.
 Support: one local Git worktree, one feature, one Claude session, sequential rounds.
 The coordinator owns contracts, index, task statuses, review and decisions. Hcom transports
-messages; the coordinator still verifies the Git delivery. No Bridge calls, task retries after uncertain delivery, automatic crash recovery,
-multi-repo or parallel workers in this mode. A bounded pre-dispatch startup repair
-is described below; it never replaces a worker or restarts task execution.
+messages; the coordinator still verifies the Git delivery. No Bridge calls, blind task retries,
+multi-repo or parallel workers in this mode. For recovery and cancellation follow
+[hcom-recovery.md](hcom-recovery.md); it preserves the session and earlier receipts.
 
 ## Select instructions and persistent state
 
@@ -50,10 +50,12 @@ python3 "$HCOM_FLOW_HELPER" init --state "$HCOM_FLOW_STATE" \
   --workflow-identity "$HCOM_FLOW_IDENTITY" --worker-root "$HCOM_FLOW_WORKER_ROOT"
 ```
 
-Only fresh `init` can grant `launch_permitted:true`. On an existing state, inspect it and
+Fresh `init` grants `launch_permitted:true`. On an existing state, inspect it and
 `hcom list --json` first. If launch may already have happened but no session was bound,
 identify that exact session from recorded launch output/list and bind it; ambiguous state
-requires diagnosis, never a replacement worker. Identity changes are not recovery.
+requires diagnosis, never a replacement worker. An interrupted initialization with a proven
+unexecuted launch uses the explicit one-time recovery grant, not another init or namespace.
+Identity changes require the journalled upgrade in the recovery reference.
 
 ## Launch and bind once
 
@@ -248,7 +250,8 @@ review. Check the helper's exit status **and** JSON `ok:true` before continuing.
 receipt and `/exit` in a shell, even with a best-effort JSON extraction. A failed receipt does
 not settle the round, authorize shutdown, or require abandoning the task.
 `accepted` means this round was received, not user acceptance of the feature.
-`rework` records a settled delivery needing a new round; `blocked` stops automatic continuation.
+`rework` records a settled delivery needing a new round; `blocked` requires a recorded resume
+after the blocker is resolved. The old receipt remains blocked; it is not rewritten.
 Questions for the user and scope decisions go into the normal documents; do not contact the
 worker until the coordinator explicitly transmits the resulting authorized contract.
 
@@ -266,8 +269,9 @@ unresolved stop, not as an automatic response to a repairable formatting error.
 
 Keep the same session binding and feature task mapping. A new round uses the prior delivered
 HEAD or separately recorded integration commit as BASE, a fresh ledger/report and explicit
-review findings. Prepare/send only after the prior delivery has an accepted/rework receipt;
-unknown or blocked work is not silently replaced. Repeat the same receipt and review checks.
+review findings. Prepare/send after an accepted/rework receipt, an explicitly resumed blocked
+receipt, or a proven unsent preparation resolved through recovery. Unknown work is not
+silently replaced. Repeat the same receipt and review checks.
 Finish tasks and update feature.json according to the existing workflow. At Gate2 keep the
 feature unaccepted pending the user; no bridge_feature_accept is used in hcom mode.
 
@@ -276,15 +280,16 @@ use the selected `scripts/hcom_finish.py --workspace ABS --feature ID [--state A
 This wrapper checks the fresh live session, listening state, empty ready terminal,
 acknowledged dispatch and unchanged accepted report through `close-check`. It records
 a private exclusive finish intent before issuing one normal `/exit`.
-It refuses pending, rejected, rework or blocked rounds and any existing finish intent.
+It refuses pending, rejected, rework or blocked rounds and any unresolved finish intent.
 Keep that intent after an error and diagnose history; never delete it to retry. It never retries uncertain injection
 and returns `stopped_verified:false`; separately confirm the normal stop in hcom history.
-Do not replace a refused finish with a direct terminal injection. An explicitly authorized
-cancellation or an exhausted run deadline is a separate abort path: preserve unresolved
-state, inspect and stop only the owned worker normally, and report incomplete/cancelled,
-never accepted. A report validation failure alone is not a cancellation. Keep private state/history and commits; do not delete records,
-reset all hcom state, stop shared daemons or touch unrelated workers. A stopped session is
-not automatically resumed/replaced by this MVP. State and instructions expose this limit.
+Do not replace a refused finish with a direct terminal injection. Use the recovery helper's
+cancel path for an authorized abandonment or exhausted run deadline, preserving unfinished
+rounds and stopping only the owned worker. Cancellation never means acceptance. A report
+validation failure alone is not cancellation. Keep private state/history and commits; do not
+delete records, reset all hcom state, stop shared daemons or touch unrelated workers.
+Use reconcile to confirm finish; an explicitly authorized later correction can resume the
+same stopped native session, then prepare a new round after readiness is confirmed.
 
 ## Summarize the run
 

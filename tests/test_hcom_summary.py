@@ -67,6 +67,19 @@ class HcomSummaryTests(unittest.TestCase):
         self.assertIsNone(s['observations']['worker_approvals'])
         self.assertEqual(self.state, original)
 
+    def test_recovery_and_cancellation_do_not_relabel_receipt_as_success(self):
+        self.state['lifecycle'] = 'cancelled'
+        self.state['rounds'][-1]['receipt']['decision'] = 'blocked'
+        self.state['rounds'][-1]['continuation'] = {'action': 'unblocked'}
+        self.state['recovery_history'] = [{'action': 'unblocked'}, {'action': 'cancelled'}]
+        s = self.result()
+        self.assertEqual(s['lifecycle'], 'cancelled')
+        self.assertEqual(s['latest_receipt'], 'blocked')
+        self.assertTrue(s['continuation_recorded'])
+        self.assertEqual(s['recovery_actions'], 2)
+        self.assertFalse(s['stopped_verified'])
+        self.assertIsNone(s['dispatch_to_accepted_receipt_seconds'])
+
     def test_finish_intent_alone_and_missing_live_snapshot_do_not_confirm_stop(self):
         s = summary.summarize(self.state, self.events, None, self.finish, self.reported)
         self.assertFalse(s['stopped_verified'])

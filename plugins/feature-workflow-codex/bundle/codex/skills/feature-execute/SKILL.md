@@ -62,8 +62,11 @@ For `hcom`, follow [references/hcom-loop.md](references/hcom-loop.md) as coordin
 Derive the private state path with the bundled namespace helper and generate the handoff
 measurements with `hcom_summary.py`; do not guess state paths or missing measurements.
 Follow the reference's lifecycle,
-including styled-terminal inject startup, the bundled readiness helper before dispatch, and bounded
-same-session repair only before any prepared round.
+including styled-terminal inject startup and the bundled readiness helper before dispatch.
+For blocked receipts, interrupted commands, stopped workers, cancellation or an existing
+feature's workflow upgrade, use [references/hcom-recovery.md](references/hcom-recovery.md).
+Resume within existing execution authority after verifying the blocker is resolved;
+do not request permission again merely because a receipt was blocked.
 Do not create a Bridge root, bind a manager or use Bridge round/question/acceptance tools
 for that workstream, even if MCP tools are available. Hcom changes execution transport,
 not instruction-source selection: if the selected set lacks this reference, report that an

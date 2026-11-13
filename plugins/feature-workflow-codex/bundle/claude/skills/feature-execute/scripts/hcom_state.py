@@ -18,7 +18,8 @@ import re
 import sys
 import tempfile
 
-FORMAT = 'feature-workflow.hcom-state/v1'
+FORMAT = 'feature-workflow.hcom-state/v2'
+LEGACY_FORMAT = 'feature-workflow.hcom-state/v1'
 LINE = re.compile(r'^DELIVERY=local-v1 BASE=([0-9a-f]{40}) HEAD=([0-9a-f]{40}) '
                   r'LEDGER=(\S+) OUTCOME=(COMPLETE|PARTIAL) WORKTREE=(clean|dirty:[0-9]+)$')
 
@@ -90,6 +91,11 @@ def save(root, state):
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(name, root / 'state.json')
+        directory = os.open(root, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         if os.path.exists(name):
             os.unlink(name)
@@ -124,11 +130,38 @@ def check_readiness(path, root):
     except (KeyError, TypeError, ValueError):
         raise Refusal('LIVE_READINESS_REQUIRED')
     require(0 <= age <= 60, 'LIVE_READINESS_STALE')
-    if (root / 'startup-stop-intent.json').exists():
+    if (root / 'startup-stop-intent.json').exists() and not intent_resolved(root, 'startup-stop-intent.json'):
         require((root / 'startup-resume-intent.json').is_file(), 'STARTUP_REPAIR_PENDING')
         resume = read_json(root / 'startup-resume-intent.json')
         require(datetime.fromisoformat(readiness['checked_at']) > datetime.fromisoformat(resume['at']),
                 'LIVE_READINESS_BEFORE_RESUME')
+
+
+def intent_resolved(root, name):
+    path = root / name
+    if not path.exists():
+        return True
+    state = read_json(root / 'state.json')
+    resolved = state.get('resolved_intents', {}).get(name, {})
+    return resolved.get('sha256') == hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def require_mutable(state):
+    require(state.get('format') == FORMAT, 'STATE_UPGRADE_REQUIRED')
+    require(not state.get('upgrade_pending'), 'WORKFLOW_UPGRADE_PENDING')
+
+
+def require_open(state, root):
+    require_mutable(state)
+    require(state.get('lifecycle', 'open') == 'open', 'WORKFLOW_NOT_OPEN')
+    require(not any(op.get('status') == 'intent' for op in state.get('operations', [])),
+            'OPERATION_UNRESOLVED')
+    require(intent_resolved(root, 'finish-intent.json'), 'FINISH_PENDING_RECONCILIATION')
+
+
+def settled(current):
+    return (current.get('receipt') or {}).get('decision') in ('accepted', 'rework') or \
+        bool(current.get('continuation')) or current.get('disposition') == 'not_sent'
 
 
 def contract_checks(data):
@@ -258,6 +291,10 @@ def report_template(c):
 
 
 def close_check(state, session_file):
+    require_mutable(state)
+    require(state.get('lifecycle', 'open') == 'open', 'WORKFLOW_NOT_OPEN')
+    require(not any(op.get('status') == 'intent' for op in state.get('operations', [])),
+            'OPERATION_UNRESOLVED')
     check_session(state, session_file)
     require(bool(state['rounds']), 'NO_PREPARED_ROUND')
     current = state['rounds'][-1]
@@ -314,18 +351,21 @@ def run(args):
             if target.exists():
                 state = read_json(target)
                 validate_binding(state, workspace, args.feature)
+                require_open(state, root)
                 require(state['workflow_identity'] == args.workflow_identity and state['worker_root'] == worker_root,
                         'WORKFLOW_BINDING_MISMATCH')
                 return result | {'state': state}
             state = {'format': FORMAT, 'workspace': workspace, 'feature_id': args.feature,
                      'workflow_identity': args.workflow_identity, 'worker_root': worker_root,
                      'workflow_bundle': str(Path(worker_root).parent),
-                     'created_at': now(), 'session': None, 'rounds': []}
+                     'created_at': now(), 'session': None, 'rounds': [],
+                     'lifecycle': 'open', 'operations': []}
             save(root, state)
             return result | {'state': state, 'launch_permitted': True}
         require(target.is_file(), 'STATE_MISSING')
         state = read_json(target)
         validate_binding(state, workspace, args.feature)
+        require_open(state, root)
         if args.command == 'bind':
             require(args.session_file is not None, 'SESSION_FILE_REQUIRED')
             observed = session(read_json(args.session_file), workspace)
@@ -336,14 +376,14 @@ def run(args):
             check_readiness(args.session_file, root)
             c, path, digest = contract(args.contract, state)
             require(c['round'] == len(state['rounds']) + 1, 'ROUND_ALREADY_PREPARED_OR_OUT_OF_ORDER')
-            require(not state['rounds'] or (state['rounds'][-1].get('receipt') or {}).get('decision')
-                    in ('accepted', 'rework'), 'PREVIOUS_ROUND_UNSETTLED')
+            require(not state['rounds'] or settled(state['rounds'][-1]), 'PREVIOUS_ROUND_UNSETTLED')
             state['rounds'].append({'contract': c, 'contract_path': path, 'contract_sha256': digest,
                                     'prepared_at': now(), 'send_event_id': None, 'receipt': None})
             result['dispatch_permitted'] = True
         elif args.command in ('sent', 'receipt'):
             require(bool(state['rounds']), 'NO_PREPARED_ROUND')
             current = state['rounds'][-1]
+            require(not current.get('disposition'), 'ROUND_RETIRED')
             if args.command == 'sent':
                 require(text(args.event_id), 'EVENT_ID_REQUIRED')
                 require(current['send_event_id'] in (None, args.event_id), 'SEND_EVENT_MISMATCH')
@@ -362,7 +402,7 @@ def run(args):
 
 
 def validate_binding(state, workspace, feature):
-    require(isinstance(state, dict) and state.get('format') == FORMAT, 'STATE_FORMAT_INVALID')
+    require(isinstance(state, dict) and state.get('format') in (FORMAT, LEGACY_FORMAT), 'STATE_FORMAT_INVALID')
     require(state.get('workspace') == workspace, 'WORKSPACE_MISMATCH')
     require(state.get('feature_id') == feature, 'FEATURE_MISMATCH')
 

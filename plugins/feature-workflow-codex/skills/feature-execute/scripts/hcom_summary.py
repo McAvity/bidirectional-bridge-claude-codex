@@ -93,6 +93,8 @@ def summarize(state, events, live, finish, reported):
                        'dispatch_acknowledged': bool(r.get('send_event_id')),
                        'dispatched_at': sent, 'result_ready_at': result_at,
                        'receipt': receipt.get('decision'), 'receipt_at': receipt.get('at'),
+                       'continuation_recorded': bool(r.get('continuation')),
+                       'disposition': r.get('disposition'),
                        'dispatch_to_result_seconds': elapsed(sent, result_at),
                        'dispatch_to_receipt_seconds': elapsed(sent, receipt.get('at'))})
     latest = (state['rounds'][-1].get('receipt') or {}) if rounds else {}
@@ -124,6 +126,11 @@ def summarize(state, events, live, finish, reported):
     first_dispatch = rounds[0]['dispatched_at'] if rounds else None
     return {'format': 'feature-workflow.hcom-summary/v1', 'feature_id': state['feature_id'],
             'workflow_identity': state['workflow_identity'],
+            'lifecycle': state.get('lifecycle', 'open'),
+            'pending_operations': [o['key'] for o in state.get('operations', []) if o.get('status') == 'intent'],
+            'recovery_actions': len(state.get('recovery_history', [])),
+            'continuation_recorded': bool(state['rounds'] and state['rounds'][-1].get('continuation')),
+            'upgrade_pending': bool(state.get('upgrade_pending')),
             'bound_sessions': 1 if bound else 0, 'prepared_rounds': len(rounds), 'rounds': rounds,
             'latest_receipt': latest.get('decision'),
             'startup_seconds': elapsed(started, ready),
@@ -144,6 +151,10 @@ def duration(value):
 
 def markdown(s):
     lines = [f"Hcom execution: {s['feature_id']}", '',
+             f"- Lifecycle: {s['lifecycle']}; recovery records: {s['recovery_actions']}; "
+             f"continuation recorded: {str(s['continuation_recorded']).lower()}.",
+             f"- Pending operations: {', '.join(s['pending_operations']) or 'none'}; "
+             f"workflow upgrade pending: {str(s['upgrade_pending']).lower()}.",
              f"- Bound native sessions: {s['bound_sessions']}; prepared rounds: {s['prepared_rounds']}.",
              f"- Startup (observed start → ready): {duration(s['startup_seconds'])}.",
              f"- Initialization → ready: {duration(s['initialization_to_ready_seconds'])}.",
