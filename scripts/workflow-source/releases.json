@@ -25,6 +25,11 @@
       "version": "1.1.4",
       "identity": "sha256:d114f0c5414ceb885826ef6de43f82c2990cdbf52d0b54a4f2e5257cfa8c43ba",
       "commit": "b9e98cf37541a6f8ea42cd6948d7bea94bb1c6b4"
+    },
+    {
+      "version": "1.1.5",
+      "identity": "sha256:9fe269b83273f2df8a3f10034d339f74343115e249ba49f91565158e61b01fb8",
+      "commit": "d11de438ce533865b716424282e57d0894852968"
     }
   ]
 }

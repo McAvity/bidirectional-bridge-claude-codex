@@ -11,11 +11,18 @@ explicitly.
 
 ## Unreleased
 
+## Feature workflow 1.1.5 — 2026-11-13 (experimental)
+
 ### Fixed
 
 - Claude Code's plugin-cache `.in_use/` directory no longer causes a false
   `ENTRY_BUNDLE_CORRUPT`. Only that root directory is excluded before traversal;
   instruction files, immutable bundles and Codex packages retain strict verification.
+
+Update the `feature-workflow` plugin and reload it in Claude Code. Removing markers,
+reinstalling 1.1.4, or selecting standalone mode does not fix the old verifier.
+Bridge runtime and existing feature locks are unchanged. See the
+[release checkpoint](docs/tasks/workflow-1.1.5-release.md).
 
 ## Feature workflow 1.1.4 — 2026-11-13 (experimental)
 

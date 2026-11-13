@@ -1,5 +1,13 @@
 # Current handoff
 
+## Workflow 1.1.5 — publication authorized — 2026-11-13
+
+[Release checkpoint](tasks/workflow-1.1.5-release.md). User requested publication of the
+Claude marker fix and instructions for updating Claude plugins. Source d11de43,
+identity 9fe269b83273. Branch `release/workflow-1.1.5`; registry/changelog prepared.
+Exact-SHA CI is required before the annotated tag and public experimental release.
+No installed plugin, project pin or existing feature lock is being changed automatically.
+
 ## Claude plugin marker — fix prepared — 2026-11-13
 
 [Diagnosis and correction](tasks/claude-plugin-in-use.md). Installed Claude workflow
