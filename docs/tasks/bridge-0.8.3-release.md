@@ -56,3 +56,8 @@ aligns only its disposable project pin with its release, with a separate explici
 refusal test. Production preparation and the real project pin are unchanged. All six
 focused preparer tests pass. A new source/distribution will include this fixture correction;
 no tag or release was published from the failed distribution.
+
+## Final pinned source
+
+Source `91ae998c8891b4f0ee8f19e8ea33d03184212007`; runtime `0.8.3-91ae998c8891`.
+Distribution metadata is regenerated to this source; workflow bytes remain unchanged.

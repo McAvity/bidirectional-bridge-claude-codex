@@ -2,7 +2,7 @@
   "format": "claude-codex-bridge.release/v1",
   "package_version": "0.8.3",
   "pinned": {
-    "commit": "175f5d13ba2e0bf90b91c4cc5e40029181bb9149",
+    "commit": "91ae998c8891b4f0ee8f19e8ea33d03184212007",
     "describe": "0.8.3: cancel features after verified local coordinator work"
   },
   "repository": "https://github.com/McAvity/bidirectional-bridge-claude-codex.git",
