@@ -3,6 +3,8 @@
 User authorized implementation, publication and existing-project upgrade instructions.
 Branch: `feat/hcom-lifecycle-recovery`, based on `164a202`.
 This is a workflow release, not F-W22 execution or a Bridge runtime release.
+Source commit: `2b9b3e80285d1d2deed01f4dcb41b4a6de652249`.
+Bundle identity: `sha256:784c3943663571736aea075ec18399a9e256057c32e947be35b2a24468380a2b`.
 
 ## Behavior
 
