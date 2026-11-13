@@ -22,10 +22,36 @@ against that history; no new model was launched for this release.
 
 ## Publication progress
 
-Source identity registered; changelog prepared. Local release checks and exact-distribution
-CI are pending. Publication requires successful CI at the exact commit to be tagged.
-Then publish an immutable annotated `workflow-v1.1.4` tag and experimental GitHub release,
-fast-forwarding the integration branch without force. No npm registry publication.
+Published [workflow-v1.1.4](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.4)
+at 2026-11-13T06:17:06Z as an experimental prerelease, not a draft.
+Distribution/tag: `f17d4f8f3157195e403dac6eb966f0f093630296`.
+Annotated tag and `feature-workflow` were pushed atomically without force; the registered
+source identity and generated bundle were unchanged after verification. No npm publication,
+client activation, feature switch or model launch was performed.
+
+## Release validation
+
+[CI 43375365163](https://github.com/McAvity/bidirectional-bridge-claude-codex/actions/runs/43375365163)
+passed at exactly the tagged distribution SHA: JavaScript 782 PASS / 2 skipped across all
+56 test files; Python 326 cases OK / 6 explicit host skips; pilot tooling 131 cases OK /
+2 explicit PTY skips; protected observer 21 PASS. Install, build, package equivalence and
+documentation checks also passed. Independent release audit verified all 60 bundle files
+per client against the source commit, ancestry, unchanged Bridge bytes and publication scope.
+
+Local Node 24 install/build, package equivalence and documentation (325 files) passed.
+The focused hcom suite passed 65/65. Full local Python ran 326 cases with one host-setup
+failure; that exact host test subsequently passed in isolation with diagnostic capture.
+The local full JavaScript run was incomplete: 123 PASS / 17 failures across four reported
+files, with process-inspection/doctor refusals and a Vitest `onTaskUpdate` RPC timeout.
+Local pilot tooling ran 131 cases with one macOS open-file-observer failure and two skips.
+These local aggregate runs are not reported as all-green; the exact-SHA Linux CI above
+is the successful full regression run. The inherited upstream certification manifest
+still rejects unlisted fork material, as already documented by the fork's release policy;
+it was not rewritten or presented as current certification.
+
+Raw host logs remain private. No product change was made to bypass process observation or
+weaken a test. The release-specific implementation and regression evidence remain separate
+from the broader local host-test limitations.
 
 ## Adoption
 

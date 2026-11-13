@@ -1,13 +1,17 @@
 # Current handoff
 
-## Workflow 1.1.4 — publication authorized — 2026-11-13
+## Workflow 1.1.4 — published — 2026-11-13
 
-[Release checkpoint](tasks/workflow-1.1.4-release.md). User requested publication of the
-completed startup/state/summary changes. Release branch `release/workflow-1.1.4`, source
-b9e98cf, workflow identity d114f0c5414c. Registry and changelog prepared; local release
-validation and exact-SHA CI precede the immutable tag and experimental GitHub release.
-Installed clients, project pins and feature locks remain unchanged. F-W22 execution
-approval remains separate.
+[Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.4),
+[checkpoint](tasks/workflow-1.1.4-release.md). Source b9e98cf, distribution/tag f17d4f8,
+workflow identity d114f0c5414c. Exact-SHA CI 43375365163 SUCCESS: JS 782 PASS / 2 skips,
+Python 326 OK / 6 skips, pilot 131 OK / 2 skips, protected observer 21 PASS. Local hcom
+65/65, build/packages/docs/skill and independent reviews PASS. Broader local host-test
+failures and Vitest timeout are preserved in the checkpoint, not called all-green.
+Immutable annotated tag and experimental GitHub release published; integration branch
+fast-forwarded without force. Installed clients, project pins and feature locks unchanged.
+Refresh the workflow plugin for new features; existing features retain their selected
+bundle. F-W22 execution approval remains separate. Publication work complete.
 
 ## Hcom state selection and summary — 2026-11-13
 
