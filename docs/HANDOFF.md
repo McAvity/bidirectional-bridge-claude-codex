@@ -1,12 +1,19 @@
 # Current handoff
 
-## Bridge 0.8.3 — cancellation fix in progress — 2026-11-13
+## Bridge 0.8.3 — cancellation fix published — 2026-11-13
 
-[Checkpoint](tasks/bridge-0.8.3-release.md). User authorized correction and publication.
-Native coordinator COMPLETE/DONE children were incorrectly required to have adapter
-attempts before feature cancellation. Narrow local-delivery exception and regressions
-are prepared on `fix/feature-cancel-local-work`; review and release validation follow.
-No affected project data, installed runtime or workflow lock is being changed.
+[Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/bridge-v0.8.3),
+[checkpoint](tasks/bridge-0.8.3-release.md). Native coordinator COMPLETE/DONE work no longer
+requires an adapter attempt to cancel/reject its feature. Source 91ae998, runtime
+0.8.3-91ae998c8891, distribution/tag 8c1cba9. Exact-SHA CI 43458082029 SUCCESS:
+JS 796 PASS / 2 skips, Python 334 OK / 6 skips, pilot 131 OK / 2 skips, observer 21 PASS.
+Focused local 139/139 and independent closure 45/45 PASS; disposable affected-project
+snapshot closure preserves history and frees slot. Isolated runtime install/manifest,
+compiled closure and standalone MCP checks passed. Initial CI fixture failure corrected;
+known local macOS pilot open-file refusal preserved in checkpoint, not called all-green.
+Public experimental release and immutable tag published; integration advanced without force.
+Affected project still needs runtime upgrade and its own manager's cancellation retry.
+No live project database, installed user runtime, pin or workflow lock changed.
 
 ## Workflow 1.1.5 — published — 2026-11-13
 
