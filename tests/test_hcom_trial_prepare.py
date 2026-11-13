@@ -27,6 +27,12 @@ class TrialPrepareTests(unittest.TestCase):
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPO / name, dest)
         self.store = Path(self.temp.name) / "private-store"
+        # Isolate each refusal from the developer checkout's deliberately older pin.
+        # Only this disposable fixture selects the release under test.
+        release = json.loads((self.root / "scripts/plugin-packages/release.json").read_text())
+        commit = release["pinned"]["commit"]
+        self.change(".bridge-project/bridge.json", lambda x: x.update(pinned={
+            "commit": commit, "runtime_id": f'{release["package_version"]}-{commit[:12]}'}))
         self.change(f"{FEATURE}/feature.json", lambda x: x.update(phase="execution"))
 
     def change(self, name, change):
@@ -58,6 +64,10 @@ class TrialPrepareTests(unittest.TestCase):
 
     def test_disabled_project_is_not_silently_reenabled(self):
         self.change(".bridge-project/bridge.json", lambda x: x.update(enabled=False))
+        self.refuse("Project pin differs")
+
+    def test_mismatched_project_pin_is_not_silently_updated(self):
+        self.change(".bridge-project/bridge.json", lambda x: x["pinned"].update(commit="0" * 40))
         self.refuse("Project pin differs")
 
     def test_changed_transport_is_not_silently_reselected(self):

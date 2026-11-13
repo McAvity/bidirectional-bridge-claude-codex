@@ -41,7 +41,18 @@ recorded cancellation decision and stable idempotency key. This runtime fix cann
 activated by merely updating workflow skills. Accepted partial results remain historical;
 unfinished scope is cancelled, without merging, deleting or reverting source changes.
 
-## Pinned source
+## Initial release validation and fixture correction
 
-Source `175f5d13ba2e0bf90b91c4cc5e40029181bb9149`; runtime `0.8.3-175f5d13ba2e`.
-Distribution metadata is regenerated to that immutable source. Workflow bytes remain unchanged.
+Initial source `175f5d13ba2e0bf90b91c4cc5e40029181bb9149`, distribution `def9d01`:
+isolated runtime install, manifest, compiled closure and standalone MCP (41 tools,
+correct caller/delegation/workspace, no database created) passed. Running Vitest inside
+the immutable installed tree was refused because its config loader writes a cache;
+compiled API/MCP checks were used without changing runtime permissions.
+
+CI 43456438980 passed JavaScript but failed two Python trial-preparer tests before pilot
+tests. Their fixtures copied this checkout's deliberately older project pin, so the new
+release pin guard fired before the transport/lock guard under test. The fixture now
+aligns only its disposable project pin with its release, with a separate explicit drift
+refusal test. Production preparation and the real project pin are unchanged. All six
+focused preparer tests pass. A new source/distribution will include this fixture correction;
+no tag or release was published from the failed distribution.
