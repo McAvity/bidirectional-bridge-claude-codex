@@ -40,3 +40,8 @@ After confirming live MCP workspace/runtime, retry `bridge_feature_close` with t
 recorded cancellation decision and stable idempotency key. This runtime fix cannot be
 activated by merely updating workflow skills. Accepted partial results remain historical;
 unfinished scope is cancelled, without merging, deleting or reverting source changes.
+
+## Pinned source
+
+Source `175f5d13ba2e0bf90b91c4cc5e40029181bb9149`; runtime `0.8.3-175f5d13ba2e`.
+Distribution metadata is regenerated to that immutable source. Workflow bytes remain unchanged.

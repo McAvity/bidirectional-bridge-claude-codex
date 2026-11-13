@@ -7,7 +7,7 @@
     ".codex/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "da7a77b1ab379172a4ba674176177b241d52d3ea1eedfdf28c1da2514d397ed8",
+  "source_digest": "f00594e2b0beb879845fc0d89aa7698ad8f0c9b1ac1af9b62c67c459af106848",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
@@ -59,7 +59,7 @@
     },
     {
       "path": "scripts/plugin-packages/release.json",
-      "sha256": "8c62ae3c88db8cb108021c2eb95c863e5b0e03485b9b876951984754aa466629"
+      "sha256": "4e17bebf7251ae1aa6517479547595556b147f56e074298a867078529c9384ec"
     },
     {
       "path": "scripts/setup/codex-writer-workspaces.py",
