@@ -1,5 +1,5 @@
 import { featureTerminal, assertFeatureOpen, assertTaskFeatureOpen } from "./feature-closure.js";
-import { BridgeError, ErrorCode, EventType, TaskState, type TaskSpec } from "@bridge/protocol";
+import { BridgeError, DeliverableStatus, ErrorCode, EventType, TaskState, type TaskSpec } from "@bridge/protocol";
 import type { ControlPlane } from "./control-plane.js";
 import type { Orchestrator } from "./orchestrator.js";
 import type { FeatureRecord } from "./store/state-store.js";
@@ -365,12 +365,24 @@ export class FeatureWorkflow {
         if (store.listHeldLeases().some(l => l.task_id === id)) busy("task still holds a lease");
         if (id !== parent.task_id) {
           if (![TaskState.DONE, TaskState.FAILED, TaskState.CANCELLED, TaskState.BLOCKED].includes(task.state as never)) busy("descendant task is not settled");
+          // Native coordinator work does not invoke an adapter or create an attempt.
+          // Recognise only its directly owned, verified COMPLETE delivery, never a
+          // round, delegated work, or an unattributed DONE state. Existing attempts
+          // must still match; a local delivery cannot repair missing execution history.
+          const delivery = store.getDeliverable(id);
+          const completedLocalWork = task.parent_task_id === parent.task_id &&
+            task.owner === input.manager && task.created_by === input.manager &&
+            task.state === TaskState.DONE && task.attempt === 0 && !attempts.length &&
+            !f.task_ids.includes(id) && delivery?.task_id === id &&
+            delivery.agent === input.manager && delivery.status === DeliverableStatus.COMPLETE &&
+            delivery.verification_results.length > 0 && delivery.verification_results.every(v => v.passed) &&
+            !store.readEvents({task_id: id, types: [EventType.DELEGATION_REQUESTED], limit: 1}).length;
           // Every executor descendant needs evidence, even if it was delegated outside
           // feature_run and is absent from task_ids. A cancelled initial reservation
           // without any attempt never entered the adapter and cannot start after close.
           const cancelledBeforeExecution = task.state === TaskState.CANCELLED && task.attempt === 0 &&
             !attempts.length && !f.task_ids.includes(id);
-          if (!cancelledBeforeExecution && (!attempts.length || attempts.at(-1)?.attempt !== task.attempt))
+          if (!completedLocalWork && !cancelledBeforeExecution && (!attempts.length || attempts.at(-1)?.attempt !== task.attempt))
             unsettled("descendant has no matching completed attempt");
         }
       }

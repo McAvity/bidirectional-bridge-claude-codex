@@ -165,6 +165,13 @@ Open attempts, reservations and HELD leases (even expired) cause close to refuse
 FEATURE_BUSY/FEATURE_UNSETTLED. Resolve existing state normally; close does not terminate
 processes, infer completion from client timeout or expire leases itself.
 
+Before Bridge 0.8.3, a completed local coordinator child could incorrectly cause
+`FEATURE_UNSETTLED: descendant has no matching completed attempt`. Native manager work
+has no adapter invocation. Upgrade the runtime and retry the same recorded close decision;
+0.8.3 recognises a verified local COMPLETE delivery without rewriting its history.
+This exception does not apply to executor rounds, delegated tasks, bare DONE states,
+open attempts or held leases. Do not invent an attempt or use acceptance as a workaround.
+
 A lost close response can be resolved by read or replay of the same decision and key;
 this cannot disturb a later feature's slot. See [schema6 and downgrade](feature-workflow.md#schema-6-and-downgrade)
 for the old initialize limitation and why restoring an older backup is not a lossless rollback.

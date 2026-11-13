@@ -9,7 +9,7 @@
       "name": "bridge-claude",
       "source": "./plugins/bridge-claude",
       "description": "Bridge role, setup and upgrade instructions for Claude Code, and the runtime's executor role package. The feature workflow is the separate feature-workflow plugin.",
-      "version": "0.8.2"
+      "version": "0.8.3"
     },
     {
       "name": "feature-workflow",

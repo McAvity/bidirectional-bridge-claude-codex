@@ -1,17 +1,17 @@
 {
   "format": "claude-codex-bridge.generated-package/v1",
   "plugin": "bridge-codex",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "generator": "scripts/plugin-packages/generate.mjs",
   "canonical_sources": [
     ".codex/skills/using-bridge",
     "scripts/plugin-packages/skills/bridge-upgrade"
   ],
-  "source_digest": "70eaed61d4f947d8b440cbd8e6939a7754b91a1e844724094e4536a5663d2eb9",
+  "source_digest": "da7a77b1ab379172a4ba674176177b241d52d3ea1eedfdf28c1da2514d397ed8",
   "files": [
     {
       "path": ".codex-plugin/plugin.json",
-      "sha256": "01351a8e6b9d792687ea8c7e46257333b9828211c9b9f9e8ed2524e98b9f44f3"
+      "sha256": "c663a44e059d6fde41a4ab168316d36beee988f3ae5918179183d618d40f1f0f"
     },
     {
       "path": "scripts/bridge-project/dispatch.mjs",
@@ -59,7 +59,7 @@
     },
     {
       "path": "scripts/plugin-packages/release.json",
-      "sha256": "529c75aca6276aef6967935000e4266b7ac55ec05f60775b30404ac467a5ebcf"
+      "sha256": "8c62ae3c88db8cb108021c2eb95c863e5b0e03485b9b876951984754aa466629"
     },
     {
       "path": "scripts/setup/codex-writer-workspaces.py",

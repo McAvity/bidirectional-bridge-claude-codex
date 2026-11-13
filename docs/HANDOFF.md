@@ -1,5 +1,13 @@
 # Current handoff
 
+## Bridge 0.8.3 — cancellation fix in progress — 2026-11-13
+
+[Checkpoint](tasks/bridge-0.8.3-release.md). User authorized correction and publication.
+Native coordinator COMPLETE/DONE children were incorrectly required to have adapter
+attempts before feature cancellation. Narrow local-delivery exception and regressions
+are prepared on `fix/feature-cancel-local-work`; review and release validation follow.
+No affected project data, installed runtime or workflow lock is being changed.
+
 ## Workflow 1.1.5 — published — 2026-11-13
 
 [Release](https://github.com/McAvity/bidirectional-bridge-claude-codex/releases/tag/workflow-v1.1.5),

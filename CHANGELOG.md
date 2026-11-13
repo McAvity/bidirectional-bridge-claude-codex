@@ -11,6 +11,18 @@ explicitly.
 
 ## Unreleased
 
+## Bridge 0.8.3 — 2026-11-13 (experimental)
+
+### Fixed
+
+- Cancelled/rejected feature closure now recognises verified, completed native
+  coordinator child tasks that never invoked an adapter. Such work no longer falsely
+  causes `FEATURE_UNSETTLED`. Executor evidence, open-attempt and held-lease guards
+  remain enforced; history is preserved and the feature slot is released atomically.
+- Cancellation requires no full product acceptance and performs no code merge or revert.
+  Upgrade the project's runtime and retry its recorded close decision; workflow 1.1.5
+  and existing feature locks are unchanged.
+
 ## Feature workflow 1.1.5 — 2026-11-13 (experimental)
 
 ### Fixed

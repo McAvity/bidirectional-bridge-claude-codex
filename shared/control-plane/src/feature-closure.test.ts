@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdapterHealth, DeliverableStatus, TaskState, type AgentAdapter, type TaskInvocation, type TaskSpec } from "@bridge/protocol";
+import { AdapterHealth, DeliverableStatus, EventType, TaskState, type AgentAdapter, type TaskInvocation, type TaskSpec } from "@bridge/protocol";
 import { ControlPlane } from "./control-plane.js";
 import { Orchestrator } from "./orchestrator.js";
 import { SqliteStateStore } from "./store/sqlite-store.js";
@@ -48,6 +48,70 @@ function fixture() {
 
 const decision = {feature_id: "feature", manager: "codex", outcome: "rejected" as const,
   reason: "synthetic reason", decision_ref: "synthetic decision", idempotency_key: "close1"};
+
+function completedLocalTask(f: ReturnType<typeof fixture>, creator = "codex") {
+  const task = f.cp.tasks.create({spec, created_by: creator, parent_task_id: f.parent.task_id});
+  f.cp.tasks.claim(task.task_id, "codex");
+  f.cp.tasks.transition({task_id: task.task_id, agent: "codex", to: TaskState.WORKING});
+  f.cp.deliverables.submit({task_id: task.task_id, agent: "codex", status: DeliverableStatus.COMPLETE,
+    summary: "local coordinator work", changed_scope: [], artifacts: [], commit_or_diff: null,
+    verification_performed: ["fixture check"], verification_results: [
+      {kind: "test", command: "fixture check", passed: true, exit_code: 0, summary: "pass"}],
+    remaining_risks: [], dependencies_unblocked: [], recommended_next_action: "review", at: Date.now()});
+  return f.cp.tasks.get(task.task_id);
+}
+
+describe("closure after native coordinator work", () => {
+  it.each(["cancelled", "rejected"] as const)("allows %s after local delivery and a PARTIAL round, preserving evidence and releasing the slot", async outcome => {
+    const f = fixture();
+    const local = completedLocalTask(f);
+    f.behavior.partial = true;
+    const round = await f.flow.run(f.request);
+    f.cp.store.putManagerBinding!({epoch: 1, native_thread_id: "synthetic", active_instance_id: "instance", instance_generation: 1, active_feature_id: "feature", updated_at: 1});
+    const before = {local, delivery: f.cp.deliverables.get(local.task_id), round: f.cp.tasks.get(round.task.task_id), attempts: f.cp.attempts.list(round.task.task_id)};
+    const closed = f.open().flow.close({...decision, outcome});
+    expect(closed.feature.state).toBe(outcome);
+    expect(f.cp.store.getManagerBinding!()?.active_feature_id).toBeNull();
+    expect(f.cp.attempts.list(local.task_id)).toEqual([]);
+    expect({local: f.cp.tasks.get(local.task_id), delivery: f.cp.deliverables.get(local.task_id), round: f.cp.tasks.get(round.task.task_id), attempts: f.cp.attempts.list(round.task.task_id)}).toEqual(before);
+    const parent = f.cp.tasks.create({spec, created_by: "codex"}); f.cp.tasks.claim(parent.task_id, "codex");
+    f.flow.create("replacement", "codex", parent.task_id);
+    f.cp.store.putManagerBinding!({...f.cp.store.getManagerBinding!()!, active_feature_id: "replacement"});
+    await f.flow.run({...f.request, feature_id: "replacement", idempotency_key: "replacement1"});
+    expect(f.flow.close({...decision, outcome}).replayed).toBe(true);
+    expect(f.cp.store.getManagerBinding!()?.active_feature_id).toBe("replacement");
+    await expect(f.flow.run({...f.request, idempotency_key: "late"})).rejects.toMatchObject({code: "FEATURE_CLOSED"});
+    expect(f.seen).toHaveLength(2);
+  });
+
+  it.each(["owner", "creator", "delivery-agent", "no-verification", "failed-verification", "partial-delivery", "attempt-counter", "delegated", "round", "open-attempt", "lease"])("still refuses %s despite a local COMPLETE delivery", scenario => {
+    const f = fixture(); const task = completedLocalTask(f, scenario === "creator" ? "claude" : "codex");
+    const delivery = f.cp.deliverables.get(task.task_id)!;
+    if (scenario === "owner") f.cp.store.updateTask({...task, owner: "claude", version: task.version + 1});
+    if (scenario === "delivery-agent") f.cp.store.insertDeliverable({...delivery, agent: "claude"});
+    if (scenario === "no-verification") f.cp.store.insertDeliverable({...delivery, verification_results: []});
+    if (scenario === "failed-verification") f.cp.store.insertDeliverable({...delivery, verification_results: [{...delivery.verification_results[0]!, passed: false, exit_code: 1}]});
+    if (scenario === "partial-delivery") f.cp.store.insertDeliverable({...delivery, status: DeliverableStatus.PARTIAL});
+    if (scenario === "attempt-counter") f.cp.store.updateTask({...task, attempt: 1, version: task.version + 1});
+    if (scenario === "delegated") f.cp.store.appendEvent({type: EventType.DELEGATION_REQUESTED, task_id: task.task_id, agent: "codex", payload: {to: "codex"}}, Date.now());
+    if (scenario === "round") f.cp.store.putFeature({...f.cp.store.getFeature("feature")!, task_ids: [task.task_id], latest_task_id: task.task_id});
+    if (scenario === "open-attempt") f.cp.attempts.start(task.task_id, 0, "codex");
+    if (scenario === "lease") f.cp.leases.acquire({task_id: task.task_id, holder: "codex", scope: spec.scope, ttl_ms: 1000});
+    const before = {feature: f.cp.store.getFeature("feature"), task: f.cp.tasks.get(task.task_id), events: f.cp.store.readEvents()};
+    expect(() => f.flow.close({...decision, outcome: "cancelled"})).toThrowError(expect.objectContaining({code: ["open-attempt", "lease"].includes(scenario) ? "FEATURE_BUSY" : "FEATURE_UNSETTLED"}));
+    expect({feature: f.cp.store.getFeature("feature"), task: f.cp.tasks.get(task.task_id), events: f.cp.store.readEvents()}).toEqual(before);
+  });
+
+  it("does not treat a manager-owned bare DONE state as a completed local delivery", () => {
+    const f = fixture();
+    const task = f.cp.tasks.create({spec, created_by: "codex", parent_task_id: f.parent.task_id});
+    f.cp.tasks.claim(task.task_id, "codex");
+    f.cp.tasks.transition({task_id: task.task_id, agent: "codex", to: TaskState.WORKING});
+    f.cp.tasks.transition({task_id: task.task_id, agent: "codex", to: TaskState.VERIFYING});
+    f.cp.tasks.transition({task_id: task.task_id, agent: "codex", to: TaskState.DONE});
+    expect(() => f.flow.close({...decision, outcome: "cancelled"})).toThrowError(expect.objectContaining({code: "FEATURE_UNSETTLED"}));
+  });
+});
 
 describe("feature closure", () => {
   it.each(["ready", "waiting_user", "awaiting_review", "blocked"])("closes %s and preserves all delivery history", async state => {

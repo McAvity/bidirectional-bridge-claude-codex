@@ -199,11 +199,18 @@ question/answer, tasks, attempts, deliveries, code and packages are preserved.
 Close allows ready, waiting_user, awaiting_review and ended blocked/failed rounds.
 It refuses open attempts, unstarted reservations, inconsistent references and HELD leases
 including expired ones. Parent attempts/leases and unknown active descendants also count.
+Completed native coordinator work is distinct from an executor round: a direct child
+created and owned by that manager may have no adapter attempt. Close accepts this case
+only outside the feature's round list, at attempt zero, with a matching COMPLETE delivery
+containing passing verification and no delegation event. A bare DONE state is insufficient;
+recorded attempts still need to be closed and consistent. No synthetic attempt is inserted.
 `FEATURE_BUSY`/`FEATURE_UNSETTLED` require settlement through supported procedures;
 close never stops an executor or automatically recovers it. Explicitly release your own
 manual lease before closing. An exclusive unfinished coordinator becomes CANCELLED,
 including VERIFYING via this narrow operation only. Terminal/shared coordinators remain
 unchanged; no COMPLETE delivery or fake successful product is created.
+Cancellation does not merge, revert or delete code. Keep unwanted unmerged work on its
+branch; undoing changes already integrated elsewhere is a separate explicit operation.
 
 Closure, coordinator outcome, idempotency and release of this slot commit atomically.
 Same request/key, or identical decision with a new key, preserves the original closure/time.
